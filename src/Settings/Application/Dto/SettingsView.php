@@ -53,8 +53,8 @@ final readonly class SettingsView
         public string $reportDay = 'paid',
         /** @var list<string> */
         public array $reportDays = [],
-        /** What becomes of a free item when items it came with go back. */
-        public string $freeItemsOnReturn = 'charged',
+        /** What a deal that gave free items refunds when some of its items go back. */
+        public string $freeItemsOnReturn = 'spread',
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self

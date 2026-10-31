@@ -480,7 +480,10 @@ final readonly class Returns
     {
         $decimals = new Currency($order->currency)->decimals();
         $amount = Money::zero();
-        if ($this->settings->current()->freeItemsOnReturn === FreeItemsOnReturn::Charged->value) {
+        $policy = $this->settings->current()->freeItemsOnReturn;
+        // The items of a deal that gave free ones refund their share of what its items cost together.
+        $shares = $policy === FreeItemsOnReturn::Spread->value ? $this->shares($order) : [];
+        if ($policy === FreeItemsOnReturn::Charged->value) {
             // A free item what is kept no longer earns is the customer's at its price: kept from what goes back.
             foreach ($this->unearned($order, $items, $returnId) as $position => $units) {
                 $line = $order->lines[$position];
@@ -494,11 +497,52 @@ final readonly class Returns
             if (!$line instanceof OrderLineView || $line->quantity < 1) {
                 continue;
             }
-            $gross = Money::of($line->total)->subtract(Money::of($line->discount))->add($order->pricesIncludeTax ? Money::zero() : Money::of($line->tax));
-            $amount = $amount->add($gross->proportion(Money::of((string) $quantity), Money::of((string) $line->quantity)));
+            if (isset($shares[$position])) {
+                $amount = $amount->add($shares[$position]->times($quantity));
+                continue;
+            }
+            $amount = $amount->add(self::paid($order, $line)->proportion(Money::of((string) $quantity), Money::of((string) $line->quantity)));
         }
 
         return ($amount->isNegative() ? Money::zero() : $amount)->rounded($decimals);
+    }
+
+    /** What the customer paid for the line: its total less its discount, with its tax unless the prices include it. */
+    private static function paid(OrderView $order, OrderLineView $line): Money
+    {
+        return Money::of($line->total)->subtract(Money::of($line->discount))->add($order->pricesIncludeTax ? Money::zero() : Money::of($line->tax));
+    }
+
+    /**
+     * Each item's share of a deal that gave free items, by line position: what its items (those it gave, and those
+     * it applies to) cost together, over how many they are. A line in two deals takes the first's.
+     *
+     * @return array<int, Money>
+     */
+    private function shares(OrderView $order): array
+    {
+        $deals = [];
+        foreach ($order->lines as $position => $line) {
+            if ($line->givenBy !== null) {
+                $deals[$line->givenBy['code']] = true;
+            }
+        }
+        $shares = [];
+        foreach (array_keys($deals) as $code) {
+            $code = (string) $code;
+            $items = array_filter($order->lines, fn(OrderLineView $line): bool => ($line->givenBy['code'] ?? null) === $code || ($line->givenBy === null && $line->addOn === null && $this->earned->appliesTo($code, $line->productId)));
+            $units = array_sum(array_map(static fn(OrderLineView $line): int => $line->quantity, $items));
+            if ($units < 1) {
+                continue;
+            }
+            $cost = array_reduce($items, static fn(Money $sum, OrderLineView $line): Money => $sum->add(self::paid($order, $line)), Money::zero());
+            $share = $cost->proportion(Money::of('1'), Money::of((string) $units));
+            foreach (array_keys($items) as $position) {
+                $shares[$position] ??= $share;
+            }
+        }
+
+        return $shares;
     }
 
     /**

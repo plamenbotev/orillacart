@@ -44,4 +44,18 @@ final readonly class EarnedItems
 
         return $coupon->earns(new Basket($lines, $currency));
     }
+
+    /**
+     * Whether the coupon applies to the product, as it is now: false for a coupon gone.
+     */
+    public function appliesTo(string $code, int $productId): bool
+    {
+        $coupon = $this->coupons->findByCodes([$code])[$code] ?? null;
+        if ($coupon === null) {
+            return false;
+        }
+        $terms = $this->content->termIds($productId);
+
+        return $coupon->appliesTo(new BasketLine($productId, 1, Money::of('1'), false, $terms['categories'], $terms['brands']));
+    }
 }

@@ -55,7 +55,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 self::optionalInt($stored, 'return_days'),
                 ($minimum = self::optionalString($stored, 'minimum_order')) === null ? null : Money::of($minimum),
                 ReportDay::tryFrom(self::optionalString($stored, 'report_day') ?? '') ?? ReportDay::Paid,
-                FreeItemsOnReturn::tryFrom(self::optionalString($stored, 'free_items_on_return') ?? '') ?? FreeItemsOnReturn::Charged,
+                FreeItemsOnReturn::tryFrom(self::optionalString($stored, 'free_items_on_return') ?? '') ?? FreeItemsOnReturn::Spread,
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);

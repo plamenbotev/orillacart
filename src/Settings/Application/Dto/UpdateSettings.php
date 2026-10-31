@@ -59,8 +59,12 @@ final readonly class UpdateSettings
         /** The day the reports count an order on: paid or placed. */
         #[Assert\Choice(callback: [ReportDay::class, 'values'])]
         public string $reportDay = 'paid',
-        /** A free item whose items go back: "charged" (its price kept from the refund), "come_back" or "stay_free". */
+        /**
+         * A deal that gave free items, when some of its items go back: "spread" (each refunds its share of the deal),
+         * or once what is kept no longer earns a free item "charged" (its price kept from the refund), "come_back"
+         * or "stay_free".
+         */
         #[Assert\Choice(callback: [FreeItemsOnReturn::class, 'values'])]
-        public string $freeItemsOnReturn = 'charged',
+        public string $freeItemsOnReturn = 'spread',
     ) {}
 }

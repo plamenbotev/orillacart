@@ -439,15 +439,22 @@ export function SettingsScreen() {
 							<SelectControl
 								__next40pxDefaultSize
 								label={ __(
-									'A free item, when the items it came with go back',
+									'Returns from a deal that gave free items',
 									'orillacart'
 								) }
 								help={ __(
-									'When what the customer keeps no longer earns it: two of three lamps bought, one given, and one bought sent back.',
+									'Two lamps bought and a third given, one sent back. Spread: each lamp refunds its share of the deal (20 of 60). The others apply once what is kept no longer earns the free lamp; the lamp sent back then refunds what it cost.',
 									'orillacart'
 								) }
 								value={ form.free_items_on_return }
 								options={ [
+									{
+										value: 'spread',
+										label: __(
+											'Each item refunds its share of the deal',
+											'orillacart'
+										),
+									},
 									{
 										value: 'charged',
 										label: __(

@@ -116,7 +116,24 @@ final class GivenItemsTest extends TestCase
         self::assertSame(['90', '30', '30'], [$order->subtotal, $order->lines[1]->total, $order->lines[1]->discount], 'the third free: in the subtotal at its price, taken off as discount');
     }
 
-    public function testAFreeItemNoLongerEarnedIsChargedFromTheRefundByDefault(): void
+    public function testEachItemOfTheDealRefundsItsShareByDefault(): void
+    {
+        $this->settings(FreeItemsOnReturn::Spread);
+        $this->lampOffer();
+        $receipt = $this->shippedOrder();
+
+        $return = $this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed'));
+        self::assertSame('20', $return->amount, 'three lamps for 60: 20 each');
+        $this->shop->returns->approve($return->id, new \OrillaCart\Returns\Application\Dto\AnswerReturn(), 7);
+        $this->shop->returns->receive($return->id, 7);
+        $refunded = $this->shop->returns->refund($return->id, new \OrillaCart\Returns\Application\Dto\RefundReturn(outside: true), 7);
+        self::assertSame(['refunded', '20'], [$refunded->status, $refunded->amount]);
+
+        $free = $this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(1, 1)], 'no_longer_needed'));
+        self::assertSame('20', $free->amount, 'the free one is a third of the deal too');
+    }
+
+    public function testAFreeItemNoLongerEarnedIsChargedFromTheRefund(): void
     {
         $this->lampOffer();
         $receipt = $this->shippedOrder();

@@ -59,8 +59,8 @@ final readonly class StoreSettings
         public ?Money $minimumOrder = null,
         /** The day the reports count an order on: paid, or placed. Changing it counts every order again. */
         public ReportDay $reportDay = ReportDay::Paid,
-        /** What becomes of a free item when items it came with go back and what is kept no longer earns it. */
-        public FreeItemsOnReturn $freeItemsOnReturn = FreeItemsOnReturn::Charged,
+        /** What a deal that gave free items refunds when some of its items go back. */
+        public FreeItemsOnReturn $freeItemsOnReturn = FreeItemsOnReturn::Spread,
     ) {
         if ($minimumOrder !== null && ($minimumOrder->isNegative() || $minimumOrder->isZero())) {
             throw new RuleViolation('A minimum order is more than nothing; leave it empty for none.', 'orillacart_invalid_minimum_order');
