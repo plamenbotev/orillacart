@@ -187,12 +187,14 @@ final readonly class AccountBlock implements BlockDefinition
             $customer = null;
         }
         $subscribed = $customer?->newsletter->subscribed ?? false;
+        $pending = $customer?->newsletter->pending ?? false;
 
         return [
             'customer' => $customer,
             // One who signed up can leave even after the shop stopped offering it.
-            'newsletter' => $this->newsletter->offer() ?? ($subscribed ? __('The shop\'s newsletter', 'orillacart') : null),
+            'newsletter' => $this->newsletter->offer() ?? ($subscribed || $pending ? __('The shop\'s newsletter', 'orillacart') : null),
             'subscribed' => $subscribed,
+            'newsletter_pending' => $pending,
             'cart_reminders' => !\in_array(EmailKind::CartReminder->value, $this->emails->current()->disabled, true),
         ];
     }

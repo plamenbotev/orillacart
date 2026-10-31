@@ -20,6 +20,8 @@ export interface ProductImport {
 	errors: string[];
 	created_at: string;
 	finished_at: string | null;
+	/** Running with no job left to go on with it: it can only be discarded. */
+	stalled: boolean;
 }
 
 const BASE = '/orillacart/v1/imports/products';

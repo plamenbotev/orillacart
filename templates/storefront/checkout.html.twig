@@ -7,7 +7,8 @@
  # saved_addresses: the logged-in customer's address book;
  # cart_reminders: whether the shop reminds customers who ask of a cart they leave at checkout; remind_ticked:
  # whether its box starts ticked (a customer who did not turn it off); newsletter: the words of the newsletter's
- # box, when the shop offers one and the customer is not subscribed;
+ # box, when the shop offers one and the customer is not subscribed; newsletter_pending: the logged-in customer
+ # signed up and has yet to confirm it;
  # links: the shop's pages; legal: accept_terms, whether the customer must tick that they accept the terms of
  # sale, the addresses of the terms, withdrawal and delivery pages (null for none published), and button, the
  # words of the order button (place_order, buy_now, order_and_pay).
@@ -46,6 +47,8 @@
                             <input id="orillacart-newsletter" type="checkbox" name="newsletter" value="1">
                             <label for="orillacart-newsletter">{{ newsletter }}</label>
                         </p>
+                    {% elseif newsletter_pending ?? false %}
+                        <p class="orillacart-notice">{{ __('Check your email: follow the link we sent you to confirm your sign-up for the newsletter.') }}</p>
                     {% endif %}
                     {% if not logged_in and links.account %}
                         <p class="orillacart-checkout__login">{{ __('Have an account?') }} <a href="{{ login_url }}">{{ __('Log in') }}</a></p>

@@ -4,7 +4,8 @@
  # order: the order; receipt: a link's token for it, which paying it now needs; heading: whether to thank the
  # customer for ordering;
  # links: the shop's pages; pay_methods: the ways an unpaid order can be paid now, if any; invoices: its
- # invoices and credit notes, if any; returns: its returns, and what may still go back, if the shop takes returns.
+ # invoices and credit notes, if any; returns: its returns, and what may still go back, if the shop takes returns;
+ # newsletter_pending: its email signed up for the newsletter and has yet to confirm it.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-receipt">
@@ -26,6 +27,10 @@
             <li>{{ invoice.kind == 'credit_note' ? __('Credit note') : __('Invoice') }}: <a href="{{ invoice.url }}" target="_blank" rel="noopener">{{ invoice.number }}</a></li>
         {% endfor %}
     </ul>
+
+    {% if newsletter_pending ?? false %}
+        <div class="orillacart-notice">{{ __('Check your email: follow the link we sent you to confirm your sign-up for the newsletter.') }}</div>
+    {% endif %}
 
     {% if order.payment_note and order.status in ['pending_payment', 'on_hold'] %}
         <div class="orillacart-notice">{{ order.payment_note|nl2br }}</div>

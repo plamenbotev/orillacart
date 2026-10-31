@@ -30,13 +30,15 @@ final readonly class ImportView
         public array $errors,
         public string $createdAt,
         public ?string $finishedAt,
+        /** Running with no job left to go on with it: its worker stopped for good, and it can only be discarded. */
+        public bool $stalled = false,
     ) {}
 
     /**
      * @param list<ColumnView> $columns
      * @param list<string>     $ignored
      */
-    public static function fromImport(ProductImport $import, array $columns, array $ignored): self
+    public static function fromImport(ProductImport $import, array $columns, array $ignored, bool $stalled = false): self
     {
         return new self(
             $import->id(),
@@ -52,6 +54,7 @@ final readonly class ImportView
             $import->errors(),
             $import->createdAt()->format(\DATE_ATOM),
             $import->finishedAt()?->format(\DATE_ATOM),
+            $stalled,
         );
     }
 }

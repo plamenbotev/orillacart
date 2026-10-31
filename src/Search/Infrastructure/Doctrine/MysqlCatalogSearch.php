@@ -36,7 +36,7 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
         $documents = $this->tables->documents();
         $connection = $this->tables->connection();
 
-        $total = (int) self::scalar($connection->fetchOne("SELECT COUNT(*) FROM {$documents} d WHERE {$where}", $params->values()));
+        $total = $query->count ? (int) self::scalar($connection->fetchOne("SELECT COUNT(*) FROM {$documents} d WHERE {$where}", $params->values())) : 0;
         $order = $this->order($query->sort, $words, $params);
         $rows = $query->limit < 1 ? [] : $connection->fetchFirstColumn(
             \sprintf('SELECT d.product_id FROM %s d WHERE %s ORDER BY %s LIMIT %d OFFSET %d', $documents, $where, $order, $query->limit, max(0, $query->offset)),

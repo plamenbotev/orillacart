@@ -37,6 +37,7 @@ const ready = {
 	errors: [],
 	created_at: '2026-10-20T10:00:00+00:00',
 	finished_at: null,
+	stalled: false,
 };
 
 describe( 'ImportCard', () => {
@@ -109,5 +110,41 @@ describe( 'ImportCard', () => {
 			)
 		).toBeVisible();
 		expect( polls ).toBe( 1 );
+	} );
+
+	it( 'discards an import whose worker stopped for good', async () => {
+		const calls: string[] = [];
+		mockedFetch.mockImplementation( ( options ) => {
+			const { path, method } = options as {
+				path: string;
+				method?: string;
+			};
+			calls.push( `${ method ?? 'GET' } ${ path }` );
+			if ( path.endsWith( '/latest' ) ) {
+				return Promise.resolve( {
+					import: {
+						...ready,
+						status: 'running',
+						done: 1,
+						stalled: true,
+					},
+				} );
+			}
+			return Promise.resolve( null );
+		} );
+		const user = userEvent.setup();
+		render( <ImportCard interval={ 10 } /> );
+
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Discard the import' } )
+		);
+
+		expect(
+			await screen.findByText( 'Choose a products file' )
+		).toBeVisible();
+		expect( calls ).toEqual( [
+			'GET /orillacart/v1/imports/products/latest',
+			'DELETE /orillacart/v1/imports/products/3',
+		] );
 	} );
 } );

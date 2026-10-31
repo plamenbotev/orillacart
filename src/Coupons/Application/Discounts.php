@@ -168,14 +168,23 @@ final readonly class Discounts
         if ($coupons === []) {
             return;
         }
-        $locked = $this->coupons->findByCodes(array_map(static fn(AppliedCoupon $coupon): string => $coupon->code, $coupons), true);
+        $codes = array_map(static fn(AppliedCoupon $coupon): string => $coupon->code, $coupons);
+        $firstOrderIds = $this->coupons->firstOrderOnlyIds();
+        $firstOrder = array_filter($this->coupons->findByCodes($codes), static fn(Coupon $coupon): bool => \in_array($coupon->id(), $firstOrderIds, true)) !== [];
+        if ($firstOrder) {
+            // Before the coupons' locks, as every order takes them: the customer's first orders one at a time.
+            $this->redemptions->takeFirstOrderTurn($customerId, $email);
+        }
+        $locked = $this->coupons->findByCodes($codes, true);
+        // Counted before this order's own uses: of two first orders placed at once, the one that counted its use
+        // first is the first order, whichever code each used.
+        $ordered = $firstOrder && ($this->redemptions->countByCustomer($firstOrderIds, $customerId, $email, true) > 0 || $this->orders->hasOrdered($customerId, $email, $orderId));
         foreach ($coupons as $applied) {
             $coupon = $locked[$applied->code] ?? throw new CouponRuleViolation('The code %s is no longer valid.', 'orillacart_coupon_refused', values: [$applied->code]);
             if ($this->usedUp($coupon, $customerId, $email)) {
                 throw new CouponRuleViolation('The code %s was just used up. Remove it and try again.', 'orillacart_coupon_used_up', values: [$coupon->code()]);
             }
-            // Two first orders placed at once: the one that counted its use first is the first order.
-            if ($coupon->terms()->firstOrderOnly && ($this->redemptions->countByCustomer($coupon->id(), $customerId, $email, true) > 0 || $this->orders->hasOrdered($customerId, $email, $orderId))) {
+            if ($coupon->terms()->firstOrderOnly && $ordered) {
                 throw new CouponRuleViolation('The code %s is for a first order only. Remove it and try again.', 'orillacart_coupon_used_up', values: [$coupon->code()]);
             }
             $coupon->use();

@@ -12,16 +12,24 @@ final class InMemoryRedemptionRepository implements RedemptionRepository
     /** @var list<CouponRedemption> */
     public array $redemptions = [];
 
-    public function countByCustomer(int $couponId, ?int $customerId, string $email, bool $current = false): int
+    public function countByCustomer(int|array $couponIds, ?int $customerId, string $email, bool $current = false): int
     {
         $email = mb_strtolower($email);
 
-        return \count(array_filter($this->redemptions, static function (CouponRedemption $redemption) use ($couponId, $customerId, $email): bool {
+        return \count(array_filter($this->redemptions, static function (CouponRedemption $redemption) use ($couponIds, $customerId, $email): bool {
             $customer = new \ReflectionProperty(CouponRedemption::class, 'customerId');
             $stored = new \ReflectionProperty(CouponRedemption::class, 'email');
 
-            return $redemption->couponId() === $couponId && (($email !== '' && $stored->getValue($redemption) === $email) || ($customerId !== null && $customer->getValue($redemption) === $customerId));
+            return \in_array($redemption->couponId(), (array) $couponIds, true) && (($email !== '' && $stored->getValue($redemption) === $email) || ($customerId !== null && $customer->getValue($redemption) === $customerId));
         }));
+    }
+
+    /** @var list<array{?int, string}> the turns at first orders taken */
+    public array $turns = [];
+
+    public function takeFirstOrderTurn(?int $customerId, string $email): void
+    {
+        $this->turns[] = [$customerId, mb_strtolower($email)];
     }
 
     public function ofOrder(int $orderId): array

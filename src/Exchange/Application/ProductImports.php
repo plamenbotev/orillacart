@@ -252,7 +252,7 @@ final readonly class ProductImports
     public function discard(int $id): void
     {
         $import = $this->get($id);
-        if ($import->isRunning() && $this->jobs->pending(ImportProducts::TYPE) > 0) {
+        if ($import->isRunning() && !$this->stalled($import)) {
             throw new ExchangeRuleViolation('The import is running; it ends by itself.', 'orillacart_import_running');
         }
         $this->files->delete($import->fileKey());
@@ -331,7 +331,13 @@ final readonly class ProductImports
         $read = array_values(array_filter($import->columns(), static fn(string $column): bool => self::reads($all, $column)));
         $views = array_values(array_map(fn(string $column): ColumnView => $this->choice->view($all[$column], true), array_filter($read, static fn(string $column): bool => isset($all[$column]))));
 
-        return ImportView::fromImport($import, $views, array_values(array_diff($import->columns(), $read)));
+        return ImportView::fromImport($import, $views, array_values(array_diff($import->columns(), $read)), $this->stalled($import));
+    }
+
+    /** Running with no job left to go on with it. */
+    private function stalled(ProductImport $import): bool
+    {
+        return $import->isRunning() && $this->jobs->pending(ImportProducts::TYPE) === 0;
     }
 
     /**

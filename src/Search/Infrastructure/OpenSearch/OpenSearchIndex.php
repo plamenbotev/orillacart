@@ -13,6 +13,7 @@ use OrillaCart\Search\Application\IndexRefusedFields;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
 use OrillaCart\Search\Domain\Facets;
+use OrillaCart\Search\Infrastructure\WordPress\IndexChanges;
 use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\Lifecycle\Languages;
 
@@ -43,6 +44,7 @@ final readonly class OpenSearchIndex implements SearchIndex
         if ($documents === []) {
             return;
         }
+        IndexChanges::record();
         $settings = $this->settings->load();
         $lines = '';
         foreach ($documents as $document) {
@@ -161,6 +163,7 @@ final readonly class OpenSearchIndex implements SearchIndex
         if ($productIds === []) {
             return;
         }
+        IndexChanges::record();
         $lines = '';
         foreach ($productIds as $productId) {
             foreach ([(string) $productId, ...array_map(static fn(string $locale): string => self::translationId($productId, $locale), $this->locales())] as $id) {

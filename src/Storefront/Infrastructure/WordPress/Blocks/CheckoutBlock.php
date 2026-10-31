@@ -125,7 +125,9 @@ final readonly class CheckoutBlock implements BlockDefinition
             'accounts' => $this->customers->accountMode(),
             'cart_reminders' => !\in_array(EmailKind::CartReminder->value, $this->emails->current()->disabled, true),
             'remind_ticked' => $customer->cartReminders ?? false,
-            'newsletter' => $customer !== null && $this->newsletter->isSubscribed($customer->email) ? null : $this->newsletter->offer(),
+            // One who signed up and has yet to confirm is told to look for the email, not offered the box again.
+            'newsletter' => $customer !== null && ($this->newsletter->isSubscribed($customer->email) || $this->newsletter->isPending($customer->email)) ? null : $this->newsletter->offer(),
+            'newsletter_pending' => $customer !== null && $this->newsletter->isPending($customer->email),
             'address_checks' => $this->addressChecks->any(),
             'login_url' => wp_login_url((string) get_permalink()),
             'links' => $links,
@@ -180,6 +182,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'invoices' => $this->invoices->ofOrder($order->number),
             'returns' => $this->returns->forCustomer($order->number),
             'review_links' => $this->reviewLinks->forOrder($order, $receipt),
+            'newsletter_pending' => $this->newsletter->isPending($order->email),
         ]) . (\in_array($order->status, ['cancelled', 'failed'], true) ? '' : $this->analytics->purchase($order));
     }
 

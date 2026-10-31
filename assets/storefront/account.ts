@@ -234,21 +234,40 @@ export function bindEmails( form: HTMLFormElement ): void {
 			'[name="cart_reminders"]'
 		);
 		const result = await busy( form, () =>
-			api( 'PUT', '/account/emails', {
-				cart_reminders:
-					reminders?.type !== 'checkbox' || reminders.checked,
-				newsletter: newsletter ? newsletter.checked : null,
-			} )
+			api< { newsletter: { pending: boolean } | null } >(
+				'PUT',
+				'/account/emails',
+				{
+					cart_reminders:
+						reminders?.type !== 'checkbox' || reminders.checked,
+					newsletter: newsletter ? newsletter.checked : null,
+				}
+			)
 		);
 		if ( result === null ) {
 			return;
 		}
+		if ( ! result.ok ) {
+			showMessage( form, failure( result ), 'error' );
+			return;
+		}
+		// A sign-up the shop asks to confirm by email waits for its link.
+		const pending = result.data.newsletter?.pending === true;
+		const note = form.querySelector< HTMLElement >(
+			'[data-orillacart-newsletter-pending]'
+		);
+		if ( note ) {
+			note.hidden = ! pending;
+		}
 		showMessage(
 			form,
-			result.ok
-				? __( 'Your choices are saved.', 'orillacart' )
-				: failure( result ),
-			result.ok ? 'success' : 'error'
+			pending
+				? __(
+						'Your choices are saved. Check your email to confirm your sign-up for the newsletter.',
+						'orillacart'
+					)
+				: __( 'Your choices are saved.', 'orillacart' ),
+			'success'
 		);
 	} );
 }

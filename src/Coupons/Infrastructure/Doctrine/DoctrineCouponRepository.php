@@ -60,6 +60,13 @@ final readonly class DoctrineCouponRepository implements CouponRepository
         return $this->entityManager->getRepository(Coupon::class)->findBy(['automatic' => true, 'active' => true], ['id' => 'ASC']);
     }
 
+    public function firstOrderOnlyIds(): array
+    {
+        $ids = $this->entityManager->createQuery('SELECT c.id FROM ' . Coupon::class . ' c WHERE c.firstOrderOnly = true')->getSingleColumnResult();
+
+        return array_values(array_map(intval(...), array_filter($ids, is_numeric(...))));
+    }
+
     public function save(Coupon $coupon): void
     {
         $this->entityManager->persist($coupon);

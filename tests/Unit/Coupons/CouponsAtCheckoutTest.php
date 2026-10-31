@@ -17,6 +17,7 @@ use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
+use OrillaCart\Coupons\Domain\CouponRedemption;
 use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
@@ -167,6 +168,20 @@ final class CouponsAtCheckoutTest extends TestCase
 
         $this->expectException(CouponRuleViolation::class);
         $this->expectExceptionMessage('The code WELCOME is for a first order only. Remove it and try again.');
+        $this->shop->transactions->run(fn() => $this->shop->discounts->redeem(999, [$priced], null, 'ada@example.com'));
+    }
+
+    public function testOfTwoFirstOrdersPlacedAtOnceWithDifferentCodesOnlyOneCountsItsCode(): void
+    {
+        $this->coupon('WELCOME', 'percent', '10', firstOrderOnly: true);
+        $this->coupon('HELLO', 'percent', '5', firstOrderOnly: true);
+        // The other order counted its WELCOME as this one waited for the lock: its use is committed, while the
+        // order itself is still out of this one's sight.
+        $this->shop->redemptions->save(new CouponRedemption(1, 998, null, 'ada@example.com', Money::of('4'), new \DateTimeImmutable()));
+        $priced = new AppliedCoupon('HELLO', '', '2', false, [0 => '2']);
+
+        $this->expectException(CouponRuleViolation::class);
+        $this->expectExceptionMessage('The code HELLO is for a first order only. Remove it and try again.');
         $this->shop->transactions->run(fn() => $this->shop->discounts->redeem(999, [$priced], null, 'ada@example.com'));
     }
 

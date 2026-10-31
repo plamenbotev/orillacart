@@ -55,7 +55,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
         $body = [
             'from' => max(0, $query->offset),
             'size' => max(0, $query->limit),
-            'track_total_hits' => true,
+            'track_total_hits' => $query->count,
             '_source' => ['product_id'],
             'query' => ['bool' => [
                 'must' => $text === '' ? [] : [$this->words($text, $query)],
@@ -76,7 +76,7 @@ final readonly class OpenSearchCatalogSearch implements CatalogSearch
                 $ids[] = $id;
             }
         }
-        $total = self::at($answer, 'hits', 'total', 'value');
+        $total = $query->count ? self::at($answer, 'hits', 'total', 'value') : 0;
         if (!$query->facets) {
             return new SearchResult($ids, \is_int($total) ? $total : \count($ids));
         }

@@ -497,6 +497,85 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'is told to confirm a newsletter sign-up by email, on the receipt, in the account and at checkout', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const email = `e2e-confirm-${ Date.now() }@example.com`;
+		const check =
+			'Check your email: follow the link we sent you to confirm your sign-up for the newsletter.';
+		await requestUtils.rest( {
+			method: 'PUT',
+			path: '/orillacart/v1/newsletter-settings',
+			data: {
+				offered: true,
+				consent: 'Send me the E2E letter.',
+				lists: [],
+				confirm_new: true,
+			},
+		} );
+		try {
+			await page.goto( shop.lampUrl );
+			await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+			await expect( page.getByRole( 'status' ) ).toHaveText( /Added/ );
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, email );
+			await page.getByLabel( 'Send me the E2E letter.' ).check();
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect( page.getByText( check ) ).toBeVisible();
+
+			// With an account of the same email, the sign-up still waits for its link.
+			await page.goto( shop.urls.account );
+			await page.locator( '#register-first_name' ).fill( 'Ada' );
+			await page.locator( '#register-last_name' ).fill( 'Lovelace' );
+			await page.locator( '#register-email' ).fill( email );
+			await page
+				.getByRole( 'button', { name: 'Make an account' } )
+				.click();
+			await expect(
+				page.getByText(
+					'Look in your email for the link to make your account.'
+				)
+			).toBeVisible();
+			await page.goto( accountLink( email ) );
+			await page.getByLabel( 'Password' ).fill( 'correct horse battery' );
+			await page
+				.getByRole( 'button', { name: 'Make my account' } )
+				.click();
+			await page.getByRole( 'link', { name: 'Emails' } ).click();
+			await expect(
+				page.getByLabel( 'Send me the E2E letter.' )
+			).toBeChecked();
+			await expect( page.getByText( check ) ).toBeVisible();
+			// Saving the other choice keeps the sign-up, and says it waits.
+			await page.getByRole( 'button', { name: 'Save' } ).click();
+			await expect(
+				page.getByText(
+					'Your choices are saved. Check your email to confirm your sign-up for the newsletter.'
+				)
+			).toBeVisible();
+
+			await page.goto( shop.lampUrl );
+			await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+			await expect( page.getByRole( 'status' ) ).toHaveText( /Added/ );
+			await page.goto( shop.urls.checkout );
+			await expect( page.getByText( check ) ).toBeVisible();
+			await expect(
+				page.getByLabel( 'Send me the E2E letter.' )
+			).toHaveCount( 0 );
+		} finally {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/newsletter-settings',
+				data: {
+					offered: false,
+					consent: 'Send me the E2E letter.',
+					lists: [],
+				},
+			} );
+		}
+	} );
+
 	test( 'orders as a guest, then finds the order by its number and email', async ( {
 		page,
 	} ) => {

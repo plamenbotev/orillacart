@@ -17,6 +17,7 @@ use OrillaCart\Search\Application\Dto\SearchSort;
 use OrillaCart\Search\Application\SearchFilterTranslations;
 use OrillaCart\Search\Application\ShopSearch;
 use OrillaCart\Search\Domain\Facets;
+use OrillaCart\Search\Infrastructure\WordPress\IndexChanges;
 use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Translations\Application\ContentTranslations;
@@ -37,6 +38,7 @@ final readonly class ShopListing
     public const array FILTER_ARGUMENTS = ['brand', 'f', 'price_min', 'price_max', 'in_stock'];
     /** The page of products where the site has no pretty permalinks; older links that the shop sends on. */
     public const string PAGE_ARGUMENT = 'product-page';
+    private const string CACHE_GROUP = 'orillacart_request';
 
     public function __construct(
         private ShopSearch $search,
@@ -85,8 +87,7 @@ final readonly class ShopListing
     public function search(array $choices, int $offset, int $limit, bool $facets, bool $featuredOnly = false, bool $onSaleOnly = false): SearchResult
     {
         $options = $this->definitions($choices['category_id']);
-
-        return $this->search->search(new SearchQuery(
+        $query = new SearchQuery(
             text: $choices['search'] === '' ? null : $choices['search'],
             categoryIds: $choices['category_id'] === null ? [] : $this->everyLanguage($choices['category_id'], ProductCategoryTaxonomy::NAME),
             brandIds: array_values(array_unique(array_merge(...array_map(fn(int $id): array => $this->everyLanguage($id, ProductBrandTaxonomy::NAME), $choices['brands'])))),
@@ -102,7 +103,22 @@ final readonly class ShopListing
             limit: $limit,
             facets: $facets,
             untranslated: $this->settings->current()->listUntranslated,
-        ));
+        );
+
+        // The Products and Product filters blocks of a page search for the same choices: the matches are
+        // counted, and the filters' counts made, once; the other search only fetches its page of them.
+        $key = 'shop_listing:' . md5(serialize([$query->matching(), $this->languages->current()?->locale, IndexChanges::count()]));
+        wp_cache_add_non_persistent_groups([self::CACHE_GROUP]);
+        $known = wp_cache_get($key, self::CACHE_GROUP);
+        if (\is_array($known) && $known['result'] instanceof SearchResult && ($known['facets'] === true || !$facets)) {
+            $ids = $limit < 1 ? [] : $this->search->search($query->pageOnly())->ids;
+
+            return $facets ? new SearchResult($ids, $known['result']->total, $known['result']->facets, $known['result']->priceRange) : new SearchResult($ids, $known['result']->total);
+        }
+        $result = $this->search->search($query);
+        wp_cache_set($key, ['result' => $result, 'facets' => $facets], self::CACHE_GROUP);
+
+        return $result;
     }
 
     /**

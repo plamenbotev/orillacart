@@ -176,7 +176,9 @@ final class CheckoutRestTest extends RestTestCase
         $unpaid = $this->data($this->request('GET', '/reports/carts?compare=none'));
         self::assertIsArray($unpaid['totals']);
         self::assertSame([1, 1, 0, 0], [$unpaid['totals']['abandoned'], $unpaid['totals']['reminded'], $unpaid['totals']['recovered'], $unpaid['totals']['recovered_after_reminder']]);
-        $paid = $this->request('POST', '/orders/' . $this->data($placed)['number'] . '/paid', [], nonce: true);
+        $number = $this->data($placed)['number'];
+        self::assertIsInt($number);
+        $paid = $this->request('POST', "/orders/{$number}/paid", [], nonce: true);
         self::assertSame(200, $paid->get_status(), (string) wp_json_encode($paid->get_data()));
         $report = $this->data($this->request('GET', '/reports/carts?compare=none'));
         self::assertIsArray($report['totals']);

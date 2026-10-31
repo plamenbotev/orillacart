@@ -42,7 +42,7 @@ export function ImportCard( { interval = POLL }: { interval?: number } ) {
 		latestImport().then( setCurrent ).catch( fail );
 	}, [] );
 	useEffect( () => {
-		if ( current?.status !== 'running' ) {
+		if ( current?.status !== 'running' || current.stalled ) {
 			return undefined;
 		}
 		const timer = window.setTimeout(
@@ -163,6 +163,34 @@ export function ImportCard( { interval = POLL }: { interval?: number } ) {
 									: ( 100 * current.done ) / current.rows
 							}
 						/>
+						{ current.stalled && (
+							<>
+								<Notice
+									status="warning"
+									isDismissible={ false }
+								>
+									{ __(
+										'The import stopped: no job is left to go on with it. Its rows imported so far stay. Discard it to import a file again.',
+										'orillacart'
+									) }
+								</Notice>
+								<Button
+									variant="secondary"
+									isDestructive
+									isBusy={ busy }
+									disabled={ busy }
+									onClick={ () =>
+										run( () =>
+											discardImport( current.id ).then(
+												() => setCurrent( null )
+											)
+										)
+									}
+								>
+									{ __( 'Discard the import', 'orillacart' ) }
+								</Button>
+							</>
+						) }
 					</>
 				) }
 				{ current?.status === 'done' && (

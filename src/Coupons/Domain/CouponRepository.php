@@ -22,6 +22,9 @@ interface CouponRepository
      */
     public function search(?string $search, int $page, int $perPage, bool $automatic = false): array;
 
+    /** @return list<int> the coupons for a first order only, codes and automatic discounts */
+    public function firstOrderOnlyIds(): array;
+
     /** @return list<Coupon> the automatic discounts switched on, oldest first */
     public function automatic(): array;
 

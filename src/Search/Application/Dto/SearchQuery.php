@@ -21,6 +21,8 @@ final readonly class SearchQuery
      * @param bool               $facets      count what each filter would leave
      * @param string|null        $locale      the language shown, on a site in several: products are found by their words in it
      * @param bool               $untranslated also products without a translation into it, by their own words
+     * @param bool               $count       count the matches in all; false for a page whose total is known already,
+     *                                        which then comes back as 0
      */
     public function __construct(
         public ?string $text = null,
@@ -39,10 +41,23 @@ final readonly class SearchQuery
         public array $tagIds = [],
         public ?string $locale = null,
         public bool $untranslated = true,
+        public bool $count = true,
     ) {}
 
     public function inLanguage(?string $locale): self
     {
         return clone($this, ['locale' => $locale]);
+    }
+
+    /** What the matches depend on: the query without its order, page or counts. */
+    public function matching(): self
+    {
+        return clone($this, ['sort' => SearchSort::Order, 'offset' => 0, 'limit' => 0, 'facets' => false, 'count' => true]);
+    }
+
+    /** Its page of products only, the total and the filters' counts known already. */
+    public function pageOnly(): self
+    {
+        return clone($this, ['facets' => false, 'count' => false]);
     }
 }

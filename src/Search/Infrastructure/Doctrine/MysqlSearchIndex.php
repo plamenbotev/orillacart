@@ -11,6 +11,7 @@ use OrillaCart\Search\Application\Dto\DocumentText;
 use OrillaCart\Search\Application\Dto\SearchDocument;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Domain\Facets;
+use OrillaCart\Search\Infrastructure\WordPress\IndexChanges;
 
 /**
  * Keeps documents in the database engine's tables: one row per product and language it has words in, one per
@@ -30,6 +31,7 @@ final readonly class MysqlSearchIndex implements SearchIndex
         if ($documents === []) {
             return;
         }
+        IndexChanges::record();
         $products = [];
         $variants = [];
         $values = [];
@@ -74,6 +76,7 @@ final readonly class MysqlSearchIndex implements SearchIndex
     public function remove(array $productIds): void
     {
         if ($productIds !== []) {
+            IndexChanges::record();
             $this->tables->connection()->transactional(fn(Connection $connection) => $this->delete($connection, $productIds));
         }
     }
