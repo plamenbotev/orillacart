@@ -160,7 +160,7 @@ final readonly class CheckoutService
         // The amounts shown with tax or without, as the shop chose for the cart and checkout; the totals stay.
         $includesTax = $bill->includesTax();
         $withTax = $this->shownPrices->cartShowsTax();
-        $lines = array_map(static fn(array $line): array => [$line, ...ShownPrices::line($line['quote']->unitPrice, $line['quantity'], (string) $line['total'], (string) $line['discount'], (string) $line['tax'], $includesTax, $withTax)], $priced['lines']);
+        $lines = array_map(static fn(array $line): array => [$line, ...ShownPrices::line($line['unit_price'], $line['quantity'], (string) $line['total'], (string) $line['discount'], (string) $line['tax'], $includesTax, $withTax)], $priced['lines']);
         $subtotal = $withTax === $includesTax ? $bill->subtotal() : array_reduce($lines, static fn(Money $sum, array $line): Money => $sum->add(Money::of($line[2])), Money::zero());
         $discount = $withTax === $includesTax ? $bill->discount() : array_reduce($lines, static fn(Money $sum, array $line): Money => $sum->add(Money::of($line[3])), Money::zero());
 

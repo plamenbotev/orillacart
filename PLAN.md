@@ -439,6 +439,7 @@ Blocks themes can place apart on the product page, the product lists and anywher
 | ✅ | 289 | P2 | What becomes of a free item when what it came with goes back and the rest no longer earns it: a shop setting (`free_items_on_return`: its price kept from the refund, it comes back, or it stays free), judged by the coupon engine (Coupon::earns); reports count items given apart from items sold | 21c99ae |
 | ✅ | 290 | P2 | Add-on line types (extension API 18): an add-on registers a CartLineType that keeps catalog products in the cart for what it holds (a deposit per bottle), kept in step on every cart change, removable when the type allows (remembered, back by `POST /cart/given/add_on:<id>`), sold as `add_on` order lines; OrderLine (extension) gains `type` and `addOnType` | 3590699 |
 | ✅ | 291 | P2 | Returns from a deal that gave free items refund each item's share of what the deal's items cost together (`free_items_on_return: spread`, the new default; 2 lamps paid and 1 given, one sent back refunds 20 of 60); charged, come back and stay free remain the shop's choices | 4f6dc5c |
+| ✅ | 292 | P1 | The checkout summary's unit prices were the catalog's (the shop's currency, before the shopper's taxes) where its totals were the priced ones: the cart page showed a lamp at 33.33 in USD for 36.66 each. Now the priced unit price | PENDING |
 
 ## Deliberately not carried over
 

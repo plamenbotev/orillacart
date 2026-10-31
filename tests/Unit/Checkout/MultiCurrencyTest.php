@@ -55,6 +55,7 @@ final class MultiCurrencyTest extends TestCase
 
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
         self::assertSame(['USD', '73.32', '5.5', '15.76', '94.58'], [$summary->currency, $summary->subtotal, $summary->shipping, (string) ((float) $summary->itemsTax + (float) $summary->shippingTax), $summary->total]);
+        self::assertSame(['36.66', '73.32'], [$summary->lines[0]->unitPrice, $summary->lines[0]->total], 'each in USD, as the cart page shows it, not the 33.33 EUR it costs in the shop');
         self::assertSame('36.68', $summary->freeShippingShort, 'free from 100 EUR, which is 110 USD');
 
         $placed = $this->shop->checkout->placeOrder($owner, $this->order());
