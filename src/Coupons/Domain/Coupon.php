@@ -17,6 +17,9 @@ use OrillaCart\Shared\Domain\Text;
  * Buy X, get Y: each time the order has the items to buy and the items to give, the items given come a
  * percentage off; the dearest matching items count as bought and the cheapest as given. A free gift is a product
  * the order gets for nothing once the rest of it holds: checkout adds it, or makes the one in the cart free.
+ *
+ * Shown to shoppers (advertised), the promotion blocks tell of it: what it gives, and what the cart still needs
+ * for it (progress()), by the same rules checkout applies it by.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'coupons')]
@@ -138,9 +141,17 @@ class Coupon
     #[ORM\Column(options: ['default' => false])]
     private bool $automatic;
 
-    public function __construct(CouponTerms $terms, bool $automatic = false)
+    /** The promotion blocks tell shoppers of it, a code with the code to enter. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $advertised;
+
+    /**
+     * @param bool|null $advertised null for the default: an automatic discount is shown to shoppers, a code is not
+     */
+    public function __construct(CouponTerms $terms, bool $automatic = false, ?bool $advertised = null)
     {
         $this->automatic = $automatic;
+        $this->advertised = $advertised ?? $automatic;
         $this->change($terms);
         if ($automatic && $this->description === '') {
             throw new CouponRuleViolation('An automatic discount has a description: customers see it instead of a code.', 'orillacart_invalid_coupon_description');
@@ -150,6 +161,17 @@ class Coupon
     public function isAutomatic(): bool
     {
         return $this->automatic;
+    }
+
+    public function isAdvertised(): bool
+    {
+        return $this->advertised;
+    }
+
+    /** Whether the promotion blocks tell shoppers of it; null for the default (shown when automatic). */
+    public function advertise(?bool $advertised): void
+    {
+        $this->advertised = $advertised ?? $this->automatic;
     }
 
     public static function normalize(string $code): string
@@ -310,16 +332,55 @@ class Coupon
      */
     public function refusal(Basket $basket, \DateTimeImmutable $now, int $customerUses): ?Text
     {
-        $subtotal = $basket->subtotal();
-        $matching = $this->matching($basket);
-        if ($this->kind === CouponKind::FreeGift) {
-            // The gift does not count towards the order it is given with.
-            foreach ($this->giftLines($basket) as $line) {
-                $subtotal = $subtotal->subtract($line->total);
-            }
-        }
-        $units = array_sum(array_map(static fn(BasketLine $line): int => $line->quantity, $matching));
+        return $this->unavailable($basket, $now, $customerUses) ?? $this->unmet($basket);
+    }
 
+    /**
+     * Whether the shopper could still have it, whatever the cart holds: on, begun, not ended or used up, theirs to
+     * use (a first order, uses left) and for their country, when known. The promotion blocks show no other.
+     *
+     * @param int $customerUses how often this customer used it on orders that stand
+     */
+    public function obtainable(Basket $basket, \DateTimeImmutable $now, int $customerUses): bool
+    {
+        return $this->unavailable($basket, $now, $customerUses) === null;
+    }
+
+    /**
+     * How far the basket is from what the coupon needs of it, measured as refusal() measures: the order's size
+     * before any discount (a free gift's own lines left out), the matching items, and the items buy-get gives.
+     * Null when no cart could reach it by adding items: the order is past its largest size.
+     */
+    public function progress(Basket $basket): ?CouponProgress
+    {
+        [$subtotal, , $units] = $this->measured($basket);
+        if ($this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0) {
+            return null;
+        }
+        $buyGet = $this->kind === CouponKind::BuyGet;
+
+        return new CouponProgress(
+            $subtotal,
+            $this->minSubtotal === null ? null : $basket->inCurrency(Money::of($this->minSubtotal)),
+            $units,
+            // Buy-get giving off the items it applies to needs those given too.
+            max(1, $this->minQuantity, $this->buyQuantity + ($buyGet && !$this->givesOthers() ? $this->getQuantity : 0)),
+            $buyGet && $this->givesOthers() && $this->giftable($basket) === [],
+        );
+    }
+
+    /**
+     * Whether the coupon applies to the item, as it would in a cart: one it is for and does not leave out (nor a
+     * free gift's own product).
+     */
+    public function appliesTo(BasketLine $line): bool
+    {
+        return $this->matching(new Basket([$line], '')) !== [];
+    }
+
+    /** Why it cannot hold for this shopper now, whatever the cart; null when it may. */
+    private function unavailable(Basket $basket, \DateTimeImmutable $now, int $customerUses): ?Text
+    {
         return match (true) {
             !$this->active => new Text('This code is not valid.'),
             $this->startsAt !== null && $now < $this->startsAt => new Text('This code is not valid yet.'),
@@ -328,6 +389,16 @@ class Coupon
             $this->perCustomerLimit !== null && $customerUses >= $this->perCustomerLimit => new Text('You have already used this code.'),
             $this->firstOrderOnly && !$basket->firstOrder => new Text('This code is for a first order only.'),
             $this->countries !== [] && $basket->country !== null && !\in_array($basket->country, $this->countries, true) => new Text('This code is not valid for your country.'),
+            default => null,
+        };
+    }
+
+    /** What the cart lacks for it: its size, the items it applies to, those buy-get gives; null for nothing. */
+    private function unmet(Basket $basket): ?Text
+    {
+        [$subtotal, $matching, $units] = $this->measured($basket);
+
+        return match (true) {
             $this->minSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->minSubtotal))) < 0 => Text::of('This code needs an order of at least %1$s %2$s.', $basket->inCurrency(Money::of($this->minSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
             $this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0 => Text::of('This code is for orders of up to %1$s %2$s.', $basket->inCurrency(Money::of($this->maxSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
             $matching === [] => new Text('This code does not apply to the items in your cart.'),
@@ -336,6 +407,25 @@ class Coupon
             $this->kind === CouponKind::BuyGet && $this->givesOthers() && $this->giftable($basket) === [] => new Text('Add the items this code gives off to your cart.'),
             default => null,
         };
+    }
+
+    /**
+     * What the rules on the cart's size judge: its items before any discount (a free gift's own lines do not count
+     * towards the order they are given with), the matching lines, and how many items those hold.
+     *
+     * @return array{Money, array<int, BasketLine>, int}
+     */
+    private function measured(Basket $basket): array
+    {
+        $subtotal = $basket->subtotal();
+        $matching = $this->matching($basket);
+        if ($this->kind === CouponKind::FreeGift) {
+            foreach ($this->giftLines($basket) as $line) {
+                $subtotal = $subtotal->subtract($line->total);
+            }
+        }
+
+        return [$subtotal, $matching, array_sum(array_map(static fn(BasketLine $line): int => $line->quantity, $matching))];
     }
 
     /**

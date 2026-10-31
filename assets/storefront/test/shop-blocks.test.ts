@@ -1,5 +1,10 @@
 import { api, forgetNonce } from '../api';
-import { bindStoreNotices, startFreeShipping } from '../shop-blocks';
+import {
+	bindStoreNotices,
+	fillPromotions,
+	startFreeShipping,
+	startPromotions,
+} from '../shop-blocks';
 
 type Call = { url: string; init: RequestInit };
 
@@ -113,6 +118,97 @@ describe( 'free shipping progress', () => {
 		await flush();
 
 		expect( calls ).toHaveLength( 1 );
+	} );
+} );
+
+describe( 'promotion progress', () => {
+	const item = ( kind: 'applied' | 'offer', text: string ) =>
+		`<li data-orillacart-promotion="${ kind }"><p>${ text }</p></li>`;
+	const PROMOTIONS = `<ul>${ [
+		item( 'applied', 'Buy 2, get 1 free — applied, you save €9.00.' ),
+		item( 'offer', 'Spend €18.00 more to get 10% off.' ),
+		item( 'offer', 'Add 2 more items from Garden to get free shipping.' ),
+		item( 'offer', 'Spend €40.00 more to get a free Tote bag.' ),
+	].join( '' ) }</ul>`;
+	const texts = ( block: Element | null | undefined ) =>
+		Array.from( block?.querySelectorAll( 'li' ) ?? [] ).map(
+			( found ) => found.textContent
+		);
+
+	it( 'fills each of a visitor’s blocks as it is set, and again when the cart changes', async () => {
+		document.body.innerHTML =
+			'<div data-orillacart-promotions data-show-applied="true" data-count="3" hidden></div>' +
+			'<div data-orillacart-promotions data-show-applied="false" data-count="1" hidden></div>';
+		const calls = serve( [
+			[ 200, { html: PROMOTIONS } ],
+			[ 200, { nonce: 'n1' } ],
+			[ 201, { items: 3 } ],
+			[ 200, { html: `<ul>${ item( 'applied', 'Applied.' ) }</ul>` } ],
+		] );
+
+		startPromotions();
+		await flush();
+
+		const blocks = Array.from(
+			document.querySelectorAll< HTMLElement >(
+				'[data-orillacart-promotions]'
+			)
+		);
+		expect( calls[ 0 ]?.url ).toBe(
+			'https://shop.test/wp-json/orillacart/v1/cart/promotions'
+		);
+		expect( texts( blocks[ 0 ] ) ).toEqual( [
+			'Buy 2, get 1 free — applied, you save €9.00.',
+			'Spend €18.00 more to get 10% off.',
+			'Add 2 more items from Garden to get free shipping.',
+			'Spend €40.00 more to get a free Tote bag.',
+		] );
+		expect( texts( blocks[ 1 ] ) ).toEqual( [
+			'Spend €18.00 more to get 10% off.',
+		] );
+		expect( blocks.map( ( block ) => block.hidden ) ).toEqual( [
+			false,
+			false,
+		] );
+
+		await api( 'POST', '/cart/items', { product_id: 10 } );
+		await flush();
+
+		expect( calls[ 3 ]?.url.split( '/v1' )[ 1 ] ).toBe(
+			'/cart/promotions'
+		);
+		expect( texts( blocks[ 0 ] ) ).toEqual( [ 'Applied.' ] );
+		expect( blocks[ 1 ]?.hidden ).toBe( true );
+		expect( blocks[ 1 ]?.innerHTML ).toBe( '' );
+	} );
+
+	it( 'shows only as many still to get as the block says', () => {
+		const block = document.createElement( 'div' );
+		block.dataset.count = '2';
+		fillPromotions( block, PROMOTIONS );
+
+		expect( texts( block ) ).toHaveLength( 3 );
+		expect( block.hidden ).toBe( false );
+
+		fillPromotions( block, '' );
+		expect( block.hidden ).toBe( true );
+	} );
+
+	it( 'leaves a logged-in customer’s as the server drew it until the cart changes', async () => {
+		window.orillacartStorefront = {
+			api: 'https://shop.test/wp-json/orillacart/v1',
+			nonce: 'logged-in',
+		};
+		document.body.innerHTML = `<div data-orillacart-promotions>${ PROMOTIONS }</div>`;
+		const calls = serve( [] );
+
+		startPromotions();
+		await flush();
+
+		expect( calls ).toHaveLength( 0 );
+		expect(
+			texts( document.querySelector( '[data-orillacart-promotions]' ) )
+		).toHaveLength( 4 );
 	} );
 } );
 

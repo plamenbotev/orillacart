@@ -27,7 +27,11 @@ import { startRecentlyViewed } from './recent';
 import { bindReviewForm } from './reviews';
 import { bindShare } from './share';
 import { bindShop } from './shop';
-import { bindStoreNotices, startFreeShipping } from './shop-blocks';
+import {
+	bindStoreNotices,
+	startFreeShipping,
+	startPromotions,
+} from './shop-blocks';
 import { startWishlist } from './wishlist';
 import { bindWithdrawal } from './withdrawal';
 
@@ -131,6 +135,7 @@ function start(): void {
 	void startRecentlyViewed();
 	bindStoreNotices();
 	startFreeShipping();
+	startPromotions();
 	if ( document.querySelector( '[data-orillacart-region="cart"]' ) ) {
 		bindCart( document );
 	} else {

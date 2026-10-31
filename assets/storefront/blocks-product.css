@@ -1,4 +1,4 @@
-/* The product page's own blocks: stock, SKU, short description, specifications, share and delivery estimate */
+/* The product page's own blocks: stock, SKU, short description, specifications, share, delivery estimate and promotions */
 .orillacart-product-sku .orillacart-product__sku,
 .orillacart-product-stock .orillacart-stock {
 	margin: 0 0 0.5rem;
@@ -82,4 +82,21 @@
 
 .orillacart-delivery-estimate[hidden] {
 	display: none;
+}
+
+.orillacart-product-promotions__list {
+	display: grid;
+	gap: 0.25rem;
+	margin: 0 0 0.5rem;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-product-promotion__deal {
+	font-weight: 600;
+}
+
+.orillacart-product-promotion__description,
+.orillacart-product-promotion__code {
+	margin-left: 0.25rem;
 }

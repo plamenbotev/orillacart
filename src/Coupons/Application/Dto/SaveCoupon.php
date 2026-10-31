@@ -86,5 +86,18 @@ final readonly class SaveCoupon
         public bool $overridesPriceRules = false,
         /** Free shipping on every way to ship, express and abroad too; otherwise on the cheapest offered. */
         public bool $freeShippingEveryRate = false,
+        /**
+         * Shown to shoppers: the promotion blocks tell of it, a code with the code to enter. Left out, an automatic
+         * discount is shown and a code is not.
+         */
+        public ?bool $advertised = null,
+        /**
+         * The description in the site's other languages, by field ("description") and locale; left out, the
+         * translations stay as they are.
+         *
+         * @var array<string, array<string, string>>|null
+         */
+        #[Assert\All([new Assert\All([new Assert\Type('string')])])]
+        public ?array $translations = null,
     ) {}
 }

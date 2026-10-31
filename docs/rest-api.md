@@ -399,6 +399,12 @@ How far the shopper's cart is from free shipping, as the Free shipping progress 
 
 - Who: anyone; needs a nonce (not with an API key)
 
+### `GET /cart/promotions`
+
+The promotions the shopper's cart gets and what it still needs for others, as the Promotion progress block shows them ({html}, empty for nothing to say): the storefront script fills the block in with it on cached pages, and as the cart changes.
+
+- Who: anyone
+
 ### `PUT /cart/store-credit`
 
 - Who: anyone; needs a nonce (not with an API key)
@@ -541,6 +547,8 @@ The shop adds a coupon code, or an automatic discount that needs no code, with i
   - `gift_product_id` (int|null): more than 0
   - `overrides_price_rules` (bool): default false
   - `free_shipping_every_rate` (bool): default false
+  - `advertised` (bool|null)
+  - `translations` (array|null)
 
 ### `GET /coupons/{id}`
 
@@ -584,6 +592,8 @@ Changes a coupon's code, amount and rules; placed orders keep the code and amoun
   - `gift_product_id` (int|null): more than 0
   - `overrides_price_rules` (bool): default false
   - `free_shipping_every_rate` (bool): default false
+  - `advertised` (bool|null)
+  - `translations` (array|null)
 
 ### `DELETE /coupons/{id}`
 

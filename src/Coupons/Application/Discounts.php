@@ -20,11 +20,13 @@ use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\Text;
+use OrillaCart\Translations\Application\ContentTranslations;
 use Psr\Clock\ClockInterface;
 
 /**
  * Coupon codes as checkout uses them: which hold for an order and what they take off each item, and the uses
  * an order makes of them. Automatic discounts come first, wherever they hold, and need no code. Each coupon takes off what the ones before it left, so items never go below zero.
+ * A coupon's description is the shopper's language's, where it is translated (design 51).
  * Uses are counted when the order is placed, under a lock on the coupons, so a limit holds for orders placed at
  * the same moment; an order that is cancelled or fails gives its uses back.
  */
@@ -38,6 +40,7 @@ final readonly class Discounts
         private RedemptionRepository $redemptions,
         private OrderService $orders,
         private ClockInterface $clock,
+        private ContentTranslations $texts,
     ) {}
 
     /**
@@ -55,6 +58,7 @@ final readonly class Discounts
             return new AppliedDiscounts();
         }
         $now = $this->clock->now();
+        $words = $this->texts->translated(CouponTranslations::TYPE, array_map(static fn(Coupon $coupon): int => $coupon->id(), [...$automatic, ...array_values($found)]), 'description');
         $email = $request->email ?? '';
         $firstOrder = null;
         $left = array_map(static fn(DiscountItem $item): Money => Money::of($item->total), $request->items);
@@ -133,9 +137,10 @@ final readonly class Discounts
             if ($missing !== null) {
                 $gifts[] = $missing;
             }
-            $applied[] = new AppliedCoupon($coupon->code(), $coupon->description(), $sum->toFixed(), $coupon->freeShipping(), $lines, $silent, $coupon->freeShippingEveryRate());
+            $description = $words[$coupon->id()] ?? $coupon->description();
+            $applied[] = new AppliedCoupon($coupon->code(), $description, $sum->toFixed(), $coupon->freeShipping(), $lines, $silent, $coupon->freeShippingEveryRate());
             if ($silent) {
-                $automaticApplied[] = $coupon->description() === '' ? $coupon->code() : $coupon->description();
+                $automaticApplied[] = $description === '' ? $coupon->code() : $description;
                 $automaticCombine = $automaticCombine && $coupon->combines();
             } else {
                 $codesApplied = true;

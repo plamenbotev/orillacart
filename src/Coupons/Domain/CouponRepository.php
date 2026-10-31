@@ -28,6 +28,9 @@ interface CouponRepository
     /** @return list<Coupon> the automatic discounts switched on, oldest first */
     public function automatic(): array;
 
+    /** @return list<Coupon> the coupons switched on that shoppers are told of, automatic or codes, oldest first */
+    public function advertised(): array;
+
     public function save(Coupon $coupon): void;
 
     public function delete(Coupon $coupon): void;

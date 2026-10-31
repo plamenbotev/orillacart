@@ -1,0 +1,19 @@
+{#
+ # The promotions that take something off the product, in words, for its page or card. id: the product;
+ # promotions: as PromotionWords gives them.
+ #}
+{% import 'storefront/_promotion_words.html.twig' as words %}
+<div class="orillacart-product-promotions" data-orillacart-for="{{ id }}">
+    <ul class="orillacart-product-promotions__list">
+        {% for p in promotions %}
+            <li class="orillacart-product-promotion">
+                <span class="orillacart-product-promotion__deal">{{ words.deal(p, true) }}</span>
+                {%- if p.description %} <span class="orillacart-product-promotion__description">{{ p.description }}</span>{% endif -%}
+                {%- if not p.automatic %}
+                    {# translators: %s: a coupon code -#}
+                    <span class="orillacart-product-promotion__code">{{ __('Use the code %s.')|e|format('<strong>' ~ p.code|e ~ '</strong>')|raw }}</span>
+                {%- endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</div>

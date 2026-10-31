@@ -45,6 +45,8 @@ final class RouteSecurityGateTest extends TestCase
         'GET /cart',
         // The caller's own cart's distance from free shipping, by its cookie: nothing of anyone else's.
         'GET /cart/free-shipping',
+        // The promotions the caller's own cart gets or could get, and only the codes the shop chose to show.
+        'GET /cart/promotions',
         'POST /cart/items',
         'PUT /cart/items/{id}',
         'DELETE /cart/items/{id}',

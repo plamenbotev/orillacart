@@ -1,0 +1,60 @@
+{#
+ # The promotions the cart gets and could still get, inside the Promotion progress block: one list item each, the
+ # applied ones marked (data-orillacart-promotion="applied") for the script to keep or leave out as the block says.
+ # promotions: as PromotionWords gives them; bar: {money, now, max, percent} or none.
+ #}
+{% import 'storefront/_promotion_words.html.twig' as words %}
+<ul class="orillacart-promotion-progress__list">
+    {% for p in promotions %}
+        {% set title = p.description ? p.description|e : words.deal(p) %}
+        <li class="orillacart-promotion{{ p.applied ? ' orillacart-promotion--applied' : '' }}" data-orillacart-promotion="{{ p.applied ? 'applied' : 'offer' }}">
+            <p class="orillacart-promotion__message">
+                {%- if p.applied -%}
+                    {%- if p.saved -%}
+                        {# translators: 1: a promotion, such as Buy 2, get 1 free, 2: an amount of money -#}
+                        {{ __('%1$s — applied, you save %2$s.')|e|format(title, p.saved|money(p.currency)|e)|raw }}
+                    {%- else -%}
+                        {# translators: %s: a promotion, such as Free shipping -#}
+                        {{ __('%s — applied.')|e|format(title)|raw }}
+                    {%- endif -%}
+                {%- else -%}
+                    {%- if p.description -%}<span class="orillacart-promotion__name">{{ p.description }}</span> {% endif -%}
+                    {%- set reward = words.reward(p) -%}
+                    {%- if p.short and p.units_short > 0 -%}
+                        {# translators: 1: an amount of money, 2: items to add, such as 1 more item, 3: what the promotion gives, such as 10% off -#}
+                        {{ __('Spend %1$s more and add %2$s to get %3$s.')|e|format(p.short|money(p.currency)|e, words.items(p, p.units_short), reward)|raw }}
+                    {%- elseif p.short -%}
+                        {# translators: 1: an amount of money, 2: what the promotion gives, such as 10% off -#}
+                        {{ __('Spend %1$s more to get %2$s.')|e|format(p.short|money(p.currency)|e, reward)|raw }}
+                    {%- elseif p.units_short > 0 -%}
+                        {# translators: 1: items to add, such as 1 more Lamp, 2: what the promotion gives, such as 1 free -#}
+                        {{ __('Add %1$s to get %2$s.')|e|format(words.items(p, p.units_short), reward)|raw }}
+                    {%- elseif p.needs_given -%}
+                        {# translators: 1: the products or categories to add one of, 2: what the promotion gives, such as 1 free -#}
+                        {{ __('Add %1$s to get %2$s.')|e|format(p.given|e, words.reward(p, false))|raw }}
+                    {%- else -%}
+                        {# translators: 1: a coupon code, 2: what the promotion gives, such as 10% off -#}
+                        {{ __('Use the code %1$s to get %2$s.')|e|format('<strong class="orillacart-promotion__code">' ~ p.code|e ~ '</strong>', reward)|raw }}
+                    {%- endif -%}
+                    {%- if not p.automatic and (p.short or p.units_short > 0 or p.needs_given) -%}
+                        {# translators: %s: a coupon code -#}
+                        {{ ' ' }}{{ __('Then use the code %s.')|e|format('<strong class="orillacart-promotion__code">' ~ p.code|e ~ '</strong>')|raw }}
+                    {%- endif -%}
+                {%- endif -%}
+            </p>
+            {% if p.bar %}
+                {% if p.bar.money %}
+                    {# translators: 1: what the items come to, 2: the order value the promotion takes -#}
+                    {% set text = __('%1$s of %2$s')|format(p.bar.now|money(p.currency), p.bar.max|money(p.currency)) %}
+                {% else %}
+                    {# translators: 1: the items in the cart, 2: how many the promotion takes -#}
+                    {% set text = _n('%1$d of %2$d item', '%1$d of %2$d items', p.bar.max)|format(p.bar.now, p.bar.max) %}
+                {% endif %}
+                {# translators: %s: a promotion, such as 10% off -#}
+                <div class="orillacart-promotion__bar" role="progressbar" aria-label="{{ __('Towards %s')|e|format(title)|raw }}" aria-valuemin="0" aria-valuemax="{{ p.bar.max }}" aria-valuenow="{{ p.bar.now }}" aria-valuetext="{{ text }}">
+                    <span class="orillacart-promotion__fill" style="width: {{ p.bar.percent }}%"></span>
+                </div>
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>

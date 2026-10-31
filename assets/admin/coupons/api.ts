@@ -1,6 +1,8 @@
 import apiFetch from '@wordpress/api-fetch';
 import { addQueryArgs } from '@wordpress/url';
 
+import type { FieldTranslations } from '../shared/Translations';
+
 export const KINDS = [
 	'percent',
 	'order_amount',
@@ -48,6 +50,10 @@ export interface CouponFields {
 	get_category_ids: number[];
 	/** A free gift: the product given. */
 	gift_product_id: number | null;
+	/** Shown to shoppers on the promotion blocks; a code with the code to enter. */
+	advertised: boolean;
+	/** The description in the site's other languages; the server sends an empty list for none. */
+	translations?: { description?: FieldTranslations } | [];
 }
 
 export interface Coupon extends CouponFields {
@@ -93,6 +99,7 @@ export const NEW_COUPON: CouponFields = {
 	get_product_ids: [],
 	get_category_ids: [],
 	gift_product_id: null,
+	advertised: false,
 };
 
 const BASE = '/orillacart/v1';

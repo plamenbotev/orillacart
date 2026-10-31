@@ -17,6 +17,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { type Named, ProductTokens, TermTokens } from '../shared/CatalogTokens';
 import { errorMessage, type FieldLabels } from '../shared/api';
+import { TranslationFields, useOtherLanguages } from '../shared/Translations';
 import { fromLocal, shopDateTime, toLocal } from '../shared/dates';
 import { useConfirm } from '../shared/useConfirm';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
@@ -334,9 +335,18 @@ export function CouponForm( {
 	const [ fields, setFields ] = useState< CouponFields >(
 		coupon ??
 			( automatic
-				? { ...NEW_COUPON, combines: true, automatic: true }
+				? {
+						...NEW_COUPON,
+						combines: true,
+						automatic: true,
+						advertised: true,
+					}
 				: NEW_COUPON )
 	);
+	const languages = useOtherLanguages();
+	const translations = Array.isArray( fields.translations )
+		? {}
+		: ( fields.translations ?? {} );
 	const [ opened ] = useState( fields );
 	useUnsavedChanges( differs( fields, opened ) );
 	const [ categories, setCategories ] = useState< Named[] >( [] );
@@ -426,6 +436,17 @@ export function CouponForm( {
 								value={ fields.description }
 								onChange={ ( value ) =>
 									set( 'description', value )
+								}
+							/>
+							<TranslationFields
+								label={ __( 'Description', 'orillacart' ) }
+								languages={ languages }
+								value={ translations.description }
+								onChange={ ( description ) =>
+									set( 'translations', {
+										...translations,
+										description,
+									} )
 								}
 							/>
 						</FlexItem>
@@ -836,6 +857,22 @@ export function CouponForm( {
 							/>
 						</FlexItem>
 					</Flex>
+					<CheckboxControl
+						label={ __( 'Show to shoppers', 'orillacart' ) }
+						help={
+							automatic
+								? __(
+										'The promotion blocks tell shoppers of it: what it gives, and what their cart still needs for it.',
+										'orillacart'
+									)
+								: __(
+										'The promotion blocks tell shoppers of it, with the code to use; otherwise only those given the code know it.',
+										'orillacart'
+									)
+						}
+						checked={ fields.advertised }
+						onChange={ ( value ) => set( 'advertised', value ) }
+					/>
 					<CheckboxControl
 						label={ __( 'First orders only', 'orillacart' ) }
 						checked={ fields.first_order_only }

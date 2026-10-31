@@ -263,6 +263,12 @@ const settings: Record< string, Settings > = {
 			</fieldset>
 		);
 	},
+	'orillacart/product-promotions': ( props ) =>
+		toggle(
+			props,
+			'showCodes',
+			__( 'Promotions with a code to enter', 'orillacart' )
+		),
 	'orillacart/product-image': ( props ) => (
 		<>
 			{ toggle(
@@ -334,6 +340,10 @@ const descriptions: Record< string, string > = {
 	),
 	'orillacart/delivery-estimate': __(
 		'By when the product arrives, once a carrier that delivers it says how long it takes.',
+		'orillacart'
+	),
+	'orillacart/product-promotions': __(
+		'The promotions that take something off the product, such as “Buy 2, get 1 free”, once the shop has some shown to shoppers.',
 		'orillacart'
 	),
 };

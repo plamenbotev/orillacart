@@ -1,0 +1,9 @@
+{#
+ # What the shopper's cart still needs for the shop's promotions, and those it gets. html: the list
+ # (_promotions.html.twig), or empty; show_applied, show_bars, count: the block's settings, which the script
+ # trims the list it fetches to.
+ #
+ # Pages with it may be cached, so a visitor's is filled in by the storefront script from GET /cart/promotions,
+ # and every one is again when the cart changes. Hidden while there is nothing to say.
+ #}
+<div class="orillacart-promotion-progress{{ show_bars ? '' : ' orillacart-promotion-progress--no-bar' }}" data-orillacart-promotions data-show-applied="{{ show_applied ? 'true' : 'false' }}" data-count="{{ count }}" aria-live="polite"{{ html ? '' : ' hidden' }}>{{ html|raw }}</div>

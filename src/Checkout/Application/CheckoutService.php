@@ -357,11 +357,12 @@ final readonly class CheckoutService
     }
 
     /**
-     * Where to estimate tax and shipping for a customer who has not entered an address.
+     * Where to estimate tax and shipping for a customer who has not entered an address: their saved address, else
+     * the shop's.
      *
      * @return array{country: string, state: ?string, postcode: ?string, city: ?string}|null
      */
-    private function estimateAt(CartOwner $owner): ?array
+    public function estimateAt(CartOwner $owner): ?array
     {
         $address = $owner->customerId === null ? null : $this->customers->savedAddress($owner->customerId);
         if ($address !== null) {

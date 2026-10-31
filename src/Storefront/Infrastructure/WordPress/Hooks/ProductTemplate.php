@@ -10,7 +10,7 @@ use OrillaCart\Shared\WordPress\AsHook;
 /**
  * Product page templates for block themes, without the blog's byline and post navigation, made of the product
  * blocks (design 50), which the site editor moves, sets and removes: breadcrumbs; the pictures beside the name,
- * stars, categories, price, short description, buying form and delivery estimate; the description; the upsells,
+ * stars, categories, price, promotions, short description, buying form and delivery estimate; the description; the upsells,
  * related and recently viewed products; the reviews. Two more a product can choose in the editor's Template panel:
  * the pictures across the page above the rest, and no pictures at all (a service, a download). A theme's own
  * single-orillacart_product template, one edited in the site editor, or one made there for one product
@@ -29,6 +29,7 @@ final readonly class ProductTemplate
         <!-- wp:orillacart/product-rating /-->
         <!-- wp:post-terms {"term":"orillacart_category"} /-->
         <!-- wp:orillacart/product-price /-->
+        <!-- wp:orillacart/product-promotions /-->
         <!-- wp:orillacart/product-excerpt /-->
         <!-- wp:orillacart/add-to-cart /-->
         <!-- wp:orillacart/delivery-estimate /-->
@@ -91,7 +92,8 @@ final readonly class ProductTemplate
 
     /**
      * The header, the page's main part (with a class for the theme) holding the breadcrumbs and these blocks, and
-     * the footer. BUY: the name, stars, categories, price, short description, buying form and delivery estimate;
+     * the footer. BUY: the name, stars, categories, price, promotions, short description, buying form and delivery
+     * estimate;
      * AFTER: the upsells, related and recently viewed products, and the reviews.
      */
     private static function page(string $class, string $blocks): string

@@ -6,12 +6,26 @@ namespace OrillaCart\Coupons\Infrastructure\Doctrine;
 
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Events;
 use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Coupons\Domain\CouponRepository;
 
 final readonly class DoctrineCouponRepository implements CouponRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    private const string CACHE_GROUP = 'orillacart_request';
+    private const string CACHE_KEY = 'advertised_coupons';
+
+    public function __construct(private EntityManagerInterface $entityManager)
+    {
+        // What was read goes with the entities: a worker forgets them between batches (LoadedEntities).
+        $entityManager->getEventManager()->addEventListener(Events::onClear, $this);
+    }
+
+    /** @internal Doctrine's, when the entity manager forgets what it loaded */
+    public function onClear(): void
+    {
+        $this->forget();
+    }
 
     public function find(int $id): ?Coupon
     {
@@ -60,6 +74,21 @@ final readonly class DoctrineCouponRepository implements CouponRepository
         return $this->entityManager->getRepository(Coupon::class)->findBy(['automatic' => true, 'active' => true], ['id' => 'ASC']);
     }
 
+    public function advertised(): array
+    {
+        // Read once per request: every card's Product promotions block asks. Kept in WordPress's cache for this
+        // request only (never a persistent object cache), which a site of a network has its own of.
+        wp_cache_add_non_persistent_groups([self::CACHE_GROUP]);
+        $kept = wp_cache_get(self::CACHE_KEY, self::CACHE_GROUP);
+        if (!\is_array($kept)) {
+            $kept = $this->entityManager->getRepository(Coupon::class)->findBy(['advertised' => true, 'active' => true], ['id' => 'ASC']);
+            wp_cache_set(self::CACHE_KEY, $kept, self::CACHE_GROUP);
+        }
+
+        /** @var list<Coupon> */
+        return $kept;
+    }
+
     public function firstOrderOnlyIds(): array
     {
         $ids = $this->entityManager->createQuery('SELECT c.id FROM ' . Coupon::class . ' c WHERE c.firstOrderOnly = true')->getSingleColumnResult();
@@ -71,11 +100,18 @@ final readonly class DoctrineCouponRepository implements CouponRepository
     {
         $this->entityManager->persist($coupon);
         $this->entityManager->flush();
+        $this->forget();
     }
 
     public function delete(Coupon $coupon): void
     {
         $this->entityManager->remove($coupon);
         $this->entityManager->flush();
+        $this->forget();
+    }
+
+    private function forget(): void
+    {
+        wp_cache_delete(self::CACHE_KEY, self::CACHE_GROUP);
     }
 }

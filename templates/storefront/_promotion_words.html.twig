@@ -1,0 +1,103 @@
+{#
+ # A promotion in words, for the promotion blocks. p: a promotion as PromotionWords gives it {code, automatic, kind,
+ # description, amount, free, currency, min_subtotal, min_quantity, buy, get, scope: {kind, names}, given, gift:
+ # {name, url}, ...}. Each macro's words are escaped; put them in other words with |e|format(...)|raw, every other
+ # value escaped there too.
+ #}
+
+{# What it gives, to follow "to get": "10% off", "1 free", "free shipping", "a free Tote bag". #}
+{% macro reward(p, named = true) -%}
+    {%- if p.kind == 'percent' -%}
+        {# translators: %s: a percentage, such as 10 -#}
+        {{ __('%s%% off')|format(p.amount) }}
+    {%- elseif p.kind == 'order_amount' -%}
+        {# translators: %s: an amount of money -#}
+        {{ __('%s off')|format(p.amount|money(p.currency)) }}
+    {%- elseif p.kind == 'item_amount' -%}
+        {# translators: %s: an amount of money taken off each item -#}
+        {{ __('%s off each')|format(p.amount|money(p.currency)) }}
+    {%- elseif p.kind == 'free_shipping' -%}
+        {{ __('free shipping') }}
+    {%- elseif p.kind == 'buy_get' and p.given and named -%}
+        {%- if p.free -%}
+            {# translators: 1: how many items, 2: the products or categories they are from -#}
+            {{ __('%1$d of %2$s free')|format(p.get, p.given) }}
+        {%- else -%}
+            {# translators: 1: how many items, 2: the products or categories they are from, 3: a percentage -#}
+            {{ __('%1$d of %2$s at %3$s%% off')|format(p.get, p.given, p.amount) }}
+        {%- endif -%}
+    {%- elseif p.kind == 'buy_get' -%}
+        {%- if p.free -%}
+            {# translators: %d: how many items -#}
+            {{ _n('%d free', '%d free', p.get)|format(p.get) }}
+        {%- else -%}
+            {# translators: 1: how many items, 2: a percentage -#}
+            {{ __('%1$d at %2$s%% off')|format(p.get, p.amount) }}
+        {%- endif -%}
+    {%- elseif p.kind == 'free_gift' -%}
+        {# translators: 1: how many of the gift, 2: the gift, a product's name -#}
+        {{ _n('a free %2$s', '%1$d free of %2$s', p.get)|format(p.get, p.gift.name ?? '') }}
+    {%- endif -%}
+{%- endmacro %}
+
+{#
+ # The deal on its own, as a product's page tells it: "Buy 2, get 1 free", "10% off on orders of €50.00 or more",
+ # "Free Tote bag when you buy 3 or more"; the gift linked to when link is set.
+ #}
+{% macro deal(p, link = false) -%}
+    {%- if p.kind == 'free_gift' and p.gift -%}
+        {%- set gift = link and p.gift.url ? '<a href="' ~ p.gift.url|e('html_attr') ~ '">' ~ p.gift.name|e ~ '</a>' : p.gift.name|e -%}
+        {# translators: 1: how many of the gift, 2: the gift, a product's name -#}
+        {%- set headline = _n('Free %2$s', '%1$d × %2$s free', p.get)|e|format(p.get, gift) -%}
+    {%- elseif p.kind == 'buy_get' and p.given -%}
+        {%- if p.free -%}
+            {# translators: 1: how many to buy, 2: how many it gives, 3: the products or categories those are from -#}
+            {%- set headline = __('Buy %1$d, get %2$d of %3$s free')|e|format(p.buy, p.get, p.given|e) -%}
+        {%- else -%}
+            {# translators: 1: how many to buy, 2: how many it gives, 3: the products or categories those are from, 4: a percentage -#}
+            {%- set headline = __('Buy %1$d, get %2$d of %3$s at %4$s%% off')|e|format(p.buy, p.get, p.given|e, p.amount) -%}
+        {%- endif -%}
+    {%- elseif p.kind == 'buy_get' -%}
+        {%- if p.free -%}
+            {# translators: 1: how many to buy, 2: how many it gives -#}
+            {%- set headline = __('Buy %1$d, get %2$d free')|e|format(p.buy, p.get) -%}
+        {%- else -%}
+            {# translators: 1: how many to buy, 2: how many it gives, 3: a percentage -#}
+            {%- set headline = __('Buy %1$d, get %2$d at %3$s%% off')|e|format(p.buy, p.get, p.amount) -%}
+        {%- endif -%}
+    {%- elseif p.kind == 'percent' -%}
+        {# translators: %s: a percentage, such as 10 -#}
+        {%- set headline = __('%s%% off')|e|format(p.amount) -%}
+    {%- elseif p.kind == 'order_amount' -%}
+        {# translators: %s: an amount of money -#}
+        {%- set headline = __('%s off your order')|e|format(p.amount|money(p.currency)|e) -%}
+    {%- elseif p.kind == 'item_amount' -%}
+        {# translators: %s: an amount of money taken off each item -#}
+        {%- set headline = __('%s off each')|e|format(p.amount|money(p.currency)|e) -%}
+    {%- else -%}
+        {%- set headline = __('Free shipping')|e -%}
+    {%- endif -%}
+    {%- if p.min_subtotal -%}
+        {# translators: 1: a deal, such as 10% off, 2: an amount of money -#}
+        {{- __('%1$s on orders of %2$s or more')|e|format(headline, p.min_subtotal|money(p.currency)|e)|raw -}}
+    {%- elseif p.min_quantity > 1 and p.kind != 'buy_get' -%}
+        {# translators: 1: a deal, such as 10% off, 2: how many items -#}
+        {{- __('%1$s when you buy %2$d or more')|e|format(headline, p.min_quantity)|raw -}}
+    {%- else -%}
+        {{- headline|raw -}}
+    {%- endif -%}
+{%- endmacro %}
+
+{# The items to add, by what the promotion is for: "1 more item", "2 more items from Garden", "1 more Lamp". #}
+{% macro items(p, count) -%}
+    {%- if p.scope.kind == 'terms' -%}
+        {# translators: 1: how many items, 2: the categories or brands they are from -#}
+        {{ _n('%1$d more item from %2$s', '%1$d more items from %2$s', count)|format(count, p.scope.names) }}
+    {%- elseif p.scope.kind == 'products' -%}
+        {# translators: 1: how many items, 2: the products, by name -#}
+        {{ _n('%1$d more %2$s', '%1$d more of %2$s', count)|format(count, p.scope.names) }}
+    {%- else -%}
+        {# translators: %d: how many items -#}
+        {{ _n('%d more item', '%d more items', count)|format(count) }}
+    {%- endif -%}
+{%- endmacro %}

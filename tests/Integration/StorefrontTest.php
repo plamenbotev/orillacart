@@ -106,6 +106,16 @@ final class StorefrontTest extends RestTestCase
         self::assertSame('publish', get_post_status($account));
         $this->posts[] = $account;
 
+        // The cart page made tells of the promotions above the cart.
+        $gone = $this->post('page', 'Old cart page');
+        update_option(OptionShopPagesRepository::OPTION, ['cart' => $gone] + $this->pages());
+        wp_delete_post($gone, true);
+        $this->activate();
+        $cart = $this->pages()['cart'];
+        self::assertIsInt($cart);
+        $this->posts[] = $cart;
+        self::assertSame("<!-- wp:orillacart/promotion-progress {\"align\":\"wide\"} /-->\n<!-- wp:orillacart/cart {\"align\":\"wide\"} /-->", get_post_field('post_content', $cart));
+
         // A page the shop unpublished stays so, after an update and an activation alike.
         wp_update_post(['ID' => $account, 'post_status' => 'draft']);
         new OptionShopPagesRepository()->upgrade('1.0.0');

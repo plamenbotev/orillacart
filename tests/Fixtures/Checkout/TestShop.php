@@ -39,11 +39,15 @@ use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderFees;
 use OrillaCart\Checkout\Application\OrderPricing;
 use OrillaCart\Checkout\Application\PayNow;
+use OrillaCart\Checkout\Application\PromotionProgress;
 use OrillaCart\Checkout\Application\Reorder;
 use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Coupons\Application\CouponOrders;
+use OrillaCart\Coupons\Application\CouponPackages;
 use OrillaCart\Coupons\Application\CouponService;
+use OrillaCart\Coupons\Application\CouponTranslations;
 use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Application\Promotions;
 use OrillaCart\Coupons\Infrastructure\Events\ForgetErasedCustomers as ForgetErasedRedemptions;
 use OrillaCart\Coupons\Infrastructure\Events\ReleaseCouponUses;
 use OrillaCart\Customers\Application\CustomerGroups;
@@ -342,6 +346,8 @@ final class TestShop
     public readonly CustomerGroups $customerGroups;
     public readonly CouponService $coupons;
     public readonly Discounts $discounts;
+    public readonly Promotions $promotions;
+    public readonly PromotionProgress $promotionProgress;
     public readonly InMemoryCouponRepository $couponRecords;
     public readonly InMemoryRedemptionRepository $redemptions;
     public readonly Refunds $refunds;
@@ -454,7 +460,7 @@ final class TestShop
         $this->contentLanguages = new FakeContentLanguages([]);
         $this->contentLanguages->follows = $this->languages;
         $this->productTranslations = new ProductTranslations($this->contentLanguages, $productRecords, $this->content);
-        $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations(), new CarrierTranslations(), new RateTranslations(), new PaymentMethodTranslations(), new FormTranslations(), new SearchFilterTranslations());
+        $this->translationRecords = new InMemoryTranslations()->add(new AttributeTranslations(), new OptionTranslations(), new CarrierTranslations(), new RateTranslations(), new PaymentMethodTranslations(), new FormTranslations(), new SearchFilterTranslations(), new CouponTranslations());
         // One locale, as WordPress has: the request's, an email's, an order edited in its customer's language.
         $this->languageOfRequest = $this->languages;
         $this->contentTranslations = new ContentTranslations($this->translationRecords, $this->translationRecords, $this->contentLanguages, $this->languageOfRequest);
@@ -544,8 +550,10 @@ final class TestShop
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);
         $this->redemptions = new InMemoryRedemptionRepository();
         $this->events->addListener(OrderAnonymised::class, new ForgetErasedRedemptions($this->redemptions)->anonymised(...));
-        $this->coupons = new CouponService($this->couponRecords, $this->productTranslations);
-        $this->discounts = new Discounts($this->couponRecords, $this->redemptions, $this->orders, $this->clock);
+        $this->coupons = new CouponService($this->couponRecords, $this->productTranslations, $this->contentTranslations, $this->transactions, $this->translationPackages);
+        $this->packageSources->append(new CouponPackages($this->couponRecords));
+        $this->discounts = new Discounts($this->couponRecords, $this->redemptions, $this->orders, $this->clock, $this->contentTranslations);
+        $this->promotions = new Promotions($this->couponRecords, $this->redemptions, $this->orders, $this->contentTranslations, $this->clock);
         $releasing = new ReleaseCouponUses($this->discounts);
         $this->events->addListener(OrderStatusChanged::class, $releasing->statusChanged(...));
         $this->events->addListener(OrderDeleted::class, $releasing->deleted(...));
@@ -589,6 +597,7 @@ final class TestShop
             $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
         );
+        $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies);
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs);
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));

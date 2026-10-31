@@ -1,6 +1,6 @@
 /**
- * The shop-wide blocks as a visitor meets them: the store notice they may close, and how far their cart is from
- * free shipping, on a page a cache could keep.
+ * The shop-wide blocks as a visitor meets them: the store notice they may close, how far their cart is from free
+ * shipping, and what it still needs for a promotion, on a page a cache could keep.
  */
 import { expect, test } from '@wordpress/e2e-test-utils-playwright';
 
@@ -108,6 +108,92 @@ test.describe( 'A visitor', () => {
 			await remove(
 				requestUtils,
 				`/orillacart/v1/carriers/${ carrier.id }`
+			);
+			await remove(
+				requestUtils,
+				`/wp/v2/pages/${ blocks.id }?force=true`
+			);
+		}
+	} );
+
+	test( 'sees what their cart still needs for buy 2, get 1 free, and then that it applies', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const coupon = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/coupons',
+			data: {
+				code: '',
+				kind: 'buy_get',
+				amount: '100',
+				description: 'E2E lamps: buy 2, get 1 free',
+				automatic: true,
+				combines: true,
+				buy_quantity: 2,
+				get_quantity: 1,
+				product_ids: [ shop.lamp ],
+			},
+		} );
+		const blocks = await requestUtils.rest< { id: number; link: string } >(
+			{
+				method: 'POST',
+				path: '/wp/v2/pages',
+				data: {
+					title: 'E2E Promotions',
+					status: 'publish',
+					content: `<!-- wp:orillacart/promotion-progress /--><!-- wp:orillacart/add-to-cart {"productId":${ shop.lamp }} /-->`,
+				},
+			}
+		);
+		try {
+			await page.goto( shop.lampUrl );
+			// The product page tells of it, in words.
+			await expect(
+				page.getByText( 'Buy 2, get 1 free', { exact: true } )
+			).toBeVisible();
+
+			await page.goto( blocks.link );
+			// An empty cart has nothing to say.
+			await expect(
+				page.getByRole( 'progressbar', { name: /Towards/ } )
+			).toHaveCount( 0 );
+			const addToCart = page.getByRole( 'button', {
+				name: 'Add to cart',
+			} );
+			await page.getByLabel( 'Quantity' ).fill( '2' );
+			await addToCart.click();
+			await expect( page.getByRole( 'status' ).first() ).toHaveText(
+				/Added/
+			);
+			// Drawn again as the cart changed, on the same page.
+			await expect(
+				page.getByText( 'Add 1 more E2E Lamp to get 1 free.' )
+			).toBeVisible();
+			await expect(
+				page.getByRole( 'progressbar', {
+					name: 'Towards E2E lamps: buy 2, get 1 free',
+				} )
+			).toHaveAttribute( 'aria-valuetext', '2 of 3 items' );
+
+			await page.getByLabel( 'Quantity' ).fill( '1' );
+			await addToCart.click();
+			await expect(
+				page.getByText(
+					/E2E lamps: buy 2, get 1 free — applied, you save/
+				)
+			).toBeVisible();
+			await expect(
+				page.getByRole( 'progressbar', { name: /Towards/ } )
+			).toHaveCount( 0 );
+
+			// A page a cache keeps is filled in by the script, from the shopper's own cart.
+			await page.reload();
+			await expect( page.getByText( /applied, you save/ ) ).toBeVisible();
+		} finally {
+			await remove(
+				requestUtils,
+				`/orillacart/v1/coupons/${ coupon.id }`
 			);
 			await remove(
 				requestUtils,

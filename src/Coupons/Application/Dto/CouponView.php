@@ -51,9 +51,16 @@ final readonly class CouponView
         public ?int $giftProductId = null,
         public bool $overridesPriceRules = false,
         public bool $freeShippingEveryRate = false,
+        /** Shown to shoppers on the promotion blocks. */
+        public bool $advertised = false,
+        /** @var array<string, array<string, string>> its description in the site's other languages, by field and locale */
+        public array $translations = [],
     ) {}
 
-    public static function fromCoupon(Coupon $coupon): self
+    /**
+     * @param array<string, array<string, string>> $translations
+     */
+    public static function fromCoupon(Coupon $coupon, array $translations = []): self
     {
         $terms = $coupon->terms();
 
@@ -90,6 +97,8 @@ final readonly class CouponView
             $terms->giftProductId,
             $terms->overridesPriceRules,
             $terms->freeShippingEveryRate,
+            $coupon->isAdvertised(),
+            $translations,
         );
     }
 }

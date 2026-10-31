@@ -211,6 +211,27 @@ final readonly class OrderPricing
     }
 
     /**
+     * The priced items as coupons see them, with who orders them to where: for the promotions the cart could still
+     * get (Promotions::forCart()), measured on the items checkout applies its coupons to.
+     *
+     * @param array{lines: list<PricedLine>, ...} $priced
+     */
+    public function discountRequest(array $priced, ?string $country, ?int $customerId, string $currency): DiscountRequest
+    {
+        return new DiscountRequest(self::discountItems($priced['lines']), $currency, $country, $customerId, rate: $this->currencies->rate($currency));
+    }
+
+    /**
+     * @param list<PricedLine> $lines
+     *
+     * @return list<DiscountItem>
+     */
+    private static function discountItems(array $lines): array
+    {
+        return array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds, $line['quote']->coupons), $lines);
+    }
+
+    /**
      * The free gifts to add that are for sale in that quantity; a gift that is not is left out.
      *
      * @param list<array{productId: int, quantity: int}> $gifts
@@ -315,7 +336,7 @@ final readonly class OrderPricing
             }
         }
         $discounts = $lines === [] ? new AppliedDiscounts() : $this->discounts->apply($codes, new DiscountRequest(
-            array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds, $line['quote']->coupons), $lines),
+            self::discountItems($lines),
             $currency,
             $shipping?->country,
             $customerId,

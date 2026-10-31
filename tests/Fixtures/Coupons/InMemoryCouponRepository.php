@@ -48,6 +48,11 @@ final class InMemoryCouponRepository implements CouponRepository
         return array_values(array_filter($this->coupons, static fn(Coupon $coupon): bool => $coupon->isAutomatic() && $coupon->terms()->active));
     }
 
+    public function advertised(): array
+    {
+        return array_values(array_filter($this->coupons, static fn(Coupon $coupon): bool => $coupon->isAdvertised() && $coupon->terms()->active));
+    }
+
     public function firstOrderOnlyIds(): array
     {
         return array_values(array_map(static fn(Coupon $coupon): int => $coupon->id(), array_filter($this->coupons, static fn(Coupon $coupon): bool => $coupon->terms()->firstOrderOnly)));

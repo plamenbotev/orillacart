@@ -1,6 +1,6 @@
 /**
- * Shop-wide blocks: the free shipping progress, filled in from the cart and again as it changes, and the store
- * notice, which a shopper may close.
+ * Shop-wide blocks: the free shipping and promotion progress, filled in from the cart and again as it changes,
+ * and the store notice, which a shopper may close.
  */
 import { api, CART_CHANGED } from './api';
 
@@ -55,6 +55,73 @@ async function showFreeShipping(): Promise< void > {
 		block.innerHTML = result.data.html;
 		block.hidden = result.data.html === '';
 	} );
+}
+
+/** The latest promotions asked for: an older answer arriving late is ignored. */
+let promotionsRequest = 0;
+let listeningForPromotions = false;
+
+const promotionBlocks = () =>
+	document.querySelectorAll< HTMLElement >( '[data-orillacart-promotions]' );
+
+/**
+ * Fills every Promotion progress block on the page from the shopper's cart, as the free shipping progress is
+ * filled: a visitor's page carries no one's cart, a logged-in customer's comes filled in, and all are drawn again
+ * whenever the cart changes.
+ */
+export function startPromotions(): void {
+	if ( promotionBlocks().length === 0 ) {
+		return;
+	}
+	if ( ! listeningForPromotions ) {
+		listeningForPromotions = true;
+		document.addEventListener( CART_CHANGED, () => void showPromotions() );
+	}
+	if ( typeof window.orillacartStorefront?.nonce !== 'string' ) {
+		void showPromotions();
+	}
+}
+
+async function showPromotions(): Promise< void > {
+	if ( promotionBlocks().length === 0 ) {
+		return;
+	}
+	const request = ++promotionsRequest;
+	const result = await api< { html: string } >( 'GET', '/cart/promotions' );
+	if ( ! result.ok || request !== promotionsRequest ) {
+		return;
+	}
+	promotionBlocks().forEach( ( block ) =>
+		fillPromotions( block, result.data.html )
+	);
+}
+
+/**
+ * Puts the promotions in a block as its settings say: those the cart gets unless it leaves them out, then as many
+ * of those still to get as it shows, the nearest first as the server sorted them. Hidden with none left.
+ *
+ * @param block The block's element.
+ * @param html  Every promotion, as the server lists them.
+ */
+export function fillPromotions( block: HTMLElement, html: string ): void {
+	// The shop's own template, escaped there.
+	block.innerHTML = html;
+	const showApplied = block.dataset.showApplied !== 'false';
+	const count = Math.max( 1, Number( block.dataset.count ) || 3 );
+	let offers = 0;
+	block
+		.querySelectorAll< HTMLElement >( '[data-orillacart-promotion]' )
+		.forEach( ( item ) => {
+			const applied = item.dataset.orillacartPromotion === 'applied';
+			if ( applied ? ! showApplied : ++offers > count ) {
+				item.remove();
+			}
+		} );
+	block.hidden =
+		block.querySelector( '[data-orillacart-promotion]' ) === null;
+	if ( block.hidden ) {
+		block.innerHTML = '';
+	}
 }
 
 /**

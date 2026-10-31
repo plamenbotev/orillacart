@@ -1,10 +1,11 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { NEW_COUPON } from '../api';
-import { CouponsScreen, discountLabel } from '../CouponsScreen';
+import { CouponForm, CouponsScreen, discountLabel } from '../CouponsScreen';
+import { forgetContentLanguages } from '../../shared/Translations';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -21,7 +22,10 @@ const spring = {
 };
 
 describe( 'CouponsScreen', () => {
-	afterEach( () => mockedFetch.mockReset() );
+	afterEach( () => {
+		mockedFetch.mockReset();
+		forgetContentLanguages();
+	} );
 
 	it( 'says what each coupon takes off', () => {
 		expect(
@@ -79,6 +83,107 @@ describe( 'CouponsScreen', () => {
 			kind: 'percent',
 			amount: '10',
 			first_order_only: true,
+		} );
+	} );
+
+	it( 'shows a code to shoppers only when ticked, and an automatic discount unless unticked', async () => {
+		const saved: Request[] = [];
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.method === 'POST' ) {
+				saved.push( request );
+				return Promise.resolve( {
+					...spring,
+					...( request.data as object ),
+				} );
+			}
+			return Promise.resolve( [] );
+		} );
+		const user = userEvent.setup();
+		const onSaved = jest.fn();
+		const { unmount } = render(
+			<CouponForm
+				coupon={ null }
+				onClose={ jest.fn() }
+				onSaved={ onSaved }
+				onError={ jest.fn() }
+			/>
+		);
+
+		const shown = screen.getByLabelText( 'Show to shoppers' );
+		expect( shown ).not.toBeChecked();
+		await user.type( screen.getByLabelText( 'Code' ), 'summer10' );
+		await user.click( shown );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save the coupon' } )
+		);
+		await waitFor( () => expect( onSaved ).toHaveBeenCalled() );
+		expect( saved[ 0 ]?.data ).toMatchObject( {
+			code: 'SUMMER10',
+			advertised: true,
+		} );
+		unmount();
+
+		render(
+			<CouponForm
+				automatic
+				coupon={ null }
+				onClose={ jest.fn() }
+				onSaved={ jest.fn() }
+				onError={ jest.fn() }
+			/>
+		);
+		// The categories and brands it reads first.
+		await act( () => Promise.resolve() );
+		expect( screen.getByLabelText( 'Show to shoppers' ) ).toBeChecked();
+	} );
+
+	it( 'translates the description into the site’s other languages', async () => {
+		const saved: Request[] = [];
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			if ( request.path === '/orillacart/v1/content-languages' ) {
+				return Promise.resolve( [
+					{
+						code: 'en',
+						locale: 'en_US',
+						name: 'English',
+						default: true,
+					},
+					{
+						code: 'de',
+						locale: 'de_DE',
+						name: 'Deutsch',
+						default: false,
+					},
+				] );
+			}
+			if ( request.method === 'PUT' ) {
+				saved.push( request );
+				return Promise.resolve( request.data );
+			}
+			return Promise.resolve( [] );
+		} );
+		const user = userEvent.setup();
+		render(
+			<CouponForm
+				coupon={ { ...spring, translations: [] } }
+				onClose={ jest.fn() }
+				onSaved={ jest.fn() }
+				onError={ jest.fn() }
+			/>
+		);
+
+		await user.type(
+			await screen.findByLabelText( 'Description in Deutsch' ),
+			'Frühlingsrabatt'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save the coupon' } )
+		);
+		expect( saved[ 0 ]?.path ).toBe( '/orillacart/v1/coupons/3' );
+		expect( saved[ 0 ]?.data ).toMatchObject( {
+			translations: { description: { de_DE: 'Frühlingsrabatt' } },
 		} );
 	} );
 } );

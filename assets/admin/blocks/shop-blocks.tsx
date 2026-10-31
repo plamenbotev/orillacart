@@ -1,7 +1,7 @@
 /**
- * The shop-wide blocks in the editor: the free shipping progress, the store notice, the brands and the wishlist.
- * The site renders them on the server (BlockDefinition); the progress and the wishlist are one shopper's, so the
- * editor shows what they are for, and the notice the shop's words where the editor may read them.
+ * The shop-wide blocks in the editor: the free shipping and promotion progress, the store notice, the brands and
+ * the wishlist. The site renders them on the server (BlockDefinition); the progress and the wishlist are one
+ * shopper's, so the editor shows what they are for, and the notice the shop's words where the editor may read them.
  */
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import { registerBlockType } from '@wordpress/blocks';
@@ -23,6 +23,12 @@ import {
 } from '../settings/storefront';
 
 type ProgressAttributes = { showBar: boolean };
+
+type PromotionsAttributes = {
+	showApplied: boolean;
+	showBars: boolean;
+	count: number;
+};
 
 type BrandsAttributes = {
 	source: 'all' | 'chosen';
@@ -66,6 +72,66 @@ export function FreeShippingEdit( {
 				label={ __( 'Free shipping progress', 'orillacart' ) }
 				instructions={ __(
 					'Shoppers see how much more their cart needs to ship free, such as “Spend €12.40 more for free shipping”, and “Your order ships free” once it does. It follows the shop’s free shipping rates for the shopper’s address, or the shop’s country, and shows nothing while no free rate would take the cart.',
+					'orillacart'
+				) }
+			/>
+		</div>
+	);
+}
+
+export function PromotionProgressEdit( {
+	attributes,
+	setAttributes,
+}: EditProps< PromotionsAttributes > ) {
+	return (
+		<div { ...useBlockProps() }>
+			<InspectorControls>
+				<PanelBody title={ __( 'Promotion progress', 'orillacart' ) }>
+					<ToggleControl
+						label={ __(
+							'Show the promotions it gets',
+							'orillacart'
+						) }
+						help={ __(
+							'Those the cart has earned already, with what they save.',
+							'orillacart'
+						) }
+						checked={ attributes.showApplied }
+						onChange={ ( showApplied ) =>
+							setAttributes( { showApplied } )
+						}
+					/>
+					<ToggleControl
+						label={ __( 'Show bars', 'orillacart' ) }
+						help={ __(
+							'How far the cart is from each promotion, under its message.',
+							'orillacart'
+						) }
+						checked={ attributes.showBars }
+						onChange={ ( showBars ) =>
+							setAttributes( { showBars } )
+						}
+					/>
+					<RangeControl
+						__next40pxDefaultSize
+						label={ __( 'How many to show', 'orillacart' ) }
+						help={ __(
+							'Of the promotions still to get, the nearest first.',
+							'orillacart'
+						) }
+						value={ attributes.count }
+						min={ 1 }
+						max={ 10 }
+						onChange={ ( count ) =>
+							setAttributes( { count: count ?? 3 } )
+						}
+					/>
+				</PanelBody>
+			</InspectorControls>
+			<Placeholder
+				label={ __( 'Promotion progress', 'orillacart' ) }
+				instructions={ __(
+					'Shoppers see what their cart still needs for the shop’s promotions, such as “Add 1 more Lamp to get 1 free” or “Spend €18.00 more to get 10% off”, and the promotions it gets. It tells of automatic discounts, and of codes the shop chose to show to shoppers, and shows nothing while there is nothing to tell.',
 					'orillacart'
 				) }
 			/>
@@ -290,6 +356,10 @@ export function WishlistEdit( {
 // Title, icon and attributes come from the server's registration.
 registerBlockType< ProgressAttributes >( 'orillacart/free-shipping-progress', {
 	edit: FreeShippingEdit,
+	save: () => null,
+} as never );
+registerBlockType< PromotionsAttributes >( 'orillacart/promotion-progress', {
+	edit: PromotionProgressEdit,
 	save: () => null,
 } as never );
 registerBlockType( 'orillacart/store-notice', {

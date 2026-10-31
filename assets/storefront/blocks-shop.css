@@ -1,7 +1,8 @@
-/* Shop-wide blocks: the free shipping progress, the store notice and the brands. */
+/* Shop-wide blocks: the free shipping and promotion progress, the store notice and the brands. */
 
 :where(
 	.orillacart-free-shipping-progress,
+	.orillacart-promotion-progress,
 	.orillacart-store-notice,
 	.orillacart-brands
 ) {
@@ -14,6 +15,7 @@
 /* A block with nothing to show takes no room, its colours and spacing with it. */
 :where(
 	.wp-block-orillacart-free-shipping-progress,
+	.wp-block-orillacart-promotion-progress,
 	.wp-block-orillacart-store-notice
 ):has(> [hidden]) {
 	display: none;
@@ -49,9 +51,51 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.orillacart-free-shipping-progress__fill {
+	.orillacart-free-shipping-progress__fill,
+	.orillacart-promotion__fill {
 		transition: none;
 	}
+}
+
+.orillacart-promotion-progress__list {
+	display: grid;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-promotion__message {
+	margin: 0;
+}
+
+.orillacart-promotion__name {
+	font-weight: 600;
+}
+
+.orillacart-promotion--applied .orillacart-promotion__message {
+	color: var(--orillacart-success);
+	font-weight: 600;
+}
+
+.orillacart-promotion__bar {
+	height: 0.5rem;
+	margin-top: 0.5rem;
+	overflow: hidden;
+	border-radius: 999px;
+	background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.orillacart-promotion-progress--no-bar .orillacart-promotion__bar {
+	display: none;
+}
+
+.orillacart-promotion__fill {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--orillacart-success);
+	transition: width 0.3s ease;
 }
 
 .orillacart-store-notice {

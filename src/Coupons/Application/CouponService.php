@@ -16,23 +16,32 @@ use OrillaCart\Coupons\Domain\CouponRepository;
 use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Coupons\Domain\CouponTerms;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Translations\Application\ContentTranslations;
+use OrillaCart\Translations\Application\TranslationPackages;
+use OrillaCart\Translations\Domain\TranslationRuleViolation;
 
 /**
  * The coupons the shop sets up. Orders keep the code and amount they used, so changing or deleting a coupon
- * never changes a placed order.
+ * never changes a placed order. Its description, which shoppers read, is translated (design 51).
  */
 final readonly class CouponService
 {
     public function __construct(
         private CouponRepository $coupons,
         private ProductTranslations $translations,
+        private ContentTranslations $texts,
+        private Transactions $transactions,
+        private TranslationPackages $packages,
     ) {}
 
     public function coupons(CouponQuery $query): CouponPageView
     {
         [$coupons, $total] = $this->coupons->search($query->search, $query->page, $query->perPage, $query->automatic);
 
-        return new CouponPageView(array_map(CouponView::fromCoupon(...), $coupons), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
+        $translations = $this->texts->of(CouponTranslations::TYPE, array_map(static fn(Coupon $coupon): int => $coupon->id(), $coupons));
+
+        return new CouponPageView(array_map(static fn(Coupon $coupon): CouponView => CouponView::fromCoupon($coupon, $translations[$coupon->id()] ?? []), $coupons), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
     }
 
     /** The coupon with the code, when the shop can offer it now; null otherwise. */
@@ -40,7 +49,7 @@ final readonly class CouponService
     {
         $coupon = $this->coupons->findByCodes([Coupon::normalize($code)])[Coupon::normalize($code)] ?? null;
 
-        return $coupon !== null && $coupon->offerable($now) ? CouponView::fromCoupon($coupon) : null;
+        return $coupon !== null && $coupon->offerable($now) ? $this->view($coupon) : null;
     }
 
     /**
@@ -48,35 +57,37 @@ final readonly class CouponService
      */
     public function coupon(int $id): CouponView
     {
-        return CouponView::fromCoupon($this->get($id));
+        return $this->view($this->get($id));
     }
 
     /**
-     * @throws CouponRuleViolation for terms that do not make a coupon, or a code in use
+     * @throws CouponRuleViolation      for terms that do not make a coupon, or a code in use
+     * @throws TranslationRuleViolation
      */
     public function create(SaveCoupon $command): CouponView
     {
+        $texts = $this->checkedTexts($command);
         $terms = $this->terms($command, $command->automatic && trim($command->code) === '' ? 'AUTO-' . strtoupper(bin2hex(random_bytes(4))) : null);
         $this->requireFreeCode($terms->code, null);
-        $coupon = new Coupon($terms, $command->automatic);
-        $this->coupons->save($coupon);
 
-        return CouponView::fromCoupon($coupon);
+        return $this->saved(new Coupon($terms, $command->automatic, $command->advertised), $texts);
     }
 
     /**
      * @throws CouponNotFound
      * @throws CouponRuleViolation
+     * @throws TranslationRuleViolation
      */
     public function update(int $id, SaveCoupon $command): CouponView
     {
         $coupon = $this->get($id);
+        $texts = $this->checkedTexts($command);
         $terms = $this->terms($command, $coupon->isAutomatic() && trim($command->code) === '' ? $coupon->code() : null);
         $this->requireFreeCode($terms->code, $id);
         $coupon->change($terms);
-        $this->coupons->save($coupon);
+        $coupon->advertise($command->advertised);
 
-        return CouponView::fromCoupon($coupon);
+        return $this->saved($coupon, $texts);
     }
 
     /**
@@ -84,7 +95,47 @@ final readonly class CouponService
      */
     public function delete(int $id): void
     {
-        $this->coupons->delete($this->get($id));
+        $coupon = $this->get($id);
+        $this->transactions->run(function () use ($coupon, $id): void {
+            $this->texts->forget(CouponTranslations::TYPE, [$id]);
+            $this->coupons->delete($coupon);
+        });
+        $this->packages->removed(CouponPackages::KIND, $id);
+    }
+
+    /**
+     * The description's translations, checked before anything changes; null to keep them as they are.
+     *
+     * @return array<string, array<string, string>>|null
+     *
+     * @throws TranslationRuleViolation
+     */
+    private function checkedTexts(SaveCoupon $command): ?array
+    {
+        return $command->translations === null ? null : $this->texts->check(CouponTranslations::TYPE, $command->translations);
+    }
+
+    /**
+     * The coupon and its description's translations together, or neither; a new coupon has its id once saved.
+     *
+     * @param array<string, array<string, string>>|null $texts
+     */
+    private function saved(Coupon $coupon, ?array $texts): CouponView
+    {
+        $this->transactions->run(function () use ($coupon, $texts): void {
+            $this->coupons->save($coupon);
+            if ($texts !== null) {
+                $this->texts->write(CouponTranslations::TYPE, $coupon->id(), $texts);
+            }
+        });
+        $this->packages->changed(CouponPackages::KIND, $coupon->id());
+
+        return $this->view($coupon);
+    }
+
+    private function view(Coupon $coupon): CouponView
+    {
+        return CouponView::fromCoupon($coupon, $this->texts->of(CouponTranslations::TYPE, [$coupon->id()])[$coupon->id()] ?? []);
     }
 
     private function get(int $id): Coupon

@@ -10,7 +10,8 @@ use OrillaCart\Storefront\Domain\ShopPages;
 use OrillaCart\Storefront\Domain\ShopPagesRepository;
 
 /**
- * Keeps the shop's page ids in an option. The first activation makes the four pages, each holding its block;
+ * Keeps the shop's page ids in an option. The first activation makes the four pages, each holding its block (the
+ * cart's with the promotion progress above it);
  * later ones make a page again only when the chosen one was deleted, so a part set to "none" stays off.
  * Uninstalling deletes the pages the plugin made.
  */
@@ -46,14 +47,14 @@ final readonly class OptionShopPagesRepository implements ShopPagesRepository, L
     {
         $first = get_option(self::OPTION) === false;
         $pages = $this->load();
-        $page = fn(?int $id, string $title, string $block): ?int => match (true) {
+        $page = fn(?int $id, string $title, string ...$blocks): ?int => match (true) {
             $id !== null && get_post_type($id) === 'page' && get_post_status($id) !== 'trash', $id === null && !$first => $id,
-            default => $this->make($title, $block),
+            default => $this->make($title, ...$blocks),
         };
 
         $this->save(new ShopPages(
             $page($pages->shop, __('Shop', 'orillacart'), 'products'),
-            $page($pages->cart, __('Cart', 'orillacart'), 'cart'),
+            $page($pages->cart, __('Cart', 'orillacart'), 'promotion-progress', 'cart'),
             $page($pages->checkout, __('Checkout', 'orillacart'), 'checkout'),
             $page($pages->account, __('My account', 'orillacart'), 'account'),
         ));
@@ -81,14 +82,15 @@ final readonly class OptionShopPagesRepository implements ShopPagesRepository, L
         delete_option(self::OPTION);
     }
 
-    private function make(string $title, string $block): int
+    private function make(string $title, string ...$blocks): int
     {
         $id = wp_insert_post([
             'post_type' => 'page',
             'post_status' => 'publish',
             'post_title' => $title,
-            // Wide where the theme allows it: grids, tables and the two-column checkout need the room.
-            'post_content' => \sprintf('<!-- wp:orillacart/%s {"align":"wide"} /-->', $block),
+            // Wide where the theme allows it: grids, tables and the two-column checkout need the room. Only the
+            // shop's blocks, so the page's versions in other languages are made the same (ShopPageLanguages).
+            'post_content' => implode("\n", array_map(static fn(string $block): string => \sprintf('<!-- wp:orillacart/%s {"align":"wide"} /-->', $block), $blocks)),
             'comment_status' => 'closed',
         ], true);
         if ($id instanceof \WP_Error) {
