@@ -690,6 +690,21 @@ export function CouponForm( {
 							set( 'exclude_sale_items', value )
 						}
 					/>
+					{ ( fields.kind === 'free_gift' ||
+						fields.kind === 'buy_get' ) && (
+						<CheckboxControl
+							label={ __(
+								'Add the free items to the cart',
+								'orillacart'
+							) }
+							help={ __(
+								'The shop puts what it gives in the cart, as a free line the shopper may remove. For buy X, get Y, only when Y is free, has no cap, and is one product. Otherwise the shopper adds it.',
+								'orillacart'
+							) }
+							checked={ fields.adds_items }
+							onChange={ ( value ) => set( 'adds_items', value ) }
+						/>
+					) }
 					{ fields.kind === 'free_shipping' && (
 						<CheckboxControl
 							label={ __(

@@ -7,7 +7,7 @@ namespace OrillaCart\Ordering\Domain;
 use OrillaCart\Shared\Domain\Money;
 
 /**
- * An order line as checkout priced it: an item, the shipping, or a fee, with the taxes charged on it and the
+ * An order line as checkout priced it: an item sold or given, the shipping, or a fee, with the taxes charged on it and the
  * changes to its price.
  */
 final readonly class LineDraft
@@ -47,13 +47,14 @@ final readonly class LineDraft
         public array $bundleChoices = [],
         /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> the answers to the product's forms, as sold */
         public array $personalisation = [],
-        /** OrderLine::ITEM, SHIPPING or FEE. */
-        public string $kind = OrderLine::ITEM,
+        public LineType $type = LineType::Item,
         /**
          * Its name, options, contents and answers in the shop's own language, where the shopper's differ (design 51).
          *
          * @var array{name?: string, options?: list<array{attribute: string, option: string}>, contents?: list<array{name: string, quantity: int}>, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
          */
         public array $shopWords = [],
+        /** For an item given: the discount that gave it. */
+        public ?GivenBy $givenBy = null,
     ) {}
 }

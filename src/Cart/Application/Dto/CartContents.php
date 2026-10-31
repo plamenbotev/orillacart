@@ -10,8 +10,8 @@ namespace OrillaCart\Cart\Application\Dto;
 final readonly class CartContents
 {
     /**
-     * @param list<array{line: int, product_id: int, option_ids: list<int>, bundle_choices: list<int>, quantity: int, extra: string, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $lines
-     *                                                                                                                                       extra: what the answers add to each item
+     * @param list<array{line: int, product_id: int, option_ids: list<int>, bundle_choices: list<int>, quantity: int, extra: string, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>, given: ?string}> $lines
+     *                                                                                                                                       extra: what the answers add to each item; given: the code of the discount that gives it, for an item given
      * @param list<string> $coupons  the codes entered, checked or not
      * @param list<string> $refusals why add-ons' cart rules refuse the cart, for the customer; it cannot be ordered
      * @param list<string> $giftCards the gift card codes entered, checked or not
@@ -26,5 +26,8 @@ final readonly class CartContents
         public bool $useStoreCredit = false,
         /** The cart as read (Cart::fingerprint()): an order is placed from this cart, and from no other since. */
         public string $fingerprint = '',
+        public ?int $customerId = null,
+        /** @var list<string> the discounts whose items the shopper removed, by code */
+        public array $declined = [],
     ) {}
 }

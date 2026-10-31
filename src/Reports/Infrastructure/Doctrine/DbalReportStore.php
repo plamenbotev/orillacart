@@ -59,8 +59,8 @@ final readonly class DbalReportStore implements ReportStore
                 (int) $facts->order->reverseCharge,
                 $facts->order->exchangeRate,
             ], $facts));
-            $this->insert($this->tables->lines(), ['order_id', 'day', 'counted', 'currency', 'product_id', 'variation_id', 'name', 'quantity', 'net', 'refunded'], array_map(static fn(SoldLine $line): array => [
-                $line->orderId, $line->day->format(self::DAY), (int) $line->counted, $line->currency, $line->productId, $line->variationId, $line->name, $line->quantity, $line->net, $line->refunded,
+            $this->insert($this->tables->lines(), ['order_id', 'day', 'counted', 'currency', 'product_id', 'variation_id', 'name', 'quantity', 'net', 'refunded', 'given'], array_map(static fn(SoldLine $line): array => [
+                $line->orderId, $line->day->format(self::DAY), (int) $line->counted, $line->currency, $line->productId, $line->variationId, $line->name, $line->quantity, $line->net, $line->refunded, (int) $line->given,
             ], array_merge(...array_map(static fn(OrderFacts $facts): array => $facts->lines, $facts))));
             $this->insert($this->tables->coupons(), ['order_id', 'day', 'counted', 'currency', 'code', 'amount'], array_map(static fn(UsedCoupon $coupon): array => [
                 $coupon->orderId, $coupon->day->format(self::DAY), (int) $coupon->counted, $coupon->currency, $coupon->code, $coupon->amount,

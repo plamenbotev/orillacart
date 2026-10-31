@@ -132,7 +132,7 @@
                 <tbody>
                     {% for line in order.lines %}
                         <tr>
-                            <td>{{ _self.run(line.name) }}{% if line.sku %} <small>({{ line.sku }})</small>{% endif %}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% for answer in line.personalisation|default([]) %}{% if answer.answer != '' %}<br><small>{{ answer.label }}: {{ answer.answer }}</small>{% endif %}{% endfor %}</td>
+                            <td>{{ _self.run(line.name) }}{% if line.sku %} <small>({{ line.sku }})</small>{% endif %}{% if line.given_by %}<br><small>{{ line.given_by.description ? __('Free with %s')|format(line.given_by.description) : __('Free gift') }}</small>{% endif %}{% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}{% for answer in line.personalisation|default([]) %}{% if answer.answer != '' %}<br><small>{{ answer.label }}: {{ answer.answer }}</small>{% endif %}{% endfor %}</td>
                             <td class="amount">{{ line.quantity }}</td>
                             <td class="amount">{{ line.unit_price|money(order.currency) }}</td>
                             <td class="amount">{{ line.total|money(order.currency) }}</td>

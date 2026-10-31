@@ -59,5 +59,10 @@ final readonly class CouponTerms
         public bool $overridesPriceRules = false,
         /** Free shipping on every way to ship, express and abroad too; otherwise on the cheapest one offered. */
         public bool $freeShippingEveryRate = false,
+        /**
+         * A free gift, or buy-get giving its items free: the shop adds the items given to the cart, as lines the
+         * shopper may remove; otherwise the shopper adds them.
+         */
+        public bool $addsItems = true,
     ) {}
 }

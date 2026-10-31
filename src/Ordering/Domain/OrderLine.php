@@ -12,23 +12,20 @@ use OrillaCart\Shared\Domain\Money;
 /**
  * One line of an order, kept as it was sold: an item (name, options and prices do not follow later catalog
  * changes), the shipping, or a fee. Each keeps the taxes charged on it, per rate and jurisdiction, and the changes
- * made to its price after its unit price.
+ * made to its price after its unit price. What a line is decides what it does: each type is its own class
+ * (LineType), made by of().
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'order_lines')]
-class OrderLine
+#[ORM\InheritanceType('SINGLE_TABLE')]
+#[ORM\DiscriminatorColumn(name: 'type', type: 'string', length: 20)]
+#[ORM\DiscriminatorMap(['item' => ItemLine::class, 'given' => GivenItemLine::class, 'shipping' => ShippingLine::class, 'fee' => FeeLine::class])]
+abstract class OrderLine
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     private ?int $id = null;
-
-    public const string ITEM = 'item';
-    public const string SHIPPING = 'shipping';
-    public const string FEE = 'fee';
-
-    #[ORM\Column(length: 10, options: ['default' => self::ITEM])]
-    private string $kind;
 
     /** Null for the shipping and fees. */
     #[ORM\Column(nullable: true)]
@@ -128,6 +125,17 @@ class OrderLine
     #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
     private string $refundedAmount = '0';
 
+    /** The line of the draft's type. */
+    public static function of(Order $order, LineDraft $draft, int $position): self
+    {
+        return match ($draft->type) {
+            LineType::Item => new ItemLine($order, $draft, $position),
+            LineType::Given => new GivenItemLine($order, $draft, $position),
+            LineType::Shipping => new ShippingLine($order, $draft, $position),
+            LineType::Fee => new FeeLine($order, $draft, $position),
+        };
+    }
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'lines')]
         #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
@@ -139,10 +147,10 @@ class OrderLine
         if ($draft->quantity < 1) {
             throw new OrderRuleViolation('An order line has at least one item.', 'orillacart_invalid_quantity');
         }
-        if (!\in_array($draft->kind, [self::ITEM, self::SHIPPING, self::FEE], true) || ($draft->kind === self::ITEM) !== ($draft->productId !== null)) {
-            throw new \LogicException('An item line names its product; the shipping and fees do not.');
+        if ($draft->type !== $this->type()) {
+            throw new \LogicException('A line is of its draft\'s type.');
         }
-        $this->kind = $draft->kind;
+        $this->check($draft);
         $this->productId = $draft->productId;
         $this->variationId = $draft->variationId;
         $this->optionIds = $draft->optionIds;
@@ -223,14 +231,21 @@ class OrderLine
         return $this->position;
     }
 
-    public function kind(): string
-    {
-        return $this->kind;
-    }
+    abstract public function type(): LineType;
 
+    /** Whether the draft makes a line of this type; throws when it does not. */
+    abstract protected function check(LineDraft $draft): void;
+
+    /** A product the order holds: sold, or given with it. */
     public function isItem(): bool
     {
-        return $this->kind === self::ITEM;
+        return false;
+    }
+
+    /** The discount that gave the item; null for one sold, and for the shipping and fees. */
+    public function givenBy(): ?GivenBy
+    {
+        return null;
     }
 
     /** The product sold; 0 for the shipping and fees. */

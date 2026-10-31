@@ -134,10 +134,10 @@ final readonly class Discounts
             if ($silent && $sum->isZero() && !$coupon->freeShipping() && $missing === null) {
                 continue;
             }
-            if ($missing !== null) {
-                $gifts[] = $missing;
-            }
             $description = $words[$coupon->id()] ?? $coupon->description();
+            if ($missing !== null) {
+                $gifts[] = $missing + ['code' => $coupon->code(), 'description' => $description];
+            }
             $applied[] = new AppliedCoupon($coupon->code(), $description, $sum->toFixed(), $coupon->freeShipping(), $lines, $silent, $coupon->freeShippingEveryRate());
             if ($silent) {
                 $automaticApplied[] = $description === '' ? $coupon->code() : $description;
@@ -149,6 +149,19 @@ final readonly class Discounts
         }
 
         return new AppliedDiscounts($applied, $refused, $gifts);
+    }
+
+    /**
+     * Whether any automatic discount, or any of the codes, could give items for the cart to hold: only then is
+     * there anything to keep in step (GivenItems).
+     *
+     * @param list<string> $codes as the customer entered them
+     */
+    public function mayGiveItems(array $codes): bool
+    {
+        $codes = array_values(array_filter(array_map(Coupon::normalize(...), $codes), static fn(string $code): bool => $code !== ''));
+
+        return array_any([...$this->coupons->automatic(), ...array_values($codes === [] ? [] : $this->coupons->findByCodes($codes))], static fn(Coupon $coupon): bool => $coupon->givesItems());
     }
 
     /**

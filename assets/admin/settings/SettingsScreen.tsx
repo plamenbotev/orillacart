@@ -436,6 +436,47 @@ export function SettingsScreen() {
 									)
 								}
 							/>
+							<SelectControl
+								__next40pxDefaultSize
+								label={ __(
+									'A free item, when the items it came with go back',
+									'orillacart'
+								) }
+								help={ __(
+									'When what the customer keeps no longer earns it: two of three lamps bought, one given, and one bought sent back.',
+									'orillacart'
+								) }
+								value={ form.free_items_on_return }
+								options={ [
+									{
+										value: 'charged',
+										label: __(
+											'Keep its price from the refund',
+											'orillacart'
+										),
+									},
+									{
+										value: 'come_back',
+										label: __(
+											'It comes back with them',
+											'orillacart'
+										),
+									},
+									{
+										value: 'stay_free',
+										label: __(
+											'It stays free',
+											'orillacart'
+										),
+									},
+								] }
+								onChange={ ( value ) =>
+									update(
+										'free_items_on_return',
+										value as SettingsInput[ 'free_items_on_return' ]
+									)
+								}
+							/>
 							<TextControl
 								__next40pxDefaultSize
 								inputMode="decimal"

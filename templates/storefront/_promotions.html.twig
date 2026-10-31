@@ -10,7 +10,10 @@
         <li class="orillacart-promotion{{ p.applied ? ' orillacart-promotion--applied' : '' }}" data-orillacart-promotion="{{ p.applied ? 'applied' : 'offer' }}">
             <p class="orillacart-promotion__message">
                 {%- if p.applied -%}
-                    {%- if p.saved -%}
+                    {%- if p.declined -%}
+                        {# translators: %s: a promotion, such as Buy 2, get 1 free -#}
+                        {{ __('%s — you removed the free item.')|e|format(title)|raw }}
+                    {%- elseif p.saved -%}
                         {# translators: 1: a promotion, such as Buy 2, get 1 free, 2: an amount of money -#}
                         {{ __('%1$s — applied, you save %2$s.')|e|format(title, p.saved|money(p.currency)|e)|raw }}
                     {%- else -%}
@@ -42,6 +45,9 @@
                     {%- endif -%}
                 {%- endif -%}
             </p>
+            {% if p.declined %}
+                <button type="button" class="wp-element-button orillacart-button orillacart-button--secondary orillacart-promotion__restore" data-orillacart-restore-given="{{ p.code }}">{{ __('Add it back') }}</button>
+            {% endif %}
             {% if p.bar %}
                 {% if p.bar.money %}
                     {# translators: 1: what the items come to, 2: the order value the promotion takes -#}

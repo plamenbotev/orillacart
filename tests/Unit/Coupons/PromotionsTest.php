@@ -49,11 +49,11 @@ final class PromotionsTest extends TestCase
         $this->automatic('Lamps: buy 2, get 1 free', 'buy_get', '100', buyQuantity: 2, getQuantity: 1, productIds: [10]);
 
         $one = $this->only($this->cart([10, 1]));
-        self::assertSame([false, 1, 3, 2], [$one->applied, $one->units, $one->neededUnits, $one->unitsShort()]);
-        self::assertSame(1, $this->only($this->cart([10, 2]))->unitsShort());
+        self::assertSame([false, 1, 2, 1], [$one->applied, $one->units, $one->neededUnits, $one->unitsShort()]);
 
-        $three = $this->only($this->cart([10, 3]));
-        self::assertSame([true, '20'], [$three->applied, $three->saved], 'what checkout takes off');
+        $two = $this->only($this->cart([10, 2]));
+        self::assertSame([true, '20'], [$two->applied, $two->saved], 'the shop adds the third, free');
+        self::assertSame([true, '20'], [$this->only($this->cart([10, 3]))->applied, $this->only($this->cart([10, 3]))->saved]);
     }
 
     public function testAnOrderSizeIsMeasuredOnTheWholeOrderBeforeDiscounts(): void

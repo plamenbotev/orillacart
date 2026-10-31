@@ -8,7 +8,7 @@ use OrillaCart\Catalog\Application\Dto\QuotedDownload;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 
 /**
- * An order line as checkout priced it: an item, the shipping or a fee. Amounts are decimal strings: the unit
+ * An order line as checkout priced it: an item sold or given, the shipping or a fee. Amounts are decimal strings: the unit
  * price and line total before tax (including it when the order's prices do), each rate's tax on it, and the
  * changes to its price.
  */
@@ -49,13 +49,16 @@ final readonly class NewOrderLine
         public array $bundleChoices = [],
         /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> the answers to the product's forms, as sold */
         public array $personalisation = [],
-        /** "item", "shipping" or "fee". */
-        public string $kind = 'item',
+        /** "item", "given" (by a discount), "shipping" or "fee". */
+        public string $type = 'item',
         /**
          * Its name, options, contents and answers in the shop's own language, where the shopper's differ (design 51).
          *
          * @var array{name?: string, options?: list<array{attribute: string, option: string}>, contents?: list<array{name: string, quantity: int}>, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
          */
         public array $shopWords = [],
+        /** For an item given: the discount's code and description. */
+        public ?string $givenCode = null,
+        public string $givenDescription = '',
     ) {}
 }

@@ -239,14 +239,14 @@ class Order
         if (mb_strlen($draft->note) > self::MAX_NOTE_LENGTH) {
             throw new OrderRuleViolation('A note has up to %d characters.', 'orillacart_invalid_note', values: [self::MAX_NOTE_LENGTH]);
         }
-        $items = array_filter($draft->lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::ITEM);
+        $items = array_filter($draft->lines, static fn(LineDraft $line): bool => $line->type->isItem());
         if ($items === []) {
             throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
         }
         if (!self::addsUp($draft->lines, $draft->total, $draft->pricesIncludeTax)) {
             throw new \LogicException('The order total is not the sum of its parts.');
         }
-        if ((array_filter($draft->lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::SHIPPING) === []) !== ($draft->shipping === null)) {
+        if ((array_filter($draft->lines, static fn(LineDraft $line): bool => $line->type === LineType::Shipping) === []) !== ($draft->shipping === null)) {
             throw new \LogicException('An order that ships has a shipping line, one that does not has none.');
         }
         if (($draft->shipping === null) !== ($draft->shippingAddress === null)) {
@@ -262,7 +262,7 @@ class Order
         $this->notes = new ArrayCollection();
         $this->grants = new ArrayCollection();
         foreach (self::ordered($draft->lines) as $position => $line) {
-            $this->lines->add(new OrderLine($this, $line, $position));
+            $this->lines->add(OrderLine::of($this, $line, $position));
         }
         $this->shippingOption = $draft->shipping?->option;
         $this->shippingName = $draft->shipping === null ? null : mb_substr("{$draft->shipping->carrier} – {$draft->shipping->rate}", 0, 200);
@@ -362,10 +362,10 @@ class Order
     }
 
     /** What shipping costs, as a line; null for an order that ships nothing. */
-    public function shippingLine(): ?OrderLine
+    public function shippingLine(): ?ShippingLine
     {
         foreach ($this->allLines() as $line) {
-            if ($line->kind() === OrderLine::SHIPPING) {
+            if ($line instanceof ShippingLine) {
                 return $line;
             }
         }
@@ -373,10 +373,10 @@ class Order
         return null;
     }
 
-    /** @return list<OrderLine> */
+    /** @return list<FeeLine> */
     public function feeLines(): array
     {
-        return array_values(array_filter($this->allLines(), static fn(OrderLine $line): bool => $line->kind() === OrderLine::FEE));
+        return array_values(array_filter($this->allLines(), static fn(OrderLine $line): bool => $line instanceof FeeLine));
     }
 
     public function shippingName(): ?string
@@ -1193,7 +1193,7 @@ class Order
     public function replaceItems(array $lines, ?ShippingChoice $shipping, ?Address $shippingAddress, Money $total, bool $pricesIncludeTax, ?array $taxExemption, ?string $taxProvider): void
     {
         $this->requireOnHold();
-        if (array_filter($lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::ITEM) === []) {
+        if (array_filter($lines, static fn(LineDraft $line): bool => $line->type->isItem()) === []) {
             throw new OrderRuleViolation('An order has at least one item.', 'orillacart_empty_order');
         }
         if ($this->giftCards !== []) {
@@ -1203,12 +1203,12 @@ class Order
             throw new \LogicException('The order total is not the sum of its parts.');
         }
         if (($shipping === null) !== ($shippingAddress === null)
-            || (array_filter($lines, static fn(LineDraft $line): bool => $line->kind === OrderLine::SHIPPING) === []) !== ($shipping === null)) {
+            || (array_filter($lines, static fn(LineDraft $line): bool => $line->type === LineType::Shipping) === []) !== ($shipping === null)) {
             throw new \LogicException('An order that ships has a shipping address, a way to ship and a shipping line; one that does not has none.');
         }
         $this->lines->clear();
         foreach (self::ordered($lines) as $position => $line) {
-            $this->lines->add(new OrderLine($this, $line, $position));
+            $this->lines->add(OrderLine::of($this, $line, $position));
         }
         $this->shippingAddress = $shippingAddress ?? Address::none();
         $this->shippingOption = $shipping?->option;
@@ -1530,9 +1530,11 @@ class Order
      */
     private static function ordered(array $lines): array
     {
-        $of = static fn(string $kind): array => array_values(array_filter($lines, static fn(LineDraft $line): bool => $line->kind === $kind));
+        $ordered = $lines;
+        // Stable: lines of a rank keep their order.
+        usort($ordered, static fn(LineDraft $a, LineDraft $b): int => $a->type->rank() <=> $b->type->rank());
 
-        return [...$of(OrderLine::ITEM), ...$of(OrderLine::SHIPPING), ...$of(OrderLine::FEE)];
+        return $ordered;
     }
 
     /**

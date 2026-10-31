@@ -103,6 +103,10 @@ class Coupon
     #[ORM\Column(options: ['default' => false])]
     private bool $freeShippingEveryRate = false;
 
+    /** A free gift or buy-get: the shop adds the items given to the cart (missingGift()); otherwise the shopper does. */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $addsItems = true;
+
     #[ORM\Column]
     private bool $combines;
 
@@ -232,6 +236,7 @@ class Coupon
         $this->excludeSaleItems = $terms->excludeSaleItems;
         $this->overridesPriceRules = $terms->overridesPriceRules;
         $this->freeShippingEveryRate = $terms->freeShippingEveryRate;
+        $this->addsItems = $terms->addsItems;
         $this->combines = $terms->combines;
         $this->usageLimit = $terms->usageLimit;
         $this->perCustomerLimit = $terms->perCustomerLimit;
@@ -306,6 +311,7 @@ class Coupon
             $this->giftProductId,
             $this->overridesPriceRules,
             $this->freeShippingEveryRate,
+            $this->addsItems,
         );
     }
 
@@ -358,14 +364,16 @@ class Coupon
             return null;
         }
         $buyGet = $this->kind === CouponKind::BuyGet;
+        // Those the shop adds itself are not the shopper's to add.
+        $adds = $this->addsGiven($basket);
 
         return new CouponProgress(
             $subtotal,
             $this->minSubtotal === null ? null : $basket->inCurrency(Money::of($this->minSubtotal)),
             $units,
             // Buy-get giving off the items it applies to needs those given too.
-            max(1, $this->minQuantity, $this->buyQuantity + ($buyGet && !$this->givesOthers() ? $this->getQuantity : 0)),
-            $buyGet && $this->givesOthers() && $this->giftable($basket) === [],
+            max(1, $this->minQuantity, $this->buyQuantity + ($buyGet && !$this->givesOthers() && !$adds ? $this->getQuantity : 0)),
+            $buyGet && $this->givesOthers() && !$adds && $this->giftable($basket) === [],
         );
     }
 
@@ -397,14 +405,15 @@ class Coupon
     private function unmet(Basket $basket): ?Text
     {
         [$subtotal, $matching, $units] = $this->measured($basket);
+        $adds = $this->addsGiven($basket);
 
         return match (true) {
             $this->minSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->minSubtotal))) < 0 => Text::of('This code needs an order of at least %1$s %2$s.', $basket->inCurrency(Money::of($this->minSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
             $this->maxSubtotal !== null && $subtotal->compare($basket->inCurrency(Money::of($this->maxSubtotal))) > 0 => Text::of('This code is for orders of up to %1$s %2$s.', $basket->inCurrency(Money::of($this->maxSubtotal))->rounded(new Currency($basket->currency)->decimals()), $basket->currency),
             $matching === [] => new Text('This code does not apply to the items in your cart.'),
             $units < max(1, $this->minQuantity, $this->buyQuantity) => Text::of('This code needs at least %d of the items it applies to.', max($this->minQuantity, $this->buyQuantity)),
-            $this->kind === CouponKind::BuyGet && !$this->givesOthers() && $units < $this->buyQuantity + $this->getQuantity => Text::of('This code needs %1$d of the items it applies to: %2$d to buy and %3$d it gives.', $this->buyQuantity + $this->getQuantity, $this->buyQuantity, $this->getQuantity),
-            $this->kind === CouponKind::BuyGet && $this->givesOthers() && $this->giftable($basket) === [] => new Text('Add the items this code gives off to your cart.'),
+            $this->kind === CouponKind::BuyGet && !$this->givesOthers() && !$adds && $units < $this->buyQuantity + $this->getQuantity => Text::of('This code needs %1$d of the items it applies to: %2$d to buy and %3$d it gives.', $this->buyQuantity + $this->getQuantity, $this->buyQuantity, $this->getQuantity),
+            $this->kind === CouponKind::BuyGet && $this->givesOthers() && !$adds && $this->giftable($basket) === [] => new Text('Add the items this code gives off to your cart.'),
             default => null,
         };
     }
@@ -489,18 +498,101 @@ class Coupon
     }
 
     /**
-     * A free gift the order still needs to have added: the product and how many, besides those already in it.
+     * What the order still needs to have added, besides what is in it already: a free gift, or the items buy-get
+     * gives free when the shop can tell which (addsGiven()). Of buy 2 get 1 free, 2 lamps get a third, 3 nothing
+     * more (the third is the free one), 5 a sixth; buying 2 of others, the one product it names.
      *
-     * @return array{productId: int, quantity: int}|null
+     * @return array{productId: int, quantity: int}|null the product and how many
      */
     public function missingGift(Basket $basket): ?array
     {
-        if ($this->kind !== CouponKind::FreeGift || $this->giftProductId === null) {
+        if ($this->kind === CouponKind::BuyGet) {
+            return $this->missingGiven($basket);
+        }
+        if ($this->kind !== CouponKind::FreeGift || $this->giftProductId === null || !$this->addsItems) {
             return null;
         }
         $have = array_sum(array_map(static fn(BasketLine $line): int => $line->quantity, $this->giftLines($basket)));
 
         return $have >= $this->getQuantity ? null : ['productId' => $this->giftProductId, 'quantity' => $this->getQuantity - $have];
+    }
+
+    /**
+     * How many items it gives for what is kept of an order, its items given left out: a free gift's, while the
+     * order still meets it; buy-get's, a round for each it buys. For what becomes of an item given when items it
+     * came with go back.
+     */
+    public function earns(Basket $kept): int
+    {
+        if ($this->kind === CouponKind::FreeGift) {
+            return $this->unmet($kept) === null ? $this->getQuantity : 0;
+        }
+        if ($this->kind !== CouponKind::BuyGet || $this->buyQuantity < 1) {
+            return 0;
+        }
+        [$subtotal, $matching] = $this->measured($kept);
+        if ($this->minSubtotal !== null && $subtotal->compare($kept->inCurrency(Money::of($this->minSubtotal))) < 0) {
+            return 0;
+        }
+        // What it gives of its own named items is not bought for it.
+        $bought = array_sum(array_map(fn(BasketLine $line): int => $this->givesOthers() && $this->giftable(new Basket([$line], '')) !== [] ? 0 : $line->quantity, $matching));
+
+        return intdiv($bought, $this->buyQuantity) * $this->getQuantity;
+    }
+
+    /**
+     * Whether it could give items for the cart to hold (missingGift()), whatever the cart: a free gift, or buy-get
+     * giving its items free, uncapped, of a product the shop can tell.
+     */
+    public function givesItems(): bool
+    {
+        return match ($this->kind) {
+            CouponKind::FreeGift => $this->giftProductId !== null && $this->addsItems,
+            CouponKind::BuyGet => $this->addsGiven(new Basket([], '')),
+            default => false,
+        };
+    }
+
+    /**
+     * @return array{productId: int, quantity: int}|null
+     */
+    private function missingGiven(Basket $basket): ?array
+    {
+        if (!$this->addsGiven($basket)) {
+            return null;
+        }
+        $matching = $this->matching($basket);
+        if (!$this->givesOthers()) {
+            $product = array_first($matching)?->productId;
+            $round = $this->buyQuantity + $this->getQuantity;
+            $left = array_sum(array_map(static fn(BasketLine $line): int => $line->quantity, $matching)) % $round;
+
+            return $product === null || $left < $this->buyQuantity ? null : ['productId' => $product, 'quantity' => $round - $left];
+        }
+        $product = $this->getProductIds[0];
+        $bought = array_sum(array_map(static fn(BasketLine $line): int => $line->productId === $product ? 0 : $line->quantity, $matching));
+        $given = array_sum(array_map(static fn(BasketLine $line): int => $line->quantity, $this->giftable($basket)));
+        $missing = intdiv($bought, $this->buyQuantity) * $this->getQuantity - $given;
+
+        return $missing > 0 ? ['productId' => $product, 'quantity' => $missing] : null;
+    }
+
+    /**
+     * Buy-get giving its items free, without a cap, of a product the shop can tell: the one the items it applies
+     * to are all of (none in the cart yet counts), or the one product it names. The shop adds those it gives, so
+     * the cart needs only those to buy. Given at a price, they are the shopper's to choose, as when the shop says
+     * the shopper adds them.
+     */
+    private function addsGiven(Basket $basket): bool
+    {
+        if ($this->kind !== CouponKind::BuyGet || !$this->addsItems || $this->cap !== null || Money::of($this->amount)->compare(Money::of('100')) < 0) {
+            return false;
+        }
+        if ($this->givesOthers()) {
+            return $this->getCategoryIds === [] && \count($this->getProductIds) === 1;
+        }
+
+        return \count(array_unique(array_map(static fn(BasketLine $line): int => $line->productId, $this->matching($basket)))) <= 1;
     }
 
     /**

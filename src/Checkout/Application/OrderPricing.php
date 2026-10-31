@@ -40,7 +40,6 @@ use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
-use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\PriceAdjustment;
 use OrillaCart\Reports\Application\ShopCalendar;
 use OrillaCart\Settings\Application\Currencies;
@@ -74,9 +73,9 @@ use Psr\Log\LoggerInterface;
  *
  * Coupons take money off the items before tax is charged, and free shipping makes the cheapest way to ship cost nothing
  * (every way, when the coupon says so).
- * A free gift that holds is added to the items, when it is for sale, and the order priced again with it.
+ * The items coupons give (GivenItems) are items like any other: the coupon that gives one takes its price off.
  *
- * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, gift: bool, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
+ * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, given: ?string, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
  * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string, shop_shipping: array{carrier: string, rate: string, collect_at: ?PickupPointView}|null, shop_fees: list<string>}
  */
 final readonly class OrderPricing
@@ -105,7 +104,7 @@ final readonly class OrderPricing
      * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order or
      * keeps from it.
      *
-     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
      * @param string|null  $postcode   the shipping address's postcode, for rates that ship to some postcodes only
      * @param list<string> $codes      coupon codes; those that do not hold are left out, with the reason
@@ -120,15 +119,17 @@ final readonly class OrderPricing
      *                                 the shop's own currency when null. Unit prices given are in it already,
      *                                 and are what the customer pays: they do not go through Tax::asPaid() again.
      * @param list<string>|null $automatic the automatic discounts that may apply, by code; null for the shop's now
+     * @param bool $itemsOnly the items and what the coupons take off them only: no shipping, fees or tax service
+     *                        asked, for what coupons give (GivenItems)
      *
      * @return Priced
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null, bool $itemsOnly = false): array
     {
         $currency ??= $this->settings->current()->currency;
-        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $reverseChargeGoods);
+        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $reverseChargeGoods, itemsOnly: $itemsOnly);
         // Collected at one of the shop's places: the goods are handed over there, so they are taxed there, at
         // home (no reverse charge for goods, no import or export), whatever the shopper's address. A courier's
         // office or locker is still delivery to the customer: it changes nothing.
@@ -137,9 +138,32 @@ final readonly class OrderPricing
         if ($handedOver !== null) {
             $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $goods, $handedOver);
         }
-        $gifts = $this->gifts($priced['discounts']->gifts, $customerId);
 
-        return $gifts === [] ? $priced : $this->priceItems([...$items, ...$gifts], $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $goods, $handedOver);
+        return $priced;
+    }
+
+    /**
+     * Whether an item given is not given after all, as priced: the coupon that gives it did not hold, or took off
+     * less than the items it gives cost (one it leaves out, as on sale). Its cart is then kept in step again.
+     *
+     * @param array{lines: list<array{given: ?string, total: Money, ...}>, discounts: AppliedDiscounts, ...} $priced
+     */
+    public static function unearnedGiven(array $priced, int $decimals): bool
+    {
+        $given = [];
+        foreach ($priced['lines'] as $line) {
+            if ($line['given'] !== null) {
+                $given[$line['given']] = ($given[$line['given']] ?? Money::zero())->add($line['total']);
+            }
+        }
+        foreach ($given as $code => $cost) {
+            $coupon = array_find($priced['discounts']->coupons, static fn(AppliedCoupon $coupon): bool => $coupon->code === (string) $code);
+            if ($coupon === null || Money::of($coupon->amount)->rounded($decimals)->compare($cost->rounded($decimals)) < 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -232,31 +256,7 @@ final readonly class OrderPricing
     }
 
     /**
-     * The free gifts to add that are for sale in that quantity; a gift that is not is left out.
-     *
-     * @param list<array{productId: int, quantity: int}> $gifts
-     *
-     * @return list<array{product_id: int, option_ids: list<int>, quantity: int, gift: bool}>
-     */
-    private function gifts(array $gifts, ?int $customerId): array
-    {
-        $items = [];
-        foreach ($gifts as $gift) {
-            try {
-                $quote = $this->quotes->quote(new QuoteRequest($gift['productId'], [], $gift['quantity'], $customerId));
-            } catch (NotFound|RuleViolation) {
-                continue;
-            }
-            if ($quote->forSale && ($quote->available === null || $quote->available >= $gift['quantity'])) {
-                $items[] = ['product_id' => $gift['productId'], 'option_ids' => [], 'quantity' => $gift['quantity'], 'gift' => true];
-            }
-        }
-
-        return $items;
-    }
-
-    /**
-     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
      * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      * @param list<string> $codes
@@ -264,7 +264,7 @@ final readonly class OrderPricing
      *
      * @return Priced
      */
-    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null, ?TaxAddress $handedOver = null): array
+    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null, ?TaxAddress $handedOver = null, bool $itemsOnly = false): array
     {
         // Where the goods are taxed: where they are handed over (the shop's place they are collected at), else
         // where they are shipped. Which ways to ship are offered still goes by the shipping address.
@@ -330,7 +330,7 @@ final readonly class OrderPricing
             $unitPrice = (string) array_reduce($parts, static fn(Money $sum, array $part): Money => $sum->add($part['unit']), Money::zero());
             $total = Money::of($unitPrice)->times($line['quantity']);
             $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes'], 'group' => $part['group'], 'tax_code' => $part['tax_code'], 'taxed' => $part['taxed']], $parts);
-            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'places' => [], 'gift' => $line['gift'] ?? false, 'personalisation' => $line['personalisation'] ?? []];
+            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'places' => [], 'given' => $line['given'] ?? null, 'personalisation' => $line['personalisation'] ?? []];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }
@@ -379,7 +379,7 @@ final readonly class OrderPricing
         $chosen = null;
         $freeFrom = null;
         $shipsFrom = null;
-        if ($needsShipping) {
+        if ($needsShipping && !$itemsOnly) {
             // Rates are the shop's: they look at what the order is worth in its currency, as the shopper's amount
             // stands for it (Currencies::amount() of a band's end is what the page shows).
             $query = new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $this->shopAmount($bill->subtotal()->subtract($bill->discount()), $currency), $postcode);
@@ -457,7 +457,7 @@ final readonly class OrderPricing
             }
         }
         $shopFees = [];
-        if ($lines !== []) {
+        if ($lines !== [] && !$itemsOnly) {
             // Fees are worked out in the shop's currency, then converted.
             $back = fn(Money $amount): string => (string) $this->currencies->back($amount, $currency);
             $this->charge($bill, new FeeQuery(
@@ -577,7 +577,8 @@ final readonly class OrderPricing
         foreach ($priced['lines'] as $index => $line) {
             $taken = $this->take($line['quote'], $line['quantity']);
             $charged = array_merge([], ...array_map(static fn(int $place): array => isset($items[$place]) ? $items[$place]->taxes : [], $line['places']));
-            $lines[] = $this->line($line, $taken, self::lineTaxes($charged), [...self::couponAdjustments($priced['discounts'], $priced['coupon_lines'], $index), ...$priced['changes'][$index] ?? []]);
+            $given = $line['given'] === null ? null : array_find($priced['discounts']->coupons, static fn(AppliedCoupon $coupon): bool => $coupon->code === $line['given']);
+            $lines[] = $this->line($line, $taken, self::lineTaxes($charged), [...self::couponAdjustments($priced['discounts'], $priced['coupon_lines'], $index), ...$priced['changes'][$index] ?? []], $given);
         }
 
         return $lines;
@@ -600,13 +601,13 @@ final readonly class OrderPricing
         $shop = $priced['shop_shipping'];
         foreach ($shipping as $charge) {
             $free = array_values(array_filter($priced['discounts']->coupons, static fn(AppliedCoupon $coupon): bool => $coupon->freeShipping));
-            $lines[] = self::chargeLine($charge, OrderLine::SHIPPING, array_map(
+            $lines[] = self::chargeLine($charge, 'shipping', array_map(
                 static fn(AppliedCoupon $coupon): AdjustmentView => new AdjustmentView($coupon->automatic ? PriceAdjustment::AUTOMATIC : PriceAdjustment::COUPON, $coupon->code, $coupon->description, '0', PriceAdjustment::ORDER, true),
                 $free,
             ), $shop === null ? null : "{$shop['carrier']} – {$shop['rate']}");
         }
         foreach ($bill->charges(BilledCharge::FEE) as $index => $charge) {
-            $lines[] = self::chargeLine($charge, OrderLine::FEE, [], $priced['shop_fees'][$index] ?? null);
+            $lines[] = self::chargeLine($charge, 'fee', [], $priced['shop_fees'][$index] ?? null);
         }
 
         return $lines;
@@ -630,9 +631,9 @@ final readonly class OrderPricing
     /**
      * @param list<AdjustmentView> $adjustments
      */
-    private static function chargeLine(BilledCharge $charge, string $kind, array $adjustments, ?string $shopLabel = null): NewOrderLine
+    private static function chargeLine(BilledCharge $charge, string $type, array $adjustments, ?string $shopLabel = null): NewOrderLine
     {
-        return new NewOrderLine(null, null, [], [], $charge->label, null, 1, (string) $charge->amount, (string) $charge->amount, self::lineTaxes($charge->taxes), false, [], adjustments: $adjustments, kind: $kind, shopWords: $shopLabel === null || $shopLabel === $charge->label ? [] : ['name' => $shopLabel]);
+        return new NewOrderLine(null, null, [], [], $charge->label, null, 1, (string) $charge->amount, (string) $charge->amount, self::lineTaxes($charge->taxes), false, [], adjustments: $adjustments, type: $type, shopWords: $shopLabel === null || $shopLabel === $charge->label ? [] : ['name' => $shopLabel]);
     }
 
     /**
@@ -696,7 +697,7 @@ final readonly class OrderPricing
      * @param list<LineTaxView>    $taxes
      * @param list<AdjustmentView> $adjustments
      */
-    private function line(array $line, array $taken, array $taxes, array $adjustments): NewOrderLine
+    private function line(array $line, array $taken, array $taxes, array $adjustments, ?AppliedCoupon $given = null): NewOrderLine
     {
         // An item owes as many as its scarcest part: the product, or one of its options.
         $owed = [];
@@ -728,7 +729,10 @@ final readonly class OrderPricing
             array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
             $line['quote']->contents === [] ? [] : $line['bundle_choices'],
             $line['personalisation'],
+            type: $line['given'] === null ? 'item' : 'given',
             shopWords: $this->shopWords($line),
+            givenCode: $line['given'],
+            givenDescription: $given->description ?? '',
         );
     }
 
@@ -870,7 +874,7 @@ final readonly class OrderPricing
      * Whether an import scheme takes the order's goods: what they are worth before shipping and tax, in the shop's
      * currency (a price entered with tax without the shop's), and the dearest of them for limits per item.
      *
-     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, gift?: bool, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      * @param array<int, ItemQuote> $quoted
      */
     private function importDecision(array $items, array $quoted, ?TaxAddress $shipping, string $currency, bool $inclusive): ImportDecision

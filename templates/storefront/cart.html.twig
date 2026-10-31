@@ -27,9 +27,13 @@
             </thead>
             <tbody>
                 {% for line in cart.lines %}
-                    <tr data-orillacart-line="{{ line.id }}">
+                    <tr data-orillacart-line="{{ line.id }}"{{ line.type == 'given' ? ' class="orillacart-cart__given"' }}>
                         <td data-label="{{ __('Product') }}">
                             {% if product_urls[line.product_id] is defined %}<a href="{{ product_urls[line.product_id] }}">{{ line.name }}</a>{% else %}{{ line.name }}{% endif %}
+                            {% if line.type == 'given' %}
+                                {# translators: %s: the offer that gives the item, as the shop describes it -#}
+                                <br><small class="orillacart-gift">{{ line.given_label ? __('Free with %s')|format(line.given_label) : __('Free gift') }}</small>
+                            {% endif %}
                             {% for option in line.options %}
                                 <br><small>{{ option.attribute }}: {{ option.option }}</small>
                             {% endfor %}
@@ -53,11 +57,15 @@
                         </td>
                         <td data-label="{{ __('Price') }}">{{ (shown ? shown.lines[loop.index0].unit_price : line.unit_price)|money(cart.currency) }}</td>
                         <td data-label="{{ __('Quantity') }}">
+                            {% if not line.quantity_changeable %}
+                                {{ line.quantity }}
+                            {% else %}
                             <input class="orillacart-quantity" type="number" min="1" max="{{ line.available ?? 999 }}" step="1" inputmode="numeric" value="{{ line.quantity }}"
                                 {# translators: %s: product name -#}
                                 aria-label="{{ __('Quantity of %s')|format(line.name) }}" data-orillacart-quantity="{{ line.id }}">
+                            {% endif %}
                         </td>
-                        <td data-label="{{ __('Total') }}">{{ (shown ? shown.lines[loop.index0].total : line.total)|money(cart.currency) }}</td>
+                        <td data-label="{{ __('Total') }}">{{ line.type == 'given' ? __('Free') : (shown ? shown.lines[loop.index0].total : line.total)|money(cart.currency) }}</td>
                         <td>
                             {# translators: %s: what is removed: a product, an attribute or a gift card -#}
                             <button type="button" class="orillacart-remove" data-orillacart-remove="{{ line.id }}" aria-label="{{ __('Remove %s')|format(line.name) }}">&times;</button>

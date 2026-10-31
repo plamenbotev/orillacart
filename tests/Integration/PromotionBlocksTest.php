@@ -67,11 +67,11 @@ final class PromotionBlocksTest extends RestTestCase
         $empty = $this->request('GET', '/cart/promotions');
         self::assertSame([200, ['html' => ''], 'no-store, private'], [$empty->get_status(), $this->data($empty), $empty->get_headers()['Cache-Control'] ?? null], 'an empty cart has nothing to say');
 
-        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 2], nonce: true));
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true));
         $html = $this->html($this->request('GET', '/cart/promotions'));
         self::assertStringContainsString('Add 1 more Desk lamp to get 1 free.', $html);
         self::assertStringContainsString('role="progressbar"', $html);
-        self::assertStringContainsString('aria-valuenow="2" aria-valuetext="2 of 3 items"', $html);
+        self::assertStringContainsString('aria-valuenow="1" aria-valuetext="1 of 2 items"', $html, 'the shop adds the one given');
 
         $this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true);
         $html = $this->html($this->request('GET', '/cart/promotions'));

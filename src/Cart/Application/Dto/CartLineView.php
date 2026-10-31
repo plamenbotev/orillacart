@@ -40,5 +40,10 @@ final readonly class CartLineView
         public ?string $message = null,
         /** @var list<array{label: string, answer: string, price: ?string}> the answers to the product's forms, each with what it adds to an item */
         public array $personalisation = [],
+        /** "product": the shopper's; "given": by a discount, whose code givenBy is and whose description givenLabel. */
+        public string $type = 'product',
+        public bool $quantityChangeable = true,
+        public ?string $givenBy = null,
+        public ?string $givenLabel = null,
     ) {}
 }

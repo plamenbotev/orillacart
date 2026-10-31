@@ -53,6 +53,8 @@ final readonly class SettingsView
         public string $reportDay = 'paid',
         /** @var list<string> */
         public array $reportDays = [],
+        /** What becomes of a free item when items it came with go back. */
+        public string $freeItemsOnReturn = 'charged',
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -83,6 +85,7 @@ final readonly class SettingsView
             $settings->minimumOrder === null ? null : (string) $settings->minimumOrder,
             $settings->reportDay->value,
             ReportDay::values(),
+            $settings->freeItemsOnReturn->value,
         );
     }
 }

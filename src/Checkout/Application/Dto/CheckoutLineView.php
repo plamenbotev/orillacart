@@ -25,9 +25,11 @@ final readonly class CheckoutLineView
         public string $discount = '0',
         /** @var list<array{name: string, quantity: int}> what one bundle holds */
         public array $contents = [],
-        /** A free gift a discount added to the order. */
+        /** An item a discount gives with the order. */
         public bool $gift = false,
         /** @var list<array{label: string, answer: string}> the answers to the product's forms */
         public array $personalisation = [],
+        /** For an item given: the discount that gives it, as the shop describes it. */
+        public ?string $givenWith = null,
     ) {}
 }

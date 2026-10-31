@@ -65,13 +65,41 @@ final class CouponProgressTest extends TestCase
         self::assertTrue($coupon->progress(self::basket(self::lamp(2)))?->holds());
     }
 
-    public function testBuyTwoGetOneOfTheSameNeedsThreeOfThem(): void
+    public function testBuyTwoGetOneFreeOfTheSameNeedsTheTwoBought(): void
     {
         $coupon = self::coupon(new CouponTerms('THREE', CouponKind::BuyGet, Money::of('100'), productIds: [10], buyQuantity: 2, getQuantity: 1));
 
-        self::assertSame(2, $coupon->progress(self::basket(self::lamp(1)))?->unitsShort());
-        self::assertSame(1, $coupon->progress(self::basket(self::lamp(2), self::book(5)))?->unitsShort(), 'the one given is one of them too');
-        self::assertTrue($coupon->progress(self::basket(self::lamp(3)))?->holds());
+        self::assertSame(2, $coupon->progress(self::basket(self::book(1)))?->unitsShort());
+        self::assertSame(1, $coupon->progress(self::basket(self::lamp(1)))?->unitsShort());
+        self::assertTrue($coupon->progress(self::basket(self::lamp(2), self::book(5)))?->holds(), 'the shop adds the one given');
+        self::assertSame(['productId' => 10, 'quantity' => 1], $coupon->missingGift(self::basket(self::lamp(2))));
+        self::assertNull($coupon->missingGift(self::basket(self::lamp(3))), 'the third is the one given');
+        self::assertNull($coupon->missingGift(self::basket(self::lamp(1))));
+    }
+
+    public function testBuyTwoGetOneOfTheSameAtAPriceNeedsThreeOfThem(): void
+    {
+        $coupon = self::coupon(new CouponTerms('HALF', CouponKind::BuyGet, Money::of('50'), productIds: [10], buyQuantity: 2, getQuantity: 1));
+
+        self::assertSame(1, $coupon->progress(self::basket(self::lamp(2)))?->unitsShort(), 'the one given is the shopper\'s to add');
+        self::assertNull($coupon->missingGift(self::basket(self::lamp(2))));
+    }
+
+    public function testBuyTwoOfSeveralProductsGetOneFreeLeavesTheChoiceToTheShopper(): void
+    {
+        $coupon = self::coupon(new CouponTerms('MIX', CouponKind::BuyGet, Money::of('100'), buyQuantity: 2, getQuantity: 1));
+
+        self::assertSame(1, $coupon->progress(self::basket(self::lamp(1), self::book(1)))?->unitsShort(), 'which is given is not the shop\'s to tell');
+        self::assertNull($coupon->missingGift(self::basket(self::lamp(1), self::book(1))));
+    }
+
+    public function testBuyOneGetTheOneProductItNamesFreeHasItAdded(): void
+    {
+        $coupon = self::coupon(new CouponTerms('SHADE', CouponKind::BuyGet, Money::of('100'), productIds: [10], buyQuantity: 1, getQuantity: 1, getProductIds: [30]));
+
+        self::assertTrue($coupon->progress(self::basket(self::lamp(1)))?->holds());
+        self::assertSame(['productId' => 30, 'quantity' => 1], $coupon->missingGift(self::basket(self::lamp(2), self::shade(1))));
+        self::assertNull($coupon->missingGift(self::basket(self::lamp(2), self::shade(2))));
     }
 
     public function testBuyTwoGetAnotherNeedsTheOneItGives(): void

@@ -10,6 +10,7 @@ use OrillaCart\Settings\Application\Dto\ShopLocation;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\FreeItemsOnReturn;
 use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Settings\Domain\SettingsRepository;
@@ -70,6 +71,7 @@ final readonly class SettingsService
             $command->returnDays,
             $command->minimumOrder === null || $command->minimumOrder === '' ? null : Money::of($command->minimumOrder),
             ReportDay::from($command->reportDay),
+            FreeItemsOnReturn::from($command->freeItemsOnReturn),
         );
 
         if (!$current->equals($previous)) {
@@ -110,6 +112,7 @@ final readonly class SettingsService
             $current->returnDays,
             $current->minimumOrder,
             $current->reportDay,
+            $current->freeItemsOnReturn,
         ));
     }
 
@@ -144,6 +147,7 @@ final readonly class SettingsService
             $current->returnDays,
             $current->minimumOrder,
             $current->reportDay,
+            $current->freeItemsOnReturn,
         ));
     }
 
@@ -177,6 +181,7 @@ final readonly class SettingsService
             $returnDays,
             $current->minimumOrder,
             $current->reportDay,
+            $current->freeItemsOnReturn,
         ));
     }
 }

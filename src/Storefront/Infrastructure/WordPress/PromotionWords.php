@@ -98,6 +98,7 @@ final readonly class PromotionWords
             'short' => $promotion->short,
             'units_short' => $promotion->unitsShort(),
             'needs_given' => $promotion->needsGiven,
+            'declined' => $promotion->declined,
             'bar' => $promotion->applied ? null : self::bar($promotion),
         ];
     }

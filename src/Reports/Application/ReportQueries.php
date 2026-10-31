@@ -40,7 +40,7 @@ interface ReportQueries
      * @param 'net'|'quantity' $sort
      * @param list<int>|null   $only these products alone, to compare them with another period
      *
-     * @return list<array{product_id: int, name: string, quantity: int, net: string, orders: int}>
+     * @return list<array{product_id: int, name: string, quantity: int, given: int, net: string, orders: int}> quantity: sold; given: given free by discounts
      */
     public function products(Period $period, string $currency, string $sort, int $limit, ?array $only = null): array;
 

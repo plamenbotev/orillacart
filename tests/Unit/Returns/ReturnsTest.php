@@ -8,6 +8,7 @@ use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Coupons\Application\EarnedItems;
 use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
@@ -233,7 +234,7 @@ final class ReturnsTest extends TestCase
         // The second request read the return as received; the first one refunds it while the second waits for the
         // order's lock, and the second reads the return again under it.
         $racing = new RacingReturnRepository($this->shop->returnRecords, fn() => $this->shop->returns->refund($return->id, new RefundReturn(outside: true), 7));
-        $second = new Returns($racing, $this->shop->orders, $this->shop->refunds, $this->shop->settingsService, $this->shop->clock, new GettextTranslations(), $this->shop->jobs->jobs);
+        $second = new Returns($racing, $this->shop->orders, $this->shop->refunds, $this->shop->settingsService, $this->shop->clock, new GettextTranslations(), $this->shop->jobs->jobs, new EarnedItems($this->shop->couponRecords, $this->shop->content));
 
         try {
             $second->refund($return->id, new RefundReturn(outside: true), 7);

@@ -55,6 +55,8 @@ final readonly class CouponView
         public bool $advertised = false,
         /** @var array<string, array<string, string>> its description in the site's other languages, by field and locale */
         public array $translations = [],
+        /** A free gift, or buy-get giving its items free: the shop adds the items given to the cart. */
+        public bool $addsItems = true,
     ) {}
 
     /**
@@ -99,6 +101,7 @@ final readonly class CouponView
             $terms->freeShippingEveryRate,
             $coupon->isAdvertised(),
             $translations,
+            $terms->addsItems,
         );
     }
 }

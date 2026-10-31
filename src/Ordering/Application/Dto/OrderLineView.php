@@ -46,12 +46,16 @@ final readonly class OrderLineView
         public bool $ships = true,
         /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> the answers to the product's forms, as sold */
         public array $personalisation = [],
-        /** "item", "shipping" or "fee". */
+        /** "item", "shipping" or "fee", as tax services and reports tell lines apart: an item given is an item. */
         public string $kind = 'item',
         public array $taxes = [],
         public array $adjustments = [],
         /** The line's place in the order, as refunds and edits name it. */
         public int $position = 0,
+        /** @var array{code: string, description: string}|null for an item given: the discount that gave it */
+        public ?array $givenBy = null,
+        /** What the line is: "item", "given" (by a discount), "shipping" or "fee". */
+        public string $type = 'item',
     ) {}
 
     /**
@@ -59,7 +63,7 @@ final readonly class OrderLineView
      */
     public static function fromLine(OrderLine $line, bool $forShop = false): self
     {
-        return new self($line->productId(), $line->variationId(), $forShop ? $line->shopName() : $line->name(), $line->sku(), $forShop ? $line->shopOptions() : $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $forShop ? $line->shopContents() : $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $forShop ? $line->shopPersonalisation() : $line->personalisation(), $line->kind(), array_map(self::tax(...), $line->taxes()), array_map(self::adjustment(...), $line->adjustments()), $line->position());
+        return new self($line->productId(), $line->variationId(), $forShop ? $line->shopName() : $line->name(), $line->sku(), $forShop ? $line->shopOptions() : $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $forShop ? $line->shopContents() : $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $forShop ? $line->shopPersonalisation() : $line->personalisation(), $line->type()->kind(), array_map(self::tax(...), $line->taxes()), array_map(self::adjustment(...), $line->adjustments()), $line->position(), ($given = $line->givenBy()) === null ? null : ['code' => $given->code, 'description' => $given->description], $line->type()->value);
     }
 
     private static function tax(OrderTax $tax): LineTaxView

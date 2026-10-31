@@ -82,8 +82,12 @@ export interface Adjustment {
 }
 
 export interface OrderLine {
-	/** An item, the shipping or a fee. */
+	/** An item (sold or given), the shipping or a fee. */
 	kind?: 'item' | 'shipping' | 'fee';
+	/** What the line is: an item sold, one a discount gave, the shipping or a fee. */
+	type?: 'item' | 'given' | 'shipping' | 'fee';
+	/** For an item given: the discount that gave it. */
+	given_by?: { code: string; description: string } | null;
 	/** Its place in the order, as refunds and edits name it. */
 	position?: number;
 	taxes?: LineTax[];

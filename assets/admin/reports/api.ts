@@ -81,6 +81,8 @@ export interface ProductRow {
 	product_id: number;
 	name: string;
 	quantity: number;
+	/** Given free by discounts, not counted in quantity. */
+	given: number;
 	net: string;
 	orders: number;
 	previous_quantity: number | null;

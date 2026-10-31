@@ -86,6 +86,8 @@ final readonly class SaveCoupon
         public bool $overridesPriceRules = false,
         /** Free shipping on every way to ship, express and abroad too; otherwise on the cheapest offered. */
         public bool $freeShippingEveryRate = false,
+        /** A free gift, or buy-get giving its items free: the shop adds the items given to the cart itself. */
+        public bool $addsItems = true,
         /**
          * Shown to shoppers: the promotion blocks tell of it, a code with the code to enter. Left out, an automatic
          * discount is shown and a code is not.

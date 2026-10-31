@@ -46,6 +46,6 @@ final readonly class PromotionProgress
             return [];
         }
 
-        return $this->promotions->forCart($this->pricing->discountRequest($priced, $address?->country, $owner->customerId, $currency), $priced['discounts']);
+        return $this->promotions->forCart($this->pricing->discountRequest($priced, $address?->country, $owner->customerId, $currency), $priced['discounts'], $contents->declined);
     }
 }

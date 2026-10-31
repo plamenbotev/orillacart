@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Returns\Application;
 
+use OrillaCart\Coupons\Application\EarnedItems;
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
+use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
@@ -34,6 +36,7 @@ use OrillaCart\Returns\Domain\ReturnRuleViolation;
 use OrillaCart\Returns\Domain\ReturnStatus;
 use OrillaCart\Returns\Domain\WithdrawalOrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Domain\FreeItemsOnReturn;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -59,6 +62,7 @@ final readonly class Returns
         private ClockInterface $clock,
         private Translations $translations,
         private Jobs $jobs,
+        private EarnedItems $earned,
     ) {}
 
     /**
@@ -125,6 +129,11 @@ final readonly class Returns
             }
         }
         ksort($items);
+        if ($this->settings->current()->freeItemsOnReturn === FreeItemsOnReturn::ComeBack->value) {
+            foreach ($this->unearned($order, $items) as $position => $units) {
+                throw new ReturnRuleViolation('Send back %1$d of "%2$s" too: it came free with the items you return.', 'orillacart_return_free_items', values: [$units, $order->lines[$position]->name]);
+            }
+        }
         $return = new ItemReturn($order->number, $items, ReturnReason::from($command->reason), $command->comment, $this->clock->now());
         $this->returns->save($return);
         // The shop reads the items in its own words, the customer in theirs (design 51).
@@ -324,7 +333,7 @@ final readonly class Returns
         }
         try {
             $refunds = $this->refunds->refund($order->number, new MakeRefund(
-                (string) $this->amount($order, $return->items()),
+                (string) $this->amount($order, $return->items(), $return->id()),
                 array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($return->items()), $return->items()),
                 restock: $command->restock,
                 reason: \sprintf('Return %d', $id),
@@ -453,7 +462,7 @@ final readonly class Returns
             $return->reason()->label(),
             $return->comment(),
             $return->answer(),
-            (string) $this->amount($order, $items),
+            (string) $this->amount($order, $items, $return->id()),
             $return->requestedAt()->format(\DATE_ATOM),
             $return->answeredAt()?->format(\DATE_ATOM),
             $return->receivedAt()?->format(\DATE_ATOM),
@@ -467,10 +476,19 @@ final readonly class Returns
      *
      * @param array<int, int> $items quantities by line position
      */
-    private function amount(OrderView $order, array $items): Money
+    private function amount(OrderView $order, array $items, ?int $returnId = null): Money
     {
         $decimals = new Currency($order->currency)->decimals();
         $amount = Money::zero();
+        if ($this->settings->current()->freeItemsOnReturn === FreeItemsOnReturn::Charged->value) {
+            // A free item what is kept no longer earns is the customer's at its price: kept from what goes back.
+            foreach ($this->unearned($order, $items, $returnId) as $position => $units) {
+                $line = $order->lines[$position];
+                $percent = array_reduce($line->taxes, static fn(Money $sum, LineTaxView $tax): Money => $sum->add(Money::of($tax->percent)), Money::zero());
+                $price = Money::of($line->unitPrice)->times($units);
+                $amount = $amount->subtract($order->pricesIncludeTax ? $price : $price->add($price->percent((string) $percent)));
+            }
+        }
         foreach ($items as $position => $quantity) {
             $line = $order->lines[$position] ?? null;
             if (!$line instanceof OrderLineView || $line->quantity < 1) {
@@ -480,7 +498,58 @@ final readonly class Returns
             $amount = $amount->add($gross->proportion(Money::of((string) $quantity), Money::of((string) $line->quantity)));
         }
 
-        return $amount->rounded($decimals);
+        return ($amount->isNegative() ? Money::zero() : $amount)->rounded($decimals);
+    }
+
+    /**
+     * The free items the customer would keep that what they keep no longer earns, once these items go back with
+     * those already refunded or held by other returns: by the given line's position. None for a coupon gone since.
+     *
+     * @param array<int, int> $items quantities by line position, going back now
+     * @param int|null        $returnId the return they are, left out of the others
+     *
+     * @return array<int, int>
+     */
+    private function unearned(OrderView $order, array $items, ?int $returnId = null): array
+    {
+        $back = $items;
+        foreach ($this->returns->forOrder($order->number) as $other) {
+            if ($other->id() !== $returnId && $other->status()->holdsItems()) {
+                foreach ($other->items() as $position => $quantity) {
+                    $back[$position] = ($back[$position] ?? 0) + $quantity;
+                }
+            }
+        }
+        $kept = [];
+        $given = [];
+        foreach ($order->lines as $position => $line) {
+            \assert($line instanceof OrderLineView);
+            $left = max(0, $line->quantity - $line->refundedQuantity - ($back[$position] ?? 0));
+            if ($line->givenBy !== null) {
+                $given[$line->givenBy['code']][$position] = $left;
+            } else {
+                $kept[] = ['product_id' => $line->productId, 'quantity' => $left, 'total' => (string) Money::of($line->total)->proportion(Money::of((string) $left), Money::of((string) max(1, $line->quantity)))];
+            }
+        }
+        $unearned = [];
+        foreach ($given as $code => $lines) {
+            $earned = $this->earned->earned((string) $code, $kept, $order->currency);
+            if ($earned === null) {
+                continue;
+            }
+            // The last given go first.
+            $over = array_sum($lines) - $earned;
+            foreach (array_reverse($lines, true) as $position => $left) {
+                $units = min($over, $left);
+                if ($units > 0) {
+                    $unearned[$position] = $units;
+                    $over -= $units;
+                }
+            }
+        }
+        ksort($unearned);
+
+        return $unearned;
     }
 
     /**

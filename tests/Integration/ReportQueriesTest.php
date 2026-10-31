@@ -80,7 +80,7 @@ final class ReportQueriesTest extends RestTestCase
         $later = new Period(new \DateTimeImmutable('2030-03-03'), new \DateTimeImmutable('2030-03-31'));
         self::assertSame(['new' => 1, 'returning' => 1], array_intersect_key(array_reduce($this->queries->customerSeries($later, Interval::Month, 'EUR'), static fn(array $sum, array $month): array => ['new' => $sum['new'] + $month['new'], 'returning' => $sum['returning'] + $month['returning']], ['new' => 0, 'returning' => 0]), ['new' => 0, 'returning' => 0]), 'customer 7 ordered before');
 
-        self::assertSame([['product_id' => $this->product, 'name' => 'Report lamp', 'quantity' => 6, 'net' => '165', 'orders' => 3]], $this->queries->products($march, 'EUR', 'net', 10));
+        self::assertSame([['product_id' => $this->product, 'name' => 'Report lamp', 'quantity' => 6, 'given' => 0, 'net' => '165', 'orders' => 3]], $this->queries->products($march, 'EUR', 'net', 10));
         self::assertSame([['category_id' => $this->category, 'quantity' => 6, 'net' => '165', 'orders' => 3]], array_map(static fn(array $row): array => array_diff_key($row, ['name' => 0]), $this->queries->categories($march, 'EUR', 10)));
         self::assertSame([['code' => 'SPRING', 'orders' => 1, 'amount' => '5']], $this->queries->coupons($march, 'EUR', 10));
         self::assertSame([['key' => 'BG', 'orders' => 3, 'total' => '170']], $this->queries->breakdown($march, 'EUR', 'country', 5));

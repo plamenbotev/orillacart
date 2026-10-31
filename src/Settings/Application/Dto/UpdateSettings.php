@@ -6,6 +6,7 @@ namespace OrillaCart\Settings\Application\Dto;
 
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\FreeItemsOnReturn;
 use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
@@ -58,5 +59,8 @@ final readonly class UpdateSettings
         /** The day the reports count an order on: paid or placed. */
         #[Assert\Choice(callback: [ReportDay::class, 'values'])]
         public string $reportDay = 'paid',
+        /** A free item whose items go back: "charged" (its price kept from the refund), "come_back" or "stay_free". */
+        #[Assert\Choice(callback: [FreeItemsOnReturn::class, 'values'])]
+        public string $freeItemsOnReturn = 'charged',
     ) {}
 }

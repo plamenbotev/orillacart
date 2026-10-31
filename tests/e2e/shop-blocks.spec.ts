@@ -161,7 +161,6 @@ test.describe( 'A visitor', () => {
 			const addToCart = page.getByRole( 'button', {
 				name: 'Add to cart',
 			} );
-			await page.getByLabel( 'Quantity' ).fill( '2' );
 			await addToCart.click();
 			await expect( page.getByRole( 'status' ).first() ).toHaveText(
 				/Added/
@@ -174,9 +173,9 @@ test.describe( 'A visitor', () => {
 				page.getByRole( 'progressbar', {
 					name: 'Towards E2E lamps: buy 2, get 1 free',
 				} )
-			).toHaveAttribute( 'aria-valuetext', '2 of 3 items' );
+			).toHaveAttribute( 'aria-valuetext', '1 of 2 items' );
 
-			await page.getByLabel( 'Quantity' ).fill( '1' );
+			// The second lamp has the shop add the third, the free one.
 			await addToCart.click();
 			await expect(
 				page.getByText(
@@ -190,6 +189,25 @@ test.describe( 'A visitor', () => {
 			// A page a cache keeps is filled in by the script, from the shopper's own cart.
 			await page.reload();
 			await expect( page.getByText( /applied, you save/ ) ).toBeVisible();
+
+			// The cart lists the lamp the shop added, free.
+			await page.goto( shop.urls.cart );
+			const given = page.locator( '.orillacart-cart__given' );
+			await expect( given ).toContainText( 'E2E Lamp' );
+			await expect( given ).toContainText(
+				'Free with E2E lamps: buy 2, get 1 free'
+			);
+			// Removed, it is offered back on the promotions, and comes back.
+			await given.getByRole( 'button', { name: /Remove/ } ).click();
+			await expect( given ).toHaveCount( 0 );
+			await page.goto( blocks.link );
+			await expect(
+				page.getByText( /you removed the free item/ )
+			).toBeVisible();
+			await page.getByRole( 'button', { name: 'Add it back' } ).click();
+			await expect( page.getByText( /applied, you save/ ) ).toBeVisible();
+			await page.goto( shop.urls.cart );
+			await expect( given ).toContainText( 'E2E Lamp' );
 		} finally {
 			await remove(
 				requestUtils,

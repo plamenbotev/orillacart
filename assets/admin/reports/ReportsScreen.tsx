@@ -918,6 +918,7 @@ function ProductsTab( {
 					header={ [
 						__( 'Product', 'orillacart' ),
 						__( 'Items sold', 'orillacart' ),
+						__( 'Given free', 'orillacart' ),
 						__( 'Net sales', 'orillacart' ),
 						__( 'Orders', 'orillacart' ),
 						__( 'Change', 'orillacart' ),
@@ -932,6 +933,7 @@ function ProductsTab( {
 								{ row.name }
 							</a>,
 							number( row.quantity ),
+							number( row.given ),
 							money( row.net, currency ),
 							number( row.orders ),
 							byQuantity ? (

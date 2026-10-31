@@ -18,10 +18,13 @@ use OrillaCart\Cart\Domain\CartLine;
 use OrillaCart\Cart\Domain\CartLineNotFound;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Domain\CartRuleViolation;
+use OrillaCart\Cart\Domain\Event\CartChanged;
 use OrillaCart\Cart\Domain\Event\CartItemAdded;
 use OrillaCart\Cart\Domain\Event\CartItemChanged;
 use OrillaCart\Cart\Domain\Event\CartItemRemoved;
 use OrillaCart\Cart\Domain\Event\LeftCartOrdered;
+use OrillaCart\Cart\Domain\GivenItem;
+use OrillaCart\Cart\Domain\GivenLine;
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
@@ -135,6 +138,7 @@ final readonly class CartService
         // Files in a cart last as long as it does.
         $this->uploads->hold($files);
         $this->events->dispatch(new CartItemAdded($quote->productId, $quote->variationId, $command->quantity, $cart->customerId()));
+        $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
 
         return new CartResult($this->view($cart), $newToken);
     }
@@ -166,6 +170,7 @@ final readonly class CartService
         $this->carts->save($cart);
         if ($command->quantity !== $previous) {
             $this->events->dispatch($event);
+            $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
         }
 
         return new CartResult($this->view($cart), $newToken);
@@ -185,7 +190,23 @@ final readonly class CartService
     public function contents(CartOwner $owner): ?CartContents
     {
         [$cart] = $this->find($owner);
-        if ($cart === null || $cart->isEmpty()) {
+
+        return $cart === null ? null : $this->contentsOf($cart);
+    }
+
+    /**
+     * What the cart holds, by its id; null for no cart or an empty one.
+     */
+    public function contentsById(int $cartId): ?CartContents
+    {
+        $cart = $this->carts->find($cartId);
+
+        return $cart === null ? null : $this->contentsOf($cart);
+    }
+
+    private function contentsOf(Cart $cart): ?CartContents
+    {
+        if ($cart->isEmpty()) {
             return null;
         }
         $refusals = [];
@@ -214,10 +235,45 @@ final readonly class CartService
                 'quantity' => $line->quantity(),
                 'extra' => (string) FieldAnswers::price($answers),
                 'personalisation' => FieldAnswers::rows($answers),
+                'given' => $line->givenBy(),
             ];
         }
 
-        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit(), $cart->fingerprint());
+        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit(), $cart->fingerprint(), $cart->customerId(), $cart->declined());
+    }
+
+    /**
+     * Keeps the items discounts give in the cart in step with what they give now (Cart::keepGiven()).
+     *
+     * @param list<GivenItem> $items
+     *
+     * @return bool whether the cart changed
+     */
+    public function keepGiven(int $cartId, array $items): bool
+    {
+        $cart = $this->carts->find($cartId);
+        if ($cart === null || !$cart->keepGiven($items, $this->clock->now())) {
+            return false;
+        }
+        $this->carts->save($cart);
+
+        return true;
+    }
+
+    /**
+     * The shopper wants the items a discount gives after all, having removed them: they are given again.
+     */
+    public function restoreGiven(CartOwner $owner, string $code): CartResult
+    {
+        [$cart, $newToken] = $this->find($owner);
+        if ($cart === null) {
+            return new CartResult(CartView::empty(), null);
+        }
+        $cart->undecline($code, $this->clock->now());
+        $this->carts->save($cart);
+        $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
+
+        return new CartResult($this->view($cart), $newToken);
     }
 
     /**
@@ -246,6 +302,7 @@ final readonly class CartService
         if ($cart !== null) {
             $cart->useCoupons($codes, $this->clock->now());
             $this->carts->save($cart);
+            $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
         }
     }
 
@@ -416,6 +473,7 @@ final readonly class CartService
         $this->carts->save($cart);
         // The files it names last as long as the cart does from now.
         $this->uploads->holdNamed($cart->fileHashes());
+        $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
 
         return [$cart, $token];
     }
@@ -482,7 +540,7 @@ final readonly class CartService
         $currency = $this->currencies->current();
         foreach ($quoted as [$line, $quote, $answers]) {
             if ($quote === null) {
-                $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, CartLineView::UNAVAILABLE);
+                $lines[] = new CartLineView($line->id(), $line->productId(), null, '', null, [], $line->quantity(), '0', '0', 0, CartLineView::UNAVAILABLE, type: $line->type(), quantityChangeable: $line->quantityChangeable(), givenBy: $line->givenBy());
                 $orderable = false;
                 continue;
             }
@@ -495,7 +553,8 @@ final readonly class CartService
                 default => null,
             };
             $unitPrice = $this->currencies->price(Money::of($quote->unitPrice), $currency);
-            $total = $unitPrice->times($line->quantity());
+            // An item given costs nothing: the discount that gives it takes off its price.
+            $total = $line->givenBy() === null ? $unitPrice->times($line->quantity()) : Money::zero();
             $lines[] = new CartLineView(
                 $line->id(),
                 $quote->productId,
@@ -516,6 +575,10 @@ final readonly class CartService
                     default => null,
                 },
                 array_map(fn(GivenAnswer $answer): array => ['label' => $answer->label, 'answer' => $answer->answer, 'price' => $answer->price === null ? null : (string) $this->currencies->price(Money::of($answer->price), $currency)], $answers ?? []),
+                $line->type(),
+                $line->quantityChangeable(),
+                $line->givenBy(),
+                $line instanceof GivenLine ? $line->label() : null,
             );
             $items += $line->quantity();
             $subtotal = $subtotal->add($total);

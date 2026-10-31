@@ -41,11 +41,14 @@ final readonly class Promotions
     /**
      * For a cart priced as checkout prices it: the promotions it gets, then those it could still get, the nearest
      * first. One that would not go with those it gets (it does not combine) is left out, as checkout would leave
-     * it out; a code in the cart that does not hold too, as the cart says why.
+     * it out; a code in the cart that does not hold too, as the cart says why. One that gives items the cart could
+     * not be given (none left in stock) takes nothing off, and is left out too.
+     *
+     * @param list<string> $declined the coupons whose items the shopper removed, by code: they may have them back
      *
      * @return list<PromotionView>
      */
-    public function forCart(DiscountRequest $request, AppliedDiscounts $applied): array
+    public function forCart(DiscountRequest $request, AppliedDiscounts $applied, array $declined = []): array
     {
         $advertised = $request->items === [] ? [] : $this->coupons->advertised();
         if ($advertised === []) {
@@ -78,7 +81,10 @@ final readonly class Promotions
         foreach ($advertised as $coupon) {
             $done = $got[$coupon->code()] ?? null;
             if ($done !== null) {
-                $gets[] = $this->view($coupon, $basket, $words, applied: $done);
+                $refused = \in_array($coupon->code(), $declined, true);
+                if ($refused || !$coupon->givesItems() || !Money::of($done->amount)->isZero()) {
+                    $gets[] = $this->view($coupon, $basket, $words, applied: $done, declined: $refused);
+                }
                 continue;
             }
             if (isset($applied->refused[$coupon->code()]) || self::blocked($coupon, $automatic, $got, $enteredCodes) || !$this->obtainable($coupon, $basket, $known, $now)) {
@@ -200,7 +206,7 @@ final readonly class Promotions
     /**
      * @param array<int, string> $words translated descriptions, by coupon id
      */
-    private function view(Coupon $coupon, Basket $basket, array $words, ?AppliedCoupon $applied = null, ?CouponProgress $progress = null): PromotionView
+    private function view(Coupon $coupon, Basket $basket, array $words, ?AppliedCoupon $applied = null, ?CouponProgress $progress = null, bool $declined = false): PromotionView
     {
         $terms = $coupon->terms();
         // A percentage is the same in any currency; an amount is the shop's.
@@ -235,6 +241,7 @@ final readonly class Promotions
             $progress->neededUnits ?? 0,
             $progress->needsGiven ?? false,
             $progress?->nearness() ?? 1.0,
+            $declined,
         );
     }
 }

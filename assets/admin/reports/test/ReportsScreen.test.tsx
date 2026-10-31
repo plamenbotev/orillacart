@@ -82,6 +82,7 @@ const products: RankingReport< ProductRow > = {
 			product_id: 47,
 			name: 'Desk Lamp',
 			quantity: 5,
+			given: 1,
 			net: '295',
 			orders: 4,
 			previous_quantity: 2,

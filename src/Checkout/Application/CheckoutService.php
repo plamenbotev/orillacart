@@ -26,6 +26,7 @@ use OrillaCart\Checkout\Domain\BilledCharge;
 use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
 use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Customers\Application\CustomerService;
@@ -103,6 +104,7 @@ final readonly class CheckoutService
         private ShownPrices $shownPrices,
         private LegalSettingsService $legal,
         private ShopOpening $opening,
+        private GivenItems $given,
     ) {}
 
     /**
@@ -137,6 +139,10 @@ final readonly class CheckoutService
             $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency, reverseChargeGoods: $goods->applies);
             $reverse = OrderPricing::underReverseCharge($reverse, $goods, $priced);
         }
+        // A free item that does not come free at this address: the cart is given what its coupons give here.
+        if (OrderPricing::unearnedGiven($priced, $this->currencies->decimals($currency)) && $this->given->keep($contents->cartId, $shipping)) {
+            return $this->summary($owner, $details);
+        }
         $bill = $priced['bill'];
         $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
         $due = $bill->total()->subtract($plan->total());
@@ -158,8 +164,10 @@ final readonly class CheckoutService
         $subtotal = $withTax === $includesTax ? $bill->subtotal() : array_reduce($lines, static fn(Money $sum, array $line): Money => $sum->add(Money::of($line[2])), Money::zero());
         $discount = $withTax === $includesTax ? $bill->discount() : array_reduce($lines, static fn(Money $sum, array $line): Money => $sum->add(Money::of($line[3])), Money::zero());
 
+        $descriptions = array_column(array_map(static fn(AppliedCoupon $coupon): array => [$coupon->code, $coupon->description], $priced['discounts']->coupons), 1, 0);
+
         return new CheckoutView(
-            array_map(static function (array $shown): CheckoutLineView {
+            array_map(static function (array $shown) use ($descriptions): CheckoutLineView {
                 [$line, $unitPrice, $total, $discount] = $shown;
 
                 return new CheckoutLineView(
@@ -172,8 +180,9 @@ final readonly class CheckoutService
                     $line['quote']->shownBackorder($line['quantity']),
                     $discount,
                     array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
-                    $line['gift'],
+                    $line['given'] !== null,
                     array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer']], $line['personalisation']),
+                    $line['given'] === null ? null : ($descriptions[$line['given']] ?? ''),
                 );
             }, $lines),
             $priced['needs_shipping'],
@@ -457,6 +466,12 @@ final readonly class CheckoutService
             }
         }
         $reverse = OrderPricing::underReverseCharge($reverse, $goods, $priced);
+        if (OrderPricing::unearnedGiven($priced, $this->currencies->decimals($currency))) {
+            // Never charged for a free item it no longer earns (another address, a first order after all): the cart
+            // is given what its coupons give now, for the shopper to see.
+            $this->given->keep($contents->cartId, $shippingTax, $command->email);
+            throw new CheckoutRuleViolation('The free items with your order changed. Review it and place the order again.', 'orillacart_cart_changed');
+        }
         foreach ($priced['discounts']->refused as $code => $reason) {
             throw new CheckoutRuleViolation('The code %1$s does not apply: %2$s Remove it to order.', 'orillacart_coupon_refused', values: [$code, $reason]);
         }

@@ -50,6 +50,8 @@ final class RouteSecurityGateTest extends TestCase
         'POST /cart/items',
         'PUT /cart/items/{id}',
         'DELETE /cart/items/{id}',
+        // Gives the caller's own cart back the free items it removed: what its discounts give, nothing more.
+        'POST /cart/given/{code}',
         'POST /cart/coupons',
         'DELETE /cart/coupons/{code}',
         'POST /cart/gift-cards',

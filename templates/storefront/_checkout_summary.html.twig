@@ -12,7 +12,8 @@
             <tr>
                 <td>
                     {{ line.name }} &times; {{ line.quantity }}
-                    {% if line.gift %}<br><small class="orillacart-gift">{{ __('Free gift') }}</small>{% endif %}
+                    {# translators: %s: the offer that gives the item, as the shop describes it -#}
+                    {% if line.gift %}<br><small class="orillacart-gift">{{ line.given_with ? __('Free with %s')|format(line.given_with) : __('Free gift') }}</small>{% endif %}
                     {% for option in line.options %}<br><small>{{ option.attribute }}: {{ option.option }}</small>{% endfor %}
                     {{ shop.line_answers(line.personalisation) }}
                     {% if line.contents %}<br><small class="orillacart-bundle">{{ __('Holds') }}: {% for item in line.contents %}{{ item.quantity }} × {{ item.name }}{{ not loop.last ? ', ' }}{% endfor %}</small>{% endif %}

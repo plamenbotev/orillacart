@@ -51,6 +51,10 @@ class Cart
     #[ORM\Column(type: 'json')]
     private array $giftCards = [];
 
+    /** @var list<string> the discounts, by code, whose items the shopper removed: not given again while they hold */
+    #[ORM\Column(type: 'json')]
+    private array $declined = [];
+
     /** The customer pays with their store credit. */
     #[ORM\Column(options: ['default' => false])]
     private bool $useStoreCredit = false;
@@ -151,7 +155,7 @@ class Cart
                 $answers = $line->answers();
                 ksort($answers, SORT_STRING);
 
-                return [$line->productId(), $line->optionIds(), $line->bundleChoices(), $line->quantity(), $answers];
+                return [$line->type(), $line->givenBy(), $line->productId(), $line->optionIds(), $line->bundleChoices(), $line->quantity(), $answers];
             }, $this->lines()),
             $this->coupons,
             $this->giftCards,
@@ -211,32 +215,106 @@ class Cart
         if ($this->lines->count() >= self::MAX_LINES) {
             throw new CartRuleViolation('A cart holds up to %d different items.', 'orillacart_cart_full', values: [self::MAX_LINES]);
         }
-        $position = 0;
-        foreach ($this->lines as $line) {
-            $position = max($position, $line->position() + 1);
-        }
-        $line = new CartLine($this, $productId, $optionIds, $quantity, $position, $bundleChoices, $answers);
+        $line = new ProductLine($this, $productId, $optionIds, $quantity, $this->nextPosition(), $bundleChoices, $answers);
         $this->lines->add($line);
         $this->updatedAt = $now;
 
         return $line;
     }
 
-    /**
-     * @throws CartLineNotFound
-     */
-    public function changeQuantity(int $lineId, int $quantity, \DateTimeImmutable $now): void
+    private function nextPosition(): int
     {
-        $this->line($lineId)->setQuantity($quantity);
-        $this->updatedAt = $now;
+        $position = 0;
+        foreach ($this->lines as $line) {
+            $position = max($position, $line->position() + 1);
+        }
+
+        return $position;
     }
 
     /**
      * @throws CartLineNotFound
+     * @throws CartRuleViolation for an item given: how many is the discount's
+     */
+    public function changeQuantity(int $lineId, int $quantity, \DateTimeImmutable $now): void
+    {
+        $line = $this->line($lineId);
+        if (!$line->quantityChangeable() && $quantity !== $line->quantity()) {
+            throw new CartRuleViolation('How many of a free item you get is the offer\'s: change the items it comes with.', 'orillacart_given_quantity');
+        }
+        $line->setQuantity($quantity);
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * Removes the line. An item given is not given again while its discount holds: the shopper did not want it.
+     *
+     * @throws CartLineNotFound
      */
     public function remove(int $lineId, \DateTimeImmutable $now): void
     {
-        $this->lines->removeElement($this->line($lineId));
+        $line = $this->line($lineId);
+        $code = $line->givenBy();
+        if ($code !== null) {
+            $this->declined = array_values(array_unique([...$this->declined, $code]));
+        }
+        $this->lines->removeElement($line);
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * Keeps the items discounts give in step with what they give now: adds those missing, changes how many, and
+     * removes those no longer given. A discount whose items the shopper removed gives none until it stops holding,
+     * when the cart forgets they declined it. New lines go in while the cart has room.
+     *
+     * @param list<GivenItem> $items what the discounts give now
+     *
+     * @return bool whether the cart changed
+     */
+    public function keepGiven(array $items, \DateTimeImmutable $now): bool
+    {
+        $codes = array_map(static fn(GivenItem $item): string => $item->code, $items);
+        $declined = array_values(array_filter($this->declined, static fn(string $code): bool => \in_array($code, $codes, true)));
+        $changed = $declined !== $this->declined;
+        $this->declined = $declined;
+        $items = array_values(array_filter($items, static fn(GivenItem $item): bool => !\in_array($item->code, $declined, true)));
+        foreach ($this->lines() as $line) {
+            if (!$line instanceof GivenLine) {
+                continue;
+            }
+            $item = array_find($items, static fn(GivenItem $item): bool => $line->isAs($item));
+            if ($item === null) {
+                $this->lines->removeElement($line);
+                $changed = true;
+            } elseif ($item->quantity !== $line->quantity() || $item->label !== $line->label()) {
+                $line->giveAs($item);
+                $changed = true;
+            }
+        }
+        foreach ($items as $item) {
+            $have = array_any($this->lines(), static fn(CartLine $line): bool => $line instanceof GivenLine && $line->isAs($item));
+            if (!$have && $this->lines->count() < self::MAX_LINES) {
+                $this->lines->add(new GivenLine($this, $item->productId, $item->optionIds, $item->quantity, $this->nextPosition(), $item->bundleChoices, mb_substr($item->code, 0, 40), mb_substr($item->label, 0, 255)));
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    /** @return list<string> the discounts whose items the shopper removed, by code */
+    public function declined(): array
+    {
+        return $this->declined;
+    }
+
+    /** The shopper wants the discount's items after all: they are given at the next keepGiven(). */
+    public function undecline(string $code, \DateTimeImmutable $now): void
+    {
+        $this->declined = array_values(array_filter($this->declined, static fn(string $declined): bool => $declined !== $code));
         $this->updatedAt = $now;
     }
 
@@ -284,6 +362,7 @@ class Cart
     public function clear(\DateTimeImmutable $now): void
     {
         $this->coupons = [];
+        $this->declined = [];
         $this->giftCards = [];
         $this->useStoreCredit = false;
         $this->lines->clear();
@@ -365,6 +444,10 @@ class Cart
     {
         $files = \count($this->fileHashes());
         foreach ($other->lines() as $line) {
+            if ($line->givenBy() !== null) {
+                // Given again as the cart's discounts give them.
+                continue;
+            }
             $mine = $this->lineFor($line->productId(), $line->optionIds(), $line->bundleChoices(), $line->answers());
             $named = \count(self::filesOf($line->answers()));
             if ($mine !== null) {

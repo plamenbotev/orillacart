@@ -158,6 +158,7 @@ final readonly class ProjectOrders implements KeepsFailures
                 $line->quantity,
                 $net((string) Money::of($line->total)->subtract(Money::of($line->discount)), $line->tax),
                 self::refundedNet($line, $order->pricesIncludeTax),
+                $line->givenBy !== null,
             ), $order->lines),
             array_map(static fn(OrderDiscountView $discount): UsedCoupon => new UsedCoupon(
                 $order->number,

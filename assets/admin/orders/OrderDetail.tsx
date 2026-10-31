@@ -468,6 +468,21 @@ function Summary( { order }: { order: Order } ) {
 							<tr key={ index }>
 								<td>
 									{ line.name }
+									{ line.given_by && (
+										<div>
+											<small>
+												{ sprintf(
+													/* translators: %s: the discount that gave the item, by its description or code. */
+													__(
+														'Free with %s',
+														'orillacart'
+													),
+													line.given_by.description ||
+														line.given_by.code
+												) }
+											</small>
+										</div>
+									) }
 									{ line.options.map( ( option ) => (
 										<div key={ option.attribute }>
 											<small>

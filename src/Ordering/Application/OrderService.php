@@ -47,9 +47,11 @@ use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderRepricing;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Domain\FieldAnswer;
+use OrillaCart\Ordering\Domain\GivenBy;
 use OrillaCart\Ordering\Domain\LineDownload;
 use OrillaCart\Ordering\Domain\LineDraft;
 use OrillaCart\Ordering\Domain\LineTax;
+use OrillaCart\Ordering\Domain\LineType;
 use OrillaCart\Ordering\Domain\NoteAuthor;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderDraft;
@@ -1070,8 +1072,9 @@ final readonly class OrderService
             $line->contents,
             $line->bundleChoices,
             $line->personalisation,
-            $line->kind,
+            LineType::from($line->type),
             $line->shopWords,
+            $line->givenCode === null ? null : new GivenBy($line->givenCode, $line->givenDescription),
         ), $lines);
     }
 

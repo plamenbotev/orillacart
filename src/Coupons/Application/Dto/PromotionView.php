@@ -52,6 +52,8 @@ final readonly class PromotionView
         public bool $needsGiven = false,
         /** How near the cart is, from 0 to 1. */
         public float $nearness = 1.0,
+        /** Applied, and the shopper removed the items it gives: theirs to have back. */
+        public bool $declined = false,
     ) {}
 
     /** How many more of the items it applies to the cart needs. */

@@ -379,6 +379,12 @@ How far the shopper's cart is from free shipping, as the Free shipping progress 
 
 - Who: anyone; needs a nonce (not with an API key)
 
+### `POST /cart/given/{code}`
+
+The shopper wants the free items a discount gives after all, having removed them: the cart is given them again, while the discount holds.
+
+- Who: anyone; needs a nonce (not with an API key)
+
 ### `POST /cart/items`
 
 - Who: anyone; needs a nonce (not with an API key); at most 120 every ten minutes from each address
@@ -547,6 +553,7 @@ The shop adds a coupon code, or an automatic discount that needs no code, with i
   - `gift_product_id` (int|null): more than 0
   - `overrides_price_rules` (bool): default false
   - `free_shipping_every_rate` (bool): default false
+  - `adds_items` (bool): default true
   - `advertised` (bool|null)
   - `translations` (array|null)
 
@@ -592,6 +599,7 @@ Changes a coupon's code, amount and rules; placed orders keep the code and amoun
   - `gift_product_id` (int|null): more than 0
   - `overrides_price_rules` (bool): default false
   - `free_shipping_every_rate` (bool): default false
+  - `adds_items` (bool): default true
   - `advertised` (bool|null)
   - `translations` (array|null)
 
@@ -2173,6 +2181,7 @@ Replaces all the shop's settings in one go, so every field must be sent. It can 
   - `return_days` (int|null): 1 to 365
   - `minimum_order` (string|null): matches `/^(\d{1,11}(\.\d{1,4})?)?$/`
   - `report_day` (string): one of paid, placed; default 'paid'
+  - `free_items_on_return` (string): one of charged, come_back, stay_free; default 'charged'
 
 ## /settings-archive
 

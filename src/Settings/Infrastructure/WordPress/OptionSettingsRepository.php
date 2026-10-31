@@ -6,6 +6,7 @@ namespace OrillaCart\Settings\Infrastructure\WordPress;
 
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
+use OrillaCart\Settings\Domain\FreeItemsOnReturn;
 use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Domain\StoreSettings;
@@ -54,6 +55,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 self::optionalInt($stored, 'return_days'),
                 ($minimum = self::optionalString($stored, 'minimum_order')) === null ? null : Money::of($minimum),
                 ReportDay::tryFrom(self::optionalString($stored, 'report_day') ?? '') ?? ReportDay::Paid,
+                FreeItemsOnReturn::tryFrom(self::optionalString($stored, 'free_items_on_return') ?? '') ?? FreeItemsOnReturn::Charged,
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -84,6 +86,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'return_days' => $settings->returnDays,
             'minimum_order' => $settings->minimumOrder === null ? null : (string) $settings->minimumOrder,
             'report_day' => $settings->reportDay->value,
+            'free_items_on_return' => $settings->freeItemsOnReturn->value,
         ], true);
     }
 

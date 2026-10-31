@@ -3,6 +3,7 @@
  * and the store notice, which a shopper may close.
  */
 import { api, CART_CHANGED } from './api';
+import { reloadRegions } from './dom';
 
 const NOTICE_KEY = 'orillacart_store_notices_closed';
 /** The notices a browser remembers closing; an older one is long replaced. */
@@ -76,9 +77,42 @@ export function startPromotions(): void {
 	if ( ! listeningForPromotions ) {
 		listeningForPromotions = true;
 		document.addEventListener( CART_CHANGED, () => void showPromotions() );
+		document.addEventListener( 'click', ( event ) => {
+			const button =
+				event.target instanceof Element
+					? event.target.closest< HTMLButtonElement >(
+							'[data-orillacart-restore-given]'
+						)
+					: null;
+			if ( button ) {
+				void restoreGiven( button );
+			}
+		} );
 	}
 	if ( typeof window.orillacartStorefront?.nonce !== 'string' ) {
 		void showPromotions();
+	}
+}
+
+/**
+ * Gives the cart back the free items of a promotion the shopper removed them from. The cart then changes, so the
+ * blocks and the cart page are drawn again.
+ *
+ * @param button The promotion's "Add it back" button.
+ */
+async function restoreGiven( button: HTMLButtonElement ): Promise< void > {
+	const code = button.dataset.orillacartRestoreGiven ?? '';
+	button.disabled = true;
+	const result = await api(
+		'POST',
+		`/cart/given/${ encodeURIComponent( code ) }`
+	);
+	button.disabled = false;
+	if (
+		result.ok &&
+		document.querySelector( '[data-orillacart-region="cart"]' )
+	) {
+		await reloadRegions( [ 'cart', 'mini-cart' ] );
 	}
 }
 

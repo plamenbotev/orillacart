@@ -19,6 +19,10 @@ use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Coupons\Domain\CouponRedemption;
 use OrillaCart\Coupons\Domain\CouponRuleViolation;
+use OrillaCart\Inventory\Application\Dto\SaveStockroom;
+use OrillaCart\Inventory\Application\Dto\SetStockLevel;
+use OrillaCart\Inventory\Application\Dto\SetStockLevels;
+use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
@@ -314,8 +318,50 @@ final class CouponsAtCheckoutTest extends TestCase
         $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('THREE'));
         self::assertSame(['0', '20'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'two rounds: two lamps and a shade, then a lamp, a shade and a shade');
 
+        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'));
+        self::assertCount(2, $summary->lines, 'two lamps: the shop adds the third, the one given');
+        self::assertSame([true, 1, '40', '40'], [$summary->lines[1]->gift, $summary->lines[1]->quantity, $summary->lines[1]->total, $summary->lines[1]->discount]);
+        self::assertSame('40', $summary->discount);
+
+        self::assertCount(1, $this->shop->checkout->applyCoupon($this->cart([10, 3]), new CouponCode('THREE'))->lines, 'the third is the one given already');
+        self::assertCount(2, $this->shop->checkout->applyCoupon($this->cart([10, 5]), new CouponCode('THREE'))->lines, 'five: a sixth given');
+        self::assertCount(1, $this->shop->checkout->applyCoupon($this->cart([10, 4]), new CouponCode('THREE'))->lines, 'four: one round, a lamp short of the next');
+    }
+
+    public function testBuyGetAtAPriceLeavesTheItemsToTheShopper(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('HALF', 'buy_get', '50', buyQuantity: 2, getQuantity: 1));
+
         $this->expectExceptionMessage('This code needs 3 of the items it applies to: 2 to buy and 1 it gives.');
-        $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'));
+        $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('HALF'));
+    }
+
+    public function testBuyingSomeGivesTheOneProductItNamesFree(): void
+    {
+        $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '100', productIds: [10], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
+
+        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('SHADE'));
+        self::assertSame([true, 2, '20'], [$summary->lines[1]->gift, $summary->lines[1]->quantity, $summary->discount], 'a shade for each lamp');
+        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2], [20, 1]), new CouponCode('SHADE'));
+        self::assertSame([3, 1, '20'], [\count($summary->lines), $summary->lines[2]->quantity, $summary->discount], 'one shade the shopper chose, one added');
+    }
+
+    public function testItemsAddedAreLeftOutWhenTheCouponsDoNotGiveThemFree(): void
+    {
+        $this->shop->content->terms[20] = ['categories' => [7], 'brands' => []];
+        $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '100', productIds: [10], excludedCategoryIds: [7], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
+
+        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 1]), new CouponCode('SHADE'));
+        self::assertSame([1, '0'], [\count($summary->lines), $summary->discount], 'the shade is left out of the code: not the shopper\'s to pay for');
+    }
+
+    public function testAnItemGivenIsAddedOnlyWhenThereIsStockForAll(): void
+    {
+        $room = $this->shop->stockrooms->create(new SaveStockroom('Sofia'))->id;
+        $this->shop->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($room, 2)]));
+        $this->shop->coupons->create(new SaveCoupon('THREE', 'buy_get', '100', buyQuantity: 2, getQuantity: 1));
+
+        self::assertCount(1, $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'))->lines, 'two in stock, both in the cart');
     }
 
     public function testBuyingSomeItemsGivesOthersAPercentageOff(): void

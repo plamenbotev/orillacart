@@ -15,8 +15,9 @@ final readonly class AppliedDiscounts
     /**
      * @param list<AppliedCoupon>   $coupons in the order they were entered
      * @param array<string, Text> $refused why, by code
-     * @param list<array{productId: int, quantity: int}> $gifts free gifts that hold but are not in the order yet:
-     *                                                          checkout adds them and prices the order again
+     * @param list<array{productId: int, quantity: int, code: string, description: string}> $gifts items the
+     *        coupons give that the order does not hold yet (a free gift, the items buy-get gives free), with the
+     *        coupon that gives each: the cart is given them (GivenItems)
      */
     public function __construct(
         public array $coupons = [],

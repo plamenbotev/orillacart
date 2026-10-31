@@ -189,6 +189,7 @@ final readonly class CouponService
             $command->giftProductId === null ? null : $this->translations->original($command->giftProductId),
             $command->overridesPriceRules,
             $command->freeShippingEveryRate,
+            $command->addsItems,
         );
     }
 }

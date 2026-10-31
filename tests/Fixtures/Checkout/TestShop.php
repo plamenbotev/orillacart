@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Checkout;
 use OrillaCart\Cart\Application\AbandonedCartPersonalData;
 use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Cart\Application\CartService;
+use OrillaCart\Cart\Domain\Event\CartChanged;
 use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers as ForgetDeletedCarts;
 use OrillaCart\Catalog\Application\AttributeNames;
 use OrillaCart\Catalog\Application\AttributeTexts;
@@ -34,6 +35,7 @@ use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\AddressRules;
 use OrillaCart\Checkout\Application\CheckoutFields;
 use OrillaCart\Checkout\Application\CheckoutService;
+use OrillaCart\Checkout\Application\GivenItems;
 use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderFees;
@@ -42,11 +44,13 @@ use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Checkout\Application\PromotionProgress;
 use OrillaCart\Checkout\Application\Reorder;
 use OrillaCart\Checkout\Application\ShownPrices;
+use OrillaCart\Checkout\Infrastructure\Events\KeepGivenItems;
 use OrillaCart\Coupons\Application\CouponOrders;
 use OrillaCart\Coupons\Application\CouponPackages;
 use OrillaCart\Coupons\Application\CouponService;
 use OrillaCart\Coupons\Application\CouponTranslations;
 use OrillaCart\Coupons\Application\Discounts;
+use OrillaCart\Coupons\Application\EarnedItems;
 use OrillaCart\Coupons\Application\Promotions;
 use OrillaCart\Coupons\Infrastructure\Events\ForgetErasedCustomers as ForgetErasedRedemptions;
 use OrillaCart\Coupons\Infrastructure\Events\ReleaseCouponUses;
@@ -385,6 +389,7 @@ final class TestShop
     public readonly SendEInvoices $sendEInvoices;
     public readonly InvoiceAttachments $invoiceAttachments;
     public readonly EventDispatcher $events;
+    public readonly GivenItems $givenItems;
     public readonly SentMail $mail;
     public readonly InMemoryEmailSettingsRepository $emailSettings;
     public readonly EmailWriter $writer;
@@ -596,10 +601,12 @@ final class TestShop
             $this->shownPrices = new ShownPrices($taxes, $this->customers, $settings),
             $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
+            $this->givenItems = new GivenItems($this->carts, $this->pricing, $quotes, $this->currencies, $this->discounts),
         );
+        $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
         $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies);
         $this->reorder = new Reorder($this->orders, $this->carts);
-        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs);
+        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content));
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);

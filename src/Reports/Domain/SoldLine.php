@@ -47,5 +47,8 @@ class SoldLine
         /** The line's share of the refunds, before tax. */
         #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
         public readonly string $refunded = '0',
+        /** Given free by a discount, not sold: counted apart from the items sold. */
+        #[ORM\Column(options: ['default' => false])]
+        public readonly bool $given = false,
     ) {}
 }

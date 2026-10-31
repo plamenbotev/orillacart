@@ -38,6 +38,8 @@ export interface Settings {
 	/** The day the reports count an order on: paid or placed; a change counts every order again. */
 	report_day: 'paid' | 'placed';
 	report_days: ( 'paid' | 'placed' )[];
+	/** A free item whose items go back, and what is kept no longer earns it: its price kept from the refund, it comes back, or it stays free. */
+	free_items_on_return: 'charged' | 'come_back' | 'stay_free';
 	weight_units: string[];
 	dimension_units: string[];
 	currency_positions: string[];
@@ -65,6 +67,7 @@ export type SettingsInput = Pick<
 	| 'return_days'
 	| 'minimum_order'
 	| 'report_day'
+	| 'free_items_on_return'
 >;
 
 /**
@@ -92,6 +95,7 @@ export function settingsInput( settings: Settings ): SettingsInput {
 		return_days: settings.return_days,
 		minimum_order: settings.minimum_order,
 		report_day: settings.report_day,
+		free_items_on_return: settings.free_items_on_return,
 		sell_to: settings.sell_to,
 	};
 }

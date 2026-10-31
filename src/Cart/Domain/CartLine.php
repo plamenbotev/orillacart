@@ -7,12 +7,16 @@ namespace OrillaCart\Cart\Domain;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * A product with the customer's choice of options (and answers to its forms), and how many. Prices are not kept:
- * the cart shows the catalog's current ones.
+ * A product with its options (and answers to its forms), and how many. Prices are not kept: the cart shows the
+ * catalog's current ones. What put it in the cart decides what it does: the shopper (ProductLine), or a
+ * discount that gives it (GivenLine).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'cart_lines')]
-class CartLine
+#[ORM\InheritanceType('SINGLE_TABLE')]
+#[ORM\DiscriminatorColumn(name: 'type', type: 'string', length: 20)]
+#[ORM\DiscriminatorMap(['product' => ProductLine::class, 'given' => GivenLine::class])]
+abstract class CartLine
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -57,6 +61,18 @@ class CartLine
         ksort($answers, SORT_STRING);
         $this->answers = $answers;
         $this->setQuantity($quantity);
+    }
+
+    /** "product" or "given": what the line is, as views and the API name it. */
+    abstract public function type(): string;
+
+    /** Whether the shopper may change how many it holds. */
+    abstract public function quantityChangeable(): bool;
+
+    /** The discount that gave it, by its code; null for one the shopper chose. */
+    public function givenBy(): ?string
+    {
+        return null;
     }
 
     public function id(): int
@@ -133,7 +149,7 @@ class CartLine
      *
      * @return list<int>
      */
-    private static function normalized(array $ids): array
+    protected static function normalized(array $ids): array
     {
         $ids = array_values(array_unique($ids));
         sort($ids);
