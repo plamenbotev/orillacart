@@ -1,0 +1,11 @@
+{#
+ # The names of the files the buyer of a product gets; nothing for a product without files. offer: the product.
+ #}
+{% if offer.downloads %}
+    <div class="orillacart-product__downloads">
+        <h2 class="orillacart-heading">{{ __('Files you get') }}</h2>
+        <ul>
+            {% for name in offer.downloads %}<li>{{ name }}</li>{% endfor %}
+        </ul>
+    </div>
+{% endif %}

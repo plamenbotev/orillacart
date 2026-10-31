@@ -1,0 +1,8 @@
+{#
+ # By when an order placed now would arrive. The page may come from a cache: estimates holds the estimates of
+ # the days ahead, and the script shows the one that holds, counting down to its cutoff. text: the one that
+ # holds as the page is made; id: the product.
+ #}
+<div class="orillacart-product-delivery" data-orillacart-for="{{ id }}">
+    <p class="orillacart-delivery-estimate" data-orillacart-delivery="{{ estimates|json_encode }}"><span data-orillacart-delivery-text>{{ text }}</span></p>
+</div>

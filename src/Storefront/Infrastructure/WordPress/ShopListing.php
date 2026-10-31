@@ -23,7 +23,7 @@ use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Translations\Application\ContentTranslations;
 
 /**
- * What a shopper asks the shop page for, read from the address, as the Products and Product filters blocks
+ * What a shopper asks the shop page for, read from the address, as the Products block and those around it
  * share it: words, category, tag, brands, the shop's filters, price, stock, sort and page. The address is the only
  * state, so pages can be linked and work without the script; each form keeps, as hidden fields, the choices
  * the other one shows.
@@ -212,6 +212,28 @@ final readonly class ShopListing
         }
 
         return $fields;
+    }
+
+    /**
+     * The orders a shopper may sort by, with their labels; best match only when searching.
+     *
+     * @return array<string, string> by sort
+     */
+    public static function sortLabels(bool $searching): array
+    {
+        return ($searching ? ['relevance' => __('Best match', 'orillacart')] : []) + [
+            'order' => __('Recommended', 'orillacart'),
+            'newest' => __('Newest', 'orillacart'),
+            'name' => __('Name', 'orillacart'),
+            'price_asc' => __('Price: low to high', 'orillacart'),
+            'price_desc' => __('Price: high to low', 'orillacart'),
+        ];
+    }
+
+    /** Where the listing's forms send their choices: its first page, without the choices they hold. */
+    public static function formUrl(): string
+    {
+        return remove_query_arg(['category', 'tag', 'q', 'sort', ...self::FILTER_ARGUMENTS], self::pageUrl(1));
     }
 
     /**

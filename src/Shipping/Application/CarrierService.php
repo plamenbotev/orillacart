@@ -23,6 +23,7 @@ use OrillaCart\Shipping\Application\Dto\TestShippingSettings;
 use OrillaCart\Shipping\Domain\Carrier;
 use OrillaCart\Shipping\Domain\CarrierNotFound;
 use OrillaCart\Shipping\Domain\CarrierRepository;
+use OrillaCart\Shipping\Domain\DeliveryWindow;
 use OrillaCart\Shipping\Domain\Measure;
 use OrillaCart\Shipping\Domain\PickupLocation;
 use OrillaCart\Shipping\Domain\Range;
@@ -83,6 +84,7 @@ final readonly class CarrierService
         $carrier = new Carrier($command->name, $command->active, $command->position);
         $this->price($carrier, $command);
         $carrier->scheduleDeliveries($command->deliverySchedule?->toSchedule());
+        $carrier->takeDeliveryDays(self::window($command));
         $carrier->keepClassesToTheirRates($command->classesKeptToTheirRates);
 
         return $this->save($carrier, $texts, [], []);
@@ -104,6 +106,7 @@ final readonly class CarrierService
         $carrier->moveTo($command->position);
         $this->price($carrier, $command);
         $carrier->scheduleDeliveries($command->deliverySchedule?->toSchedule());
+        $carrier->takeDeliveryDays(self::window($command));
         $carrier->keepClassesToTheirRates($command->classesKeptToTheirRates);
 
         return $this->save($carrier, $texts, $ratesBefore, $placesBefore);
@@ -206,6 +209,16 @@ final readonly class CarrierService
         $method = $carrier->method() === null ? null : $this->methods->find($carrier->method());
 
         return CarrierView::fromCarrier($carrier, $method?->settings() ?? [], $texts);
+    }
+
+    /** The working days it takes; one of the two alone is both. */
+    private static function window(SaveCarrier $command): ?DeliveryWindow
+    {
+        if ($command->deliveryMinDays === null && $command->deliveryMaxDays === null) {
+            return null;
+        }
+
+        return new DeliveryWindow($command->deliveryMinDays ?? $command->deliveryMaxDays ?? 0, $command->deliveryMaxDays ?? $command->deliveryMinDays ?? 0);
     }
 
     private function get(int $id): Carrier

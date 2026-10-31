@@ -1,0 +1,17 @@
+{#
+ # The sort choice for the page's listing (the Products sort block): action, the listing's first page; id, the
+ # field's; sort; sorts: {value: label}; hidden: [{name, value}], the other choices to keep; show_label.
+ #}
+<div class="orillacart-products-sort" data-orillacart-region="products-sort">
+    <form method="get" action="{{ action }}" data-orillacart-filters>
+        {% for field in hidden %}<input type="hidden" name="{{ field.name }}" value="{{ field.value }}">{% endfor %}
+        <label for="{{ id }}"{{ show_label ? '' : ' class="orillacart-products-sort__label--hidden"' }}>{{ __('Sort by') }}</label>
+        <select id="{{ id }}" name="sort">
+            {% for value, label in sorts %}
+                <option value="{{ value }}"{{ value == sort ? ' selected' }}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        {# The script sorts as the choice changes. -#}
+        <button type="submit" class="wp-element-button orillacart-button" data-orillacart-apply>{{ __('Sort') }}</button>
+    </form>
+</div>

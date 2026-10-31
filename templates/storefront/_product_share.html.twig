@@ -1,0 +1,25 @@
+{#
+ # Ways to share a product's page: plain links to the networks and email, which work without the script, and the
+ # buttons the script shows: the browser's own share, and copying the link. Nothing reaches the networks until the
+ # shopper follows a link. id: the product; url, title: its page's; links: [{service, label, url}]; copy: whether
+ # to offer copying the link.
+ #}
+<div class="orillacart-share" data-orillacart-for="{{ id }}" data-orillacart-share data-url="{{ url }}" data-title="{{ title }}">
+    <p class="orillacart-share__label" id="orillacart-share-{{ id }}">{{ __('Share') }}</p>
+    <ul class="orillacart-share__links" aria-labelledby="orillacart-share-{{ id }}">
+        <li hidden><button type="button" class="orillacart-share__link" data-orillacart-share-native>{{ __('Share…') }}</button></li>
+        {% if copy %}
+            <li hidden><button type="button" class="orillacart-share__link" data-orillacart-share-copy>{{ __('Copy link') }}</button></li>
+        {% endif %}
+        {% for link in links %}
+            <li>
+                {%- if link.service == 'email' -%}
+                    <a class="orillacart-share__link orillacart-share__link--{{ link.service }}" href="{{ link.url }}">{{ link.label }}</a>
+                {%- else -%}
+                    <a class="orillacart-share__link orillacart-share__link--{{ link.service }}" href="{{ link.url }}" target="_blank" rel="noopener noreferrer">{{ link.label }}<span class="screen-reader-text"> {{ __('(opens in a new tab)') }}</span></a>
+                {%- endif -%}
+            </li>
+        {% endfor %}
+    </ul>
+    <p class="orillacart-message" role="status" data-orillacart-message></p>
+</div>

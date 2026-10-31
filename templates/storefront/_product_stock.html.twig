@@ -1,0 +1,20 @@
+{#
+ # A product's stock line, which the script changes to the chosen variation's: how many are in stock, in stock,
+ # on backorder, out of stock or not available; nothing while the price is asked for, or before a variation is
+ # chosen. offer: the product; hidden: kept for the script, not shown.
+ #}
+<p class="orillacart-stock" data-orillacart-stock{{ hidden|default(false) ? ' hidden' : '' }}>
+    {%- if offer.price_hidden -%}
+    {%- elseif offer.sold_out -%}
+        <span class="orillacart-stock--out">{{ __('Out of stock') }}</span>
+    {%- elseif not offer.for_sale -%}
+        <span class="orillacart-stock--out">{{ __('Not available') }}</span>
+    {%- elseif offer.on_backorder -%}
+        <span class="orillacart-stock--backorder">{{ __('On backorder: ships when it is back in stock') }}</span>
+    {%- elseif offer.available is not null -%}
+        {# translators: %d: how many are in stock -#}
+        {{ __('%d in stock')|format(offer.available) }}
+    {%- elseif not offer.variations -%}
+        {{ __('In stock') }}
+    {%- endif -%}
+</p>

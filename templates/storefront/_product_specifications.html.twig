@@ -1,0 +1,12 @@
+{#
+ # A product's specifications: a row for each attribute the shop lists there with its options, then its weight
+ # and size. rows: [{name, value}], in the shopper's language and numbers; title: the caption, empty for none.
+ #}
+<table class="orillacart-table orillacart-specifications">
+    {% if title %}<caption class="orillacart-heading">{{ title }}</caption>{% endif %}
+    <tbody>
+        {% for row in rows %}
+            <tr><th scope="row">{{ row.name }}</th><td>{{ row.value }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>

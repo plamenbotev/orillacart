@@ -1,0 +1,20 @@
+{#
+ # The links to a listing's pages, in the Products block or the Products pagination block: page; pages;
+ # page_links: [{number (null: a gap), url}], the first, the last and those around this one; previous_url and
+ # next_url, '' on the first page and the last.
+ #}
+{% if pages > 1 %}
+    <nav class="orillacart-pagination" aria-label="{{ __('Product pages') }}">
+        <ul>
+            {% if previous_url %}<li class="orillacart-pagination__previous"><a href="{{ previous_url }}" rel="prev">{{ __('Previous') }}</a></li>{% endif %}
+            {% for link in page_links %}
+                {% if link.number is null %}
+                    <li class="orillacart-pagination__gap" aria-hidden="true">…</li>
+                {% else %}
+                    <li>{% if link.number == page %}<span aria-current="page">{{ link.number }}</span>{% else %}<a href="{{ link.url }}">{{ link.number }}</a>{% endif %}</li>
+                {% endif %}
+            {% endfor %}
+            {% if next_url %}<li class="orillacart-pagination__next"><a href="{{ next_url }}" rel="next">{{ __('Next') }}</a></li>{% endif %}
+        </ul>
+    </nav>
+{% endif %}

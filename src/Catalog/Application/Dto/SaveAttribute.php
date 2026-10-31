@@ -30,5 +30,7 @@ final readonly class SaveAttribute
         /** The name in the site's other languages, by locale ({"de_DE": "Farbe"}); null leaves them as they are. */
         #[Assert\All([new Assert\Type('string')])]
         public ?array $translations = null,
+        /** The product page's specifications list it with its options. */
+        public bool $inSpecifications = true,
     ) {}
 }

@@ -207,8 +207,6 @@ async function showBundle(
 	const button = form.querySelector< HTMLButtonElement >(
 		'button[type="submit"]'
 	);
-	const product = form.closest( '.orillacart-product' );
-	const stock = product?.querySelector( '[data-orillacart-stock]' );
 	if ( ! result.ok ) {
 		// Not sold without a price: the customer is told why the button is off, and may choose again.
 		if ( button ) {
@@ -241,22 +239,15 @@ async function showBundle(
 			price.innerHTML = result.data.price_html;
 		}
 	);
-	if ( stock ) {
-		if ( ! result.data.for_sale ) {
-			stock.textContent = __( 'Not available', 'orillacart' );
-		} else {
-			stock.textContent =
-				result.data.available === null
-					? ''
-					: sprintf(
-							/* translators: %d: how many are in stock */ __(
-								'%d in stock',
-								'orillacart'
-							),
-							result.data.available
-						);
+	// The stock line may be a block of its own, elsewhere on the page, as well.
+	findIn( productParts( form ), '[data-orillacart-stock]' ).forEach(
+		( stock ) => {
+			stock.textContent = stockText( {
+				for_sale: result.data.for_sale,
+				available: result.data.available,
+			} );
 		}
-	}
+	);
 	const quantity = form.querySelector< HTMLInputElement >(
 		'input[name="quantity"]'
 	);
@@ -266,6 +257,41 @@ async function showBundle(
 	if ( button ) {
 		button.disabled = ! result.data.for_sale;
 	}
+}
+
+/**
+ * The stock line of a variation, or of a bundle with the items chosen, as the page's own (_product_stock).
+ * @param stock              What is known of its stock.
+ * @param stock.for_sale     Whether it can be bought.
+ * @param stock.available    How many can be sold; null when stock does not limit it.
+ * @param stock.on_backorder Sold on backorder, and the customer is told.
+ * @param stock.sold_out     For sale, but none in stock.
+ */
+export function stockText( stock: {
+	for_sale: boolean;
+	available: number | null;
+	on_backorder?: boolean;
+	sold_out?: boolean;
+} ): string {
+	if ( stock.sold_out ) {
+		return __( 'Out of stock', 'orillacart' );
+	}
+	if ( ! stock.for_sale ) {
+		return __( 'Not available', 'orillacart' );
+	}
+	if ( stock.on_backorder ) {
+		return __(
+			'On backorder: ships when it is back in stock',
+			'orillacart'
+		);
+	}
+	return stock.available === null
+		? __( 'In stock', 'orillacart' )
+		: sprintf(
+				/* translators: %d: how many are in stock */
+				__( '%d in stock', 'orillacart' ),
+				stock.available
+			);
 }
 
 /** What the product's price, SKU and stock showed as the page came, by element. */
@@ -315,16 +341,38 @@ function showVariation(
 	const button = form.querySelector< HTMLButtonElement >(
 		'button[type="submit"]'
 	);
-	const stock = product?.querySelector( '[data-orillacart-stock]' );
+	// The SKU, the stock and the text may be blocks of their own as well, wherever the template put them; a form
+	// that names no product has them in its own section.
+	const own = productParts( form );
+	const parts = own.length > 0 || ! product ? own : [ product ];
+	const stocks = findIn( parts, '[data-orillacart-stock]' );
+	const skus = findIn( parts, '[data-orillacart-sku]' );
 	const choices = form.querySelectorAll( '[data-orillacart-option]' ).length;
 
-	const description = product?.querySelector< HTMLElement >(
+	const descriptions = findIn(
+		parts,
 		'[data-orillacart-variation-description]'
 	);
-	if ( description ) {
-		description.textContent = variation?.description ?? '';
-		description.hidden = ! variation?.description;
-	}
+	// With a short description block, the variation's text shows there, below the product's, not in the form too.
+	const apart = descriptions.filter( ( description ) =>
+		description.closest( '.orillacart-product-excerpt' )
+	);
+	descriptions.forEach( ( description ) => {
+		const shown =
+			( apart.length === 0 || apart.includes( description ) ) &&
+			!! variation?.description;
+		description.textContent = shown ? ( variation?.description ?? '' ) : '';
+		description.hidden = ! shown;
+	} );
+	// No estimate holds for what cannot be had now: not for sale, out of stock, or waiting on backorder.
+	findIn( parts, '[data-orillacart-delivery]' ).forEach( ( estimate ) => {
+		estimate.hidden =
+			estimate.hasAttribute( 'data-orillacart-delivery-over' ) ||
+			( !! variation &&
+				( ! variation.for_sale ||
+					variation.sold_out ||
+					variation.on_backorder ) );
+	} );
 	gallery?.use(
 		variation
 			? [
@@ -341,13 +389,10 @@ function showVariation(
 		variation?.id ?? null,
 		variation?.sold_out ?? false
 	);
-	const prices = findIn( productParts( form ), '[data-orillacart-price]' );
-	const sku = product?.querySelector< HTMLElement >(
-		'[data-orillacart-sku]'
-	);
+	const prices = findIn( parts, '[data-orillacart-price]' );
 	// The product's own price, SKU and stock, as the page came, for when no variation is chosen.
-	[ ...prices, sku, stock ].forEach( ( part ) => {
-		if ( part && ! asRendered.has( part ) ) {
+	[ ...prices, ...skus, ...stocks ].forEach( ( part ) => {
+		if ( ! asRendered.has( part ) ) {
 			asRendered.set( part, part.innerHTML );
 		}
 	} );
@@ -359,20 +404,20 @@ function showVariation(
 	}
 	if ( ! variation ) {
 		// What the variation chosen before showed goes: the product's own price, SKU and stock come back.
-		[ ...prices, sku, stock ].forEach( ( part ) => {
-			if ( part ) {
-				part.innerHTML = asRendered.get( part ) ?? '';
-			}
+		[ ...prices, ...skus, ...stocks ].forEach( ( part ) => {
+			part.innerHTML = asRendered.get( part ) ?? '';
 		} );
-		showSku( sku, null );
+		skus.forEach( ( sku ) => showSku( sku, null ) );
 		if ( quantity ) {
 			quantity.max = quantity.dataset.orillacartMax ?? '';
 		}
-		if ( stock && chosen.length > 0 && chosen.length === choices ) {
-			stock.textContent = __(
-				'This combination is not sold.',
-				'orillacart'
-			);
+		if ( chosen.length > 0 && chosen.length === choices ) {
+			stocks.forEach( ( stock ) => {
+				stock.textContent = __(
+					'This combination is not sold.',
+					'orillacart'
+				);
+			} );
 		}
 		if ( button ) {
 			button.disabled = chosen.length > 0 && chosen.length === choices;
@@ -383,7 +428,7 @@ function showVariation(
 	prices.forEach( ( price ) => {
 		price.innerHTML = variation.price;
 	} );
-	if ( sku ) {
+	skus.forEach( ( sku ) => {
 		// A variation without a SKU of its own is sold under the product's.
 		if ( variation.sku ) {
 			sku.textContent = variation.sku;
@@ -391,28 +436,10 @@ function showVariation(
 			sku.innerHTML = asRendered.get( sku ) ?? '';
 		}
 		showSku( sku, variation.sku );
-	}
-	if ( stock ) {
-		if ( ! variation.for_sale ) {
-			stock.textContent = __( 'Not available', 'orillacart' );
-		} else if ( variation.on_backorder ) {
-			stock.textContent = __(
-				'On backorder: ships when it is back in stock',
-				'orillacart'
-			);
-		} else {
-			stock.textContent =
-				variation.available === null
-					? ''
-					: sprintf(
-							/* translators: %d: how many are in stock */ __(
-								'%d in stock',
-								'orillacart'
-							),
-							variation.available
-						);
-		}
-	}
+	} );
+	stocks.forEach( ( stock ) => {
+		stock.textContent = stockText( variation );
+	} );
 	if ( quantity ) {
 		quantity.max = String( variation.available ?? 999 );
 	}

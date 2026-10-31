@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
 use OrillaCart\Catalog\Application\Dto\OfferedVariation;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
+use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
@@ -53,6 +54,7 @@ final class ProductParts
         private readonly ShopForms $forms,
         private readonly ProductContent $content,
         private readonly ShownPrices $shownPrices,
+        private readonly ProductTranslations $translations,
     ) {}
 
     /**
@@ -173,6 +175,64 @@ final class ProductParts
             'offer' => $offer,
             'show_tiers' => $tiers,
         ]));
+    }
+
+    /**
+     * The SKU, which the script changes to the chosen variation's; nothing when neither the product nor any of its
+     * variations has one.
+     */
+    public function sku(int $id): string
+    {
+        $offer = $this->offer($id);
+        $line = $offer === null ? '' : trim($this->templates->render('storefront/_product_sku.html.twig', [
+            'offer' => $offer,
+            'variations' => array_map(static fn(OfferedVariation $variation): array => ['sku' => $variation->sku], $offer->variations),
+        ]));
+
+        return $line === '' ? '' : \sprintf('<div class="orillacart-product-sku" data-orillacart-for="%d">%s</div>', $id, $line);
+    }
+
+    /**
+     * The stock line, which the script changes to the chosen variation's; nothing while shoppers ask for the price.
+     */
+    public function stock(int $id): string
+    {
+        $offer = $this->offer($id);
+        if ($offer === null || $offer->priceHidden) {
+            return '';
+        }
+
+        return \sprintf('<div class="orillacart-product-stock" data-orillacart-for="%d">%s</div>', $id, $this->templates->render('storefront/_product_stock.html.twig', ['offer' => $offer]));
+    }
+
+    /** The names of the files the buyer gets; nothing for a product without files. */
+    public function downloads(int $id): string
+    {
+        $offer = $this->offer($id);
+
+        return $offer === null || $offer->downloads === [] ? '' : $this->templates->render('storefront/_product_downloads.html.twig', ['offer' => $offer]);
+    }
+
+    /**
+     * The short description in the shopper's language, from the product's translation (design 51), with the place
+     * where the script shows the chosen variation's text; nothing when neither has any.
+     */
+    public function excerpt(int $id): string
+    {
+        $offer = $this->offer($id);
+        if ($offer === null) {
+            return '';
+        }
+        $text = trim((string) get_post_field('post_excerpt', $this->translations->shown($id)));
+        $described = array_filter($offer->variations, static fn(OfferedVariation $variation): bool => trim((string) get_post_field('post_excerpt', $variation->id)) !== '');
+        if ($text === '' && $described === []) {
+            return '';
+        }
+
+        return $this->templates->render('storefront/_product_excerpt.html.twig', [
+            'id' => $id,
+            'text' => $text === '' ? '' : wpautop(wp_kses_post($text)),
+        ]);
     }
 
     /**

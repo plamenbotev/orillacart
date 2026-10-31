@@ -8,8 +8,10 @@ use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use OrillaCart\Shared\WordPress\AutoloadedOption;
 use OrillaCart\Storefront\Domain\SharingTags;
+use OrillaCart\Storefront\Domain\StorefrontRuleViolation;
 use OrillaCart\Storefront\Domain\StorefrontSettings;
 use OrillaCart\Storefront\Domain\StorefrontSettingsRepository;
+use OrillaCart\Storefront\Domain\StoreNotice;
 use OrillaCart\Storefront\Domain\WishlistPolicy;
 
 final readonly class OptionStorefrontSettingsRepository implements StorefrontSettingsRepository, LifecycleListener, RemovesShopData
@@ -31,7 +33,22 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             ($stored['data_layer'] ?? false) === true,
             ($stored['hide_single_value_filters'] ?? true) !== false,
             ($stored['list_untranslated'] ?? true) !== false,
+            self::notice(\is_array($stored['notice'] ?? null) ? $stored['notice'] : []),
         );
+    }
+
+    /**
+     * @param array<mixed> $stored
+     */
+    private static function notice(array $stored): StoreNotice
+    {
+        $text = static fn(string $key): string => \is_string($stored[$key] ?? null) ? $stored[$key] : '';
+        try {
+            return new StoreNotice(($stored['shown'] ?? false) === true, $text('text'), $text('link'), $text('link_label'), ($stored['dismissible'] ?? true) !== false);
+        } catch (StorefrontRuleViolation) {
+            // Changed by hand into one the shop would refuse: none, until it is saved again.
+            return new StoreNotice();
+        }
     }
 
     public function save(StorefrontSettings $settings): void
@@ -44,6 +61,13 @@ final readonly class OptionStorefrontSettingsRepository implements StorefrontSet
             'data_layer' => $settings->dataLayer,
             'hide_single_value_filters' => $settings->hideSingleValueFilters,
             'list_untranslated' => $settings->listUntranslated,
+            'notice' => [
+                'shown' => $settings->notice->shown,
+                'text' => $settings->notice->text,
+                'link' => $settings->notice->link,
+                'link_label' => $settings->notice->linkLabel,
+                'dismissible' => $settings->notice->dismissible,
+            ],
         ], true);
     }
 

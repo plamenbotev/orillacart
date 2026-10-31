@@ -1,0 +1,8 @@
+{#
+ # A product's short description, in the shopper's language, and the chosen variation's text, which the script
+ # shows below it. text: the description as HTML, cleaned already (empty for none); id: the product.
+ #}
+<div class="orillacart-product-excerpt" data-orillacart-for="{{ id }}">
+    {% if text %}<div class="orillacart-product-excerpt__text">{{ text|raw }}</div>{% endif %}
+    <p class="orillacart-product__description" data-orillacart-variation-description hidden></p>
+</div>

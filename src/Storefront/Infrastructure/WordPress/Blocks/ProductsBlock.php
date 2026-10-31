@@ -6,18 +6,18 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Application\ProductTranslations;
-use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
-use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryLayout;
 use OrillaCart\Catalog\Infrastructure\WordPress\ProductCategories;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Storefront\Infrastructure\WordPress\ListingScope;
 use OrillaCart\Storefront\Infrastructure\WordPress\PageWindow;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductParts;
+use OrillaCart\Storefront\Infrastructure\WordPress\ProductsOnPage;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
 
@@ -26,7 +26,8 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ShopListing;
  * filters, price and stock, and sort; on a category's, tag's or brand's own page, that one's products. The
  * products and the counts come from the search index; their cards show the catalog's offers as they are now.
  * The query string carries the choices (ShopListing), so pages can be linked and work without the script. The
- * filters show here, or (filters off) in a Product filters block elsewhere.
+ * filters show here, or (filters off) in a Product filters block elsewhere; the sort, count and pages here, or
+ * (turned off) in their own blocks around it.
  */
 final readonly class ProductsBlock implements BlockDefinition
 {
@@ -40,6 +41,7 @@ final readonly class ProductsBlock implements BlockDefinition
         private ProductCards $cards,
         private ProductParts $parts,
         private ProductTranslations $translations,
+        private ProductsOnPage $page,
     ) {}
 
     public static function name(): string
@@ -49,34 +51,16 @@ final readonly class ProductsBlock implements BlockDefinition
 
     public function render(array $attributes, BlockContext $context): string
     {
-        $perPage = max(1, min(60, \is_int($attributes['perPage'] ?? null) ? $attributes['perPage'] : 12));
         $columns = max(1, min(6, \is_int($attributes['columns'] ?? null) ? $attributes['columns'] : 3));
-        $fixedCategory = \is_string($attributes['category'] ?? null) ? sanitize_title($attributes['category']) : '';
+        // A filters block elsewhere on the page counts the filters' values in this one search.
+        $scope = ListingScope::of($attributes, $this->page->scope()->facets ?? false);
+        $perPage = $scope->perPage;
         // A block that always shows one category has no links to the others.
-        $ownCategory = $fixedCategory !== '';
-        $fixedTag = \is_string($attributes['tag'] ?? null) ? sanitize_title($attributes['tag']) : '';
-        $fixedBrand = null;
-        // On a category's, tag's or brand's own page, a block that names none shows that one's products.
-        $term = get_queried_object();
-        if ($fixedCategory === '' && $fixedTag === '' && $term instanceof \WP_Term && is_tax()) {
-            match ($term->taxonomy) {
-                ProductCategoryTaxonomy::NAME => $fixedCategory = $term->slug,
-                ProductTagTaxonomy::NAME => $fixedTag = $term->slug,
-                ProductBrandTaxonomy::NAME => $fixedBrand = $term->term_id,
-                default => null,
-            };
-        }
-        $showFilters = ($attributes['filters'] ?? true) !== false;
+        $ownCategory = $scope->ownCategory;
+        $showFilters = $scope->filters;
 
-        $choices = $this->listing->choices($fixedCategory, \is_string($attributes['sort'] ?? null) ? $attributes['sort'] : 'order', $fixedTag, $fixedBrand);
-        $result = $this->listing->search(
-            $choices,
-            ($choices['page'] - 1) * $perPage,
-            $perPage,
-            $showFilters,
-            ($attributes['featured'] ?? false) === true,
-            ($attributes['onSale'] ?? false) === true,
-        );
+        $choices = $scope->choices($this->listing);
+        $result = $scope->search($this->listing, $choices, ($choices['page'] - 1) * $perPage, $perPage);
         $panel = $this->listing->panel($choices, $result);
         // The shopper's way to see them, else the category's (or one above it), else the block's.
         $categoryLayout = (int) $choices['category_id'] > 0 ? CategoryLayout::of((int) $choices['category_id']) : null;
@@ -84,10 +68,11 @@ final readonly class ProductsBlock implements BlockDefinition
         $products = $this->cards->cards($result->ids, $layout === 'list');
         $card = $layout === 'grid' ? self::card($context) : null;
 
-        $base = remove_query_arg(['category', 'tag', 'q', 'sort', ...ShopListing::FILTER_ARGUMENTS], ShopListing::pageUrl(1));
+        $base = ShopListing::formUrl();
         $pages = (int) ceil($result->total / $perPage);
         // The first, the last and those around this one: not a link to every page of a large shop.
         $pageLinks = PageWindow::links($choices['page'], $pages, ShopListing::pageUrl(...));
+        $steps = PageWindow::steps($choices['page'], $pages, ShopListing::pageUrl(...));
         // A category's link is its own page, keeping only how the shopper sees the products.
         $keep = static fn(string $url): string => $choices['view'] === '' ? $url : add_query_arg('view', $choices['view'], $url);
 
@@ -111,6 +96,7 @@ final readonly class ProductsBlock implements BlockDefinition
             'show' => [
                 'categories' => $on('showCategories'),
                 'search' => $on('showSearch'),
+                'sort' => $on('showSort'),
                 'layouts' => $on('showLayouts'),
                 'count' => $on('showCount'),
                 'pagination' => $on('showPagination'),
@@ -128,23 +114,21 @@ final readonly class ProductsBlock implements BlockDefinition
                 'url' => $keep($term['url']),
                 'current' => $term['id'] === $chosen,
             ], $below),
-            'current_category' => $fixedCategory !== '' ? '' : $choices['category'],
+            'current_category' => $scope->category !== '' ? '' : $choices['category'],
             'all_url' => $keep($this->links->pages()['shop'] ?? $base),
             // The whole shop is this page when no category, tag or brand narrows it.
-            'all_current' => $chosen === null && $fixedTag === '' && $fixedBrand === null && $choices['tag'] === '',
+            'all_current' => $chosen === null && $scope->tag === '' && $scope->brand === null && $choices['tag'] === '',
             'base_url' => $base,
             'search' => $choices['search'],
             'sort' => $choices['sort'],
-            'sorts' => ($choices['search'] === '' ? [] : ['relevance' => __('Best match', 'orillacart')]) + [
-                'order' => __('Recommended', 'orillacart'),
-                'newest' => __('Newest', 'orillacart'),
-                'name' => __('Name', 'orillacart'),
-                'price_asc' => __('Price: low to high', 'orillacart'),
-                'price_desc' => __('Price: high to low', 'orillacart'),
-            ],
+            'sorts' => ShopListing::sortLabels($choices['search'] !== ''),
+            // Without the choice shown, the form keeps the sort only if the shopper chose one.
+            'sort_chosen' => \in_array('sort', array_column($this->listing->hidden($choices, false), 'name'), true),
             'page' => $choices['page'],
             'pages' => $pages,
             'page_links' => $pageLinks,
+            'previous_url' => $steps['previous'],
+            'next_url' => $steps['next'],
             'columns' => $columns,
             'layout' => $layout,
             'layout_urls' => [

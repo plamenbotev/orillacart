@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Shipping\Application\Dto;
 
 use OrillaCart\Shipping\Domain\Carrier;
+use OrillaCart\Shipping\Domain\DeliveryWindow;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -40,6 +41,11 @@ final readonly class SaveCarrier
         /** The days, and times of day, the customer chooses for delivery; null to leave them out. */
         #[Assert\Valid]
         public ?SaveDeliverySchedule $deliverySchedule = null,
+        /** How many working days it takes to deliver, at least and at most; null for nothing said, one for exactly. */
+        #[Assert\Range(min: 0, max: DeliveryWindow::MAX_DAYS)]
+        public ?int $deliveryMinDays = null,
+        #[Assert\Range(min: 0, max: DeliveryWindow::MAX_DAYS)]
+        public ?int $deliveryMaxDays = null,
         /** Goods of a class one of its rates lists go only by the rates that list it. */
         public bool $classesKeptToTheirRates = false,
         /**

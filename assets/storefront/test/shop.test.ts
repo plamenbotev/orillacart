@@ -104,4 +104,93 @@ describe( 'the shop page', () => {
 			document.querySelector( '.orillacart-products__grid' )?.textContent
 		).toBe( 'Last' );
 	} );
+
+	it( 'keeps the sort, count, pages and active filters placed apart in step with the products', async () => {
+		const listing = ( count: string, chips: string, grid: string ) => `
+			<div data-orillacart-region="products-sort">
+				<form method="get" action="https://shop.test/shop/" data-orillacart-filters>
+					<input type="hidden" name="in_stock" value="1">
+					<select name="sort"><option value="order">Recommended</option><option value="name">Name</option></select>
+					<button type="submit" data-orillacart-apply>Sort</button>
+				</form>
+			</div>
+			<p data-orillacart-region="products-count">${ count }</p>
+			<div data-orillacart-region="active-filters">${ chips }</div>
+			${ page( grid ) }
+			<div data-orillacart-region="products-pagination"></div>`;
+		document.body.innerHTML = listing(
+			'3 products',
+			'<a href="https://shop.test/shop/" data-orillacart-shop-link>In stock only</a>',
+			'<li>Before</li>'
+		);
+		window.history.replaceState( {}, '', '/shop/?in_stock=1' );
+		const fetched: string[] = [];
+		window.fetch = jest.fn( ( url: RequestInfo | URL ) => {
+			fetched.push( String( url ) );
+			return Promise.resolve( {
+				ok: true,
+				text: () =>
+					Promise.resolve(
+						String( url ).includes( 'sort=name' )
+							? listing( '3 products', '', '<li>By name</li>' )
+							: listing( '9 products', '', '<li>After</li>' )
+					),
+			} as Response );
+		} ) as typeof fetch;
+		jest.spyOn( window.history, 'pushState' ).mockImplementation(
+			() => undefined
+		);
+		bindShop();
+
+		expect(
+			(
+				document.querySelector(
+					'[data-orillacart-apply]'
+				) as HTMLElement
+			 ).hidden
+		).toBe( true );
+		const sort = document.querySelector(
+			'[name="sort"]'
+		) as HTMLSelectElement;
+		sort.value = 'name';
+		sort.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+		await flush();
+		await flush();
+		// Each test before binds the document too.
+		expect( [ ...new Set( fetched ) ] ).toEqual( [
+			'https://shop.test/shop/?in_stock=1&sort=name',
+		] );
+		expect(
+			document.querySelector( '.orillacart-products__grid' )?.textContent
+		).toBe( 'By name' );
+		fetched.length = 0;
+
+		document.body.innerHTML = listing(
+			'3 products',
+			'<a href="https://shop.test/shop/" data-orillacart-shop-link>In stock only</a>',
+			'<li>Before</li>'
+		);
+		(
+			document.querySelector(
+				'[data-orillacart-shop-link]'
+			) as HTMLAnchorElement
+		 ).click();
+		await flush();
+		await flush();
+
+		expect( [ ...new Set( fetched ) ] ).toEqual( [
+			'https://shop.test/shop/',
+		] );
+		expect(
+			document.querySelector(
+				'[data-orillacart-region="products-count"]'
+			)?.textContent
+		).toBe( '9 products' );
+		expect(
+			document.querySelector( '[data-orillacart-shop-link]' )
+		).toBeNull();
+		expect(
+			document.querySelector( '.orillacart-products__grid' )?.textContent
+		).toBe( 'After' );
+	} );
 } );

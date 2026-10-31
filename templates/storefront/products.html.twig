@@ -3,11 +3,13 @@
  #
  # products: [{offer, url, image (HTML), simple}]; categories: [{name, url, current, image (HTML or empty)}], the top ones,
  # current "page" for the one chosen, "true" above it; subcategories: [{name, url, current}], below the one chosen (or beside it); all_url, all_current; search; sort;
- # sorts: {value: label}; page; pages; page_links: [{number (null: a gap), url}]; columns; cart_url (null without a cart page);
+ # sorts: {value: label}; sort_chosen: the shopper chose the sort (kept without the choice shown); page; pages;
+ # page_links, previous_url, next_url (see _pagination.html.twig); columns; cart_url (null without a cart page);
  # show_filters; panel (see _filters.html.twig); hidden: [{name, value}] the choices kept without the panel;
  # filtered (anything chosen); layout: grid or list; layout_urls: {grid, list}; view: the shopper's own, kept by the form;
  # card_html: [{id, html}] each product's card from the shop's own card blocks, else null for the shop's card;
- # show: {categories, search, layouts, count, pagination}, the parts around the grid; first, last, total: the count.
+ # show: {categories, search, sort, layouts, count, pagination}, the parts around the grid (each on unless turned off,
+ # for a theme placing them in blocks of their own); first, last, total: the count.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-products" data-orillacart-region="products">
@@ -36,6 +38,10 @@
                 <label for="orillacart-product-search">{{ __('Search products') }}</label>
                 <input id="orillacart-product-search" type="search" name="q" value="{{ search }}">
             </p>
+        {% elseif search %}
+            <input type="hidden" name="q" value="{{ search }}">
+        {% endif %}
+        {% if show.sort ?? true %}
             <p class="orillacart-field">
                 <label for="orillacart-product-sort">{{ __('Sort by') }}</label>
                 <select id="orillacart-product-sort" name="sort">
@@ -44,10 +50,11 @@
                     {% endfor %}
                 </select>
             </p>
-            <button type="submit" class="wp-element-button orillacart-button">{{ __('Show') }}</button>
-        {% else %}
-            {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
+        {% elseif sort_chosen %}
             <input type="hidden" name="sort" value="{{ sort }}">
+        {% endif %}
+        {% if (show.search ?? true) or (show.sort ?? true) %}
+            <button type="submit" class="wp-element-button orillacart-button">{{ __('Show') }}</button>
         {% endif %}
 
         {% if view %}<input type="hidden" name="view" value="{{ view }}">{% endif %}
@@ -88,18 +95,8 @@
             </ul>
         {% endif %}
 
-        {% if pages > 1 and (show.pagination ?? true) %}
-            <nav class="orillacart-pagination" aria-label="{{ __('Product pages') }}">
-                <ul>
-                    {% for link in page_links %}
-                        {% if link.number is null %}
-                            <li class="orillacart-pagination__gap" aria-hidden="true">…</li>
-                        {% else %}
-                            <li>{% if link.number == page %}<span aria-current="page">{{ link.number }}</span>{% else %}<a href="{{ link.url }}">{{ link.number }}</a>{% endif %}</li>
-                        {% endif %}
-                    {% endfor %}
-                </ul>
-            </nav>
+        {% if show.pagination ?? true %}
+            {% include 'storefront/_pagination.html.twig' with {page: page, pages: pages, page_links: page_links, previous_url: previous_url, next_url: next_url} only %}
         {% endif %}
     {% else %}
         <p class="orillacart-empty">{{ search or filtered ? __('No products match your search.') : __('There are no products here yet.') }}</p>

@@ -19,22 +19,11 @@
 {% endif %}
 <p class="orillacart-product__description" data-orillacart-variation-description hidden></p>
 
-{# Without a SKU of its own, the line waits hidden for a variation's. #}
-{% if (show.sku ?? true) and (offer.sku or (variations|default([]))|filter(variation => variation.sku)|length > 0) %}
-    <p class="orillacart-product__sku"{{ offer.sku ? '' : ' hidden' }}>{{ __('SKU') }}: <span data-orillacart-sku>{{ offer.sku }}</span></p>
+{% if show.sku ?? true %}
+    {% include 'storefront/_product_sku.html.twig' %}
 {% endif %}
 
-<p class="orillacart-stock" data-orillacart-stock{{ (show.stock ?? true) ? '' : ' hidden' }}>
-    {%- if offer.price_hidden -%}
-    {%- elseif not offer.for_sale -%}
-        <span class="orillacart-stock--out">{{ __('Not available') }}</span>
-    {%- elseif offer.on_backorder -%}
-        <span class="orillacart-stock--backorder">{{ __('On backorder: ships when it is back in stock') }}</span>
-    {%- elseif offer.available is not null -%}
-        {# translators: %d: how many are in stock -#}
-        {{ __('%d in stock')|format(offer.available) }}
-    {%- endif -%}
-</p>
+{% include 'storefront/_product_stock.html.twig' with {hidden: not (show.stock ?? true)} %}
 
 {% if back_in_stock|default(false) and (offer.sold_out or variations|filter(variation => variation.sold_out)|length > 0) %}
     <form class="orillacart-back-in-stock" data-orillacart-back-in-stock data-product="{{ offer.id }}"{{ offer.sold_out ? '' : ' hidden' }}>
@@ -126,12 +115,7 @@
 {% endif %}
 {{ slot('product_after_form', offer.id) }}
 
-{% if offer.downloads and (show.downloads ?? true) %}
-    <div class="orillacart-product__downloads">
-        <h2 class="orillacart-heading">{{ __('Files you get') }}</h2>
-        <ul>
-            {% for name in offer.downloads %}<li>{{ name }}</li>{% endfor %}
-        </ul>
-    </div>
+{% if show.downloads ?? true %}
+    {% include 'storefront/_product_downloads.html.twig' %}
 {% endif %}
 {{ slot('product_after_details', offer.id) }}

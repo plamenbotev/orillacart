@@ -89,5 +89,7 @@ final readonly class CheckoutView
          */
         public ?string $importScheme = null,
         public bool $importCharges = false,
+        /** The order value, after discounts and before tax, from which one of the shop's rates ships it free; with freeShippingShort. */
+        public ?string $freeShippingFrom = null,
     ) {}
 }

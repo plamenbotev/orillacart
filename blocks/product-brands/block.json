@@ -1,0 +1,65 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-brands",
+	"title": "Product brands",
+	"category": "widgets",
+	"icon": "awards",
+	"description": "The shop’s brands, each linking to its products: as tiles with their logos or as a list of names, all of them or those chosen.",
+	"keywords": [
+		"shop",
+		"brands",
+		"catalog"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"source": {
+			"type": "string",
+			"enum": [
+				"all",
+				"chosen"
+			],
+			"default": "all"
+		},
+		"include": {
+			"type": "array",
+			"items": {
+				"type": "integer"
+			},
+			"default": []
+		},
+		"layout": {
+			"type": "string",
+			"enum": [
+				"grid",
+				"list"
+			],
+			"default": "grid"
+		},
+		"columns": {
+			"type": "integer",
+			"default": 4
+		},
+		"showImage": {
+			"type": "boolean",
+			"default": true
+		},
+		"showCount": {
+			"type": "boolean",
+			"default": false
+		},
+		"showEmpty": {
+			"type": "boolean",
+			"default": false
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"style": "orillacart-storefront"
+}

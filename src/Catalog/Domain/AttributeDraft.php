@@ -13,7 +13,8 @@ final readonly class AttributeDraft
 
     /**
      * @param list<OptionDraft> $options in display order
-     * @param bool              $priceHidden the storefront shows the options without their price adjustments
+     * @param bool              $priceHidden      the storefront shows the options without their price adjustments
+     * @param bool              $inSpecifications the product page's specifications list it with its options
      */
     public function __construct(
         public ?int $id,
@@ -21,6 +22,7 @@ final readonly class AttributeDraft
         public array $options,
         public bool $required = false,
         public bool $priceHidden = false,
+        public bool $inSpecifications = true,
     ) {
         if (trim($name) === '' || mb_strlen($name) > self::MAX_NAME_LENGTH) {
             throw new CatalogRuleViolation('An attribute needs a name of up to %d characters.', 'orillacart_invalid_attribute_name', values: [self::MAX_NAME_LENGTH]);

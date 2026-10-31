@@ -1,0 +1,38 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/store-notice",
+	"title": "Store notice",
+	"category": "widgets",
+	"icon": "megaphone",
+	"description": "The shop’s notice, such as “Free delivery this week”, with a link and a button to close it if the shop chooses. Its words are set in Settings → Storefront. Shows nothing while the notice is off.",
+	"keywords": [
+		"shop",
+		"notice",
+		"banner",
+		"announcement"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		],
+		"color": {
+			"background": true,
+			"text": true,
+			"link": true
+		},
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

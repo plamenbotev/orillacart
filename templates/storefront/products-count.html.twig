@@ -1,0 +1,12 @@
+{#
+ # How many products the page's listing shows (the Products count block): first, last and total; first is 0 when
+ # this page shows none.
+ #}
+<p class="orillacart-products-count" role="status" data-orillacart-region="products-count">
+    {%- if first > 0 and (total > last or first > 1) -%}
+        {# translators: 1: the first product shown, 2: the last, 3: how many there are -#}
+        {{ __('Showing %1$d–%2$d of %3$d')|format(first, last, total) }}
+    {%- else -%}
+        {{ _n('%d product', '%d products', total)|format(total) }}
+    {%- endif -%}
+</p>

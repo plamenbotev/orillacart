@@ -1,0 +1,14 @@
+{#
+ # How far the cart is from free shipping, inside the Free shipping progress block. progress: {reached, spent,
+ # threshold, remaining, currency}; percent: the bar's width.
+ #}
+{% if progress.reached %}
+    <p class="orillacart-free-shipping-progress__message orillacart-free-shipping-progress__message--reached">{{ __('Your order ships free.') }}</p>
+{% else %}
+    {# translators: %s: an amount of money -#}
+    <p class="orillacart-free-shipping-progress__message">{{ __('Spend %s more for free shipping.')|format(progress.remaining|money(progress.currency)) }}</p>
+    {# translators: 1: what the items come to, 2: the order value that ships free -#}
+    <div class="orillacart-free-shipping-progress__bar" role="progressbar" aria-label="{{ __('Towards free shipping') }}" aria-valuemin="0" aria-valuemax="{{ progress.threshold }}" aria-valuenow="{{ progress.spent }}" aria-valuetext="{{ __('%1$s of %2$s')|format(progress.spent|money(progress.currency), progress.threshold|money(progress.currency)) }}">
+        <span class="orillacart-free-shipping-progress__fill" style="width: {{ percent }}%"></span>
+    </div>
+{% endif %}

@@ -70,6 +70,14 @@ export async function startWishlist(): Promise< void > {
 		)
 	);
 	for ( const list of lists ) {
+		const login = list.parentElement?.querySelector< HTMLElement >(
+			'[data-orillacart-wishlist-login]'
+		);
+		if ( login && ! loggedIn && policy === 'accounts' ) {
+			// Only customers keep one: a visitor is asked to log in, not shown an empty list.
+			login.hidden = false;
+			continue;
+		}
 		await fillList( list, saved, ( ids ) => ( saved = ids ) );
 	}
 }

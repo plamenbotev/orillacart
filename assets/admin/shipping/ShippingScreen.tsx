@@ -243,7 +243,19 @@ const NEW_CARRIER: CarrierInput = {
 	pickup_locations: [],
 	delivery_schedule: null,
 	classes_kept_to_their_rates: false,
+	delivery_min_days: null,
+	delivery_max_days: null,
 };
+
+/**
+ * A number of days as typed; empty for none.
+ *
+ * @param value The field's text.
+ */
+const days = ( value: string ): number | null =>
+	value.trim() === ''
+		? null
+		: Math.max( 0, Number.parseInt( value, 10 ) || 0 );
 
 const NEW_PLACE: Omit< PickupLocation, 'id' > = {
 	name: '',
@@ -305,6 +317,8 @@ function CarrierCard( {
 			pickup_locations: pickup ? draft.pickup_locations : [],
 			delivery_schedule: draft.delivery_schedule,
 			classes_kept_to_their_rates: draft.classes_kept_to_their_rates,
+			delivery_min_days: pickup ? null : draft.delivery_min_days,
+			delivery_max_days: pickup ? null : draft.delivery_max_days,
 			...( draft.translations && { translations: draft.translations } ),
 		} )
 			.then( ( saved ) => {
@@ -657,6 +671,66 @@ function CarrierCard( {
 								</FlexItem>
 							</Flex>
 						</>
+					) }
+					{ ! pickup && (
+						<fieldset className="orillacart-delivery-days">
+							<legend>
+								{ __(
+									'How long it takes to deliver',
+									'orillacart'
+								) }
+							</legend>
+							<Flex align="flex-end" wrap justify="flex-start">
+								<FlexItem>
+									<TextControl
+										__next40pxDefaultSize
+										type="number"
+										min={ 0 }
+										label={ __(
+											'Working days, at least',
+											'orillacart'
+										) }
+										value={ String(
+											draft.delivery_min_days ?? ''
+										) }
+										onChange={ ( value ) =>
+											setDraft( {
+												...draft,
+												delivery_min_days:
+													days( value ),
+											} )
+										}
+									/>
+								</FlexItem>
+								<FlexItem>
+									<TextControl
+										__next40pxDefaultSize
+										type="number"
+										min={ 0 }
+										label={ __(
+											'Working days, at most',
+											'orillacart'
+										) }
+										value={ String(
+											draft.delivery_max_days ?? ''
+										) }
+										onChange={ ( value ) =>
+											setDraft( {
+												...draft,
+												delivery_max_days:
+													days( value ),
+											} )
+										}
+									/>
+								</FlexItem>
+							</Flex>
+							<p className="description">
+								{ __(
+									'Product pages tell shoppers by when an order arrives. A delivery schedule below, when the carrier has one, says it instead; empty, they are told nothing.',
+									'orillacart'
+								) }
+							</p>
+						</fieldset>
 					) }
 					<DeliveryScheduleFields
 						value={ draft.delivery_schedule }

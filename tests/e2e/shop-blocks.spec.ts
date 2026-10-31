@@ -1,0 +1,118 @@
+/**
+ * The shop-wide blocks as a visitor meets them: the store notice they may close, and how far their cart is from
+ * free shipping, on a page a cache could keep.
+ */
+import { expect, test } from '@wordpress/e2e-test-utils-playwright';
+
+import { remove, setUpShop, tearDownShop, type Shop } from './shop';
+
+let shop: Shop;
+
+test.beforeAll( async ( { requestUtils } ) => {
+	shop = await setUpShop( requestUtils );
+} );
+
+test.afterAll( async ( { requestUtils } ) => {
+	await tearDownShop( requestUtils );
+} );
+
+// Visitors: no admin login.
+test.use( { storageState: { cookies: [], origins: [] } } );
+
+test.describe( 'A visitor', () => {
+	test( 'reads the store notice until they close it, and sees how much more ships their cart free', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const settings = await requestUtils.rest< Record< string, unknown > >( {
+			path: '/orillacart/v1/storefront-settings',
+		} );
+		const carrier = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/carriers',
+			data: {
+				name: 'E2E Free',
+				rates: [
+					{
+						name: 'Free over 1000',
+						price: '0',
+						regions: [ 'BG' ],
+						subtotal: { min: '1000' },
+					},
+				],
+			},
+		} );
+		const blocks = await requestUtils.rest< { id: number; link: string } >(
+			{
+				method: 'POST',
+				path: '/wp/v2/pages',
+				data: {
+					title: 'E2E Shop blocks',
+					status: 'publish',
+					content:
+						'<!-- wp:orillacart/store-notice /--><!-- wp:orillacart/free-shipping-progress /-->',
+				},
+			}
+		);
+		try {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/storefront-settings',
+				data: {
+					...settings,
+					notice: true,
+					notice_text: 'E2E free delivery this week',
+					notice_link: '',
+					notice_link_label: '',
+					notice_dismissible: true,
+				},
+			} );
+
+			await page.goto( blocks.link );
+			const notice = page.getByRole( 'region', { name: 'Store notice' } );
+			await expect( notice ).toContainText(
+				'E2E free delivery this week'
+			);
+			// An empty cart has nothing to say.
+			await expect( page.getByRole( 'progressbar' ) ).toHaveCount( 0 );
+
+			await notice
+				.getByRole( 'button', { name: 'Dismiss this notice' } )
+				.click();
+			await expect( notice ).toBeHidden();
+			await page.reload();
+			await expect(
+				page.getByText( 'E2E free delivery this week' )
+			).toBeHidden();
+
+			await page.goto( shop.lampUrl );
+			await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+			await expect( page.getByRole( 'status' ).first() ).toHaveText(
+				/Added/
+			);
+			await page.goto( blocks.link );
+			await expect(
+				page.getByText( /more for free shipping\./ )
+			).toBeVisible();
+			await expect(
+				page.getByRole( 'progressbar', {
+					name: 'Towards free shipping',
+				} )
+			).toHaveAttribute( 'aria-valuemax', /^1000/ );
+		} finally {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/storefront-settings',
+				data: settings,
+			} );
+			await remove(
+				requestUtils,
+				`/orillacart/v1/carriers/${ carrier.id }`
+			);
+			await remove(
+				requestUtils,
+				`/wp/v2/pages/${ blocks.id }?force=true`
+			);
+		}
+	} );
+} );

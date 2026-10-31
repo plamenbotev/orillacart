@@ -30,4 +30,15 @@ final class PageWindowTest extends TestCase
             ['number' => 10, 'url' => '/shop/page/10/'],
         ], PageWindow::links(10, 10, static fn(int $number): string => $number === 1 ? '/shop/' : "/shop/page/{$number}/"));
     }
+
+    public function testThePreviousAndNextPagesAreLinkedButNotPastEitherEnd(): void
+    {
+        $url = static fn(int $number): string => "/shop/page/{$number}/";
+
+        self::assertSame(['previous' => '/shop/page/3/', 'next' => '/shop/page/5/'], PageWindow::steps(4, 7, $url));
+        self::assertSame(['previous' => '', 'next' => '/shop/page/2/'], PageWindow::steps(1, 7, $url));
+        self::assertSame(['previous' => '/shop/page/6/', 'next' => ''], PageWindow::steps(7, 7, $url));
+        self::assertSame(['previous' => '/shop/page/7/', 'next' => ''], PageWindow::steps(99, 7, $url), 'a page past the last goes back to the last');
+        self::assertSame(['previous' => '', 'next' => ''], PageWindow::steps(1, 0, $url));
+    }
 }

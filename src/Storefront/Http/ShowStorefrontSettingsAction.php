@@ -14,7 +14,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Shows the storefront's settings: product data for search engines, sharing tags, the wishlist, recently viewed
- * products, the data layer and filters.
+ * products, the data layer, filters, and the store notice with its translations.
  */
 #[Route('/storefront-settings', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowStorefrontSettingsAction implements RequestHandlerInterface

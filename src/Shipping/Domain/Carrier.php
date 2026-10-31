@@ -51,6 +51,13 @@ class Carrier
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $deliverySchedule = null;
 
+    /** How many working days it takes to deliver, at least and at most; null for nothing said. */
+    #[ORM\Column(nullable: true)]
+    private ?int $deliveryMinDays = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $deliveryMaxDays = null;
+
     /** Whether the method's prices (or the pickup fees) are taxed, and by which tax group (null: the shop's default). */
     #[ORM\Column]
     private bool $methodTaxable = true;
@@ -216,6 +223,31 @@ class Carrier
     public function deliverySchedule(): ?DeliverySchedule
     {
         return $this->deliverySchedule === null ? null : DeliverySchedule::fromArray($this->deliverySchedule);
+    }
+
+    /** How many working days it takes to deliver; null to say nothing. */
+    public function takeDeliveryDays(?DeliveryWindow $window): void
+    {
+        $this->deliveryMinDays = $window?->minDays;
+        $this->deliveryMaxDays = $window?->maxDays;
+    }
+
+    public function deliveryWindow(): ?DeliveryWindow
+    {
+        return $this->deliveryMinDays === null || $this->deliveryMaxDays === null ? null : new DeliveryWindow($this->deliveryMinDays, $this->deliveryMaxDays);
+    }
+
+    /**
+     * When an order placed now would arrive: by its delivery schedule, else by its working days; null when it says
+     * neither, or the schedule has no day ahead.
+     *
+     * @param \DateTimeImmutable $now in the shop's time zone
+     */
+    public function deliveryEstimate(\DateTimeImmutable $now): ?DeliveryEstimate
+    {
+        $schedule = $this->deliverySchedule();
+
+        return $schedule === null ? $this->deliveryWindow()?->estimate($now) : $schedule->estimate($now);
     }
 
     /** Whether it is the shop's own pickup. */

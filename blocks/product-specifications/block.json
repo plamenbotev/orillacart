@@ -1,0 +1,56 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-specifications",
+	"title": "Product specifications",
+	"category": "theme",
+	"icon": "editor-table",
+	"description": "A table of the product's attributes, weight and size.",
+	"keywords": [
+		"shop",
+		"product",
+		"attributes",
+		"details"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"productId": {
+			"type": "integer",
+			"default": 0
+		},
+		"preview": {
+			"type": "boolean",
+			"default": false
+		},
+		"showTitle": {
+			"type": "boolean",
+			"default": true
+		},
+		"showAttributes": {
+			"type": "boolean",
+			"default": true
+		},
+		"showWeight": {
+			"type": "boolean",
+			"default": true
+		},
+		"showDimensions": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

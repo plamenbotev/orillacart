@@ -18,6 +18,8 @@ export interface Attribute {
 	name: string;
 	required: boolean;
 	price_hidden: boolean;
+	/** The product page's specifications list it with its options. */
+	in_specifications: boolean;
 	options: AttributeOption[];
 	/** The attribute set it comes from; null for a product's own attribute. */
 	set_id: number | null;
@@ -31,6 +33,7 @@ export interface AttributeInput {
 	name: string;
 	required: boolean;
 	price_hidden: boolean;
+	in_specifications?: boolean;
 	options: {
 		id?: number;
 		name: string;
@@ -201,6 +204,7 @@ export function toAttributeInput( attribute: Attribute ): AttributeInput {
 		name: attribute.name,
 		required: attribute.required,
 		price_hidden: attribute.price_hidden,
+		in_specifications: attribute.in_specifications,
 		options: attribute.options.map(
 			( {
 				id,

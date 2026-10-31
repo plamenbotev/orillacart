@@ -1,0 +1,85 @@
+/* The product page's own blocks: stock, SKU, short description, specifications, share and delivery estimate */
+.orillacart-product-sku .orillacart-product__sku,
+.orillacart-product-stock .orillacart-stock {
+	margin: 0 0 0.5rem;
+}
+
+.orillacart-product-excerpt__text > :first-child {
+	margin-top: 0;
+}
+
+.orillacart-product-excerpt__text > :last-child {
+	margin-bottom: 0;
+}
+
+.orillacart-product-excerpt .orillacart-product__description {
+	margin: 0.5rem 0 0;
+}
+
+.orillacart-specifications caption {
+	text-align: left;
+}
+
+.orillacart-specifications th {
+	width: 40%;
+	font-weight: 600;
+}
+
+.orillacart-specifications td:last-child {
+	text-align: left;
+}
+
+.orillacart-share {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem 1rem;
+}
+
+.orillacart-share__label {
+	margin: 0;
+	font-weight: 600;
+}
+
+.orillacart-share__links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-share__link {
+	display: inline-block;
+	padding: 0.25rem 0.75rem;
+	border: 1px solid var(--orillacart-border);
+	border-radius: var(--orillacart-radius);
+	background: none;
+	color: inherit;
+	font: inherit;
+	font-size: 0.875em;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.orillacart-share__link:hover,
+.orillacart-share__link:focus-visible {
+	border-color: currentColor;
+}
+
+.orillacart-share .orillacart-message {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.orillacart-delivery-estimate {
+	margin: 0.5rem 0;
+	padding: 0.5rem 0.75rem;
+	border-left: 4px solid var(--orillacart-success);
+	background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.orillacart-delivery-estimate[hidden] {
+	display: none;
+}

@@ -1,19 +1,27 @@
 /**
- * The shop page's search and filters: plain GET forms that work without this script. With it, a change
- * shows the matching products at once: the products region, and a Product filters block's, are rendered anew on
- * the server for the new address, which the browser's history keeps.
+ * The shop page's search, filters and sort: plain GET forms and links that work without this script. With it,
+ * a change shows the matching products at once: the products region, and those of the blocks placed around it
+ * (filters, sort, count, pages, active filters), are rendered anew on the server for the new address, which the
+ * browser's history keeps.
  */
 import { reloadRegions } from './dom';
 import { bindAddToCart } from './product';
 
-/** The regions a change renders anew: the products, and the filters when they are a block of their own. */
-const REGIONS = [ 'products', 'filters' ];
+/** The regions a change renders anew: the products, and the blocks of their own that show the same choices. */
+const REGIONS = [
+	'products',
+	'filters',
+	'products-sort',
+	'products-count',
+	'products-pagination',
+	'active-filters',
+];
 
-/** With the script, choices apply as they change: the filters block needs no button. */
+/** With the script, choices apply as they change: the filters and sort blocks need no button. */
 function hideApplyButtons(): void {
 	document
 		.querySelectorAll< HTMLButtonElement >(
-			'.orillacart-product-filters__apply'
+			'.orillacart-product-filters__apply, [data-orillacart-apply]'
 		)
 		.forEach( ( button ) => {
 			button.hidden = true;
@@ -68,15 +76,19 @@ async function show( url: string ): Promise< void > {
  * Listens on the document, so the form keeps working after its region is replaced.
  */
 export function bindShop(): void {
-	if ( ! document.querySelector( 'form[data-orillacart-filters]' ) ) {
+	if (
+		! document.querySelector(
+			'form[data-orillacart-filters], a[data-orillacart-shop-link]'
+		)
+	) {
 		return;
 	}
 	hideApplyButtons();
-	const apply = ( form: HTMLFormElement ) => {
-		const url = filtersUrl( form );
+	const go = ( url: string ) => {
 		// A filters block on a page without products sends the shopper to the shop page.
 		if (
-			new URL( url ).pathname !== window.location.pathname ||
+			new URL( url, window.location.href ).pathname !==
+				window.location.pathname ||
 			! document.querySelector( '[data-orillacart-region="products"]' )
 		) {
 			window.location.assign( url );
@@ -85,6 +97,29 @@ export function bindShop(): void {
 		window.history.pushState( { orillacart: true }, '', url );
 		void show( url );
 	};
+	const apply = ( form: HTMLFormElement ) => go( filtersUrl( form ) );
+	// An active filter's link drops it on this very page.
+	document.addEventListener( 'click', ( event ) => {
+		const link =
+			event.target instanceof Element
+				? event.target.closest< HTMLAnchorElement >(
+						'a[data-orillacart-shop-link]'
+					)
+				: null;
+		// A new tab or window is the browser's to open.
+		if (
+			! link ||
+			event.button !== 0 ||
+			event.metaKey ||
+			event.ctrlKey ||
+			event.shiftKey ||
+			event.altKey
+		) {
+			return;
+		}
+		event.preventDefault();
+		go( link.href );
+	} );
 	document.addEventListener( 'change', ( event ) => {
 		const field = event.target;
 		const form =

@@ -6,7 +6,6 @@ namespace OrillaCart\Tests\Unit\Customers;
 
 use OrillaCart\Customers\Application\Wishlists;
 use OrillaCart\Customers\Domain\CustomerRuleViolation;
-use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Domain\StorefrontSettings;
 use OrillaCart\Storefront\Domain\WishlistPolicy;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
@@ -25,7 +24,7 @@ final class WishlistsTest extends TestCase
     {
         $this->accounts = new InMemoryAccounts();
         $this->settings = new InMemoryStorefrontSettings();
-        $this->wishlists = new Wishlists($this->accounts, new StorefrontSettingsService($this->settings), new TestShop()->productTranslations);
+        $this->wishlists = new Wishlists($this->accounts, $this->settings->service(), new TestShop()->productTranslations);
         $this->ada = $this->accounts->add('ada@example.com');
     }
 

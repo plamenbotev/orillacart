@@ -1,0 +1,188 @@
+/* Shop-wide blocks: the free shipping progress, the store notice and the brands. */
+
+:where(
+	.orillacart-free-shipping-progress,
+	.orillacart-store-notice,
+	.orillacart-brands
+) {
+	--orillacart-gap: 1.5rem;
+	--orillacart-border: color-mix(in srgb, currentColor 18%, transparent);
+	--orillacart-success: #1e7e34;
+	--orillacart-radius: 4px;
+}
+
+/* A block with nothing to show takes no room, its colours and spacing with it. */
+:where(
+	.wp-block-orillacart-free-shipping-progress,
+	.wp-block-orillacart-store-notice
+):has(> [hidden]) {
+	display: none;
+}
+
+.orillacart-free-shipping-progress__message {
+	margin: 0;
+}
+
+.orillacart-free-shipping-progress__message--reached {
+	font-weight: 600;
+}
+
+.orillacart-free-shipping-progress__bar {
+	height: 0.5rem;
+	margin-top: 0.5rem;
+	overflow: hidden;
+	border-radius: 999px;
+	background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.orillacart-free-shipping-progress--no-bar
+	.orillacart-free-shipping-progress__bar {
+	display: none;
+}
+
+.orillacart-free-shipping-progress__fill {
+	display: block;
+	height: 100%;
+	border-radius: inherit;
+	background: var(--orillacart-success);
+	transition: width 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.orillacart-free-shipping-progress__fill {
+		transition: none;
+	}
+}
+
+.orillacart-store-notice {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 1rem;
+	text-align: center;
+}
+
+.orillacart-store-notice[hidden] {
+	display: none;
+}
+
+.orillacart-store-notice__text {
+	margin: 0;
+}
+
+.orillacart-store-notice__link {
+	color: inherit;
+	font-weight: 600;
+}
+
+.orillacart-store-notice__dismiss {
+	flex: none;
+	min-width: 2rem;
+	min-height: 2rem;
+	padding: 0;
+	border: 0;
+	border-radius: var(--orillacart-radius);
+	background: transparent;
+	color: inherit;
+	font-size: 1.25em;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.orillacart-store-notice__dismiss:hover,
+.orillacart-store-notice__dismiss:focus-visible {
+	background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.orillacart-brands {
+	margin-block: 0 var(--orillacart-gap);
+}
+
+.orillacart-brands__items {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-brands--grid .orillacart-brands__items {
+	display: grid;
+	grid-template-columns: repeat(var(--orillacart-columns, 4), minmax(0, 1fr));
+	gap: var(--orillacart-gap);
+}
+
+@media (max-width: 600px) {
+	.orillacart-brands--grid .orillacart-brands__items {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+.orillacart-brands--list .orillacart-brands__items {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.orillacart-brand__link {
+	display: flex;
+	gap: 0.5rem;
+	color: inherit;
+	text-decoration: none;
+}
+
+.orillacart-brands--grid .orillacart-brand__link {
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.orillacart-brands--list .orillacart-brand__link {
+	align-items: center;
+}
+
+/* A logo is shown whole, on a frame of its own. */
+.orillacart-brand__image,
+.orillacart-brand__no-image {
+	display: block;
+	object-fit: contain;
+	border-radius: var(--orillacart-radius);
+	background: color-mix(in srgb, currentColor 4%, transparent);
+}
+
+.orillacart-brands--grid
+	:is(.orillacart-brand__image, .orillacart-brand__no-image) {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 3 / 2;
+	padding: 0.75rem;
+	box-sizing: border-box;
+}
+
+.orillacart-brands--list
+	:is(.orillacart-brand__image, .orillacart-brand__no-image) {
+	width: 2.5rem;
+	height: 2.5rem;
+}
+
+.orillacart-brand__name {
+	font-weight: 600;
+}
+
+/* Tiles without logos: each name in a frame of its own. */
+.orillacart-brands--grid
+	.orillacart-brand__link:not(
+		:has(.orillacart-brand__image, .orillacart-brand__no-image)
+	) {
+	padding: 1rem;
+	border: 1px solid var(--orillacart-border);
+	border-radius: var(--orillacart-radius);
+}
+
+.orillacart-brand__link:hover .orillacart-brand__name,
+.orillacart-brand__link:focus-visible .orillacart-brand__name {
+	text-decoration: underline;
+}
+
+.orillacart-brand__count {
+	font-size: 0.875em;
+	opacity: 0.75;
+}

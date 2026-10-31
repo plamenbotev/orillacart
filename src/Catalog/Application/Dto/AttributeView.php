@@ -21,6 +21,8 @@ final readonly class AttributeView
         public ?int $setId,
         /** @var array<string, string> the name in the site's other languages, by locale, for the admin screens */
         public array $translations = [],
+        /** The product page's specifications list it with its options. */
+        public bool $inSpecifications = true,
     ) {}
 
     public static function fromAttribute(Attribute $attribute, ?NameTranslations $translations = null): self
@@ -33,6 +35,7 @@ final readonly class AttributeView
             array_map(static fn($option): OptionView => OptionView::fromOption($option, $translations), $attribute->options()),
             $attribute->set()?->id(),
             $translations?->attributes[$attribute->id()] ?? [],
+            $attribute->isInSpecifications(),
         );
     }
 }

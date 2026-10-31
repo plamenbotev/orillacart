@@ -33,6 +33,9 @@ final readonly class CarrierView
         public bool $classesKeptToTheirRates = false,
         /** @var array<string, string> the name in the site's other languages, by locale */
         public array $translations = [],
+        /** How many working days it takes to deliver, at least and at most; null for nothing said. */
+        public ?int $deliveryMinDays = null,
+        public ?int $deliveryMaxDays = null,
     ) {}
 
     /**
@@ -58,6 +61,8 @@ final readonly class CarrierView
             $carrier->deliverySchedule() === null ? null : SaveDeliverySchedule::fromSchedule($carrier->deliverySchedule()),
             $carrier->keepsClassesToTheirRates(),
             $texts->name ?? [],
+            $carrier->deliveryWindow()?->minDays,
+            $carrier->deliveryWindow()?->maxDays,
         );
     }
 }

@@ -60,6 +60,10 @@
 			"type": "boolean",
 			"default": true
 		},
+		"showSort": {
+			"type": "boolean",
+			"default": true
+		},
 		"showLayouts": {
 			"type": "boolean",
 			"default": true

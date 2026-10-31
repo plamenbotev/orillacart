@@ -202,6 +202,7 @@ final readonly class ShopCatalog
             $offered[0]->isPriceHidden(),
             array_map(fn(AttributeOption $option): OptionView => new OptionView($option->id(), $this->names->option($option), (string) $option->adjustment(), $option->adjustmentKind()->value), $offered[1]),
             $offered[0]->set()?->id(),
+            inSpecifications: $offered[0]->isInSpecifications(),
         ), $product->offeredOptions());
         $downloads = array_map(static fn(DownloadFile $file): string => $file->name(), $product->downloads());
 

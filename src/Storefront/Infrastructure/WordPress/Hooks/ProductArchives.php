@@ -27,6 +27,8 @@ final readonly class ProductArchives
     /** The action the classic template calls for the listing. */
     public const string CONTENT = 'orillacart_product_archive';
     private const array TAXONOMIES = [ProductCategoryTaxonomy::NAME, ProductTagTaxonomy::NAME, ProductBrandTaxonomy::NAME];
+    /** The blocks of the listing: the products, and those placed around them that read the same choices. */
+    private const array LISTING = ['orillacart/products', 'orillacart/product-filters', 'orillacart/products-sort', 'orillacart/products-count', 'orillacart/products-pagination', 'orillacart/active-filters'];
 
     public function __construct(
         private ShopPagesRepository $pages,
@@ -86,8 +88,9 @@ final readonly class ProductArchives
 
     /**
      * The listing part of the shop page, published: its top-level blocks from the first to the last that hold
-     * the Products or Product filters block (the columns around them, say), not its heading, welcome text or
-     * banners, which belong to the shop page alone. The Products block on its own where the shop page has none.
+     * the Products block or one placed around it (filters, sort, count, pages; the columns around them, say),
+     * not its heading, welcome text or banners, which belong to the shop page alone. The Products block on its
+     * own where the shop page has none.
      */
     private function listing(): string
     {
@@ -110,7 +113,7 @@ final readonly class ProductArchives
      */
     private static function holdsListing(array $block): bool
     {
-        if (\in_array($block['blockName'] ?? null, ['orillacart/products', 'orillacart/product-filters'], true)) {
+        if (\in_array($block['blockName'] ?? null, self::LISTING, true)) {
             return true;
         }
         foreach (\is_array($block['innerBlocks'] ?? null) ? $block['innerBlocks'] : [] as $inner) {

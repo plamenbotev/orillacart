@@ -267,6 +267,7 @@ use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineCarrierRepository;
 use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineConsignmentRepository;
 use OrillaCart\Shipping\Infrastructure\Doctrine\DoctrineShippingClassRepository;
 use OrillaCart\Shipping\Infrastructure\WordPress\TransientRateCache;
+use OrillaCart\Storefront\Application\FreeShippingHtml;
 use OrillaCart\Storefront\Application\ProductCardsHtml;
 use OrillaCart\Storefront\Domain\LegalSettingsRepository;
 use OrillaCart\Storefront\Domain\OpeningRepository;
@@ -278,6 +279,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionOpeningRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepository;
+use OrillaCart\Storefront\Infrastructure\WordPress\RenderedFreeShipping;
 use OrillaCart\Storefront\Infrastructure\WordPress\RenderedProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
@@ -460,6 +462,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(LegalSettingsRepository::class, OptionLegalSettingsRepository::class);
     $services->alias(OpeningRepository::class, OptionOpeningRepository::class);
     $services->alias(ProductCardsHtml::class, RenderedProductCards::class);
+    $services->alias(FreeShippingHtml::class, RenderedFreeShipping::class);
     $services->alias(StatusReport::class, HealthStatusReport::class);
     $services->alias(SettingsArchive::class, OptionSettingsArchive::class);
     $services->alias(SampleData::class, SampleProducts::class);

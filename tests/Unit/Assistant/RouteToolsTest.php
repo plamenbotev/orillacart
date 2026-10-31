@@ -158,7 +158,6 @@ final class RouteToolsTest extends TestCase
         'update_shop_pages' => 'which published pages the cart and checkout are on',
         'update_stock' => 'stock counts',
         'update_stockroom' => 'inventory setup',
-        'update_storefront_settings' => 'settings',
         'update_tax_group' => 'tax setup',
         'update_tax_rate' => 'tax setup',
         'update_tax_settings' => 'settings',
@@ -187,7 +186,7 @@ final class RouteToolsTest extends TestCase
             'approve_return' => Tool::CUSTOMERS, 'refuse_return' => Tool::CUSTOMERS, 'send_shipment' => Tool::CUSTOMERS,
             'ready_for_pickup' => Tool::CUSTOMERS, 'picked_up' => Tool::CUSTOMERS, 'shipment_arrived' => Tool::CUSTOMERS,
             'new_gift_card_code' => Tool::CUSTOMERS, 'approve_tax_exemption' => Tool::CUSTOMERS, 'refuse_tax_exemption' => Tool::CUSTOMERS,
-            'anonymise_order' => Tool::DELETING, 'update_legal_settings' => Tool::PUBLISHING,
+            'anonymise_order' => Tool::DELETING, 'update_legal_settings' => Tool::PUBLISHING, 'update_storefront_settings' => Tool::PUBLISHING,
             'mark_order_handled' => null, 'clear_problems' => null,
         ];
         foreach ($risks as $name => $risk) {

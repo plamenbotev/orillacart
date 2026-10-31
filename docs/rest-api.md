@@ -300,6 +300,8 @@ Adds a carrier checkout offers: with its own rates, priced by an add-on's shippi
   - `method_tax_group_id` (int|null): more than 0
   - `pickup_locations` (list<SavePickupLocation>): at most 100 items
   - `delivery_schedule` (SaveDeliverySchedule|null)
+  - `delivery_min_days` (int|null): 0 to 60
+  - `delivery_max_days` (int|null): 0 to 60
   - `classes_kept_to_their_rates` (bool): default false
   - `translations` (array|null)
 
@@ -325,6 +327,8 @@ Changes a carrier: its name, whether checkout offers it, its position, and its w
   - `method_tax_group_id` (int|null): more than 0
   - `pickup_locations` (list<SavePickupLocation>): at most 100 items
   - `delivery_schedule` (SaveDeliverySchedule|null)
+  - `delivery_min_days` (int|null): 0 to 60
+  - `delivery_max_days` (int|null): 0 to 60
   - `classes_kept_to_their_rates` (bool): default false
   - `translations` (array|null)
 
@@ -358,6 +362,12 @@ The checkout page tells of the customer at checkout with their cart: the email s
 ### `DELETE /cart/coupons/{code}`
 
 - Who: anyone; needs a nonce (not with an API key); at most 20 every ten minutes from each address
+
+### `GET /cart/free-shipping`
+
+How far the shopper's cart is from free shipping, as the Free shipping progress block shows it ({html}, empty for nothing to say): the storefront script fills the block in with it on cached pages, and as the cart changes.
+
+- Who: anyone
 
 ### `POST /cart/gift-cards`
 
@@ -2428,13 +2438,13 @@ Deletes a stockroom and the stock it holds; not while it is the only one holding
 
 ### `GET /storefront-settings`
 
-Shows the storefront's settings: product data for search engines, sharing tags, the wishlist, recently viewed products, the data layer and filters.
+Shows the storefront's settings: product data for search engines, sharing tags, the wishlist, recently viewed products, the data layer, filters, and the store notice with its translations.
 
 - Who: shop managers
 
 ### `PUT /storefront-settings`
 
-Replaces the storefront's settings: product data for search engines, sharing tags, who may keep a wishlist, recently viewed products, the data layer and filters.
+Replaces the storefront's settings: product data for search engines, sharing tags, who may keep a wishlist, recently viewed products, the data layer, filters, and the store notice shoppers read over the shop's pages.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2445,6 +2455,12 @@ Replaces the storefront's settings: product data for search engines, sharing tag
   - `data_layer` (bool): default false
   - `hide_single_value_filters` (bool): default true
   - `list_untranslated` (bool): default true
+  - `notice` (bool): default false
+  - `notice_text` (string): at most 300 characters
+  - `notice_link` (string): at most 2000 characters
+  - `notice_link_label` (string): at most 60 characters
+  - `notice_dismissible` (bool): default true
+  - `notice_translations` (array|null)
 
 ## /tax
 
@@ -2764,6 +2780,7 @@ The objects fields above take.
 - `price_hidden` (bool): default false
 - `id` (int|null): more than 0
 - `translations` (array|null)
+- `in_specifications` (bool): default true
 
 ### SaveBundle
 

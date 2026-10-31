@@ -89,6 +89,73 @@ test.describe( 'A visitor', () => {
 		}
 	} );
 
+	test( 'keeps the sort, count and active filters placed apart in step with the products', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const listing = await requestUtils.rest< { id: number; link: string } >(
+			{
+				method: 'POST',
+				path: '/wp/v2/pages',
+				data: {
+					title: 'E2E Listing blocks',
+					status: 'publish',
+					content:
+						'<!-- wp:orillacart/active-filters /--><!-- wp:orillacart/products-sort /--><!-- wp:orillacart/products-count /-->' +
+						'<!-- wp:orillacart/products {"showSort":false,"showCount":false} /--><!-- wp:orillacart/products-pagination /-->',
+				},
+			}
+		);
+		try {
+			await page.goto( listing.link );
+			const count = page.locator( '.orillacart-products-count' );
+			await expect( count ).toHaveText( /\d+ products?|Showing/ );
+			// The Products block's own sort is off: one choice of the order.
+			await expect( page.getByLabel( 'Sort by' ) ).toHaveCount( 1 );
+			await expect(
+				page.getByRole( 'button', { name: 'Sort', exact: true } )
+			).toBeHidden();
+
+			await page
+				.getByRole( 'group', { name: 'Availability' } )
+				.getByRole( 'checkbox', { name: 'In stock only' } )
+				.check();
+			await expect( page ).toHaveURL( /in_stock=1/ );
+			const chip = page
+				.getByRole( 'navigation', { name: 'Active filters' } )
+				.getByRole( 'link', { name: 'Remove In stock only' } );
+			await expect( chip ).toBeVisible();
+
+			await page.getByLabel( 'Sort by' ).selectOption( 'name' );
+			await expect( page ).toHaveURL(
+				/in_stock=1.*sort=name|sort=name.*in_stock=1/
+			);
+			await expect( page.getByLabel( 'Sort by' ) ).toHaveValue( 'name' );
+			// The chip drawn anew for the sorted page keeps the sort.
+			await expect( chip ).toHaveAttribute( 'href', /sort=name/ );
+
+			await chip.click();
+			await expect( page ).not.toHaveURL( /in_stock/ );
+			await expect( page ).toHaveURL( /sort=name/ );
+			await expect(
+				page.getByRole( 'navigation', { name: 'Active filters' } )
+			).toHaveCount( 0 );
+			await expect(
+				page
+					.getByRole( 'group', { name: 'Availability' } )
+					.getByRole( 'checkbox', { name: 'In stock only' } )
+			).not.toBeChecked();
+		} finally {
+			await requestUtils
+				.rest( {
+					method: 'DELETE',
+					path: `/wp/v2/pages/${ listing.id }`,
+					params: { force: true },
+				} )
+				.catch( () => undefined );
+		}
+	} );
+
 	test( 'buys from the shop page and pays by bank transfer', async ( {
 		page,
 	} ) => {

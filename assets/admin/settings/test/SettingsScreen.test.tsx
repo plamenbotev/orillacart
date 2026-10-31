@@ -159,6 +159,13 @@ function serve( save?: () => Promise< unknown > ) {
 				data_layer: false,
 				hide_single_value_filters: true,
 				list_untranslated: true,
+				notice: false,
+				notice_text: '',
+				notice_link: '',
+				notice_link_label: '',
+				notice_dismissible: true,
+				// PHP's empty array.
+				notice_translations: [],
 			} );
 		}
 		if ( path === '/orillacart/v1/currencies' ) {
@@ -641,5 +648,72 @@ describe( 'SettingsScreen', () => {
 				'List products not translated into the language shown'
 			)
 		).not.toBeInTheDocument();
+	} );
+
+	it( 'saves the store notice with its own button, in each language, with the other settings as they are', async () => {
+		serve();
+		const served = mockedFetch.getMockImplementation();
+		mockedFetch.mockImplementation( ( options ) =>
+			( options as { path: string } ).path ===
+			'/orillacart/v1/content-languages'
+				? Promise.resolve( [
+						{
+							code: 'en',
+							locale: 'en_US',
+							name: 'English',
+							default: true,
+						},
+						{
+							code: 'de',
+							locale: 'de_DE',
+							name: 'Deutsch',
+							default: false,
+						},
+					] )
+				: served!( options )
+		);
+		forgetContentLanguages();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		const save = await screen.findByRole( 'button', {
+			name: 'Save notice',
+		} );
+		expect( save ).toHaveAttribute( 'aria-disabled', 'true' );
+		await user.click(
+			screen.getByLabelText( 'Show a notice over the shop’s pages' )
+		);
+		await user.type(
+			screen.getByLabelText( 'Notice' ),
+			'Free delivery this week'
+		);
+		await user.type(
+			await screen.findByLabelText( 'Notice in Deutsch' ),
+			'Kostenlose Lieferung'
+		);
+		await user.type( screen.getByLabelText( 'Link' ), '/sale' );
+		await user.click( screen.getByLabelText( 'Shoppers may close it' ) );
+		expect( lastWrite( mockedFetch ) ).toBeUndefined();
+		expect( hasUnsavedChanges() ).toBe( true );
+
+		await user.click( save );
+
+		await waitFor( () =>
+			expect( lastWrite( mockedFetch ) ).toMatchObject( {
+				path: '/orillacart/v1/storefront-settings',
+				method: 'PUT',
+				data: {
+					wishlist: 'guests',
+					notice: true,
+					notice_text: 'Free delivery this week',
+					notice_link: '/sale',
+					notice_link_label: '',
+					notice_dismissible: false,
+					notice_translations: {
+						text: { de_DE: 'Kostenlose Lieferung' },
+					},
+				},
+			} )
+		);
 	} );
 } );

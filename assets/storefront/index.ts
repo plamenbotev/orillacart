@@ -3,6 +3,9 @@
  * sends the shopper's changes to the REST API and shows the result.
  */
 import './storefront.css';
+import './blocks-product.css';
+import './blocks-shop.css';
+import './blocks-listing.css';
 
 import {
 	bindAddressBook,
@@ -16,12 +19,15 @@ import { startAnalytics } from './analytics';
 import { bindBackInStock } from './backinstock';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
+import { bindDeliveryEstimate } from './delivery';
 import { bindGallery, partsOf } from './gallery';
 import { bindPayNow, bindReceiptLink, bindReorder, bindReturn } from './paynow';
 import { bindAddToCart, refreshCartCount } from './product';
 import { startRecentlyViewed } from './recent';
 import { bindReviewForm } from './reviews';
+import { bindShare } from './share';
 import { bindShop } from './shop';
+import { bindStoreNotices, startFreeShipping } from './shop-blocks';
 import { startWishlist } from './wishlist';
 import { bindWithdrawal } from './withdrawal';
 
@@ -113,10 +119,18 @@ function start(): void {
 	document
 		.querySelectorAll< HTMLElement >( '.orillacart-account__addresses' )
 		.forEach( bindAddressBook );
+	document
+		.querySelectorAll< HTMLElement >( '[data-orillacart-delivery]' )
+		.forEach( bindDeliveryEstimate );
+	document
+		.querySelectorAll< HTMLElement >( '[data-orillacart-share]' )
+		.forEach( bindShare );
 	bindShop();
 	startAnalytics();
 	void startWishlist();
 	void startRecentlyViewed();
+	bindStoreNotices();
+	startFreeShipping();
 	if ( document.querySelector( '[data-orillacart-region="cart"]' ) ) {
 		bindCart( document );
 	} else {

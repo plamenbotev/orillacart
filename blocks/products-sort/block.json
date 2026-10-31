@@ -1,0 +1,38 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/products-sort",
+	"title": "Products sort",
+	"category": "widgets",
+	"icon": "sort",
+	"description": "How shoppers sort the products of the page’s Products block. Place it anywhere on the page; turn off the Products block’s own.",
+	"keywords": [
+		"sort",
+		"order",
+		"shop"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"showLabel": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		],
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

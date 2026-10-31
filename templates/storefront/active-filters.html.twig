@@ -1,0 +1,42 @@
+{#
+ # The choices narrowing the page's listing (the Active filters block), each a link that drops it: chips: [{kind:
+ # search, category, tag, filter, price or in_stock; group, the filter's label; label, the value's; min, max, the
+ # price's; url}]; clear_url drops them all. The region stays without any, so choosing one shows them.
+ #}
+<div class="orillacart-active-filters" data-orillacart-region="active-filters">
+    {% if chips %}
+        <nav aria-label="{{ __('Active filters') }}">
+            <ul class="orillacart-active-filters__list">
+                {% for chip in chips %}
+                    {% if chip.kind == 'search' %}
+                        {# translators: %s: the words searched for -#}
+                        {% set text = __('Search: %s')|format(chip.label) %}
+                    {% elseif chip.kind == 'category' %}
+                        {# translators: %s: a product category -#}
+                        {% set text = __('Category: %s')|format(chip.label) %}
+                    {% elseif chip.kind == 'tag' %}
+                        {# translators: %s: a product tag -#}
+                        {% set text = __('Tag: %s')|format(chip.label) %}
+                    {% elseif chip.kind == 'price' and chip.min is not null and chip.max is not null %}
+                        {# translators: 1: the lowest price, 2: the highest -#}
+                        {% set text = __('Price: %1$s–%2$s')|format(chip.min, chip.max) %}
+                    {% elseif chip.kind == 'price' and chip.min is not null %}
+                        {# translators: %s: the lowest price -#}
+                        {% set text = __('Price: from %s')|format(chip.min) %}
+                    {% elseif chip.kind == 'price' %}
+                        {# translators: %s: the highest price -#}
+                        {% set text = __('Price: up to %s')|format(chip.max) %}
+                    {% elseif chip.kind == 'in_stock' %}
+                        {% set text = __('In stock only') %}
+                    {% else %}
+                        {# translators: 1: a filter, such as Size, 2: its value chosen, such as M -#}
+                        {% set text = __('%1$s: %2$s')|format(chip.group, chip.label) %}
+                    {% endif %}
+                    {# translators: %s: a filter chosen, such as "Size: M" -#}
+                    <li><a class="orillacart-active-filters__chip" href="{{ chip.url }}" aria-label="{{ __('Remove %s')|format(text) }}" data-orillacart-shop-link>{{ text }}<span class="orillacart-active-filters__remove" aria-hidden="true">×</span></a></li>
+                {% endfor %}
+                <li><a class="orillacart-active-filters__clear" href="{{ clear_url }}" data-orillacart-shop-link>{{ __('Clear all') }}</a></li>
+            </ul>
+        </nav>
+    {% endif %}
+</div>

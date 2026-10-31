@@ -43,6 +43,8 @@ final class RouteSecurityGateTest extends TestCase
      */
     private const array PUBLIC = [
         'GET /cart',
+        // The caller's own cart's distance from free shipping, by its cookie: nothing of anyone else's.
+        'GET /cart/free-shipping',
         'POST /cart/items',
         'PUT /cart/items/{id}',
         'DELETE /cart/items/{id}',

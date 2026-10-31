@@ -1,0 +1,32 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/products-count",
+	"title": "Products count",
+	"category": "widgets",
+	"icon": "editor-ol",
+	"description": "How many products the page’s Products block lists: “Showing 13–24 of 57”. Place it anywhere on the page.",
+	"keywords": [
+		"count",
+		"results",
+		"shop"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		],
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

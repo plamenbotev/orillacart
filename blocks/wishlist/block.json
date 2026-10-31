@@ -1,0 +1,35 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/wishlist",
+	"title": "Wishlist",
+	"category": "widgets",
+	"icon": "heart",
+	"description": "The products the shopper saved for later: a customer’s from their account, a visitor’s from their browser where the shop lets visitors keep one. Shows nothing while the shop keeps no wishlists.",
+	"keywords": [
+		"shop",
+		"wishlist",
+		"saved"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"columns": {
+			"type": "integer",
+			"default": 4
+		},
+		"showTitle": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		]
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

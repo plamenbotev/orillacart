@@ -1,8 +1,13 @@
 {#
  # The shopper's wishlist: their account's, or their browser's for a visitor. The script fills it in.
+ # Optional, for the Wishlist block: columns (4); show_title (true); login_url: where a visitor logs in, on a shop
+ # that keeps only customers' wishlists, which the script asks them to do instead of showing an empty list.
  #}
-<section class="orillacart-wishlist-list" id="wishlist" aria-labelledby="orillacart-wishlist-title">
-    <h2 id="orillacart-wishlist-title">{{ __('Wishlist') }}</h2>
-    <ul class="orillacart-products__grid" style="--orillacart-columns: 4" data-orillacart-wishlist-list></ul>
+<section class="orillacart-wishlist-list" id="wishlist"{% if show_title ?? true %} aria-labelledby="orillacart-wishlist-title"{% else %} aria-label="{{ __('Wishlist') }}"{% endif %}>
+    {% if show_title ?? true %}<h2 id="orillacart-wishlist-title">{{ __('Wishlist') }}</h2>{% endif %}
+    <ul class="orillacart-products__grid" style="--orillacart-columns: {{ columns ?? 4 }}" data-orillacart-wishlist-list></ul>
     <p data-orillacart-wishlist-empty hidden>{{ __('Nothing saved yet. Save products from their pages to find them here.') }}</p>
+    {% if login_url ?? false %}
+        <p data-orillacart-wishlist-login hidden>{{ __('Log in to keep a wishlist.') }} <a href="{{ login_url }}">{{ __('Log in') }}</a></p>
+    {% endif %}
 </section>

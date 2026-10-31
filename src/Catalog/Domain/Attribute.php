@@ -30,6 +30,10 @@ class Attribute
     #[ORM\Column]
     private bool $priceHidden;
 
+    /** The product page's specifications list it with its options. */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $inSpecifications = true;
+
     #[ORM\Column]
     private int $position;
 
@@ -83,6 +87,11 @@ class Attribute
         return $this->priceHidden;
     }
 
+    public function isInSpecifications(): bool
+    {
+        return $this->inSpecifications;
+    }
+
     public function position(): int
     {
         return $this->position;
@@ -123,6 +132,7 @@ class Attribute
         $this->name = trim($draft->name);
         $this->required = $draft->required;
         $this->priceHidden = $draft->priceHidden;
+        $this->inSpecifications = $draft->inSpecifications;
         $this->position = $position;
 
         $kept = [];

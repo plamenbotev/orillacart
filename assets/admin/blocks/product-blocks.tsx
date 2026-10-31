@@ -10,6 +10,7 @@ import {
 } from '@wordpress/block-editor';
 import { registerBlockType } from '@wordpress/blocks';
 import {
+	CheckboxControl,
 	ComboboxControl,
 	PanelBody,
 	Placeholder,
@@ -36,6 +37,40 @@ type EditProps = {
 
 /** A block's own settings beside the product. */
 type Settings = ( props: EditProps ) => ReactNode;
+
+/** The ways the share block can offer, in its order (blocks/product-share). */
+const SHARE_SERVICES: { value: string; label: string }[] = [
+	{ value: 'copy', label: __( 'Copy link', 'orillacart' ) },
+	{ value: 'email', label: __( 'Email', 'orillacart' ) },
+	{ value: 'facebook', label: 'Facebook' },
+	{ value: 'x', label: 'X' },
+	{ value: 'pinterest', label: 'Pinterest' },
+	{ value: 'whatsapp', label: 'WhatsApp' },
+	{ value: 'linkedin', label: 'LinkedIn' },
+];
+
+/**
+ * The services with one turned on or off, kept in the block's order.
+ *
+ * @param services The services chosen.
+ * @param service  The one changed.
+ * @param on       Whether it is offered now.
+ */
+function withService(
+	services: string[],
+	service: string,
+	on: boolean
+): string[] {
+	const chosen = new Set( services );
+	if ( on ) {
+		chosen.add( service );
+	} else {
+		chosen.delete( service );
+	}
+	return SHARE_SERVICES.map( ( { value } ) => value ).filter( ( value ) =>
+		chosen.has( value )
+	);
+}
 
 /**
  * Chooses the product a block shows on pages that are not the product's own (a landing page).
@@ -190,6 +225,44 @@ const settings: Record< string, Settings > = {
 			/>
 		</>
 	),
+	'orillacart/product-specifications': ( props ) => (
+		<>
+			{ toggle( props, 'showTitle', __( 'Heading', 'orillacart' ) ) }
+			{ toggle(
+				props,
+				'showAttributes',
+				__( 'Attributes', 'orillacart' )
+			) }
+			{ toggle( props, 'showWeight', __( 'Weight', 'orillacart' ) ) }
+			{ toggle(
+				props,
+				'showDimensions',
+				__( 'Dimensions', 'orillacart' )
+			) }
+		</>
+	),
+	'orillacart/product-share': ( props ) => {
+		const services = Array.isArray( props.attributes.services )
+			? ( props.attributes.services as string[] )
+			: [];
+		return (
+			<fieldset>
+				<legend>{ __( 'Share with', 'orillacart' ) }</legend>
+				{ SHARE_SERVICES.map( ( { value, label } ) => (
+					<CheckboxControl
+						key={ value }
+						label={ label }
+						checked={ services.includes( value ) }
+						onChange={ ( on ) =>
+							props.setAttributes( {
+								services: withService( services, value, on ),
+							} )
+						}
+					/>
+				) ) }
+			</fieldset>
+		);
+	},
 	'orillacart/product-image': ( props ) => (
 		<>
 			{ toggle(
@@ -233,6 +306,34 @@ const descriptions: Record< string, string > = {
 	),
 	'orillacart/product-button': __(
 		'Add to cart, choose options, or details.',
+		'orillacart'
+	),
+	'orillacart/product-sku': __(
+		'The product’s SKU, once it has one.',
+		'orillacart'
+	),
+	'orillacart/product-stock': __(
+		'Whether the product is in stock, and how many.',
+		'orillacart'
+	),
+	'orillacart/product-downloads': __(
+		'The files the buyer gets, for a product with files.',
+		'orillacart'
+	),
+	'orillacart/product-excerpt': __(
+		'The product’s short description.',
+		'orillacart'
+	),
+	'orillacart/product-specifications': __(
+		'The product’s attributes, weight and size.',
+		'orillacart'
+	),
+	'orillacart/product-share': __(
+		'Links to share the product.',
+		'orillacart'
+	),
+	'orillacart/delivery-estimate': __(
+		'By when the product arrives, once a carrier that delivers it says how long it takes.',
 		'orillacart'
 	),
 };

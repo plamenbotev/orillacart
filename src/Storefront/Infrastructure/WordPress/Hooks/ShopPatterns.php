@@ -21,7 +21,7 @@ final readonly class ShopPatterns
     public const string CATEGORY = 'orillacart';
 
     /** The Products block as a plain row of products, without the shop's search, links and pages. */
-    private const string ROW = '"filters":false,"showCategories":false,"showSearch":false,"showLayouts":false,"showCount":false,"showPagination":false';
+    private const string ROW = '"filters":false,"showCategories":false,"showSearch":false,"showSort":false,"showLayouts":false,"showCount":false,"showPagination":false';
 
     public function __construct(
         private ShopLinks $links,

@@ -411,6 +411,8 @@ function CourierSetup( { method }: { method: ShippingMethod } ) {
 						pickup_locations: [],
 						delivery_schedule: null,
 						classes_kept_to_their_rates: false,
+						delivery_min_days: null,
+						delivery_max_days: null,
 					} )
 						.then( () =>
 							setStatus(

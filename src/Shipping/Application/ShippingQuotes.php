@@ -119,6 +119,24 @@ final readonly class ShippingQuotes
     }
 
     /**
+     * The active carriers that would deliver the parcel there: one of their own rates takes it, or a shipping
+     * method prices them (the courier is not asked: its rates are its own). The shop's own pickup delivers nothing.
+     *
+     * @return list<Carrier> in their order
+     */
+    public function delivering(ShippingQuery $query): array
+    {
+        $destination = self::destination($query);
+        $parcel = $this->parcel($query, Money::of($query->subtotal));
+
+        return array_values(array_filter($this->carriers->all(), static fn(Carrier $carrier): bool => $carrier->isActive() && !$carrier->isPickup() && (
+            $carrier->method() !== null
+                ? $query->country !== null
+                : array_filter($carrier->rates(), static fn(ShippingRate $rate): bool => $rate->accepts($destination, $parcel)) !== []
+        )));
+    }
+
+    /**
      * The least order value at which one of the shop's own rates would ship the parcel there for free, when it
      * is more than the order is worth now: "spend 12 more for free shipping". Null when no free rate would
      * take it, or one takes it already. Rates a shipping method quotes are the courier's, and not looked at.

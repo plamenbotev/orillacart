@@ -1,0 +1,19 @@
+{#
+ # The shop's notice over its pages ("Free delivery this week"). text; link (empty for none); link_label (empty:
+ # the text is the link); dismissible; key: changes with the notice and the site, so a notice closed shows again
+ # once it changes.
+ #
+ # One shoppers may close starts hidden: the storefront script shows it unless their browser remembers closing it.
+ #}
+<div class="orillacart-store-notice" role="region" aria-label="{{ __('Store notice') }}" data-orillacart-store-notice="{{ dismissible ? key : '' }}"{{ dismissible ? ' hidden' }}>
+    <p class="orillacart-store-notice__text">
+        {%- if link and not link_label -%}
+            <a class="orillacart-store-notice__link" href="{{ link }}">{{ text }}</a>
+        {%- else -%}
+            {{ text }}{% if link %} <a class="orillacart-store-notice__link" href="{{ link }}">{{ link_label }}</a>{% endif %}
+        {%- endif -%}
+    </p>
+    {% if dismissible %}
+        <button type="button" class="orillacart-store-notice__dismiss" data-orillacart-store-notice-dismiss aria-label="{{ __('Dismiss this notice') }}"><span aria-hidden="true">×</span></button>
+    {% endif %}
+</div>

@@ -1,0 +1,32 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/active-filters",
+	"title": "Active filters",
+	"category": "widgets",
+	"icon": "filter",
+	"description": "The choices narrowing the page’s Products block, each removable, and a link that clears them all.",
+	"keywords": [
+		"filter",
+		"chips",
+		"shop"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		],
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

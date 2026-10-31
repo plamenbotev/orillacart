@@ -424,6 +424,16 @@ What the fixes of 260–278 left, which the owner asked to have fixed.
 | ✅ | 281 | P2 | Two first orders placed at once by one customer with different first-order codes both got their discount: each locked only its own code. An order with a first-order code now takes the customer's turn (`coupon_first_order_turns`, a row per hashed account and email, locked until it is saved) and counts the customer's uses of every first-order code; other customers do not wait. Tested with two real connections | e48ea58 |
 | ✅ | 282 | P3 | A page with the Products and Product filters blocks counted the matches twice: the count and the filters' counts are kept for the request (dropped when the index changes) and the other search fetches only its page (`SearchQuery::$count`) | e48ea58 |
 
+## Blocks for the shop's pages (2026-10-31)
+
+Blocks themes can place apart on the product page, the product lists and anywhere in the shop, as the owner asked.
+
+| | # | P | Item | Commits |
+|---|---|---|---|---|
+| ⬜ | 283 | P2 | Product page: Product SKU, Product stock and Product downloads as blocks of their own (following the chosen variation through the product's parts), Product short description (in the shopper's language), Product specifications (attributes marked for it, `in_specifications`, plus weight and dimensions), Product share (plain links, the browser's share and copy), Delivery estimate (carriers' schedules, then a new working-day window per carrier); the short description and the estimate in the default product template | |
+| ⬜ | 284 | P2 | Product lists: Products sort, Products count, Products pagination (with previous and next) and Active filters, placed apart from the Products block (new `showSort`), kept in step when the shop narrows in place, with no search more than the page needs (ListingScope, ProductsOnPage); the Product filters block counts a brand's page within the brand | |
+| ⬜ | 285 | P2 | Shop-wide: Free shipping progress (`GET /cart/free-shipping`, refreshed on every cart change, no shopper's total in cached pages), Store notice (a storefront setting, translated, dismissible; the storefront settings tool now asks as publishing), Product brands (with brand logos) and Wishlist | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

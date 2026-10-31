@@ -12,6 +12,7 @@ import { __ } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
 import { useOtherLanguages } from '../shared/Translations';
+import { type StoreNotice, StoreNoticeFields } from './StoreNoticeFields';
 import {
 	fetchStorefrontSettings,
 	saveStorefrontSettings,
@@ -44,7 +45,8 @@ const WISHLISTS = [
 
 /**
  * What product pages tell search engines (structured data) and social sites (link previews), and what the shop
- * keeps for shoppers: wishlists and the products they viewed. Each choice saves at once.
+ * keeps for shoppers: wishlists and the products they viewed. Each choice saves at once; the store notice, which
+ * is written, has its own button.
  */
 export function StorefrontCard() {
 	const others = useOtherLanguages();
@@ -73,6 +75,23 @@ export function StorefrontCard() {
 				} );
 			} )
 			.catch( fail );
+
+	const saveNotice = ( notice: StoreNotice ) =>
+		settings === null
+			? Promise.resolve( null )
+			: saveStorefrontSettings( { ...settings, ...notice } )
+					.then( ( saved ) => {
+						setSettings( saved );
+						setMessage( {
+							status: 'success',
+							text: __( 'Saved.', 'orillacart' ),
+						} );
+						return saved;
+					} )
+					.catch( ( failure: unknown ) => {
+						fail( failure );
+						return null;
+					} );
 
 	return (
 		<Card className="orillacart-settings-card">
@@ -191,6 +210,11 @@ export function StorefrontCard() {
 							onChange={ ( checked ) =>
 								save( { data_layer: checked } )
 							}
+						/>
+						<StoreNoticeFields
+							settings={ settings }
+							languages={ others }
+							onSave={ saveNotice }
 						/>
 					</>
 				) }

@@ -1,0 +1,7 @@
+{#
+ # A product's SKU, which the script changes to the chosen variation's. Without a SKU of its own, the line waits
+ # hidden for a variation's; nothing when neither has one. offer: the product; variations: as the form has them.
+ #}
+{% if offer.sku or (variations|default([]))|filter(variation => variation.sku)|length > 0 %}
+    <p class="orillacart-product__sku"{{ offer.sku ? '' : ' hidden' }}>{{ __('SKU') }}: <span data-orillacart-sku>{{ offer.sku }}</span></p>
+{% endif %}

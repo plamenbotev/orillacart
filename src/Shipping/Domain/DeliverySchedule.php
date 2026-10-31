@@ -79,6 +79,27 @@ final readonly class DeliverySchedule
         return $days;
     }
 
+    /**
+     * When an order placed now arrives at the earliest: the first day the customer may choose. It holds until
+     * today's cutoff, or else midnight; null when none of the days ahead is one it delivers on.
+     *
+     * @param \DateTimeImmutable $now in the shop's time zone
+     */
+    public function estimate(\DateTimeImmutable $now): ?DeliveryEstimate
+    {
+        $first = $this->days($now)[0] ?? null;
+        if ($first === null) {
+            return null;
+        }
+        if ($this->cutoff !== null && $now->format('H:i') < $this->cutoff) {
+            [$hour, $minute] = array_map(intval(...), explode(':', $this->cutoff));
+
+            return new DeliveryEstimate($first, $first, $now->setTime($hour, $minute), true);
+        }
+
+        return new DeliveryEstimate($first, $first, $now->setTime(0, 0)->modify('+1 day'));
+    }
+
     public function slot(string $id): ?DeliverySlot
     {
         foreach ($this->slots as $slot) {

@@ -73,6 +73,9 @@ export interface Carrier {
 	delivery_schedule: DeliverySchedule | null;
 	/** Goods of a class one of its rates lists go only by the rates that list it. */
 	classes_kept_to_their_rates: boolean;
+	/** How many working days it takes to deliver, at least and at most; null for nothing said. */
+	delivery_min_days: number | null;
+	delivery_max_days: number | null;
 	/** The name in the site's other languages. */
 	translations?: FieldTranslations;
 }
@@ -122,6 +125,8 @@ export interface CarrierInput {
 	pickup_locations: PickupLocation[];
 	delivery_schedule: DeliverySchedule | null;
 	classes_kept_to_their_rates: boolean;
+	delivery_min_days: number | null;
+	delivery_max_days: number | null;
 	translations?: FieldTranslations;
 }
 

@@ -32,6 +32,7 @@ final class CatalogDrafts
             array_map(static fn(SaveOption $option): OptionDraft => new OptionDraft($option->id, $option->name, Money::of($option->adjustment), AdjustmentKind::from($option->adjustmentKind)), $attribute->options),
             $attribute->required,
             $attribute->priceHidden,
+            $attribute->inSpecifications,
         ), $attributes);
     }
 

@@ -122,6 +122,7 @@ final readonly class SaveProduct
                 $attribute->required,
                 $attribute->priceHidden,
                 $attribute->id,
+                inSpecifications: $attribute->inSpecifications,
             ), $view->attributes),
             'downloadLimit' => $view->downloadLimit,
             'downloadExpiryDays' => $view->downloadExpiryDays,

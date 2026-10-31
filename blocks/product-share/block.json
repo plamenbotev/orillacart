@@ -1,0 +1,62 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/product-share",
+	"title": "Product share",
+	"category": "theme",
+	"icon": "share",
+	"description": "Links to share the product's page: by email, on the networks the owner chooses, copied, or with the browser's own share.",
+	"keywords": [
+		"shop",
+		"product",
+		"share",
+		"social"
+	],
+	"textdomain": "orillacart",
+	"attributes": {
+		"productId": {
+			"type": "integer",
+			"default": 0
+		},
+		"preview": {
+			"type": "boolean",
+			"default": false
+		},
+		"services": {
+			"type": "array",
+			"items": {
+				"type": "string",
+				"enum": [
+					"copy",
+					"email",
+					"facebook",
+					"x",
+					"pinterest",
+					"whatsapp",
+					"linkedin"
+				]
+			},
+			"default": [
+				"copy",
+				"email",
+				"facebook",
+				"x",
+				"pinterest"
+			]
+		}
+	},
+	"usesContext": [
+		"postId",
+		"postType"
+	],
+	"supports": {
+		"html": false,
+		"spacing": {
+			"margin": true,
+			"padding": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

@@ -21,10 +21,23 @@ final readonly class StorefrontSettingsView
         public bool $hideSingleValueFilters,
         /** On a site in several languages, products not translated into the language shown are listed in their own words. */
         public bool $listUntranslated,
+        /** The notice over the shop's pages is on; shown while it has text. */
+        public bool $notice = false,
+        public string $noticeText = '',
+        public string $noticeLink = '',
+        public string $noticeLinkLabel = '',
+        public bool $noticeDismissible = true,
+        /** @var array<string, array<string, string>> the notice's text and link's words by field and locale */
+        public array $noticeTranslations = [],
     ) {}
 
-    public static function of(StorefrontSettings $settings): self
+    /**
+     * @param array<string, array<string, string>> $noticeTranslations by field and locale
+     */
+    public static function of(StorefrontSettings $settings, array $noticeTranslations = []): self
     {
-        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed, $settings->dataLayer, $settings->hideSingleValueFilters, $settings->listUntranslated);
+        $notice = $settings->notice;
+
+        return new self($settings->structuredData, $settings->sharingTags->value, $settings->wishlist->value, $settings->recentlyViewed, $settings->dataLayer, $settings->hideSingleValueFilters, $settings->listUntranslated, $notice->shown, $notice->text, $notice->link, $notice->linkLabel, $notice->dismissible, $noticeTranslations);
     }
 }

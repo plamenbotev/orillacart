@@ -24,6 +24,8 @@ import ServerSideRender from '@wordpress/server-side-render';
 
 import { fetchTerms, type Named, TermTokens } from '../shared/CatalogTokens';
 import './product-blocks';
+import './shop-blocks';
+import './listing-blocks';
 
 type ProductsAttributes = {
 	perPage: number;
@@ -37,6 +39,7 @@ type ProductsAttributes = {
 	filters: boolean;
 	showCategories: boolean;
 	showSearch: boolean;
+	showSort: boolean;
 	showLayouts: boolean;
 	showCount: boolean;
 	showPagination: boolean;
@@ -105,7 +108,8 @@ function Note( { name }: { name: string } ) {
 /** The parts around the grid, each on unless turned off. */
 const listingParts: [ keyof ProductsAttributes, string ][] = [
 	[ 'showCategories', __( 'Category links', 'orillacart' ) ],
-	[ 'showSearch', __( 'Search and sorting', 'orillacart' ) ],
+	[ 'showSearch', __( 'Search', 'orillacart' ) ],
+	[ 'showSort', __( 'Sorting', 'orillacart' ) ],
 	[ 'showLayouts', __( 'Grid or list switch', 'orillacart' ) ],
 	[ 'showCount', __( 'How many products', 'orillacart' ) ],
 	[ 'showPagination', __( 'Pages', 'orillacart' ) ],

@@ -1,0 +1,7 @@
+{#
+ # The links to the pages of the page's listing (the Products pagination block); see _pagination.html.twig. The
+ # region stays when there is one page: a listing changed without leaving the page fills it again.
+ #}
+<div class="orillacart-products-pagination" data-orillacart-region="products-pagination">
+    {% include 'storefront/_pagination.html.twig' with {page: page, pages: pages, page_links: page_links, previous_url: previous_url, next_url: next_url} only %}
+</div>

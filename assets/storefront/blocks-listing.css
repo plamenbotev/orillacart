@@ -1,0 +1,71 @@
+/* The blocks placed around the Products block: its sort, count, pages and active filters */
+.orillacart-products-sort form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.orillacart-products-sort select {
+	padding: 0.4rem 0.6rem;
+	border: 1px solid var(--orillacart-border);
+	border-radius: var(--orillacart-radius);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+}
+
+/* Hidden from sight, still the field's name for screen readers. */
+.orillacart-products-sort__label--hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.orillacart-products-count {
+	margin: 0;
+	color: var(--orillacart-muted);
+}
+
+.orillacart-products-pagination .orillacart-pagination {
+	margin-top: var(--orillacart-gap);
+}
+
+.orillacart-active-filters__list {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0 0 var(--orillacart-gap);
+	padding: 0;
+	list-style: none;
+}
+
+.orillacart-active-filters__chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.25rem 0.7rem;
+	border: 1px solid var(--orillacart-border);
+	border-radius: 999px;
+	color: inherit;
+	font-size: 0.9375em;
+	text-decoration: none;
+}
+
+.orillacart-active-filters__chip:hover,
+.orillacart-active-filters__chip:focus-visible {
+	border-color: currentColor;
+}
+
+.orillacart-active-filters__remove {
+	font-size: 1.1em;
+	line-height: 1;
+}
+
+.orillacart-active-filters__clear {
+	font-size: 0.9375em;
+}

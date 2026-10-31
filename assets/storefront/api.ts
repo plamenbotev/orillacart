@@ -37,6 +37,9 @@ export type ApiResult< T > =
 
 const EXPIRED = [ 'orillacart_invalid_nonce', 'rest_cookie_invalid_nonce' ];
 
+/** Sent on the document after a call changed the cart. */
+export const CART_CHANGED = 'orillacart:cart-changed';
+
 // Undefined until the first change reads the page's (logged-in users) or asks GET /session (visitors).
 let nonce: string | null | undefined;
 
@@ -81,7 +84,12 @@ export async function api< T >(
 	body?: unknown
 ): Promise< ApiResult< T > > {
 	try {
-		return await call< T >( method, path, body );
+		const result = await call< T >( method, path, body );
+		if ( result.ok && method !== 'GET' && /^\/cart(\/|$)/.test( path ) ) {
+			// Whatever changed the cart (an item, a quantity, a code), the parts of the page that show it hear so.
+			document.dispatchEvent( new CustomEvent( CART_CHANGED ) );
+		}
+		return result;
 	} catch {
 		return {
 			ok: false,

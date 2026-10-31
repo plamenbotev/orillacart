@@ -215,6 +215,7 @@ final readonly class CheckoutService
             usingStoreCredit: $contents->useStoreCredit && array_any($plan->uses, static fn(GiftCardUse $use): bool => $use->code === null),
             importScheme: $priced['import']->scheme,
             importCharges: $priced['import']->applies() && !$priced['import']->charges,
+            freeShippingFrom: $priced['free_from'],
         );
     }
 

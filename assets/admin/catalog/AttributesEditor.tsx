@@ -170,6 +170,19 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 							} )
 						}
 					/>
+					<CheckboxControl
+						label={ __(
+							'Show in the product’s specifications',
+							'orillacart'
+						) }
+						checked={ attribute.in_specifications !== false }
+						onChange={ ( inSpecifications ) =>
+							update( index, {
+								...attribute,
+								in_specifications: inSpecifications,
+							} )
+						}
+					/>
 					{ attribute.options.map( ( option, optionIndex ) => (
 						<SortableItem
 							key={ keys.option( index, optionIndex, option ) }
@@ -316,6 +329,7 @@ export function AttributesEditor( { attributes, onChange }: Props ) {
 							name: '',
 							required: false,
 							price_hidden: false,
+							in_specifications: true,
 							options: [
 								{
 									name: '',

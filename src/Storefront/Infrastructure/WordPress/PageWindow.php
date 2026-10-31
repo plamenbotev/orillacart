@@ -33,6 +33,24 @@ final class PageWindow
     }
 
     /**
+     * The links to the pages before and after the one shown; '' at either end. A page past the last goes back to
+     * the last.
+     *
+     * @param \Closure(int): string $url a page's link
+     *
+     * @return array{previous: string, next: string}
+     */
+    public static function steps(int $page, int $pages, \Closure $url): array
+    {
+        $page = max(1, $page);
+
+        return [
+            'previous' => $page > 1 && $pages > 0 ? $url(min($pages, $page - 1)) : '',
+            'next' => $page < $pages ? $url($page + 1) : '',
+        ];
+    }
+
+    /**
      * @return list<int>
      */
     public static function numbers(int $page, int $pages): array

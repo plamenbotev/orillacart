@@ -1,0 +1,32 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/products-pagination",
+	"title": "Products pagination",
+	"category": "widgets",
+	"icon": "controls-forward",
+	"description": "The links to the pages of the page’s Products block. Place it anywhere on the page; turn off the Products block’s own.",
+	"keywords": [
+		"pages",
+		"pagination",
+		"shop"
+	],
+	"textdomain": "orillacart",
+	"supports": {
+		"html": false,
+		"align": [
+			"wide",
+			"full"
+		],
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "orillacart-blocks",
+	"viewScript": "orillacart-storefront",
+	"style": "orillacart-storefront"
+}

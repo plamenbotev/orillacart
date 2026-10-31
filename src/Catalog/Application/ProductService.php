@@ -291,6 +291,7 @@ final readonly class ProductService
             array_map(static fn(OptionView $option): SaveOption => new SaveOption($option->name, $option->adjustment, null, $option->adjustmentKind), $attribute->options),
             $attribute->required,
             $attribute->priceHidden,
+            inSpecifications: $attribute->inSpecifications,
         ), $original->attributes);
         if (!$original->saved) {
             return $this->product($copy);

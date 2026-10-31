@@ -4,26 +4,35 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Infrastructure\WordPress\Hooks;
 
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Shared\WordPress\AsHook;
 
 /**
- * A picture for each product category, from the media library: on the category screens, in their list, and
- * beside the categories on the shop page. Kept in term meta, which the REST API also offers.
+ * A picture for each product category, and a logo for each brand, from the media library: on their screens, in
+ * their lists, beside the categories on the shop page and in the Product brands block. Kept in term meta, which
+ * the REST API also offers.
  */
 #[AsHook('init', method: 'registerMeta')]
 #[AsHook(ProductCategoryTaxonomy::NAME . '_add_form_fields', method: 'addField')]
-#[AsHook(ProductCategoryTaxonomy::NAME . '_edit_form_fields', method: 'editField')]
+#[AsHook(ProductCategoryTaxonomy::NAME . '_edit_form_fields', method: 'editField', arguments: 2)]
 #[AsHook('created_' . ProductCategoryTaxonomy::NAME, method: 'save')]
 #[AsHook('edited_' . ProductCategoryTaxonomy::NAME, method: 'save')]
 #[AsHook('manage_edit-' . ProductCategoryTaxonomy::NAME . '_columns', method: 'columns', filter: true)]
 #[AsHook('manage_' . ProductCategoryTaxonomy::NAME . '_custom_column', method: 'column', filter: true, arguments: 3)]
+#[AsHook(ProductBrandTaxonomy::NAME . '_add_form_fields', method: 'addField')]
+#[AsHook(ProductBrandTaxonomy::NAME . '_edit_form_fields', method: 'editField', arguments: 2)]
+#[AsHook('created_' . ProductBrandTaxonomy::NAME, method: 'save')]
+#[AsHook('edited_' . ProductBrandTaxonomy::NAME, method: 'save')]
+#[AsHook('manage_edit-' . ProductBrandTaxonomy::NAME . '_columns', method: 'columns', filter: true)]
+#[AsHook('manage_' . ProductBrandTaxonomy::NAME . '_custom_column', method: 'column', filter: true, arguments: 3)]
 #[AsHook('admin_enqueue_scripts', method: 'scripts')]
 final readonly class CategoryThumbnail
 {
     public const string META = 'orillacart_thumbnail';
     private const string FIELD = 'orillacart_thumbnail';
     private const string COLUMN = 'orillacart_picture';
+    private const array TAXONOMIES = [ProductCategoryTaxonomy::NAME, ProductBrandTaxonomy::NAME];
 
     /** The category's picture, as a media library id; 0 for none. */
     public static function of(int $termId): int
@@ -35,23 +44,25 @@ final readonly class CategoryThumbnail
 
     public function registerMeta(): void
     {
-        register_term_meta(ProductCategoryTaxonomy::NAME, self::META, [
-            'type' => 'integer',
-            'single' => true,
-            'default' => 0,
-            'show_in_rest' => true,
-            'sanitize_callback' => static fn(mixed $value): int => is_numeric($value) ? max(0, (int) $value) : 0,
-        ]);
+        foreach (self::TAXONOMIES as $taxonomy) {
+            register_term_meta($taxonomy, self::META, [
+                'type' => 'integer',
+                'single' => true,
+                'default' => 0,
+                'show_in_rest' => true,
+                'sanitize_callback' => static fn(mixed $value): int => is_numeric($value) ? max(0, (int) $value) : 0,
+            ]);
+        }
     }
 
-    public function addField(): void
+    public function addField(string $taxonomy = ProductCategoryTaxonomy::NAME): void
     {
-        echo '<div class="form-field">' . $this->field(0) . '</div>';
+        echo '<div class="form-field">' . $this->field(0, $taxonomy) . '</div>';
     }
 
-    public function editField(\WP_Term $term): void
+    public function editField(\WP_Term $term, string $taxonomy = ProductCategoryTaxonomy::NAME): void
     {
-        printf('<tr class="form-field"><th scope="row">%s</th><td>%s</td></tr>', esc_html__('Picture', 'orillacart'), $this->field(self::of($term->term_id), false));
+        printf('<tr class="form-field"><th scope="row">%s</th><td>%s</td></tr>', esc_html(self::label($taxonomy)), $this->field(self::of($term->term_id), $taxonomy, false));
     }
 
     /**
@@ -92,7 +103,7 @@ final readonly class CategoryThumbnail
     public function scripts(string $hook): void
     {
         $screen = get_current_screen();
-        if (!\in_array($hook, ['edit-tags.php', 'term.php'], true) || $screen?->taxonomy !== ProductCategoryTaxonomy::NAME) {
+        if (!\in_array($hook, ['edit-tags.php', 'term.php'], true) || !\in_array($screen?->taxonomy, self::TAXONOMIES, true)) {
             return;
         }
         wp_enqueue_media();
@@ -131,20 +142,28 @@ final readonly class CategoryThumbnail
             JS);
     }
 
-    private function field(int $attachment, bool $withLabel = true): string
+    private function field(int $attachment, string $taxonomy, bool $withLabel = true): string
     {
         $src = $attachment > 0 ? wp_get_attachment_image_url($attachment, 'thumbnail') : false;
+        $brand = $taxonomy === ProductBrandTaxonomy::NAME;
 
         return \sprintf(
-            '%s<div class="orillacart-picture"><img src="%s" alt="" width="60" height="60" style="object-fit:cover;display:block;margin-bottom:6px"%s><input type="hidden" name="%s" value="%d"><button type="button" class="button" data-orillacart-picture="choose">%s</button> <button type="button" class="button-link" data-orillacart-picture="remove">%s</button><p class="description">%s</p></div>',
-            $withLabel ? '<label>' . esc_html__('Picture', 'orillacart') . '</label>' : '',
+            '%s<div class="orillacart-picture"><img src="%s" alt="" width="60" height="60" style="object-fit:%s;display:block;margin-bottom:6px"%s><input type="hidden" name="%s" value="%d"><button type="button" class="button" data-orillacart-picture="choose">%s</button> <button type="button" class="button-link" data-orillacart-picture="remove">%s</button><p class="description">%s</p></div>',
+            $withLabel ? '<label>' . esc_html(self::label($taxonomy)) . '</label>' : '',
             esc_url(\is_string($src) ? $src : ''),
+            // A logo is shown whole.
+            $brand ? 'contain' : 'cover',
             \is_string($src) ? '' : ' hidden',
             esc_attr(self::FIELD),
             $attachment,
-            esc_html__('Choose a picture', 'orillacart'),
+            $brand ? esc_html__('Choose a logo', 'orillacart') : esc_html__('Choose a picture', 'orillacart'),
             esc_html__('Remove', 'orillacart'),
-            esc_html__('Shown beside the category on the shop page.', 'orillacart'),
+            $brand ? esc_html__('Shown with the brand’s name in the Product brands block.', 'orillacart') : esc_html__('Shown beside the category on the shop page.', 'orillacart'),
         );
+    }
+
+    private static function label(string $taxonomy): string
+    {
+        return $taxonomy === ProductBrandTaxonomy::NAME ? __('Logo', 'orillacart') : __('Picture', 'orillacart');
     }
 }

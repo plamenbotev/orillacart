@@ -1,0 +1,21 @@
+{#
+ # The shop's brands, each linking to its page: tiles with the logo (or an empty frame) and the name, or a list of
+ # names. brands: [{name, url, count, image (HTML or empty)}]; layout: grid or list; columns; show_image; show_count.
+ #}
+<nav class="orillacart-brands orillacart-brands--{{ layout }}" aria-label="{{ __('Brands') }}">
+    <ul class="orillacart-brands__items"{% if layout == 'grid' %} style="--orillacart-columns: {{ columns }}"{% endif %}>
+        {% for brand in brands %}
+            <li class="orillacart-brand">
+                <a class="orillacart-brand__link" href="{{ brand.url }}">
+                    {% if show_image %}
+                        {% if brand.image %}{{ brand.image|raw }}{% else %}<span class="orillacart-brand__no-image" aria-hidden="true"></span>{% endif %}
+                    {% endif %}
+                    <span class="orillacart-brand__name">{{ brand.name }}</span>
+                    {% if show_count %}
+                        <span class="orillacart-brand__count">{{ _n('%d product', '%d products', brand.count)|format(brand.count) }}</span>
+                    {% endif %}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>

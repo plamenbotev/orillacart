@@ -1,0 +1,8 @@
+{#
+ # How far the shopper's cart is from free shipping, for a header, the cart or a product page. html: the message
+ # and the bar (_free_shipping.html.twig), or empty; show_bar.
+ #
+ # Pages with it may be cached, so a visitor's is filled in by the storefront script from GET /cart/free-shipping,
+ # and every one is again when the cart changes. Hidden while there is nothing to say.
+ #}
+<div class="orillacart-free-shipping-progress{{ show_bar ? '' : ' orillacart-free-shipping-progress--no-bar' }}" data-orillacart-free-shipping aria-live="polite"{{ html ? '' : ' hidden' }}>{{ html|raw }}</div>
