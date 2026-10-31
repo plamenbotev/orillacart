@@ -7,9 +7,16 @@ namespace OrillaCart\Coupons\Application\Dto;
 /**
  * A promotion as the promotion blocks tell of it: a coupon shown to shoppers, what it gives and on what, and for a
  * cart, whether it applies or what the cart still lacks for it. Amounts are in the shopper's currency.
+ *
+ * For a cart, also a price rule's next quantity tier (kind PRICE_TIER, automatic, no code): the product it is for,
+ * the price each then costs as the cart shows prices (empty when the product's lines would not all cost the same),
+ * how many of it the cart has and how many the tier takes.
  */
 final readonly class PromotionView
 {
+    /** The kind of a lower price from more items of a product, by the shop's price rules: no coupon's. */
+    public const string PRICE_TIER = 'price_tier';
+
     /**
      * @param string    $amount         a percentage, or an amount off in the currency; nothing for free shipping or a gift
      * @param list<int> $productIds     what it applies to; none of these, the categories or the brands: everything

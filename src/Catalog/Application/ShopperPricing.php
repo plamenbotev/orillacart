@@ -65,6 +65,16 @@ final readonly class ShopperPricing
         return $this->rules->tiers($price, $item, fn(Money $ruled, int $quantity): Money => $this->adjusted($ruled, $item->productId, $variationId, $quantity, $regular ?? $price)->rounded($this->decimals));
     }
 
+    /**
+     * The quantities above this one where a rule may change the item's price.
+     *
+     * @return list<int>
+     */
+    public function tierQuantities(PricedItem $item, int $above): array
+    {
+        return $this->rules->tierQuantities($item, $above);
+    }
+
     public function nextChange(PricedItem $item): ?\DateTimeImmutable
     {
         return $this->rules->nextChange($item);

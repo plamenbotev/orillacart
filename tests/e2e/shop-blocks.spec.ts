@@ -1,6 +1,6 @@
 /**
  * The shop-wide blocks as a visitor meets them: the store notice they may close, how far their cart is from free
- * shipping, and what it still needs for a promotion, on a page a cache could keep.
+ * shipping, and what it still needs for a promotion or a lower price by quantity, on a page a cache could keep.
  */
 import { expect, test } from '@wordpress/e2e-test-utils-playwright';
 
@@ -194,6 +194,64 @@ test.describe( 'A visitor', () => {
 			await remove(
 				requestUtils,
 				`/orillacart/v1/coupons/${ coupon.id }`
+			);
+			await remove(
+				requestUtils,
+				`/wp/v2/pages/${ blocks.id }?force=true`
+			);
+		}
+	} );
+
+	test( 'sees how many more lamps pay a lower price each, until they have them', async ( {
+		page,
+		requestUtils,
+	} ) => {
+		const rule = await requestUtils.rest< { id: number } >( {
+			method: 'POST',
+			path: '/orillacart/v1/price-rules',
+			data: {
+				name: 'E2E lamps by two',
+				tiers: [
+					{ min_quantity: 2, kind: 'fixed_price', value: '25' },
+				],
+				product_ids: [ shop.lamp ],
+				with_sales: true,
+			},
+		} );
+		const blocks = await requestUtils.rest< { id: number; link: string } >(
+			{
+				method: 'POST',
+				path: '/wp/v2/pages',
+				data: {
+					title: 'E2E Quantity tiers',
+					status: 'publish',
+					content: `<!-- wp:orillacart/promotion-progress /--><!-- wp:orillacart/add-to-cart {"productId":${ shop.lamp }} /-->`,
+				},
+			}
+		);
+		try {
+			await page.goto( blocks.link );
+			const addToCart = page.getByRole( 'button', {
+				name: 'Add to cart',
+			} );
+			await addToCart.click();
+			await expect(
+				page.getByText( /Add 1 more E2E Lamp to pay .+ each\./ )
+			).toBeVisible();
+			await expect(
+				page.getByRole( 'progressbar', {
+					name: /Towards Buy 2 or more: .+ each/,
+				} )
+			).toHaveAttribute( 'aria-valuetext', '1 of 2 items' );
+
+			await addToCart.click();
+			await expect( page.getByText( /to pay .+ each\./ ) ).toHaveCount(
+				0
+			);
+		} finally {
+			await remove(
+				requestUtils,
+				`/orillacart/v1/price-rules/${ rule.id }`
 			);
 			await remove(
 				requestUtils,

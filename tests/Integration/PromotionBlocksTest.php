@@ -10,11 +10,12 @@ use OrillaCart\Shared\Http\SiteCookies;
 
 /**
  * Coupons shown to shoppers, through the REST API, and the promotion blocks that tell of them: the progress a
- * visitor's page leaves to the script and a customer's comes with, and a product's promotions in words.
+ * visitor's page leaves to the script and a customer's comes with (a price rule's quantity tier too), and a
+ * product's promotions in words.
  */
 final class PromotionBlocksTest extends RestTestCase
 {
-    private const array TABLES = ['coupon_redemptions', 'coupons', 'cart_lines', 'carts', 'stock_levels', 'products'];
+    private const array TABLES = ['price_rules', 'coupon_redemptions','coupons', 'cart_lines', 'carts', 'stock_levels', 'products'];
 
     /** @var list<int> */
     private array $posts = [];
@@ -89,6 +90,22 @@ final class PromotionBlocksTest extends RestTestCase
         self::assertStringContainsString('orillacart-promotion-progress--no-bar', $html);
         self::assertStringNotContainsString(' hidden>', $html);
         self::assertMatchesRegularExpression('/Spend 30\.00 EUR more to get 10% off\. Then use the code <strong class="orillacart-promotion__code">SUMMER10<\/strong>\./u', $html);
+    }
+
+    public function testAQuantityTierIsAmongTheProgress(): void
+    {
+        $rule = $this->request('POST', '/price-rules', ['name' => 'Lamps by two', 'tiers' => [['min_quantity' => 2, 'kind' => 'fixed_price', 'value' => '18']], 'product_ids' => [$this->lamp]], nonce: true);
+        self::assertSame(201, $rule->get_status(), (string) wp_json_encode($rule->get_data()));
+        wp_set_current_user(0);
+
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true));
+        $html = $this->html($this->request('GET', '/cart/promotions'));
+        self::assertStringContainsString('Add 1 more Desk lamp to pay 18.00 EUR each.', $html);
+        self::assertStringContainsString('aria-label="Towards Buy 2 or more: 18.00 EUR each"', $html);
+        self::assertStringContainsString('aria-valuenow="1" aria-valuetext="1 of 2 items"', $html);
+
+        $this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true);
+        self::assertSame('', $this->html($this->request('GET', '/cart/promotions')), 'the lower price already: nothing to tell of');
     }
 
     public function testAProductTellsOfItsPromotionsInWords(): void

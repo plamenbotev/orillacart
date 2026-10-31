@@ -193,6 +193,17 @@ final readonly class ProductQuotes
     }
 
     /**
+     * The quantities above this many where the price rules that hold for a quoted item, for this shopper, may
+     * change what each costs, lowest first: for telling them how many more to buy for a lower price.
+     *
+     * @return list<int>
+     */
+    public function tierQuantities(ItemQuote $quote, int $above, ?int $customerId): array
+    {
+        return $this->prices->forShopper($customerId)->tierQuantities(new PricedItem($quote->productId, $quote->onSale, $quote->categoryIds, $quote->brandIds), $above);
+    }
+
+    /**
      * The options that pick a variation, for quoting it as a bundle's item.
      *
      * @return list<int>

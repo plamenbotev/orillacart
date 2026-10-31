@@ -597,7 +597,7 @@ final class TestShop
             $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
         );
-        $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies);
+        $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs);
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));

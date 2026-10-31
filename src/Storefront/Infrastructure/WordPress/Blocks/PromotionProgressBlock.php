@@ -14,7 +14,8 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
  * What the shopper's cart still needs for the shop's promotions, nearest first, with a bar: "Add 1 more Lamp to get
- * 1 free", "Spend €18.00 more to get 10% off", and those it gets already ("Buy 2, get 1 free — applied, you save
+ * 1 free", "Spend €18.00 more to get 10% off", "Add 1 more Lamp to pay €18.00 each" (a price rule's quantity tier),
+ * and those it gets already ("Buy 2, get 1 free — applied, you save
  * €9.00"). For the cart, the mini cart's sidebar or a header; nothing while there is nothing to tell.
  *
  * A visitor's page may come from a page cache, so it carries no one's cart: the storefront script fills it in.
