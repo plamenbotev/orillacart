@@ -91,6 +91,12 @@ deptrac:
       collectors:
         - type: classNameRegex
           value: '#^Dompdf\\#'
+    # Array shapes named with @phpstan-type and brought in with @phpstan-import-type: deptrac reads the names as
+    # classes of the importing file's namespace. They are only types, so any layer may name them.
+    - name: TypeAliases
+      collectors:
+        - type: classNameRegex
+          value: '#^OrillaCart\\(Checkout\\Application\\Priced|Storefront\\Infrastructure\\WordPress\\(Choices|Panel))$#'
 
   ruleset:
     # Entities and value objects: their own rules, mapping metadata and shared domain types only.
@@ -101,6 +107,7 @@ deptrac:
     Extension: ~
     # Use cases and DTOs: the domain, plus validation and serialization attributes on DTOs.
     Application:
+      - TypeAliases
       - Extension
       - Domain
       - SharedDomain
@@ -116,6 +123,7 @@ deptrac:
       - ValidationAttributes
       - Psr
     Infrastructure:
+      - TypeAliases
       - Extension
       - Domain
       - Application

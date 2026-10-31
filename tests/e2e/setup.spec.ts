@@ -485,6 +485,12 @@ test( 'sets up a US shop collecting sales tax in California, and a visitor there
 	).toContainText( 'Sales tax' );
 	await visit.getByRole( 'radio', { name: 'Cheque' } ).check();
 	await expect( visit.getByLabel( /I accept the/ ) ).toHaveCount( 0 );
+	// The postcode and the payment each draw the summary anew: the order is placed for the total they settle on,
+	// not while one is still on its way (the button clicked could be the one being replaced).
+	await visit.waitForLoadState( 'networkidle' );
+	await expect(
+		visit.locator( '.orillacart-checkout__summary' )
+	).not.toHaveAttribute( 'aria-busy', 'true' );
 	await visit.getByRole( 'button', { name: 'Place order' } ).click();
 
 	await expect(

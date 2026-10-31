@@ -194,6 +194,10 @@ function serve( save?: () => Promise< unknown > ) {
 	} );
 }
 
+// The whole Settings screen renders in each test, and role queries over it are slow in jsdom: a busy CI
+// runner took over Jest's default 5 seconds.
+jest.setTimeout( 15000 );
+
 describe( 'SettingsScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
 
@@ -683,14 +687,11 @@ describe( 'SettingsScreen', () => {
 		await user.click(
 			screen.getByLabelText( 'Show a notice over the shop’s pages' )
 		);
-		await user.type(
-			screen.getByLabelText( 'Notice' ),
-			'Free delivery this week'
-		);
-		await user.type(
-			await screen.findByLabelText( 'Notice in Deutsch' ),
-			'Kostenlose Lieferung'
-		);
+		// Pasted whole: each typed key re-renders the whole screen, too slow for a busy CI runner.
+		await user.click( screen.getByLabelText( 'Notice' ) );
+		await user.paste( 'Free delivery this week' );
+		await user.click( await screen.findByLabelText( 'Notice in Deutsch' ) );
+		await user.paste( 'Kostenlose Lieferung' );
 		await user.type( screen.getByLabelText( 'Link' ), '/sale' );
 		await user.click( screen.getByLabelText( 'Shoppers may close it' ) );
 		expect( lastWrite( mockedFetch ) ).toBeUndefined();
