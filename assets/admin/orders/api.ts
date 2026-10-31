@@ -85,9 +85,15 @@ export interface OrderLine {
 	/** An item (sold or given), the shipping or a fee. */
 	kind?: 'item' | 'shipping' | 'fee';
 	/** What the line is: an item sold, one a discount gave, the shipping or a fee. */
-	type?: 'item' | 'given' | 'add_on' | 'shipping' | 'fee';
+	type?: 'item' | 'given' | 'add_on' | 'charge' | 'shipping' | 'fee';
 	/** For an add-on's item: its cart line type. */
 	add_on?: { type: string; label: string } | null;
+	/** For a charge: who charges it ("shop", "add_on:<type>"), and how it is taxed. */
+	charge?: {
+		source: string;
+		taxable: boolean;
+		tax_group_id: number | null;
+	} | null;
 	/** For an item given: the discount that gave it. */
 	given_by?: { code: string; description: string } | null;
 	/** Its place in the order, as refunds and edits name it. */
@@ -563,6 +569,29 @@ export function adjustPrice(
 		path: `${ BASE }/orders/${ id }/adjustments`,
 		method: 'POST',
 		data: change,
+	} );
+}
+
+/** A price of its own added to an order on hold, with no product: so much each, as the customer pays it. */
+export interface NewCharge {
+	label: string;
+	amount: string;
+	quantity: number;
+	taxable: boolean;
+}
+
+export function addCharge( id: number, charge: NewCharge ): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/charges`,
+		method: 'POST',
+		data: charge,
+	} );
+}
+
+export function removeCharge( id: number, line: number ): Promise< Order > {
+	return apiFetch< Order >( {
+		path: `${ BASE }/orders/${ id }/charges/${ line }`,
+		method: 'DELETE',
 	} );
 }
 

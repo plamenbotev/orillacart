@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application;
 
+use OrillaCart\Checkout\Application\Dto\AddOrderCharge;
 use OrillaCart\Checkout\Application\Dto\AdjustOrderPrice;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\EditOrderItems;
@@ -17,6 +18,7 @@ use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\PriceChangeView;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Domain\Charge;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
 use OrillaCart\Ordering\Domain\PriceAdjustment;
@@ -57,12 +59,13 @@ final readonly class OrderEditing
      * @param list<string> $codes
      * @param list<string> $automatic
      * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
+     * @param list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool}> $charges
      *
      * @return Priced
      */
-    private function priced(OrderView $order, array $items, TaxAddress $shipping, TaxAddress $billing, ?string $shippingOption, array $codes, array $automatic, array $changes = []): array
+    private function priced(OrderView $order, array $items, TaxAddress $shipping, TaxAddress $billing, ?string $shippingOption, array $codes, array $automatic, array $changes = [], array $charges = []): array
     {
-        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, $changes, $automatic, $goods);
+        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, $changes, $automatic, $goods, charges: $charges);
         $priced = $price(null);
         $reverse = new ReverseCharge($order->reverseCharge, $order->vatNumber);
         $goods = $this->vatNumbers->forGoodsTo($reverse, $this->pricing->goodsTo($priced, $shipping));
@@ -193,10 +196,68 @@ final readonly class OrderEditing
     }
 
     /**
-     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
+     * Adds a price of its own to an order on hold, the shop's: gift wrapping, so much each. It prices the order
+     * again, its taxes too.
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation for an order not on hold
      */
-    private function reprice(OrderView $order, EditOrderItems $command, array $changes, ?int $userId): OrderView
+    public function addCharge(int $orderId, AddOrderCharge $command, ?int $userId): OrderView
     {
+        $order = $this->orderOnHold($orderId);
+        $charges = [...self::chargesOf($order), ['label' => trim($command->label), 'amount' => $command->amount, 'quantity' => $command->quantity, 'taxable' => $command->taxable, 'tax_group_id' => $command->taxGroupId, 'source' => Charge::SHOP, 'given' => true]];
+        $this->reprice($order, self::asItIs($order), self::changesOf($order, array_combine(array_keys($order->lines), array_keys($order->lines))), $userId, $charges);
+        $this->orders->addNote($orderId, new AddOrderNote(\sprintf('%s added: %d × %s %s.', trim($command->label), $command->quantity, $command->amount, $order->currency)), $userId);
+
+        return $this->orders->order($orderId);
+    }
+
+    /**
+     * Takes a charge the shop added off an order on hold, by its place in the order; an add-on's stays.
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation    for an order not on hold
+     * @throws CheckoutRuleViolation for a place that is not one of the shop's charges
+     */
+    public function removeCharge(int $orderId, int $position, ?int $userId): OrderView
+    {
+        $order = $this->orderOnHold($orderId);
+        $removed = array_find($order->charges, static fn(OrderLineView $line): bool => $line->position === $position && ($line->charge['source'] ?? null) === Charge::SHOP);
+        if ($removed === null) {
+            throw new CheckoutRuleViolation('The order has no charge of the shop\'s there; an add-on\'s charges go with what they came with.', 'orillacart_unknown_charge');
+        }
+        $charges = self::chargesOf($order, $position);
+        $this->reprice($order, self::asItIs($order), self::changesOf($order, array_combine(array_keys($order->lines), array_keys($order->lines))), $userId, $charges);
+        $this->orders->addNote($orderId, new AddOrderNote(\sprintf('%s was taken off.', $removed->name)), $userId);
+
+        return $this->orders->order($orderId);
+    }
+
+    /**
+     * The order's charges as pricing takes them again: so much each as the customer pays it, but the one at the
+     * place left out.
+     *
+     * @return list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool}>
+     */
+    private static function chargesOf(OrderView $order, ?int $without = null): array
+    {
+        $charges = [];
+        foreach ($order->charges as $line) {
+            if ($line->type === 'charge' && $line->charge !== null && $line->position !== $without) {
+                $charges[] = ['label' => $line->name, 'amount' => $line->unitPrice, 'quantity' => $line->quantity, 'taxable' => $line->charge['taxable'], 'tax_group_id' => $line->charge['tax_group_id'], 'source' => $line->charge['source'], 'given' => true];
+            }
+        }
+
+        return $charges;
+    }
+
+    /**
+     * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
+     * @param list<array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool}>|null $charges null for the order's own
+     */
+    private function reprice(OrderView $order, EditOrderItems $command, array $changes, ?int $userId, ?array $charges = null): OrderView
+    {
+        $charges ??= self::chargesOf($order);
         $orderId = $order->number;
         $billing = new TaxAddress($order->billing->country, $order->billing->state, $order->billing->postcode, $order->billing->city, $order->billing->street);
         $shippingAddress = $order->shippingAddress ?? $order->billing;
@@ -212,12 +273,12 @@ final readonly class OrderEditing
         [$codes, $automatic] = self::discountsOf($order);
 
         // Priced in the customer's language, so the order's lines read as theirs did (design 51).
-        return $this->languages->in($order->locale, fn(): OrderView => $this->transactions->run(function () use ($order, $orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint, $codes, $automatic, $changes): OrderView {
+        return $this->languages->in($order->locale, fn(): OrderView => $this->transactions->run(function () use ($order, $orderId, $items, $shipping, $billing, $command, $shippingAddress, $userId, $keptPoint, $codes, $automatic, $changes, $charges): OrderView {
             $this->orders->releaseStock($orderId);
             // Its own uses do not count against the limits while it is priced again.
             $this->discounts->release($orderId);
             // In the order's currency, with its own automatic discounts: not ones the shop started since.
-            $priced = $this->priced($order, $items, $shipping, $billing, $command->shippingOption, $codes, $automatic, $changes);
+            $priced = $this->priced($order, $items, $shipping, $billing, $command->shippingOption, $codes, $automatic, $changes, $charges);
             if ($priced['needs_shipping'] && $priced['chosen']?->id !== $command->shippingOption) {
                 throw new CheckoutRuleViolation($priced['options'] === [] ? 'The order cannot be shipped to its address.' : 'Choose how the order ships.', 'orillacart_shipping_required');
             }

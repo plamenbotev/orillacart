@@ -17,6 +17,7 @@ import {
 	fetchRefunds,
 	giveUpRefund,
 	type Order,
+	type OrderLine,
 	type OrderRefunds,
 	type Refund,
 	refundOrder,
@@ -50,6 +51,22 @@ const decimal = ( value: number, decimals: number ) =>
  * @param quantities Items to refund by line position.
  * @param shipping   Whether the shipping charge is refunded.
  */
+/**
+ * The lines refunds name so many of, with their places: the items, then the charges (a deposit, gift wrapping).
+ *
+ * @param order The order.
+ */
+export function byQuantity(
+	order: Order
+): { line: OrderLine; position: number }[] {
+	return [
+		...order.lines.map( ( line, position ) => ( { line, position } ) ),
+		...( order.charges ?? [] )
+			.filter( ( line ) => line.type === 'charge' )
+			.map( ( line ) => ( { line, position: line.position ?? 0 } ) ),
+	];
+}
+
 export function suggestedAmount(
 	order: Order,
 	quantities: Record< number, number >,
@@ -57,7 +74,7 @@ export function suggestedAmount(
 ): number {
 	const added = order.prices_include_tax ? 0 : 1;
 	let amount = 0;
-	order.lines.forEach( ( line, position ) => {
+	byQuantity( order ).forEach( ( { line, position } ) => {
 		const quantity = quantities[ position ] ?? 0;
 		if ( quantity > 0 ) {
 			amount +=
@@ -250,7 +267,7 @@ export function RefundsCard( {
 								money( state.refundable, order.currency )
 							) }
 						</p>
-						{ order.lines.map( ( line, position ) => {
+						{ byQuantity( order ).map( ( { line, position } ) => {
 							const left = line.quantity - line.refunded_quantity;
 							if ( left <= 0 ) {
 								return null;

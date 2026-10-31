@@ -68,7 +68,8 @@ final readonly class CartBlock implements BlockDefinition
             'estimate' => $priced?->estimatedFor === null ? null : $priced,
             // The lines and subtotal as checkout prices them whenever it does, so they add up to the estimate below:
             // with tax or without as the cart shows prices, and at the customer's rate when it differs from the shop's.
-            'shown' => $priced !== null && \count($priced->lines) >= \count($cart->lines) ? $priced : null,
+            // Charges come after the items, and are no lines of checkout's: they stay as the cart prices them.
+            'shown' => $priced !== null && \count($priced->lines) >= \count(array_filter($cart->lines, static fn(CartLineView $line): bool => $line->type !== 'charge')) ? $priced : null,
             'estimated_for' => $priced?->estimatedFor === null ? null : $this->addresses->countryName($priced->estimatedFor),
             'product_urls' => $this->links->products($productIds),
             'links' => $links,

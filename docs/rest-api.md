@@ -1395,6 +1395,24 @@ The shop looked at what the order needed attention for: the flag goes, the histo
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `POST /orders/{id}/charges`
+
+Adds a price of its own to an order on hold, with no product (gift wrapping, a rush fee); its taxes are worked out again.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `label` (string): required; not empty; at most 100 characters
+  - `amount` (string): required; matches `/^\d{1,11}(\.\d{1,4})?$/`; not equal to
+  - `quantity` (int): 1 to 9999; default 1
+  - `taxable` (bool): default true
+  - `tax_group_id` (int|null): more than 0
+
+### `DELETE /orders/{id}/charges/{line}`
+
+Takes a charge the shop added off an order on hold, by the line's place in the order; an add-on's stays.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ### `PUT /orders/{id}/contact`
 
 Corrects the customer's email, billing and shipping addresses and checkout answers on an order, and answers with the order. A shipment booked to the old address refuses the change.

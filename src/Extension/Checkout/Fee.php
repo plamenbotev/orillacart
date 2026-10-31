@@ -22,5 +22,7 @@ final readonly class Fee
         public string $amount,
         public bool $taxable = true,
         public ?int $taxGroupId = null,
+        /** Shown in the cart as a line of its own, beside the items, not only in the totals (API 18). */
+        public bool $asLine = false,
     ) {}
 }

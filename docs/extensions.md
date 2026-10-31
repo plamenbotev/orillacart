@@ -253,8 +253,8 @@ product, variation, SKU, name, quantity and unit price) and returns refusals:
 
 ## Cart line types
 
-`OrillaCart\Extension\Cart\CartLineType` keeps catalog products in the cart for what it holds: a deposit for each
-bottle, a sample with every order. Register one with `$registry->cartLineType($type)` (API 18).
+`OrillaCart\Extension\Cart\CartLineType` keeps lines in the cart for what it holds: a deposit for each bottle, a
+sample with every order. Register one with `$registry->cartLineType($type)` (API 18).
 
 ```php
 final class BottleDeposit implements CartLineType
@@ -267,19 +267,25 @@ final class BottleDeposit implements CartLineType
     {
         $bottles = array_sum(array_map(fn(CheckedLine $line): int => $this->isBottle($line) ? $line->quantity : 0, $cart->lines));
 
-        return $bottles === 0 ? [] : [new KeptItem(self::DEPOSIT_PRODUCT, $bottles)];
+        return $bottles === 0 ? [] : [new KeptCharge(__('Bottle deposit', 'acme'), '0.25', $bottles)];
     }
 }
 ```
 
 - `lines()` sees the shopper's own lines (not the type's, nor items discounts give) and returns what the type keeps
-  now: products for sale, with their options (a variation's for a product with variations) and how many. The cart
-  is kept in step whenever it changes: lines added, changed and removed.
+  now, each of two kinds:
+  - `KeptCharge`: a price of its own with no product, so much each in the shop's currency as its prices are (with
+    tax or without), how many, and how it is taxed (`taxable`, `taxGroupId`; the shop's default group for none).
+    A type's charges are told apart by their labels. No coupon takes anything off them.
+  - `KeptItem`: a catalog product for sale, with its options (a variation's for a product with variations) and how
+    many, priced as the catalog prices it.
+- The cart is kept in step whenever it changes: lines added, changed and removed.
 - The lines are priced as the catalog prices them, with the type's label beside them, and their quantity is the
   type's. A type that is `removable()` lets the shopper remove its lines; the cart then keeps none of the type
   until it keeps nothing, or the shopper asks for them again (`POST /cart/given/add_on:<id>`).
-- Placed, each is an order line of type `add_on`; `OrderLine::$type` and `$addOnType` say so. Its tax, stock,
-  refunds and reports are an item's.
+- Placed, a product is an order line of type `add_on` (`OrderLine::$type` and `$addOnType` say so), whose tax,
+  stock, refunds and reports are an item's; a charge is a charge line, taxed by its group, refunded by quantity,
+  listed with the order's fees ("Bottle deposit × 6").
 - A type that throws is logged, and keeps its lines as they are.
 
 ## Checkout fields
@@ -330,6 +336,8 @@ if ($registry->version() >= 5) {
   Zero or less is no fee.
 - The shop's own fee for a way to pay (Payments → the method → Fee) comes first, then the add-ons', in the order
   they were registered. Checkout, the order the shop takes by hand, and editing an order on hold price them all.
+- The cart page lists the fees with its estimated total; one made with `asLine: true` (API 18) is shown as a line
+  of its own beside the items instead.
 - The order keeps each fee with its label; the receipt, the emails, the invoice and the order screen show them,
   `OrderSummary::$fees` gives them to add-ons (amount by label), and a payment gateway finds them as the
   `handling` of the `PaymentBreakdown`.

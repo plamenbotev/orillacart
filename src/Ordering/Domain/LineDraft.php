@@ -58,5 +58,7 @@ final readonly class LineDraft
         public ?GivenBy $givenBy = null,
         /** For an add-on's item: its line type. */
         public ?KeptBy $addOn = null,
+        /** For a charge: who charges it, and how it is taxed. */
+        public ?Charge $charge = null,
     ) {}
 }

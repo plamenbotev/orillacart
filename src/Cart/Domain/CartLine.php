@@ -9,13 +9,14 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * A product with its options (and answers to its forms), and how many. Prices are not kept: the cart shows the
  * catalog's current ones. What put it in the cart decides what it does: the shopper (ProductLine), a discount
- * that gives it (GivenLine), or an add-on that keeps it there (AddOnLine).
+ * that gives it (GivenLine), or an add-on that keeps it there (AddOnLine); or no product, a price of its own an
+ * add-on keeps (ChargeLine).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'cart_lines')]
 #[ORM\InheritanceType('SINGLE_TABLE')]
 #[ORM\DiscriminatorColumn(name: 'type', type: 'string', length: 20)]
-#[ORM\DiscriminatorMap(['product' => ProductLine::class, 'given' => GivenLine::class, 'add_on' => AddOnLine::class])]
+#[ORM\DiscriminatorMap(['product' => ProductLine::class, 'given' => GivenLine::class, 'add_on' => AddOnLine::class, 'charge' => ChargeLine::class])]
 abstract class CartLine
 {
     #[ORM\Id]
@@ -47,8 +48,9 @@ abstract class CartLine
         #[ORM\ManyToOne(targetEntity: Cart::class, inversedBy: 'lines')]
         #[ORM\JoinColumn(name: 'cart_id', nullable: false, onDelete: 'CASCADE')]
         private Cart $cart,
-        #[ORM\Column]
-        private int $productId,
+        /** Null for a charge: a price of its own. */
+        #[ORM\Column(nullable: true)]
+        private ?int $productId,
         array $optionIds,
         int $quantity,
         #[ORM\Column]
@@ -63,7 +65,7 @@ abstract class CartLine
         $this->setQuantity($quantity);
     }
 
-    /** "product", "given" or "add_on": what the line is, as views and the API name it. */
+    /** "product", "given", "add_on" or "charge": what the line is, as views and the API name it. */
     abstract public function type(): string;
 
     /** Whether the shopper may change how many it holds. */
@@ -96,9 +98,10 @@ abstract class CartLine
         return $this->cart;
     }
 
+    /** The product it holds; 0 for a charge. */
     public function productId(): int
     {
-        return $this->productId;
+        return $this->productId ?? 0;
     }
 
     /** @return list<int> */

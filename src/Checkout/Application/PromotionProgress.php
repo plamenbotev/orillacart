@@ -52,7 +52,7 @@ final readonly class PromotionProgress
         $address = $at === null ? null : new TaxAddress($at['country'], $at['state'], $at['postcode'], $at['city']);
         $currency = $this->currencies->current();
         try {
-            $priced = $this->pricing->price($contents->lines, $address, $address, null, $at['postcode'] ?? null, $contents->coupons, $owner->customerId, currency: $currency);
+            $priced = $this->pricing->price($contents->lines, $address, $address, null, $at['postcode'] ?? null, $contents->coupons, $owner->customerId, currency: $currency, charges: $contents->charges);
         } catch (RuleViolation) {
             // An item no longer sold, or not in that quantity: the cart page says why.
             return [];
@@ -78,10 +78,10 @@ final readonly class PromotionProgress
      */
     private function tiers(array $items, array $priced, ?int $customerId, string $currency): array
     {
-        // Counted as checkout counts them: every line of the product, those given too.
+        // Counted as checkout counts them: every line of the product bought, not those a discount gives.
         $counted = [];
         foreach ($priced['lines'] as $line) {
-            $counted[$line['quote']->productId] = ($counted[$line['quote']->productId] ?? 0) + $line['quantity'];
+            $counted[$line['quote']->productId] = ($counted[$line['quote']->productId] ?? 0) + ($line['given'] === null ? $line['quantity'] : 0);
         }
         $ofProduct = [];
         foreach ($items as $index => $item) {

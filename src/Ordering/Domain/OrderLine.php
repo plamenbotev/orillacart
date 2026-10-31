@@ -19,7 +19,7 @@ use OrillaCart\Shared\Domain\Money;
 #[ORM\Table(name: 'order_lines')]
 #[ORM\InheritanceType('SINGLE_TABLE')]
 #[ORM\DiscriminatorColumn(name: 'type', type: 'string', length: 20)]
-#[ORM\DiscriminatorMap(['item' => ItemLine::class, 'given' => GivenItemLine::class, 'add_on' => AddOnItemLine::class, 'shipping' => ShippingLine::class, 'fee' => FeeLine::class])]
+#[ORM\DiscriminatorMap(['item' => ItemLine::class, 'given' => GivenItemLine::class, 'add_on' => AddOnItemLine::class, 'charge' => ChargeLine::class, 'shipping' => ShippingLine::class, 'fee' => FeeLine::class])]
 abstract class OrderLine
 {
     #[ORM\Id]
@@ -132,6 +132,7 @@ abstract class OrderLine
             LineType::Item => new ItemLine($order, $draft, $position),
             LineType::Given => new GivenItemLine($order, $draft, $position),
             LineType::AddOn => new AddOnItemLine($order, $draft, $position),
+            LineType::Charge => new ChargeLine($order, $draft, $position),
             LineType::Shipping => new ShippingLine($order, $draft, $position),
             LineType::Fee => new FeeLine($order, $draft, $position),
         };

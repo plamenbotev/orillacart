@@ -24,7 +24,9 @@ import { useConfirm } from '../shared/useConfirm';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import {
+	addCharge,
 	adjustPrice,
+	removeCharge,
 	addNote,
 	anonymiseOrder,
 	changeContact,
@@ -191,6 +193,15 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 						order={ order }
 						onSaved={ done(
 							__( 'The items were changed.', 'orillacart' )
+						) }
+						onError={ fail }
+					/>
+				) }
+				{ order.status === 'on_hold' && (
+					<ChargesCard
+						order={ order }
+						onSaved={ done(
+							__( 'The charges were changed.', 'orillacart' )
 						) }
 						onError={ fail }
 					/>
@@ -1006,6 +1017,145 @@ function StatusCard( { order, onSaved, onError }: CardProps ) {
  * @param props.onSaved
  * @param props.onError
  */
+/**
+ * Prices of their own on an order on hold, with no product: the shop's (gift wrapping) to add and take off, and
+ * those an add-on kept in the cart.
+ * @param props
+ * @param props.order
+ * @param props.onSaved
+ * @param props.onError
+ */
+function ChargesCard( { order, onSaved, onError }: CardProps ) {
+	const [ busy, run ] = useBusy();
+	const [ confirmation, confirm ] = useConfirm();
+	const [ label, setLabel ] = useState( '' );
+	const [ amount, setAmount ] = useState( '' );
+	const [ quantity, setQuantity ] = useState( '1' );
+	const [ taxable, setTaxable ] = useState( true );
+	const charges = ( order.charges ?? [] ).filter(
+		( line ) => line.type === 'charge'
+	);
+	const valid =
+		label.trim() !== '' &&
+		/^\d{1,11}(\.\d{1,4})?$/.test( amount.trim() ) &&
+		Number( amount ) > 0 &&
+		Number.isInteger( Number( quantity ) ) &&
+		Number( quantity ) >= 1;
+
+	return (
+		<Card className="orillacart-card">
+			{ confirmation }
+			<CardHeader>
+				<h2>{ __( 'Charges', 'orillacart' ) }</h2>
+			</CardHeader>
+			<CardBody>
+				{ charges.map( ( charge ) => (
+					<Flex key={ charge.position } justify="space-between">
+						<FlexItem>
+							{ charge.quantity } × { charge.name }:{ ' ' }
+							{ money( charge.total, order.currency ) }
+						</FlexItem>
+						<FlexItem>
+							{ charge.charge?.source === 'shop' ? (
+								<Button
+									variant="tertiary"
+									isDestructive
+									disabled={ busy }
+									onClick={ () =>
+										confirm(
+											sprintf(
+												/* translators: %s: the charge's label */
+												__(
+													'Take "%s" off the order? The taxes are worked out again.',
+													'orillacart'
+												),
+												charge.name
+											),
+											() =>
+												run( () =>
+													removeCharge(
+														order.number,
+														charge.position ?? 0
+													)
+														.then( onSaved )
+														.catch( onError )
+												),
+											__( 'Take off', 'orillacart' )
+										)
+									}
+								>
+									{ __( 'Take off', 'orillacart' ) }
+								</Button>
+							) : (
+								<small>
+									{ __( 'Kept by an add-on', 'orillacart' ) }
+								</small>
+							) }
+						</FlexItem>
+					</Flex>
+				) ) }
+				<p>
+					{ __(
+						'Add a price of its own, with no product: gift wrapping, a rush fee. So much each, as the customer pays it; the taxes follow.',
+						'orillacart'
+					) }
+				</p>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'What the customer sees', 'orillacart' ) }
+					value={ label }
+					maxLength={ 100 }
+					onChange={ setLabel }
+				/>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'Each', 'orillacart' ) }
+					inputMode="decimal"
+					value={ amount }
+					onChange={ setAmount }
+				/>
+				<TextControl
+					__next40pxDefaultSize
+					label={ __( 'How many', 'orillacart' ) }
+					type="number"
+					min={ 1 }
+					value={ quantity }
+					onChange={ setQuantity }
+				/>
+				<CheckboxControl
+					label={ __( 'Taxed', 'orillacart' ) }
+					checked={ taxable }
+					onChange={ setTaxable }
+				/>
+				<Button
+					variant="secondary"
+					isBusy={ busy }
+					disabled={ busy || ! valid }
+					onClick={ () =>
+						run( () =>
+							addCharge( order.number, {
+								label: label.trim(),
+								amount: amount.trim(),
+								quantity: Number( quantity ),
+								taxable,
+							} )
+								.then( ( saved ) => {
+									setLabel( '' );
+									setAmount( '' );
+									setQuantity( '1' );
+									onSaved( saved );
+								} )
+								.catch( onError )
+						)
+					}
+				>
+					{ __( 'Add the charge', 'orillacart' ) }
+				</Button>
+			</CardBody>
+		</Card>
+	);
+}
+
 function PriceChangesCard( { order, onSaved, onError }: CardProps ) {
 	const [ busy, run ] = useBusy();
 	const [ confirmation, confirm ] = useConfirm();

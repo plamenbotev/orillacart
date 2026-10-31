@@ -7,6 +7,7 @@ namespace OrillaCart\Cart\Domain;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\Money;
 
 /**
  * What a customer means to buy. A cart does not hold stock: checkout takes it when the order is placed.
@@ -261,7 +262,7 @@ class Cart
         if (!$line->removable()) {
             throw new CartRuleViolation('This item comes with others in your cart: remove those instead.', 'orillacart_kept_line');
         }
-        $declined = $line instanceof AddOnLine ? self::ADD_ON . $line->addOnType() : $line->givenBy();
+        $declined = $line instanceof AddOnLine || $line instanceof ChargeLine ? self::ADD_ON . $line->addOnType() : $line->givenBy();
         if ($declined !== null) {
             $this->declined = array_values(array_unique([...$this->declined, $declined]));
         }
@@ -317,19 +318,41 @@ class Cart
      * keepGiven() does. A type whose lines the shopper removed keeps none until it keeps nothing, or they ask.
      *
      * @param list<array{productId: int, optionIds: list<int>, quantity: int}> $items
+     * @param list<array{label: string, amount: Money, quantity: int, taxable: bool, taxGroupId: ?int}> $charges told apart by their labels
      *
      * @return bool whether the cart changed
      */
-    public function keepAddOn(string $type, string $label, bool $removable, array $items, \DateTimeImmutable $now): bool
+    public function keepAddOn(string $type, string $label, bool $removable, array $items, \DateTimeImmutable $now, array $charges = []): bool
     {
         $key = self::ADD_ON . $type;
         $changed = false;
-        if ($items === [] && \in_array($key, $this->declined, true)) {
+        if ($items === [] && $charges === [] && \in_array($key, $this->declined, true)) {
             $this->declined = array_values(array_filter($this->declined, static fn(string $declined): bool => $declined !== $key));
             $changed = true;
         }
         if (\in_array($key, $this->declined, true)) {
             $items = [];
+            $charges = [];
+        }
+        foreach ($this->lines() as $line) {
+            if (!$line instanceof ChargeLine || $line->addOnType() !== $type) {
+                continue;
+            }
+            $charge = array_find($charges, static fn(array $charge): bool => $charge['label'] === $line->label());
+            if ($charge === null) {
+                $this->lines->removeElement($line);
+                $changed = true;
+            } elseif ($charge['quantity'] !== $line->quantity() || !$charge['amount']->equals($line->amount()) || $charge['taxable'] !== $line->taxable() || $charge['taxGroupId'] !== $line->taxGroupId() || $removable !== $line->removable()) {
+                $line->keepAs($charge['quantity'], $charge['amount'], $charge['taxable'], $charge['taxGroupId'], $removable);
+                $changed = true;
+            }
+        }
+        foreach ($charges as $charge) {
+            $have = array_any($this->lines(), static fn(CartLine $line): bool => $line instanceof ChargeLine && $line->addOnType() === $type && $line->label() === $charge['label']);
+            if (!$have && $this->lines->count() < self::MAX_LINES) {
+                $this->lines->add(new ChargeLine($this, $charge['quantity'], $this->nextPosition(), mb_substr($type, 0, 40), mb_substr($charge['label'], 0, 100), $charge['amount'], $charge['taxable'], $charge['taxGroupId'], $removable));
+                $changed = true;
+            }
         }
         foreach ($this->lines() as $line) {
             if (!$line instanceof AddOnLine || $line->addOnType() !== $type) {

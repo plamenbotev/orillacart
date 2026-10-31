@@ -19,6 +19,7 @@ use OrillaCart\Cart\Domain\CartLine;
 use OrillaCart\Cart\Domain\CartLineNotFound;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Domain\CartRuleViolation;
+use OrillaCart\Cart\Domain\ChargeLine;
 use OrillaCart\Cart\Domain\Event\CartChanged;
 use OrillaCart\Cart\Domain\Event\CartItemAdded;
 use OrillaCart\Cart\Domain\Event\CartItemChanged;
@@ -38,6 +39,7 @@ use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Extension\Cart\KeptCharge;
 use OrillaCart\Extension\Cart\KeptItem;
 use OrillaCart\Forms\Application\Dto\GivenAnswer;
 use OrillaCart\Forms\Application\FieldAnswers;
@@ -227,7 +229,12 @@ final readonly class CartService
         }
 
         $lines = [];
+        $charges = [];
         foreach ($cart->lines() as $line) {
+            if ($line instanceof ChargeLine) {
+                $charges[] = ['label' => $line->label(), 'amount' => (string) $line->amount(), 'quantity' => $line->quantity(), 'taxable' => $line->taxable(), 'tax_group_id' => $line->taxGroupId(), 'source' => Cart::ADD_ON . $line->addOnType()];
+                continue;
+            }
             $answers = $this->answersOf($line);
             if ($answers === null) {
                 $refusals[] = \sprintf('%s: %s', $this->content->name($line->productId()), self::CHANGED);
@@ -246,7 +253,7 @@ final readonly class CartService
             ];
         }
 
-        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit(), $cart->fingerprint(), $cart->customerId(), $cart->declined());
+        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit(), $cart->fingerprint(), $cart->customerId(), $cart->declined(), $charges);
     }
 
     /**
@@ -520,17 +527,26 @@ final readonly class CartService
     {
         $quoted = [];
         $checked = [];
-        // Prices by quantity count every line of the product: its variations and option choices together.
+        // Prices by quantity count every line of the product bought: its variations and option choices together,
+        // not those a discount gives, as checkout counts them.
         $ofProduct = [];
+        $charges = [];
         foreach ($cart->lines() as $line) {
-            $ofProduct[$line->productId()] = ($ofProduct[$line->productId()] ?? 0) + $line->quantity();
+            if ($line instanceof ChargeLine) {
+                $charges[] = $line;
+                continue;
+            }
+            $ofProduct[$line->productId()] = ($ofProduct[$line->productId()] ?? 0) + ($line instanceof GivenLine ? 0 : $line->quantity());
         }
         // The cart's products read at once, not a query a line.
         $this->quotes->warm(array_keys($ofProduct));
         foreach ($cart->lines() as $line) {
+            if ($line instanceof ChargeLine) {
+                continue;
+            }
             $answers = $this->answersOf($line);
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $ofProduct[$line->productId()], $cart->customerId(), $line->bundleChoices(), (string) FieldAnswers::price($answers ?? [])));
+                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), max(1, $ofProduct[$line->productId()]), $cart->customerId(), $line->bundleChoices(), (string) FieldAnswers::price($answers ?? [])));
             } catch (NotFound|RuleViolation) {
                 $quote = null;
             }
@@ -593,6 +609,14 @@ final readonly class CartService
             $items += $line->quantity();
             $subtotal = $subtotal->add($total);
             $orderable = $orderable && $problem === null;
+        }
+
+        // A charge after the items, as checkout prices it: so much each, as the shop's prices are, in the currency.
+        foreach ($charges as $line) {
+            $unit = $this->currencies->amount($line->amount(), $currency);
+            $total = $unit->times($line->quantity());
+            $lines[] = new CartLineView($line->id(), 0, null, $line->label(), null, [], $line->quantity(), (string) $unit, (string) $total, null, null, type: $line->type(), quantityChangeable: false, removable: $line->removable());
+            $subtotal = $subtotal->add($total);
         }
 
         return new CartView($lines, $items, (string) $subtotal, $orderable, $refusals, $currency);
@@ -691,7 +715,17 @@ final readonly class CartService
                 continue;
             }
             $kept = [];
+            $charges = [];
             foreach ($items as $item) {
+                if ($item instanceof KeptCharge) {
+                    $label = trim($item->label);
+                    if ($label !== '' && mb_strlen($label) <= 100 && $item->quantity >= 1 && $item->quantity <= Cart::MAX_QUANTITY && preg_match('/^\d{1,11}(\.\d{1,' . Money::DECIMALS . '})?$/', $item->amount) === 1 && !Money::of($item->amount)->isZero()) {
+                        $charges[] = ['label' => $label, 'amount' => Money::of($item->amount), 'quantity' => $item->quantity, 'taxable' => $item->taxable, 'taxGroupId' => $item->taxGroupId];
+                    } else {
+                        $this->logger->error('The cart line type {type} kept a charge "{label}: {amount}" that is not a label of up to 100 characters, an amount and a quantity; it is left out.', ['type' => $type->id(), 'label' => $item->label, 'amount' => $item->amount]);
+                    }
+                    continue;
+                }
                 if (!$item instanceof KeptItem || $item->quantity < 1 || $item->quantity > Cart::MAX_QUANTITY) {
                     continue;
                 }
@@ -704,7 +738,7 @@ final readonly class CartService
                     $kept[] = ['productId' => $item->productId, 'optionIds' => array_values($item->optionIds), 'quantity' => $item->quantity];
                 }
             }
-            $cart->keepAddOn($type->id(), $label, $removable, $kept, $this->clock->now());
+            $cart->keepAddOn($type->id(), $label, $removable, $kept, $this->clock->now(), $charges);
         }
     }
 

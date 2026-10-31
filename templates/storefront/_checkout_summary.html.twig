@@ -34,7 +34,7 @@
             <tr><th scope="row">{{ __('Shipping') }}</th><td>{{ summary.shipping_option ? summary.shipping|money(summary.currency) : '—' }}</td></tr>
         {% endif %}
         {% for fee in summary.fees %}
-            <tr class="orillacart-fee"><th scope="row">{{ fee.label }}</th><td>{{ fee.amount|money(summary.currency) }}</td></tr>
+            <tr class="orillacart-fee"><th scope="row">{{ fee.label }}{% if fee.quantity > 1 %} &times; {{ fee.quantity }}{% endif %}</th><td>{{ fee.amount|money(summary.currency) }}</td></tr>
         {% endfor %}
         {% if not summary.prices_include_tax %}
             {% for tax in summary.taxes %}

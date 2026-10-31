@@ -32,6 +32,7 @@ use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\RestockItems;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Ordering\Domain\Charge;
 use OrillaCart\Ordering\Domain\DeliveryChoice;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderChanged;
@@ -1077,6 +1078,7 @@ final readonly class OrderService
             $line->shopWords,
             $line->givenCode === null ? null : new GivenBy($line->givenCode, $line->givenDescription),
             $line->addOnType === null ? null : new KeptBy($line->addOnType, $line->addOnLabel),
+            $line->chargeSource === null ? null : new Charge($line->chargeSource, $line->chargeTaxable, $line->chargeTaxGroupId),
         ), $lines);
     }
 

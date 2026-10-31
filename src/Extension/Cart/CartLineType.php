@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Extension\Cart;
 
 /**
- * Lines an add-on keeps in the cart: catalog products it adds for what the cart holds (a deposit for each bottle,
- * a sample with every order), kept in step whenever the cart changes. They are priced as the catalog prices them,
- * shown with the type's label, and sold as order lines of the type. Their quantity is the type's.
+ * Lines an add-on keeps in the cart for what it holds, kept in step whenever the cart changes: catalog products
+ * (a sample with every order), priced as the catalog prices them and sold as order lines of the type; or prices of
+ * their own with no product (a deposit for each bottle), sold as charges. Their quantity is the type's.
  */
 interface CartLineType
 {
@@ -23,7 +23,7 @@ interface CartLineType
     /**
      * What the type keeps in the cart as it is: none for nothing. The cart's own lines only, not the type's.
      *
-     * @return list<KeptItem>
+     * @return list<KeptItem|KeptCharge>
      */
     public function lines(CheckedCart $cart): array;
 }

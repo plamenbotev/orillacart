@@ -57,7 +57,8 @@
                                 </p>
                             {% endif %}
                         </td>
-                        <td data-label="{{ __('Price') }}">{{ (shown ? shown.lines[loop.index0].unit_price : line.unit_price)|money(cart.currency) }}</td>
+                        {% set priced = shown and line.type != 'charge' ? shown.lines[loop.index0] : line %}
+                        <td data-label="{{ __('Price') }}">{{ priced.unit_price|money(cart.currency) }}</td>
                         <td data-label="{{ __('Quantity') }}">
                             {% if not line.quantity_changeable %}
                                 {{ line.quantity }}
@@ -67,12 +68,24 @@
                                 aria-label="{{ __('Quantity of %s')|format(line.name) }}" data-orillacart-quantity="{{ line.id }}">
                             {% endif %}
                         </td>
-                        <td data-label="{{ __('Total') }}">{{ line.type == 'given' ? __('Free') : (shown ? shown.lines[loop.index0].total : line.total)|money(cart.currency) }}</td>
+                        <td data-label="{{ __('Total') }}">{{ line.type == 'given' ? __('Free') : priced.total|money(cart.currency) }}</td>
                         <td>
                             {# translators: %s: what is removed: a product, an attribute or a gift card -#}
                             {% if line.removable %}<button type="button" class="orillacart-remove" data-orillacart-remove="{{ line.id }}" aria-label="{{ __('Remove %s')|format(line.name) }}">&times;</button>{% endif %}
                         </td>
                     </tr>
+                {% endfor %}
+                {# Fees an add-on shows as lines of their own; its charges are the cart's lines above. #}
+                {% for fee in estimate ? estimate.fees : [] %}
+                    {% if fee.as_line and not fee.charge %}
+                        <tr class="orillacart-cart__fee">
+                            <td data-label="{{ __('Product') }}">{{ fee.label }}</td>
+                            <td></td>
+                            <td></td>
+                            <td data-label="{{ __('Total') }}">{{ fee.amount|money(estimate.currency) }}</td>
+                            <td></td>
+                        </tr>
+                    {% endif %}
                 {% endfor %}
             </tbody>
             <tfoot>
@@ -93,6 +106,11 @@
                             <td colspan="2">{{ estimate.shipping_option ? estimate.shipping|money(estimate.currency) : '—' }}</td>
                         </tr>
                     {% endif %}
+                    {% for fee in estimate.fees %}
+                        {% if not fee.as_line %}
+                            <tr class="orillacart-estimate orillacart-fee"><th scope="row" colspan="3">{{ fee.label }}</th><td colspan="2">{{ fee.amount|money(estimate.currency) }}</td></tr>
+                        {% endif %}
+                    {% endfor %}
                     {% if not estimate.prices_include_tax %}
                         {% for tax in estimate.taxes %}
                             {# translators: 1: tax name, 2: its rate -#}

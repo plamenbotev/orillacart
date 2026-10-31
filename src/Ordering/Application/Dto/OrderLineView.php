@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Ordering\Domain\ChargeLine;
 use OrillaCart\Ordering\Domain\OrderAdjustment;
 use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderStatus;
@@ -58,6 +59,8 @@ final readonly class OrderLineView
         public string $type = 'item',
         /** @var array{type: string, label: string}|null for an add-on's item: its line type */
         public ?array $addOn = null,
+        /** @var array{source: string, taxable: bool, tax_group_id: ?int}|null for a charge: who charges it, and how it is taxed */
+        public ?array $charge = null,
     ) {}
 
     /**
@@ -65,7 +68,7 @@ final readonly class OrderLineView
      */
     public static function fromLine(OrderLine $line, bool $forShop = false): self
     {
-        return new self($line->productId(), $line->variationId(), $forShop ? $line->shopName() : $line->name(), $line->sku(), $forShop ? $line->shopOptions() : $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $forShop ? $line->shopContents() : $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $forShop ? $line->shopPersonalisation() : $line->personalisation(), $line->type()->kind(), array_map(self::tax(...), $line->taxes()), array_map(self::adjustment(...), $line->adjustments()), $line->position(), ($given = $line->givenBy()) === null ? null : ['code' => $given->code, 'description' => $given->description], $line->type()->value, ($addOn = $line->addOn()) === null ? null : ['type' => $addOn->type, 'label' => $addOn->label]);
+        return new self($line->productId(), $line->variationId(), $forShop ? $line->shopName() : $line->name(), $line->sku(), $forShop ? $line->shopOptions() : $line->options(), $line->quantity(), (string) $line->unitPrice(), (string) $line->total(), (string) $line->tax(), $line->optionIds(), $line->backordered(), $line->isBackorderShown(), $line->refundedQuantity(), (string) $line->discount(), $forShop ? $line->shopContents() : $line->contents(), $line->bundleChoices(), (string) $line->refundedAmount(), $line->order()->status() === OrderStatus::Refunded ? $line->restockable() : 0, $line->ships(), $forShop ? $line->shopPersonalisation() : $line->personalisation(), $line->type()->kind(), array_map(self::tax(...), $line->taxes()), array_map(self::adjustment(...), $line->adjustments()), $line->position(), ($given = $line->givenBy()) === null ? null : ['code' => $given->code, 'description' => $given->description], $line->type()->value, ($addOn = $line->addOn()) === null ? null : ['type' => $addOn->type, 'label' => $addOn->label], $line instanceof ChargeLine ? ['source' => $line->charge()->source, 'taxable' => $line->charge()->taxable, 'tax_group_id' => $line->charge()->taxGroupId] : null);
     }
 
     private static function tax(OrderTax $tax): LineTaxView

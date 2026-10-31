@@ -373,6 +373,22 @@ class Order
         return null;
     }
 
+    /**
+     * The lines refunds name so many of, by their place: the items, and the charges.
+     *
+     * @return list<OrderLine>
+     */
+    public function byQuantity(): array
+    {
+        return array_values(array_filter($this->allLines(), static fn(OrderLine $line): bool => $line->type()->byQuantity()));
+    }
+
+    /** @return list<ChargeLine> */
+    public function chargeLines(): array
+    {
+        return array_values(array_filter($this->allLines(), static fn(OrderLine $line): bool => $line instanceof ChargeLine));
+    }
+
     /** @return list<FeeLine> */
     public function feeLines(): array
     {
@@ -462,20 +478,38 @@ class Order
         return $this->deliveryDate === null ? null : new DeliveryChoice($this->deliveryDate, $this->deliverySlot, $this->deliveryKey);
     }
 
-    /** @return list<OrderFee> */
+    /**
+     * The fees and the charges, as the totals list them: a charge of more than one with how many ("Deposit × 6").
+     *
+     * @return list<OrderFee>
+     */
     public function fees(bool $inShopWords = false): array
     {
-        return array_map(static fn(OrderLine $line): OrderFee => new OrderFee($inShopWords ? $line->shopName() : $line->name(), $line->net()), $this->feeLines());
+        return array_map(static function (OrderLine $line) use ($inShopWords): OrderFee {
+            $name = $inShopWords ? $line->shopName() : $line->name();
+
+            return new OrderFee($line instanceof ChargeLine && $line->quantity() > 1 ? "{$name} × {$line->quantity()}" : $name, $line->net());
+        }, $this->charged());
     }
 
     public function feesTotal(): Money
     {
-        return self::sum($this->feeLines(), static fn(OrderLine $line): Money => $line->net());
+        return self::sum($this->charged(), static fn(OrderLine $line): Money => $line->net());
     }
 
     public function feesTax(): Money
     {
-        return self::sum($this->feeLines(), static fn(OrderLine $line): Money => $line->tax());
+        return self::sum($this->charged(), static fn(OrderLine $line): Money => $line->tax());
+    }
+
+    /**
+     * The lines charged besides the items and the shipping: the charges, then the fees.
+     *
+     * @return list<OrderLine>
+     */
+    private function charged(): array
+    {
+        return [...$this->chargeLines(), ...$this->feeLines()];
     }
 
     /**
@@ -820,7 +854,7 @@ class Order
             throw new OrderRuleViolation('At most %1$s %2$s is left to refund.', 'orillacart_invalid_refund_amount', values: [$this->refundable(), $this->currency]);
         }
         $lines = [];
-        foreach ($this->lines() as $line) {
+        foreach ($this->byQuantity() as $line) {
             $lines[$line->position()] = $line;
         }
         foreach ($refund->quantities as $position => $quantity) {
@@ -849,7 +883,7 @@ class Order
         $before = array_map(static fn(OrderTax $row): Money => $row->refunded(), $this->taxRows());
         $tax = $this->refundTax($refund);
         $taken = [];
-        foreach ($this->lines() as $line) {
+        foreach ($this->byQuantity() as $line) {
             $quantity = $refund->quantities[$line->position()] ?? 0;
             if ($quantity > 0) {
                 array_push($taken, ...$line->refund($quantity, $refund->restock));
@@ -885,7 +919,7 @@ class Order
     private function refundTax(OrderRefund $refund): Money
     {
         $covered = [];
-        foreach ($this->lines() as $line) {
+        foreach ($this->byQuantity() as $line) {
             $quantity = $refund->quantities[$line->position()] ?? 0;
             if ($quantity > 0) {
                 $covered[] = [$line, ...$this->lineShare($line, $quantity)];
