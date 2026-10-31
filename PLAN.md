@@ -419,10 +419,10 @@ What the fixes of 260–278 left, which the owner asked to have fixed.
 
 | | # | P | Item | Commits |
 |---|---|---|---|---|
-| ⬜ | 279 | P2 | A newsletter sign-up waiting for its confirmation looked unsubscribed: the account showed the box unticked (saving the other choice withdrew the sign-up) and checkout offered the box again. The receipt, the account and checkout now say to check the email, the box stays ticked, and saving says the sign-up waits | |
-| ⬜ | 280 | P3 | An import left running with no job to go on with it (`stalled` in its view) can be discarded from the Exchange screen, not only through REST and the assistant; the card stops polling it | |
-| ⬜ | 281 | P2 | Two first orders placed at once by one customer with different first-order codes both got their discount: each locked only its own code. An order with a first-order code now takes the customer's turn (`coupon_first_order_turns`, a row per hashed account and email, locked until it is saved) and counts the customer's uses of every first-order code; other customers do not wait. Tested with two real connections | |
-| ⬜ | 282 | P3 | A page with the Products and Product filters blocks counted the matches twice: the count and the filters' counts are kept for the request (dropped when the index changes) and the other search fetches only its page (`SearchQuery::$count`) | |
+| ✅ | 279 | P2 | A newsletter sign-up waiting for its confirmation looked unsubscribed: the account showed the box unticked (saving the other choice withdrew the sign-up) and checkout offered the box again. The receipt, the account and checkout now say to check the email, the box stays ticked, and saving says the sign-up waits | e48ea58 |
+| ✅ | 280 | P3 | An import left running with no job to go on with it (`stalled` in its view) can be discarded from the Exchange screen, not only through REST and the assistant; the card stops polling it | e48ea58 |
+| ✅ | 281 | P2 | Two first orders placed at once by one customer with different first-order codes both got their discount: each locked only its own code. An order with a first-order code now takes the customer's turn (`coupon_first_order_turns`, a row per hashed account and email, locked until it is saved) and counts the customer's uses of every first-order code; other customers do not wait. Tested with two real connections | e48ea58 |
+| ✅ | 282 | P3 | A page with the Products and Product filters blocks counted the matches twice: the count and the filters' counts are kept for the request (dropped when the index changes) and the other search fetches only its page (`SearchQuery::$count`) | e48ea58 |
 
 ## Deliberately not carried over
 
