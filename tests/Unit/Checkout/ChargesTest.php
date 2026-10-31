@@ -134,6 +134,20 @@ final class ChargesTest extends TestCase
         self::assertSame('10', $order->total);
     }
 
+    public function testATaxGroupAnOpenOrdersChargeUsesIsNotDeleted(): void
+    {
+        $group = $this->shop->taxGroups->create(new \OrillaCart\Tax\Application\Dto\SaveTaxGroup('Wrapping'))->id;
+        $number = $this->place($this->cart(1));
+        $this->shop->editing->addCharge($number, new AddOrderCharge('Gift wrapping', '3', 1, true, $group), 7);
+
+        try {
+            $this->shop->taxGroups->delete($group);
+            self::fail('The charge would lose its tax.');
+        } catch (\OrillaCart\Shared\Domain\RuleViolation $e) {
+            self::assertStringContainsString('1 charge on an open order', (string) $e->text);
+        }
+    }
+
     public function testAnAddOnsChargeIsNotTheShopsToTakeOff(): void
     {
         $this->deposit();

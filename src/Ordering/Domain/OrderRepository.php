@@ -126,4 +126,7 @@ interface OrderRepository
     public function save(Order $order): void;
 
     public function remove(Order $order): void;
+
+    /** How many charges on orders still to be priced again (on hold, or waiting to be paid) are taxed by the group. */
+    public function countChargesTaxedBy(int $taxGroupId): int;
 }

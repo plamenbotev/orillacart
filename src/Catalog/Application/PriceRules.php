@@ -13,6 +13,7 @@ use OrillaCart\Catalog\Domain\PriceRule;
 use OrillaCart\Catalog\Domain\PriceRuleNotFound;
 use OrillaCart\Catalog\Domain\PriceRuleRepository;
 use OrillaCart\Catalog\Domain\PriceTier;
+use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Shared\Domain\Money;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -26,12 +27,18 @@ final readonly class PriceRules
         private PriceRuleRepository $rules,
         private EventDispatcherInterface $events,
         private ProductTranslations $translations,
+        private ProductContent $content,
     ) {}
+
+    private function view(PriceRule $rule): PriceRuleView
+    {
+        return PriceRuleView::fromRule($rule, array_values(array_filter($rule->productIds(), fn(int $id): bool => !$this->content->exists($id))));
+    }
 
     /** @return list<PriceRuleView> by name */
     public function rules(): array
     {
-        return array_map(PriceRuleView::fromRule(...), $this->rules->all());
+        return array_map($this->view(...), $this->rules->all());
     }
 
     /**
@@ -43,7 +50,7 @@ final readonly class PriceRules
         $this->rules->save($rule);
         $this->events->dispatch(new PriceRulesChanged([$rule->scope()]));
 
-        return PriceRuleView::fromRule($rule);
+        return $this->view($rule);
     }
 
     /**
@@ -58,7 +65,7 @@ final readonly class PriceRules
         $this->rules->save($rule);
         $this->events->dispatch(new PriceRulesChanged([$before, $rule->scope()]));
 
-        return PriceRuleView::fromRule($rule);
+        return $this->view($rule);
     }
 
     /**

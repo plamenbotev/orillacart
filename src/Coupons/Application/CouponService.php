@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Coupons\Application;
 
 use OrillaCart\Catalog\Application\ProductTranslations;
+use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Coupons\Application\Dto\CouponPageView;
 use OrillaCart\Coupons\Application\Dto\CouponQuery;
 use OrillaCart\Coupons\Application\Dto\CouponView;
@@ -33,6 +34,7 @@ final readonly class CouponService
         private ContentTranslations $texts,
         private Transactions $transactions,
         private TranslationPackages $packages,
+        private ProductContent $content,
     ) {}
 
     public function coupons(CouponQuery $query): CouponPageView
@@ -41,7 +43,7 @@ final readonly class CouponService
 
         $translations = $this->texts->of(CouponTranslations::TYPE, array_map(static fn(Coupon $coupon): int => $coupon->id(), $coupons));
 
-        return new CouponPageView(array_map(static fn(Coupon $coupon): CouponView => CouponView::fromCoupon($coupon, $translations[$coupon->id()] ?? []), $coupons), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
+        return new CouponPageView(array_map(fn(Coupon $coupon): CouponView => CouponView::fromCoupon($coupon, $translations[$coupon->id()] ?? [], $this->missing($coupon)), $coupons), $total, $query->page, max(1, (int) ceil($total / $query->perPage)));
     }
 
     /** The coupon with the code, when the shop can offer it now; null otherwise. */
@@ -133,9 +135,23 @@ final readonly class CouponService
         return $this->view($coupon);
     }
 
+    /**
+     * The products the coupon names that were deleted since: it no longer applies to them, gives them, or (a free
+     * gift's) gives anything.
+     *
+     * @return list<int>
+     */
+    private function missing(Coupon $coupon): array
+    {
+        $terms = $coupon->terms();
+        $named = array_values(array_unique([...$terms->productIds, ...$terms->excludedProductIds, ...$terms->getProductIds, ...($terms->giftProductId === null ? [] : [$terms->giftProductId])]));
+
+        return array_values(array_filter($named, fn(int $id): bool => !$this->content->exists($id)));
+    }
+
     private function view(Coupon $coupon): CouponView
     {
-        return CouponView::fromCoupon($coupon, $this->texts->of(CouponTranslations::TYPE, [$coupon->id()])[$coupon->id()] ?? []);
+        return CouponView::fromCoupon($coupon, $this->texts->of(CouponTranslations::TYPE, [$coupon->id()])[$coupon->id()] ?? [], $this->missing($coupon));
     }
 
     private function get(int $id): Coupon

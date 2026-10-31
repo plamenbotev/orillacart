@@ -312,4 +312,18 @@ final class InMemoryOrderRepository implements OrderRepository
         }
         $this->orders[$order->id()] = $order;
     }
+
+    public function countChargesTaxedBy(int $taxGroupId): int
+    {
+        $count = 0;
+        foreach ($this->orders as $order) {
+            if (\in_array($order->status(), [OrderStatus::OnHold, OrderStatus::PendingPayment], true)) {
+                foreach ($order->chargeLines() as $line) {
+                    $count += $line->charge()->taxGroupId === $taxGroupId ? 1 : 0;
+                }
+            }
+        }
+
+        return $count;
+    }
 }

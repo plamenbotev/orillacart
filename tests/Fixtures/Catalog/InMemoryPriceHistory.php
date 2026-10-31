@@ -48,4 +48,9 @@ final class InMemoryPriceHistory implements PriceHistoryRepository
     {
         array_push($this->points, ...$points);
     }
+
+    public function forget(array $items): void
+    {
+        $this->points = array_values(array_filter($this->points, static fn(PricePoint $point): bool => !\in_array($point->item(), $items, true)));
+    }
 }

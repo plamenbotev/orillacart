@@ -8,6 +8,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
+use OrillaCart\Ordering\Domain\ChargeLine;
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\MarkedOrder;
 use OrillaCart\Ordering\Domain\Order;
@@ -503,5 +504,15 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         }
 
         return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $query->getQuery()->getSingleColumnResult()));
+    }
+
+    public function countChargesTaxedBy(int $taxGroupId): int
+    {
+        $count = $this->entityManager->createQuery('SELECT COUNT(l.id) FROM ' . ChargeLine::class . ' l JOIN l.order o WHERE l.chargeTaxGroupId = :group AND o.status IN (:open)')
+            ->setParameter('group', $taxGroupId)
+            ->setParameter('open', [OrderStatus::OnHold, OrderStatus::PendingPayment])
+            ->getSingleScalarResult();
+
+        return is_numeric($count) ? (int) $count : 0;
     }
 }

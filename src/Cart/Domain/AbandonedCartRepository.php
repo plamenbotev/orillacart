@@ -54,4 +54,7 @@ interface AbandonedCartRepository
 
     /** Forgets the emails of carts left before the moment: the carts are gone. */
     public function forgetEmailsBefore(\DateTimeImmutable $before): int;
+
+    /** A deleted customer's records keep their email, and no longer name the account. */
+    public function forgetCustomer(int $customerId): void;
 }

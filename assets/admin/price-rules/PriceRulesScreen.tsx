@@ -476,6 +476,20 @@ function RuleForm( {
 				</Button>
 			</CardHeader>
 			<CardBody>
+				{ ( rule?.missing_product_ids ?? [] ).length > 0 && (
+					<Notice status="warning" isDismissible={ false }>
+						{ sprintf(
+							/* translators: %s: product ids */
+							__(
+								'Products this rule names were deleted (%s): it prices nothing for them. Remove them or choose others.',
+								'orillacart'
+							),
+							( rule?.missing_product_ids ?? [] )
+								.map( ( id ) => `#${ id }` )
+								.join( ', ' )
+						) }
+					</Notice>
+				) }
 				<form
 					onSubmit={ ( event ) => {
 						event.preventDefault();

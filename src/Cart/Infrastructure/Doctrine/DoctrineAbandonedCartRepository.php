@@ -186,4 +186,9 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
     {
         return is_numeric($value) ? (string) $value : '0';
     }
+
+    public function forgetCustomer(int $customerId): void
+    {
+        $this->entityManager->createQuery('UPDATE ' . AbandonedCart::class . ' r SET r.customerId = NULL WHERE r.customerId = :customer')->setParameter('customer', $customerId)->execute();
+    }
 }

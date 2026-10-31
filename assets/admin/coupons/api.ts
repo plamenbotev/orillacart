@@ -61,6 +61,8 @@ export interface Coupon extends CouponFields {
 	id: number;
 	/** Orders that use it, not cancelled or failed. */
 	uses: number;
+	/** The products it names that were deleted since: it no longer applies to them or gives them. */
+	missing_product_ids?: number[];
 }
 
 export interface CouponPage {
@@ -142,10 +144,12 @@ export function saveCoupon(
 	id: number | null,
 	coupon: CouponFields | Coupon
 ): Promise< Coupon > {
-	// A loaded coupon also has its id and how often it was used, which the API does not take back.
+	// A loaded coupon also has its id, how often it was used and the products it names that are gone, which the
+	// API does not take back.
 	const {
 		id: _id,
 		uses: _uses,
+		missing_product_ids: _missing,
 		...fields
 	} = coupon as Partial< Coupon > & CouponFields;
 	return apiFetch< Coupon >( {

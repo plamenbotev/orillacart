@@ -99,6 +99,7 @@ use OrillaCart\Notifications\Application\WithdrawalEmails;
 use OrillaCart\Notifications\Infrastructure\Events\AcknowledgeWithdrawal;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Ordering\Application\OrderChargeTaxGroups;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
@@ -435,6 +436,7 @@ final class TestShop
         $this->jobs = new TestJobs($this->clock);
         $this->jobs->immediate = true;
         $this->transactions = new ImmediateTransactions();
+        $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->events = new EventDispatcher();
         $this->logger = new MemoryLogger();
         $geography = new GeographyService(new InMemoryCountryRepository());
@@ -450,7 +452,7 @@ final class TestShop
         $carrierRecords = new InMemoryCarrierRepository();
         $ids = new CatalogIds();
         $this->productRecords = $productRecords = new InMemoryProductRepository($ids);
-        $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events, new TaggedTaxGroupUses([new ProductTaxGroups($productRecords), new ShippingTaxGroups($carrierRecords)]));
+        $this->taxGroups = new TaxGroupService($taxGroupRecords, $this->taxSettings, $geography, $this->events, new TaggedTaxGroupUses([new ProductTaxGroups($productRecords), new ShippingTaxGroups($carrierRecords), new OrderChargeTaxGroups($this->orderRecords)]));
         $this->taxRatesCsv = new TaxRatesCsv($taxGroupRecords, $geography, $this->events);
         $this->accounts = new InMemoryAccounts();
         $this->taxExemptions = new TaxExemptions(new InMemoryTaxExemptionRepository(), $this->accounts, $this->clock, new SofiaCalendar());
@@ -495,7 +497,7 @@ final class TestShop
         $this->priceRuleRecords = new InMemoryPriceRuleRepository();
         $this->customerGroupRecords = new InMemoryCustomerGroupRepository();
         $prices = new PriceResolver($this->priceRuleRecords, new GroupsOfShoppers($this->customerGroupRecords), $this->clock, $extensions, $settings, $this->logger, $this->failures = new ExtensionFailures());
-        $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events, $this->productTranslations);
+        $this->priceRules = new PriceRules($this->priceRuleRecords, $this->events, $this->productTranslations, $this->content);
         $quotes = new ProductQuotes($productRecords, $this->content, $this->stock, $this->clock, $settings, $prices, $this->productTranslations, $this->attributeNames);
         $this->quotes = $quotes;
         $this->priceHistory = new PriceHistory($this->pricePoints = new InMemoryPriceHistory(), $this->clock);
@@ -521,7 +523,6 @@ final class TestShop
         $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings, $this->productTranslations);
         $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations);
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
-        $this->orderRecords = new InMemoryOrderRepository($this->transactions);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
         $links = new FakeOrderLinks($this->receipts);
         $this->orderLookups = new ListedOrderLookups($this->extensions, $this->logger);
@@ -555,7 +556,7 @@ final class TestShop
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);
         $this->redemptions = new InMemoryRedemptionRepository();
         $this->events->addListener(OrderAnonymised::class, new ForgetErasedRedemptions($this->redemptions)->anonymised(...));
-        $this->coupons = new CouponService($this->couponRecords, $this->productTranslations, $this->contentTranslations, $this->transactions, $this->translationPackages);
+        $this->coupons = new CouponService($this->couponRecords, $this->productTranslations, $this->contentTranslations, $this->transactions, $this->translationPackages, $this->content);
         $this->packageSources->append(new CouponPackages($this->couponRecords));
         $this->discounts = new Discounts($this->couponRecords, $this->redemptions, $this->orders, $this->clock, $this->contentTranslations);
         $this->promotions = new Promotions($this->couponRecords, $this->redemptions, $this->orders, $this->contentTranslations, $this->clock);

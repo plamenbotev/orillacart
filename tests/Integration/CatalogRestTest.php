@@ -168,7 +168,7 @@ final class CatalogRestTest extends RestTestCase
     {
         $this->actAs('administrator');
         $post = $this->post('Mug');
-        $this->request('PUT', "/products/{$post}", ['price' => '10', 'attributes' => [['name' => 'Colour', 'options' => [['name' => 'Red']]]]], nonce: true);
+        $this->request('PUT', "/products/{$post}", ['price' => '10', 'sku' => 'MUG-GONE', 'attributes' => [['name' => 'Colour', 'options' => [['name' => 'Red']]]]], nonce: true);
         $stockroom = $this->id($this->request('POST', '/stockrooms', ['name' => 'Sofia'], nonce: true));
         $this->setStock('product', $post, [$stockroom => 3]);
         self::assertSame('1', $this->rows('products'));
@@ -180,6 +180,11 @@ final class CatalogRestTest extends RestTestCase
         foreach (['products', 'attributes', 'attribute_options', 'stock_levels'] as $table) {
             self::assertSame('0', $this->rows($table), $table);
         }
+        $wpdb = $this->wpdb();
+        self::assertSame('0', $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE product_id = %d', $wpdb->prefix . 'orillacart_skus', $post)), 'its SKU is free again');
+        self::assertSame('0', $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM %i WHERE item = %s', $wpdb->prefix . 'orillacart_price_history', "product:{$post}")), 'its prices go with it');
+        $cup = $this->post('Cup');
+        self::assertSame(200, $this->request('PUT', "/products/{$cup}", ['price' => '4', 'sku' => 'MUG-GONE'], nonce: true)->get_status(), 'another product takes its SKU');
     }
 
     public function testABundleIsSavedWithItsItemsNamedAndHoldsNoBundle(): void

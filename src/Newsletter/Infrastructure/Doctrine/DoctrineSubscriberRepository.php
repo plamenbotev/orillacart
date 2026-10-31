@@ -42,4 +42,9 @@ final readonly class DoctrineSubscriberRepository implements SubscriberRepositor
         $this->entityManager->remove($subscriber);
         $this->entityManager->flush();
     }
+
+    public function forgetCustomer(int $customerId): void
+    {
+        $this->entityManager->createQuery('UPDATE ' . Subscriber::class . ' r SET r.customerId = NULL WHERE r.customerId = :customer')->setParameter('customer', $customerId)->execute();
+    }
 }

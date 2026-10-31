@@ -28,6 +28,7 @@ final readonly class ForgetDeletedCustomers
     public function __invoke(CustomerDeleted $event): void
     {
         $this->forget($event->customerId);
+        $this->abandoned->forgetCustomer($event->customerId);
     }
 
     /** Erased, as a privacy request asked: their cart goes too. */

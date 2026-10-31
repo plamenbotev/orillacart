@@ -30,9 +30,14 @@ final readonly class PriceRuleView
         public bool $active,
         public bool $withCoupons = true,
         public bool $combines = false,
+        /** @var list<int> the products it names that were deleted since: it prices nothing for them */
+        public array $missingProductIds = [],
     ) {}
 
-    public static function fromRule(PriceRule $rule): self
+    /**
+     * @param list<int> $missingProductIds the products it names that were deleted since
+     */
+    public static function fromRule(PriceRule $rule, array $missingProductIds = []): self
     {
         return new self(
             $rule->id(),
@@ -48,6 +53,7 @@ final readonly class PriceRuleView
             $rule->isActive(),
             $rule->goesWithCoupons(),
             $rule->combines(),
+            $missingProductIds,
         );
     }
 }

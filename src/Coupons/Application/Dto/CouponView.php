@@ -57,12 +57,15 @@ final readonly class CouponView
         public array $translations = [],
         /** A free gift, or buy-get giving its items free: the shop adds the items given to the cart. */
         public bool $addsItems = true,
+        /** @var list<int> the products it names that were deleted since: it no longer applies to them or gives them */
+        public array $missingProductIds = [],
     ) {}
 
     /**
      * @param array<string, array<string, string>> $translations
+     * @param list<int>                            $missingProductIds the products it names that were deleted since
      */
-    public static function fromCoupon(Coupon $coupon, array $translations = []): self
+    public static function fromCoupon(Coupon $coupon, array $translations = [], array $missingProductIds = []): self
     {
         $terms = $coupon->terms();
 
@@ -102,6 +105,7 @@ final readonly class CouponView
             $coupon->isAdvertised(),
             $translations,
             $terms->addsItems,
+            $missingProductIds,
         );
     }
 }

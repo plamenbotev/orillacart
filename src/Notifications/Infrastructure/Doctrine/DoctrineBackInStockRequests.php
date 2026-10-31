@@ -52,6 +52,13 @@ final readonly class DoctrineBackInStockRequests implements BackInStockRequests
         return is_numeric($deleted) ? (int) $deleted : 0;
     }
 
+    public function forgetProducts(array $productIds): void
+    {
+        if ($productIds !== []) {
+            $this->entityManager->createQuery('DELETE FROM ' . BackInStockRequest::class . ' r WHERE r.productId IN (:products)')->setParameter('products', $productIds)->execute();
+        }
+    }
+
     public function forgetBefore(\DateTimeImmutable $before): int
     {
         $deleted = $this->entityManager->createQuery('DELETE FROM ' . BackInStockRequest::class . ' r WHERE r.at < :before')->setParameter('before', $before, 'datetime_immutable')->execute();

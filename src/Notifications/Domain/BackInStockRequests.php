@@ -26,4 +26,11 @@ interface BackInStockRequests
 
     /** @return int how many were forgotten */
     public function forgetBefore(\DateTimeImmutable $before): int;
+
+    /**
+     * Forgets the requests for products the catalog deleted, their variations' too.
+     *
+     * @param list<int> $productIds
+     */
+    public function forgetProducts(array $productIds): void;
 }

@@ -53,6 +53,11 @@ final class InMemoryBackInStockRequests implements BackInStockRequests
         return $before - \count($this->requests);
     }
 
+    public function forgetProducts(array $productIds): void
+    {
+        $this->requests = array_values(array_filter($this->requests, static fn(BackInStockRequest $request): bool => !\in_array($request->productId(), $productIds, true)));
+    }
+
     public function forgetBefore(\DateTimeImmutable $before): int
     {
         $at = new \ReflectionProperty(BackInStockRequest::class, 'at');

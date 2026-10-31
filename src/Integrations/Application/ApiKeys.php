@@ -82,6 +82,16 @@ final readonly class ApiKeys
         $this->keys->remove($key);
     }
 
+    /** A deleted user's keys stop working and go: their OAuth tokens with them. */
+    public function revokeOfUser(int $userId): void
+    {
+        foreach ($this->keys->all() as $key) {
+            if ($key->userId() === $userId) {
+                $this->keys->remove($key);
+            }
+        }
+    }
+
     /**
      * What the owner chose for the AI assistant that uses the key; null for the defaults.
      *

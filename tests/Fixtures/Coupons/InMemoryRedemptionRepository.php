@@ -60,4 +60,14 @@ final class InMemoryRedemptionRepository implements RedemptionRepository
     {
         $this->redemptions = array_values(array_filter($this->redemptions, static fn(CouponRedemption $kept): bool => $kept !== $redemption));
     }
+
+    public function forgetCustomer(int $customerId): void
+    {
+        $customer = new \ReflectionProperty(CouponRedemption::class, 'customerId');
+        foreach ($this->redemptions as $record) {
+            if ($customer->getValue($record) === $customerId) {
+                $customer->setValue($record, null);
+            }
+        }
+    }
 }

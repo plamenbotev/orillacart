@@ -138,6 +138,12 @@ final readonly class AbandonedCarts
         return $this->abandoned->forgetEmail(strtolower(trim($email)));
     }
 
+    /** The carts a deleted customer left at checkout no longer name the account; they keep their email. */
+    public function forgetCustomer(int $customerId): void
+    {
+        $this->abandoned->forgetCustomer($customerId);
+    }
+
     /** Forgets the emails of carts left longer ago than carts are kept, daily. */
     public function forgetOld(): int
     {

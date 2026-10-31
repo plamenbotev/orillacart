@@ -83,4 +83,9 @@ final readonly class DoctrineRedemptionRepository implements RedemptionRepositor
         $this->entityManager->remove($redemption);
         $this->entityManager->flush();
     }
+
+    public function forgetCustomer(int $customerId): void
+    {
+        $this->entityManager->createQuery('UPDATE ' . CouponRedemption::class . ' r SET r.customerId = NULL WHERE r.customerId = :customer')->setParameter('customer', $customerId)->execute();
+    }
 }

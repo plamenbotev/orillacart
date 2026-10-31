@@ -50,4 +50,14 @@ final class InMemorySubscribers implements SubscriberRepository
     {
         unset($this->subscribers[$subscriber->id()]);
     }
+
+    public function forgetCustomer(int $customerId): void
+    {
+        $customer = new \ReflectionProperty(Subscriber::class, 'customerId');
+        foreach ($this->subscribers as $record) {
+            if ($customer->getValue($record) === $customerId) {
+                $customer->setValue($record, null);
+            }
+        }
+    }
 }

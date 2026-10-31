@@ -51,4 +51,11 @@ final readonly class DoctrinePriceHistoryRepository implements PriceHistoryRepos
         }
         $this->entityManager->flush();
     }
+
+    public function forget(array $items): void
+    {
+        if ($items !== []) {
+            $this->entityManager->createQuery('DELETE FROM ' . PricePoint::class . ' p WHERE p.item IN (:items)')->setParameter('items', $items)->execute();
+        }
+    }
 }

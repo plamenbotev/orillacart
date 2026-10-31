@@ -30,4 +30,11 @@ interface PriceHistoryRepository
      * @param list<PricePoint> $points
      */
     public function add(array $points): void;
+
+    /**
+     * Forgets the prices of items the catalog deleted.
+     *
+     * @param list<string> $items "product:12", "variation:5"
+     */
+    public function forget(array $items): void;
 }

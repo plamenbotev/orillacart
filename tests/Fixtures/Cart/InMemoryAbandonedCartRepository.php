@@ -149,4 +149,14 @@ final class InMemoryAbandonedCartRepository implements AbandonedCartRepository
     {
         return array_values(array_filter($this->abandoned, static fn(AbandonedCart $left): bool => $left->abandonedAt() >= $from && $left->abandonedAt() < $until && $left->currency() === $currency));
     }
+
+    public function forgetCustomer(int $customerId): void
+    {
+        $customer = new \ReflectionProperty(AbandonedCart::class, 'customerId');
+        foreach ($this->abandoned as $record) {
+            if ($customer->getValue($record) === $customerId) {
+                $customer->setValue($record, null);
+            }
+        }
+    }
 }

@@ -389,6 +389,28 @@ export function CouponForm( {
 				</Button>
 			</CardHeader>
 			<CardBody>
+				{ ( coupon?.missing_product_ids ?? [] ).length > 0 && (
+					<Notice status="warning" isDismissible={ false }>
+						{ coupon?.gift_product_id !== null &&
+						coupon?.missing_product_ids?.includes(
+							coupon.gift_product_id ?? 0
+						)
+							? __(
+									'The free gift was deleted: this offer gives nothing until you choose another.',
+									'orillacart'
+								)
+							: sprintf(
+									/* translators: %s: product ids */
+									__(
+										'Products this names were deleted (%s): it no longer applies to them or gives them. Remove them or choose others.',
+										'orillacart'
+									),
+									( coupon?.missing_product_ids ?? [] )
+										.map( ( id ) => `#${ id }` )
+										.join( ', ' )
+								) }
+					</Notice>
+				) }
 				<form
 					onSubmit={ ( event ) => {
 						event.preventDefault();

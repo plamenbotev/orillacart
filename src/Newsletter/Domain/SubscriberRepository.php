@@ -21,4 +21,7 @@ interface SubscriberRepository
     public function save(Subscriber $subscriber): void;
 
     public function remove(Subscriber $subscriber): void;
+
+    /** A deleted customer's records keep their email, and no longer name the account. */
+    public function forgetCustomer(int $customerId): void;
 }

@@ -29,6 +29,8 @@ export interface PriceRuleFields {
 
 export interface PriceRule extends PriceRuleFields {
 	id: number;
+	/** The products it names that were deleted since: it prices nothing for them. */
+	missing_product_ids?: number[];
 }
 
 export interface CustomerGroup {
@@ -62,9 +64,12 @@ export function saveRule(
 	id: number | null,
 	rule: PriceRuleFields | PriceRule
 ): Promise< PriceRule > {
-	// A loaded rule also has its id, which the API does not take back.
-	const { id: _id, ...fields } = rule as Partial< PriceRule > &
-		PriceRuleFields;
+	// A loaded rule also has its id and the products it names that are gone, which the API does not take back.
+	const {
+		id: _id,
+		missing_product_ids: _missing,
+		...fields
+	} = rule as Partial< PriceRule > & PriceRuleFields;
 	return apiFetch< PriceRule >( {
 		path:
 			id === null

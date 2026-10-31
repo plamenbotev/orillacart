@@ -37,4 +37,7 @@ interface RedemptionRepository
     public function save(CouponRedemption $redemption): void;
 
     public function delete(CouponRedemption $redemption): void;
+
+    /** A deleted customer's records keep their email, and no longer name the account. */
+    public function forgetCustomer(int $customerId): void;
 }
