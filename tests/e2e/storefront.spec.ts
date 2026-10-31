@@ -244,6 +244,12 @@ test.describe( 'A visitor', () => {
 				page.getByRole( 'radio', { name: /Bulgaria/ } )
 			).toBeChecked();
 			await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+			// The payment's refresh of the summary lands first: one still on its way after the price goes up
+			// would show the new total before the click, and the order would rightly be placed for it.
+			await page.waitForLoadState( 'networkidle' );
+			await expect(
+				page.locator( '.orillacart-checkout__summary' )
+			).not.toHaveAttribute( 'aria-busy', 'true' );
 			const before = await page
 				.locator( '[name="expected_total"]' )
 				.inputValue();
