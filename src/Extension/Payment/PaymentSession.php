@@ -30,5 +30,7 @@ final readonly class PaymentSession
         public array $items = [],
         public ?PaymentBreakdown $breakdown = null,
         public ?PaymentAddress $shipTo = null,
+        /** The customer's email, for a provider that sends its own receipt or fills in its form. Since version 19. */
+        public ?string $email = null,
     ) {}
 }

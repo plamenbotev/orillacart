@@ -56,6 +56,7 @@ final readonly class Payments
                 $command->items,
                 $command->breakdown,
                 $command->shipTo,
+                $command->email,
             ), new Settings($method->settings()));
         } catch (ProviderUnavailable $e) {
             $payment->fail(null, $this->clock->now());

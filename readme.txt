@@ -68,7 +68,7 @@ Rebuilt from scratch on PHP 8.5, with no code or data kept from 1.x.
 
 * Storefront blocks: shop, product filters, search, mini cart, cart, checkout and account, from Twig templates a theme can override.
 * Catalog: variations, options with price changes, bundles, digital downloads, stock in several stockrooms, backorders, price rules per customer group, sales with the lowest earlier price shown.
-* Checkout: guest or account orders, taxes by address with reverse charge for EU businesses, coupons, shipping rates by weight, size and postcode, pickup points, PayPal, bank transfer, cheque and cash on delivery.
-* Orders: the shop's own orders, editing, partial and full refunds through PayPal, invoices and credit notes, emails in the customer's language.
+* Checkout: guest or account orders, taxes by address with reverse charge for EU businesses, coupons, shipping rates by weight, size and postcode, pickup points, cards and wallets through Stripe, PayPal, bank transfer, cheque and cash on delivery.
+* Orders: the shop's own orders, editing, partial and full refunds through Stripe and PayPal, invoices and credit notes, emails in the customer's language.
 * Search on the database or OpenSearch, background jobs with an overview screen, reports, Site Health checks, privacy tools, multisite.
 * An extension API for payment gateways, shipping methods with live rates and labels, price adjusters, cart rules, checkout fields and order actions.

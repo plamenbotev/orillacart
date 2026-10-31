@@ -159,6 +159,9 @@ use OrillaCart\Payment\Application\Gateway\Cheque;
 use OrillaCart\Payment\Application\PaymentUrls;
 use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Application\PayPal\PayPalGateway;
+use OrillaCart\Payment\Application\Stripe\StripeApi;
+use OrillaCart\Payment\Application\Stripe\StripeGateway;
+use OrillaCart\Payment\Application\Stripe\StripeRefused;
 use OrillaCart\Payment\Domain\NotifiedEvents;
 use OrillaCart\Payment\Domain\PaymentMethodRepository;
 use OrillaCart\Payment\Domain\PaymentRepository;
@@ -168,6 +171,7 @@ use OrillaCart\Payment\Infrastructure\Doctrine\DoctrinePaymentMethodRepository;
 use OrillaCart\Payment\Infrastructure\Doctrine\DoctrinePaymentRepository;
 use OrillaCart\Payment\Infrastructure\Doctrine\DoctrineRefundRepository;
 use OrillaCart\Payment\Infrastructure\PayPal\WordPressPayPalApi;
+use OrillaCart\Payment\Infrastructure\Stripe\WordPressStripeApi;
 use OrillaCart\Payment\Infrastructure\WordPress\RestPaymentUrls;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
 use OrillaCart\Platform\Doctrine\DatabaseMigrator;
@@ -365,15 +369,18 @@ return static function (ContainerConfigurator $container): void {
     // Refusals of a save that read stale data, not services.
     $services->remove(\OrillaCart\Catalog\Application\ProductChangedMeanwhile::class);
     $services->remove(\OrillaCart\Inventory\Application\StockChangedMeanwhile::class);
+    $services->remove(StripeRefused::class);
 
     // The shop's own payment gateways, in this order; add-ons register theirs after them (WordPressExtensions).
     $services->set(CashOnDelivery::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 40]);
     $services->set(BankTransfer::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 30]);
     $services->set(Cheque::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 20]);
+    $services->set(StripeGateway::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 15]);
     $services->set(PayPalGateway::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 10]);
     $services->alias(InstalledExtensions::class, WordPressExtensions::class);
     $services->alias(Registry::class, WordPressExtensions::class);
     $services->alias(PayPalApi::class, WordPressPayPalApi::class);
+    $services->alias(StripeApi::class, WordPressStripeApi::class);
     $services->alias(PaymentUrls::class, RestPaymentUrls::class);
 
     // Known only at runtime: set by the Kernel after the container is built.

@@ -27,11 +27,13 @@ final class PaymentMethodServiceTest extends TestCase
         $methods = $this->shop->paymentMethods->methods();
 
         self::assertSame(
-            [['cash_on_delivery', 'Cash on delivery', false, true], ['bank_transfer', 'Bank transfer', false, true], ['cheque', 'Cheque', false, true], ['paypal', 'PayPal', false, false]],
+            [['cash_on_delivery', 'Cash on delivery', false, true], ['bank_transfer', 'Bank transfer', false, true], ['cheque', 'Cheque', false, true], ['stripe', 'Card', false, false], ['paypal', 'PayPal', false, false]],
             array_map(static fn(PaymentMethodView $method): array => [$method->gateway, $method->name, $method->active, $method->notReady === null], $methods),
         );
-        self::assertSame(['client_id', 'client_secret', 'sandbox', 'webhook_id'], array_map(static fn($field): string => $field->key, $methods[3]->fields));
-        self::assertSame('https://shop.test/payments/paypal/webhook', $methods[3]->notificationUrl);
+        self::assertSame(['secret_key', 'sandbox', 'webhook_secret'], array_map(static fn($field): string => $field->key, $methods[3]->fields));
+        self::assertSame('https://shop.test/payments/stripe/webhook', $methods[3]->notificationUrl);
+        self::assertSame(['client_id', 'client_secret', 'sandbox', 'webhook_id'], array_map(static fn($field): string => $field->key, $methods[4]->fields));
+        self::assertSame('https://shop.test/payments/paypal/webhook', $methods[4]->notificationUrl);
     }
 
     public function testSecretsAreKeptButNeverShown(): void

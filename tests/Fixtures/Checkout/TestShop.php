@@ -132,6 +132,7 @@ use OrillaCart\Payment\Application\Payments;
 use OrillaCart\Payment\Application\PaymentWords;
 use OrillaCart\Payment\Application\PayPal\PayPalGateway;
 use OrillaCart\Payment\Application\Refunds;
+use OrillaCart\Payment\Application\Stripe\StripeGateway;
 use OrillaCart\Payment\Domain\Event\PaymentCancelled;
 use OrillaCart\Payment\Domain\Event\PaymentCompleted;
 use OrillaCart\Payment\Domain\Event\PaymentFailed;
@@ -245,6 +246,7 @@ use OrillaCart\Tests\Fixtures\Ordering\InMemoryOrderRepository;
 use OrillaCart\Tests\Fixtures\Ordering\ListedOrderLookups;
 use OrillaCart\Tests\Fixtures\Payment\FakePaymentUrls;
 use OrillaCart\Tests\Fixtures\Payment\FakePayPalApi;
+use OrillaCart\Tests\Fixtures\Payment\FakeStripeApi;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryNotifiedEvents;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryPaymentMethodRepository;
@@ -339,6 +341,7 @@ final class TestShop
     public readonly PaymentMethodService $paymentMethods;
     public readonly InMemoryPaymentRepository $paymentRecords;
     public readonly FakePayPalApi $payPalApi;
+    public readonly FakeStripeApi $stripeApi;
     public readonly LegalSettingsService $legal;
     public readonly ShopOpening $opening;
     public readonly FakeAuthorization $visitor;
@@ -460,7 +463,8 @@ final class TestShop
 
         $classRecords = new InMemoryShippingClassRepository();
         $this->payPalApi = new FakePayPalApi();
-        $this->extensions = $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new PayPalGateway($this->payPalApi)], $shippingMethods);
+        $this->stripeApi = new FakeStripeApi();
+        $this->extensions = $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new StripeGateway($this->stripeApi, $this->clock), new PayPalGateway($this->payPalApi)], $shippingMethods);
         $shippingMethodList = new ShippingMethods($extensions);
         $this->rateCache = new MemoryRateCache();
         $this->content = new InMemoryProductContent();

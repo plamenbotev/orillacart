@@ -93,6 +93,12 @@ final readonly class PaymentOutcomes
         $return = new PaymentReturn($query, $cancelled);
         $reference = $gateway instanceof HandlesReturns ? $gateway->reference($return) : null;
         $payment = $reference === null ? null : $this->payments->findByReference($gatewayId, $reference);
+        if ($reference === null && $gateway instanceof HandlesReturns) {
+            // A provider that names nothing on the way back (Stripe's cancel address): the signed address names
+            // the payment.
+            $payment = $this->payments->find((int) $id);
+            $reference = $payment !== null && $payment->gateway() === $gatewayId ? $payment->reference() : null;
+        }
         if ($payment === null || !$gateway instanceof HandlesReturns || $reference === null || $payment->id() !== (int) $id) {
             throw new PaymentNotFound();
         }

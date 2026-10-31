@@ -21,7 +21,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 
 - Ids are lowercase letters, digits and underscores, up to 40 characters, and unique among their kind: two
   payment gateways cannot share one, a gateway and a shipping method can. The shop's own gateways
-  (`cash_on_delivery`, `bank_transfer`, `cheque`, `paypal`) come first; a second registration of a kind with a
+  (`cash_on_delivery`, `bank_transfer`, `cheque`, `stripe`, `paypal`) come first; a second registration of a kind with a
   taken id is logged and left out. Prefixing ids with the add-on's name (`acme_express`) keeps them apart from
   other add-ons'.
 - An add-on that throws while registering is logged with where its callback is, and keeps what it registered
@@ -34,7 +34,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   searches of the orders and products lists, and `products()`; 9 since tax services, order adjusters and
   `orderPrices()`; 10 since e-invoice senders; 11 since gateways naming the account a payment is made in
   (`NamesAccounts`); 12 since mailing lists that delete contacts (`ForgetsSubscribers`); 13 since shipments
-  booked but not collected (`Tracking::BOOKED`); 14 since settings the shop manager can test (`TestsSettings`).
+  booked but not collected (`Tracking::BOOKED`); 14 since settings the shop manager can test (`TestsSettings`); 19 since the customer's email in a `PaymentSession`.
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.
@@ -70,7 +70,8 @@ the order is cancelled (its stock and coupon uses go back), and the customer kee
 The session gives the payment id, the order number, the amount and currency, and for providers that show or
 protect them the order's `items`, a `breakdown` (item total, tax, shipping, discount and, since version 5,
 handling: the order's fees) and `shipTo`, the address the goods go to (null for a pickup point or nothing that ships). The items and breakdown come only when they
-add up exactly to the amount; leave them out of the provider's request otherwise.
+add up exactly to the amount; leave them out of the provider's request otherwise. Since version 19 it also gives
+the customer's `email`, for a provider that sends its own receipt or fills in its form.
 
 A gateway that sends customers away also implements `HandlesReturns`. The session carries the shop's
 `returnUrl` and `cancelUrl`; the provider sends the customer back there.

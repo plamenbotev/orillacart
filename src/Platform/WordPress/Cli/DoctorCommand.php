@@ -36,7 +36,7 @@ final readonly class DoctorCommand implements CliCommand
     }
 
     /**
-     * Runs the shop's checks: its tables, cache folder, background jobs, downloads folder, search index, PayPal.
+     * Runs the shop's checks: its tables, cache folder, background jobs, downloads folder, search index, PayPal, Stripe.
      * Ends with an error when a check finds something critical, so a deploy script can stop on it.
      *
      * With --fix it first repairs what it can: runs the changes to the tables that have not run, forgets what

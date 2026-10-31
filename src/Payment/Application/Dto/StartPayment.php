@@ -28,6 +28,7 @@ final readonly class StartPayment
         public array $items = [],
         public ?PaymentBreakdown $breakdown = null,
         public ?PaymentAddress $shipTo = null,
+        public ?string $email = null,
     ) {}
 
     /**
@@ -55,6 +56,7 @@ final readonly class StartPayment
             $whole && $listed->equals(Money::of($order->subtotal)) ? $items : [],
             $whole ? $breakdown : null,
             $address === null || $order->pickupPointId !== null ? null : new PaymentAddress(trim("{$address->firstName} {$address->lastName}"), $address->street, $address->city, $address->postcode, $address->country, $address->state),
+            $order->email === '' ? null : $order->email,
         );
     }
 }

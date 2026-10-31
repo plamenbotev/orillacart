@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Notifications\Application\CartReminders;
+use OrillaCart\Payment\Infrastructure\Stripe\WordPressStripeApi;
 use OrillaCart\Shared\Http\SiteCookies;
 use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\ShopperCurrency;
 
@@ -32,6 +33,9 @@ final class CheckoutRestTest extends RestTestCase
     private int $product;
     private int $rate;
     private ?\Closure $payPalFilter = null;
+    private ?\Closure $stripeFilter = null;
+    /** @var list<array{method: string, url: string, body: string, headers: array<array-key, mixed>}> */
+    private array $stripeCalls = [];
 
     protected function setUp(): void
     {
@@ -40,6 +44,8 @@ final class CheckoutRestTest extends RestTestCase
         unset($_COOKIE[CartCookie::NAME]);
         $this->payPalFilter = $this->payPal(...);
         add_filter('pre_http_request', $this->payPalFilter, 10, 3);
+        $this->stripeFilter = $this->stripe(...);
+        add_filter('pre_http_request', $this->stripeFilter, 10, 3);
 
         $this->actAs('administrator');
         $this->product = $this->post('Lamp');
@@ -72,6 +78,9 @@ final class CheckoutRestTest extends RestTestCase
         if ($this->payPalFilter !== null) {
             remove_filter('pre_http_request', $this->payPalFilter);
         }
+        if ($this->stripeFilter !== null) {
+            remove_filter('pre_http_request', $this->stripeFilter);
+        }
         unset($_COOKIE[CartCookie::NAME]);
         foreach ($this->posts as $post) {
             wp_delete_post($post, true);
@@ -96,7 +105,7 @@ final class CheckoutRestTest extends RestTestCase
         $this->actAs('administrator');
         $methods = $this->data($this->request('GET', '/payment-methods'));
         // Saved positions first; methods never saved keep the default order. Ties go by gateway id.
-        self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal', 'cheque', 'test_pay'], array_column($methods, 'gateway'), 'the add-on\'s gateway after the shop\'s own');
+        self::assertSame(['cash_on_delivery', 'bank_transfer', 'paypal', 'cheque', 'stripe', 'test_pay'], array_column($methods, 'gateway'), 'the add-on\'s gateway after the shop\'s own');
         self::assertStringNotContainsString('S3cr3t-value', (string) wp_json_encode($methods), 'the PayPal secret never leaves the server');
     }
 
@@ -490,6 +499,50 @@ final class CheckoutRestTest extends RestTestCase
         self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
     }
 
+    public function testStripeTakesPaymentsOnItsPageAndHearsOfThemFromSignedWebhooks(): void
+    {
+        $this->actAs('administrator');
+        $saved = $this->request('PUT', '/payment-methods/stripe', ['name' => 'Card', 'active' => true, 'settings' => ['secret_key' => 'sk_test_Sh0p', 'sandbox' => true, 'webhook_secret' => 'whsec_Sh0p']], nonce: true);
+        self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+        self::assertStringNotContainsString('Sh0p', (string) wp_json_encode($saved->get_data()), 'the key never leaves the server');
+        wp_set_current_user(0);
+
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+        $order = $this->data($this->request('POST', '/checkout', $this->order('stripe'), nonce: true));
+        self::assertSame(['pending_payment', 'https://checkout.stripe.com/c/pay/cs_test_1'], [$order['status'], $order['redirect_url']]);
+        $create = $this->stripeCalls[0];
+        self::assertSame(['POST', 'https://api.stripe.com/v1/checkout/sessions', 'Bearer sk_test_Sh0p', WordPressStripeApi::VERSION], [$create['method'], $create['url'], $create['headers']['Authorization'] ?? null, $create['headers']['Stripe-Version'] ?? null]);
+        parse_str($create['body'], $form);
+        self::assertSame([['Lamp', '1', '3333'], ['Shipping', '1', '500']], array_map(static fn(mixed $line): array => [self::at($line, 'price_data', 'product_data', 'name'), self::at($line, 'quantity'), self::at($line, 'price_data', 'unit_amount')], (array) self::at($form, 'line_items')));
+        self::assertSame(['ada@example.com', 'eur'], [self::at($form, 'customer_email'), self::at($form, 'line_items', 0, 'price_data', 'currency')]);
+        $successUrl = self::at($form, 'success_url');
+        self::assertIsString($successUrl);
+        self::assertStringEndsWith('&session_id={CHECKOUT_SESSION_ID}', $successUrl, 'Stripe puts the session in');
+        parse_str((string) parse_url($successUrl, \PHP_URL_QUERY), $signed);
+
+        $return = new \WP_REST_Request('GET', self::NAMESPACE . '/payments/stripe/return');
+        $return->set_query_params(['session_id' => 'cs_test_1'] + $signed);
+        $back = rest_do_request($return);
+        self::assertSame([303, $order['receipt_url']], [$back->get_status(), $back->get_headers()['Location'] ?? null]);
+        self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
+
+        // A second customer pays and closes the window: only Stripe's webhook tells.
+        unset($_COOKIE[CartCookie::NAME]);
+        $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
+        $waiting = $this->data($this->request('POST', '/checkout', $this->order('stripe'), nonce: true));
+        $body = (string) wp_json_encode(['id' => 'evt_1', 'object' => 'event', 'type' => 'checkout.session.completed', 'data' => ['object' => self::paidSession('cs_test_2', 'pi_2')]]);
+        $notification = new \WP_REST_Request('POST', self::NAMESPACE . '/payments/stripe/webhook');
+        $notification->set_header('Content-Type', 'application/json');
+        $notification->set_body($body);
+        $time = time();
+        $notification->set_header('Stripe-Signature', "t={$time},v1=" . hash_hmac('sha256', "{$time}.{$body}", 'whsec_forged'));
+        self::assertSame(400, rest_do_request($notification)->get_status(), 'not signed with the shop\'s secret');
+        self::assertSame('pending_payment', $this->data($this->request('GET', "/receipts/{$this->key($waiting)}"))['status']);
+        $notification->set_header('Stripe-Signature', "t={$time},v1=" . hash_hmac('sha256', "{$time}.{$body}", 'whsec_Sh0p'));
+        self::assertSame(200, rest_do_request($notification)->get_status());
+        self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($waiting)}"))['status']);
+    }
+
     public function testAnAddOnsGatewayTakesPaymentsThroughTheExtensionApi(): void
     {
         $this->actAs('administrator');
@@ -587,6 +640,42 @@ final class CheckoutRestTest extends RestTestCase
         self::assertStringStartsWith('%PDF', (string) base64_decode($label['content'], true));
         self::assertSame('cancelled', $this->data($this->request('POST', "/shipments/{$shipment['id']}/cancel", nonce: true))['status']);
         self::assertSame('Office Vitosha, 12 Vitosha Blvd, 1000 Sofia', $this->data($this->request('GET', "/orders/{$toOffice['number']}"))['pickup_point']);
+    }
+
+    /**
+     * Plays Stripe for wp_remote_* calls to its API: each session opened is cs_test_n, and paid when asked about.
+     *
+     * @param false|array<string, mixed>|\WP_Error $preempt
+     * @param array<string, mixed>                 $args
+     *
+     * @return false|array<string, mixed>
+     */
+    public function stripe(false|array|\WP_Error $preempt, array $args, string $url): false|array
+    {
+        if (!str_starts_with($url, 'https://api.stripe.com/')) {
+            return $preempt instanceof \WP_Error ? false : $preempt;
+        }
+        $method = \is_string($args['method'] ?? null) ? $args['method'] : 'GET';
+        $this->stripeCalls[] = ['method' => $method, 'url' => $url, 'body' => \is_string($args['body'] ?? null) ? $args['body'] : '', 'headers' => \is_array($args['headers'] ?? null) ? $args['headers'] : []];
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        $opened = \count(array_filter($this->stripeCalls, static fn(array $call): bool => $call['method'] === 'POST' && str_ends_with($call['url'], '/v1/checkout/sessions')));
+        $answer = match (true) {
+            $method === 'POST' && $path === '/v1/checkout/sessions' => ['id' => "cs_test_{$opened}", 'url' => "https://checkout.stripe.com/c/pay/cs_test_{$opened}"],
+            preg_match('#^/v1/checkout/sessions/(cs_test_\d+)$#', $path, $match) === 1 => self::paidSession($match[1], 'pi_' . substr($match[1], 8)),
+            default => null,
+        };
+
+        return ['headers' => [], 'body' => (string) wp_json_encode($answer ?? ['error' => ['type' => 'invalid_request_error', 'code' => 'resource_missing', 'message' => 'No such object.']]), 'response' => ['code' => $answer === null ? 404 : 200, 'message' => ''], 'cookies' => [], 'filename' => null];
+    }
+
+    /**
+     * A Checkout Session the customer paid for the lamp and its shipping.
+     *
+     * @return array<string, mixed>
+     */
+    private static function paidSession(string $id, string $intent): array
+    {
+        return ['id' => $id, 'object' => 'checkout.session', 'status' => 'complete', 'payment_status' => 'paid', 'amount_total' => 3833, 'currency' => 'eur', 'payment_intent' => ['id' => $intent, 'status' => 'succeeded']];
     }
 
     /**
