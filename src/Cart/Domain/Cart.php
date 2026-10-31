@@ -24,6 +24,8 @@ class Cart
 {
     public const int MAX_LINES = 100;
     public const int MAX_QUANTITY = 9999;
+    /** How the cart remembers the add-on types whose lines the shopper removed, among the discounts. */
+    public const string ADD_ON = 'add_on:';
     /** How long an order counts as being placed from the cart: longer than a payment can take to start. */
     public const string PLACING_FOR = 'PT2M';
 
@@ -155,7 +157,7 @@ class Cart
                 $answers = $line->answers();
                 ksort($answers, SORT_STRING);
 
-                return [$line->type(), $line->givenBy(), $line->productId(), $line->optionIds(), $line->bundleChoices(), $line->quantity(), $answers];
+                return [$line->type(), $line->givenBy(), $line instanceof AddOnLine ? $line->addOnType() : null, $line->productId(), $line->optionIds(), $line->bundleChoices(), $line->quantity(), $answers];
             }, $this->lines()),
             $this->coupons,
             $this->giftCards,
@@ -247,16 +249,21 @@ class Cart
     }
 
     /**
-     * Removes the line. An item given is not given again while its discount holds: the shopper did not want it.
+     * Removes the line. An item given is not given again while its discount holds, nor an add-on's while it keeps
+     * it: the shopper did not want it.
      *
      * @throws CartLineNotFound
+     * @throws CartRuleViolation for an add-on's line it does not let the shopper remove
      */
     public function remove(int $lineId, \DateTimeImmutable $now): void
     {
         $line = $this->line($lineId);
-        $code = $line->givenBy();
-        if ($code !== null) {
-            $this->declined = array_values(array_unique([...$this->declined, $code]));
+        if (!$line->removable()) {
+            throw new CartRuleViolation('This item comes with others in your cart: remove those instead.', 'orillacart_kept_line');
+        }
+        $declined = $line instanceof AddOnLine ? self::ADD_ON . $line->addOnType() : $line->givenBy();
+        if ($declined !== null) {
+            $this->declined = array_values(array_unique([...$this->declined, $declined]));
         }
         $this->lines->removeElement($line);
         $this->updatedAt = $now;
@@ -274,7 +281,7 @@ class Cart
     public function keepGiven(array $items, \DateTimeImmutable $now): bool
     {
         $codes = array_map(static fn(GivenItem $item): string => $item->code, $items);
-        $declined = array_values(array_filter($this->declined, static fn(string $code): bool => \in_array($code, $codes, true)));
+        $declined = array_values(array_filter($this->declined, static fn(string $code): bool => str_starts_with($code, self::ADD_ON) || \in_array($code, $codes, true)));
         $changed = $declined !== $this->declined;
         $this->declined = $declined;
         $items = array_values(array_filter($items, static fn(GivenItem $item): bool => !\in_array($item->code, $declined, true)));
@@ -305,7 +312,53 @@ class Cart
         return $changed;
     }
 
-    /** @return list<string> the discounts whose items the shopper removed, by code */
+    /**
+     * Keeps an add-on's lines in step with what its cart line type keeps now (CartLineType::lines()), as
+     * keepGiven() does. A type whose lines the shopper removed keeps none until it keeps nothing, or they ask.
+     *
+     * @param list<array{productId: int, optionIds: list<int>, quantity: int}> $items
+     *
+     * @return bool whether the cart changed
+     */
+    public function keepAddOn(string $type, string $label, bool $removable, array $items, \DateTimeImmutable $now): bool
+    {
+        $key = self::ADD_ON . $type;
+        $changed = false;
+        if ($items === [] && \in_array($key, $this->declined, true)) {
+            $this->declined = array_values(array_filter($this->declined, static fn(string $declined): bool => $declined !== $key));
+            $changed = true;
+        }
+        if (\in_array($key, $this->declined, true)) {
+            $items = [];
+        }
+        foreach ($this->lines() as $line) {
+            if (!$line instanceof AddOnLine || $line->addOnType() !== $type) {
+                continue;
+            }
+            $item = array_find($items, static fn(array $item): bool => $line->isOf($item['productId'], $item['optionIds']));
+            if ($item === null) {
+                $this->lines->removeElement($line);
+                $changed = true;
+            } elseif ($item['quantity'] !== $line->quantity() || $label !== $line->label() || $removable !== $line->removable()) {
+                $line->keepAs($item['quantity'], $label, $removable);
+                $changed = true;
+            }
+        }
+        foreach ($items as $item) {
+            $have = array_any($this->lines(), static fn(CartLine $line): bool => $line instanceof AddOnLine && $line->addOnType() === $type && $line->isOf($item['productId'], $item['optionIds']));
+            if (!$have && $this->lines->count() < self::MAX_LINES) {
+                $this->lines->add(new AddOnLine($this, $item['productId'], $item['optionIds'], $item['quantity'], $this->nextPosition(), mb_substr($type, 0, 40), mb_substr($label, 0, 100), $removable));
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    /** @return list<string> the discounts whose items the shopper removed, by code; add-ons' as "add_on:<type>" */
     public function declined(): array
     {
         return $this->declined;
@@ -444,8 +497,8 @@ class Cart
     {
         $files = \count($this->fileHashes());
         foreach ($other->lines() as $line) {
-            if ($line->givenBy() !== null) {
-                // Given again as the cart's discounts give them.
+            if (!$line instanceof ProductLine) {
+                // Given, or kept, again as the cart's discounts and add-ons keep them.
                 continue;
             }
             $mine = $this->lineFor($line->productId(), $line->optionIds(), $line->bundleChoices(), $line->answers());

@@ -483,6 +483,11 @@ function Summary( { order }: { order: Order } ) {
 											</small>
 										</div>
 									) }
+									{ line.add_on?.label && (
+										<div>
+											<small>{ line.add_on.label }</small>
+										</div>
+									) }
 									{ line.options.map( ( option ) => (
 										<div key={ option.attribute }>
 											<small>

@@ -13,6 +13,7 @@ use OrillaCart\Cart\Application\Dto\CartView;
 use OrillaCart\Cart\Application\Dto\ChangeQuantity;
 use OrillaCart\Cart\Application\Dto\CheckoutContact;
 use OrillaCart\Cart\Domain\AbandonedCartRepository;
+use OrillaCart\Cart\Domain\AddOnLine;
 use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Cart\Domain\CartLine;
 use OrillaCart\Cart\Domain\CartLineNotFound;
@@ -25,6 +26,7 @@ use OrillaCart\Cart\Domain\Event\CartItemRemoved;
 use OrillaCart\Cart\Domain\Event\LeftCartOrdered;
 use OrillaCart\Cart\Domain\GivenItem;
 use OrillaCart\Cart\Domain\GivenLine;
+use OrillaCart\Cart\Domain\ProductLine;
 use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Catalog\Application\Dto\QuotedBundleItem;
 use OrillaCart\Catalog\Application\Dto\QuotedOption;
@@ -36,6 +38,7 @@ use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Extension\Cart\KeptItem;
 use OrillaCart\Forms\Application\Dto\GivenAnswer;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormUploads;
@@ -134,6 +137,7 @@ final readonly class CartService
             $cart = new Cart($newToken, $owner->customerId, $this->clock->now());
         }
         $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices, $values);
+        $this->keepAddOns($cart);
         $this->carts->save($cart);
         // Files in a cart last as long as it does.
         $this->uploads->hold($files);
@@ -158,6 +162,7 @@ final readonly class CartService
         $variationId = $this->variationOf($line);
         if ($command->quantity === 0) {
             $cart->remove($lineId, $this->clock->now());
+            $this->keepAddOns($cart);
             $event = new CartItemRemoved($line->productId(), $variationId, $previous, $cart->customerId());
         } else {
             if ($command->quantity > $previous) {
@@ -165,6 +170,7 @@ final readonly class CartService
                 $this->checkRules($cart, $cart->customerId(), $line, $command->quantity, $line->productId(), $line->optionIds(), $line->bundleChoices());
             }
             $cart->changeQuantity($lineId, $command->quantity, $this->clock->now());
+            $this->keepAddOns($cart);
             $event = new CartItemChanged($line->productId(), $variationId, $command->quantity, $previous, $cart->customerId());
         }
         $this->carts->save($cart);
@@ -236,6 +242,7 @@ final readonly class CartService
                 'extra' => (string) FieldAnswers::price($answers),
                 'personalisation' => FieldAnswers::rows($answers),
                 'given' => $line->givenBy(),
+                'add_on' => $line instanceof AddOnLine ? ['type' => $line->addOnType(), 'label' => $line->label()] : null,
             ];
         }
 
@@ -270,6 +277,7 @@ final readonly class CartService
             return new CartResult(CartView::empty(), null);
         }
         $cart->undecline($code, $this->clock->now());
+        $this->keepAddOns($cart);
         $this->carts->save($cart);
         $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
 
@@ -470,6 +478,7 @@ final readonly class CartService
         }
         $token = self::token();
         $cart->rekey($token);
+        $this->keepAddOns($cart);
         $this->carts->save($cart);
         // The files it names last as long as the cart does from now.
         $this->uploads->holdNamed($cart->fileHashes());
@@ -578,7 +587,8 @@ final readonly class CartService
                 $line->type(),
                 $line->quantityChangeable(),
                 $line->givenBy(),
-                $line instanceof GivenLine ? $line->label() : null,
+                $line instanceof GivenLine || $line instanceof AddOnLine ? $line->label() : null,
+                $line->removable(),
             );
             $items += $line->quantity();
             $subtotal = $subtotal->add($total);
@@ -647,6 +657,54 @@ final readonly class CartService
         $message = $refusedLines[$key] ?? null;
         if ($message !== null) {
             throw new CartRuleViolation($message, 'orillacart_cart_refused');
+        }
+    }
+
+    /**
+     * Keeps the lines add-ons' cart line types keep in step with the shopper's own items: catalog products for
+     * sale, in their quantity. A type that throws is logged and keeps its lines as they are.
+     */
+    private function keepAddOns(Cart $cart): void
+    {
+        $types = $this->extensions->cartLineTypes();
+        if ($types === []) {
+            return;
+        }
+        $checked = [];
+        foreach ($cart->lines() as $line) {
+            if (!$line instanceof ProductLine) {
+                continue;
+            }
+            try {
+                $checked[] = self::checkedLine($line, $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), $line->quantity(), $cart->customerId(), $line->bundleChoices())));
+            } catch (NotFound|RuleViolation) {
+            }
+        }
+        $own = new CheckedCart($cart->customerId(), $checked, $this->settings->current()->currency);
+        foreach ($types as $type) {
+            try {
+                $items = $type->lines($own);
+                $label = $type->label();
+                $removable = $type->removable();
+            } catch (\Throwable $e) {
+                $this->logger->error('The cart line type {type} failed: {message}', ['type' => $type->id(), 'message' => $e->getMessage(), 'exception' => $e]);
+                continue;
+            }
+            $kept = [];
+            foreach ($items as $item) {
+                if (!$item instanceof KeptItem || $item->quantity < 1 || $item->quantity > Cart::MAX_QUANTITY) {
+                    continue;
+                }
+                try {
+                    $quote = $this->quotes->quote(new QuoteRequest($item->productId, $item->optionIds, $item->quantity, $cart->customerId()));
+                } catch (NotFound|RuleViolation) {
+                    continue;
+                }
+                if ($quote->forSale) {
+                    $kept[] = ['productId' => $item->productId, 'optionIds' => array_values($item->optionIds), 'quantity' => $item->quantity];
+                }
+            }
+            $cart->keepAddOn($type->id(), $label, $removable, $kept, $this->clock->now());
         }
     }
 

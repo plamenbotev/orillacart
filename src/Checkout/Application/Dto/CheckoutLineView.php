@@ -31,5 +31,7 @@ final readonly class CheckoutLineView
         public array $personalisation = [],
         /** For an item given: the discount that gives it, as the shop describes it. */
         public ?string $givenWith = null,
+        /** For an add-on's item: its line type's label. */
+        public ?string $addOnLabel = null,
     ) {}
 }

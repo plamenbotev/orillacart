@@ -8,14 +8,14 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * A product with its options (and answers to its forms), and how many. Prices are not kept: the cart shows the
- * catalog's current ones. What put it in the cart decides what it does: the shopper (ProductLine), or a
- * discount that gives it (GivenLine).
+ * catalog's current ones. What put it in the cart decides what it does: the shopper (ProductLine), a discount
+ * that gives it (GivenLine), or an add-on that keeps it there (AddOnLine).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'cart_lines')]
 #[ORM\InheritanceType('SINGLE_TABLE')]
 #[ORM\DiscriminatorColumn(name: 'type', type: 'string', length: 20)]
-#[ORM\DiscriminatorMap(['product' => ProductLine::class, 'given' => GivenLine::class])]
+#[ORM\DiscriminatorMap(['product' => ProductLine::class, 'given' => GivenLine::class, 'add_on' => AddOnLine::class])]
 abstract class CartLine
 {
     #[ORM\Id]
@@ -63,11 +63,17 @@ abstract class CartLine
         $this->setQuantity($quantity);
     }
 
-    /** "product" or "given": what the line is, as views and the API name it. */
+    /** "product", "given" or "add_on": what the line is, as views and the API name it. */
     abstract public function type(): string;
 
     /** Whether the shopper may change how many it holds. */
     abstract public function quantityChangeable(): bool;
+
+    /** Whether the shopper may remove it. */
+    public function removable(): bool
+    {
+        return true;
+    }
 
     /** The discount that gave it, by its code; null for one the shopper chose. */
     public function givenBy(): ?string

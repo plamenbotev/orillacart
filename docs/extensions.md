@@ -251,6 +251,37 @@ product, variation, SKU, name, quantity and unit price) and returns refusals:
   order too.
 - A rule that throws is logged and left out.
 
+## Cart line types
+
+`OrillaCart\Extension\Cart\CartLineType` keeps catalog products in the cart for what it holds: a deposit for each
+bottle, a sample with every order. Register one with `$registry->cartLineType($type)` (API 18).
+
+```php
+final class BottleDeposit implements CartLineType
+{
+    public function id(): string { return 'bottle_deposit'; }
+    public function label(): string { return __('Deposit', 'acme'); }
+    public function removable(): bool { return false; }
+
+    public function lines(CheckedCart $cart): array
+    {
+        $bottles = array_sum(array_map(fn(CheckedLine $line): int => $this->isBottle($line) ? $line->quantity : 0, $cart->lines));
+
+        return $bottles === 0 ? [] : [new KeptItem(self::DEPOSIT_PRODUCT, $bottles)];
+    }
+}
+```
+
+- `lines()` sees the shopper's own lines (not the type's, nor items discounts give) and returns what the type keeps
+  now: products for sale, with their options (a variation's for a product with variations) and how many. The cart
+  is kept in step whenever it changes: lines added, changed and removed.
+- The lines are priced as the catalog prices them, with the type's label beside them, and their quantity is the
+  type's. A type that is `removable()` lets the shopper remove its lines; the cart then keeps none of the type
+  until it keeps nothing, or the shopper asks for them again (`POST /cart/given/add_on:<id>`).
+- Placed, each is an order line of type `add_on`; `OrderLine::$type` and `$addOnType` say so. Its tax, stock,
+  refunds and reports are an item's.
+- A type that throws is logged, and keeps its lines as they are.
+
 ## Checkout fields
 
 `OrillaCart\Extension\Checkout\CheckoutField` asks the customer something at checkout:

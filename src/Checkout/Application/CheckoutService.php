@@ -183,6 +183,7 @@ final readonly class CheckoutService
                     $line['given'] !== null,
                     array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer']], $line['personalisation']),
                     $line['given'] === null ? null : ($descriptions[$line['given']] ?? ''),
+                    $line['add_on']['label'] ?? null,
                 );
             }, $lines),
             $priced['needs_shipping'],

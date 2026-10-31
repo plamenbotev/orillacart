@@ -26,5 +26,11 @@ final readonly class OrderLine
         public string $total,
         public string $tax,
         public array $personalisation = [],
+        /**
+         * What the item is (API 18): "item" (sold), "given" (by a discount, at nothing after it), or "add_on" (kept in
+         * the cart by an add-on's cart line type, whose id addOnType is).
+         */
+        public string $type = 'item',
+        public ?string $addOnType = null,
     ) {}
 }

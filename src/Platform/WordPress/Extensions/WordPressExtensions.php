@@ -8,6 +8,7 @@ use OrillaCart\Catalog\Application\AddOnProducts;
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Checkout\Application\AddOnOrderPrices;
 use OrillaCart\Extension\Assistant\AssistantTool;
+use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -60,6 +61,9 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $adjusters = [];
     /** @var array<string, CartRule> */
     private array $cartRules = [];
+
+    /** @var array<string, CartLineType> */
+    private array $cartLineTypes = [];
     /** @var array<string, CheckoutField> */
     private array $fields = [];
     /** @var array<string, AddressCheck> */
@@ -150,6 +154,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     {
         if ($this->accepts('cart rule', $rule->id(), $this->cartRules[$rule->id()] ?? null, $rule)) {
             $this->cartRules[$rule->id()] = $rule;
+        }
+    }
+
+    public function cartLineType(CartLineType $type): void
+    {
+        if ($this->accepts('cart line type', $type->id(), $this->cartLineTypes[$type->id()] ?? null, $type)) {
+            $this->cartLineTypes[$type->id()] = $type;
         }
     }
 
@@ -344,6 +355,13 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->cartRules);
+    }
+
+    public function cartLineTypes(): array
+    {
+        $this->collect();
+
+        return array_values($this->cartLineTypes);
     }
 
     public function checkoutFields(): array

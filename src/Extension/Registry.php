@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Extension;
 
 use OrillaCart\Extension\Assistant\AssistantTool;
+use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -57,6 +58,9 @@ interface Registry
 
     /** Since version 2. */
     public function cartRule(CartRule $rule): void;
+
+    /** Lines the add-on keeps in the cart: catalog products for what it holds. Since version 18. */
+    public function cartLineType(CartLineType $type): void;
 
     /** Since version 2. */
     public function checkoutField(CheckoutField $field): void;

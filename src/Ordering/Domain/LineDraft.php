@@ -56,5 +56,7 @@ final readonly class LineDraft
         public array $shopWords = [],
         /** For an item given: the discount that gave it. */
         public ?GivenBy $givenBy = null,
+        /** For an add-on's item: its line type. */
+        public ?KeptBy $addOn = null,
     ) {}
 }

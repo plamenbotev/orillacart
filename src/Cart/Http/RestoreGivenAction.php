@@ -16,7 +16,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * The shopper wants the free items a discount gives after all, having removed them: the cart is given them again,
  * while the discount holds.
  */
-#[Route('/cart/given/{code}', methods: ['POST'], capability: Route::PUBLIC, requirements: ['code' => '[^/]{1,40}'])]
+#[Route('/cart/given/{code}', methods: ['POST'], capability: Route::PUBLIC, requirements: ['code' => '[^/]{1,50}'])]
 final readonly class RestoreGivenAction implements RequestHandlerInterface
 {
     public function __construct(

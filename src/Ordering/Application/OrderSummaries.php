@@ -90,7 +90,7 @@ final readonly class OrderSummaries implements Orders
             $order->customerId,
             self::address($order->billing),
             $order->shippingAddress === null ? null : self::address($order->shippingAddress),
-            array_map(static fn(OrderLineView $line): OrderLine => new OrderLine($line->productId, $line->variationId, $line->sku, $line->name, $line->quantity, $line->unitPrice, $line->total, $line->tax, array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer'], 'price' => $answer['price']], $line->personalisation)), $order->lines),
+            array_map(static fn(OrderLineView $line): OrderLine => new OrderLine($line->productId, $line->variationId, $line->sku, $line->name, $line->quantity, $line->unitPrice, $line->total, $line->tax, array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer'], 'price' => $answer['price']], $line->personalisation), $line->type, $line->addOn['type'] ?? null), $order->lines),
             $order->subtotal,
             $order->discountTotal,
             $order->shippingTotal,

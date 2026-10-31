@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Payment;
 
+use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -34,6 +35,8 @@ final class FixedExtensions implements InstalledExtensions
     public array $adjusters = [];
     /** @var list<CartRule> */
     public array $cartRules = [];
+    /** @var list<CartLineType> */
+    public array $cartLineTypes = [];
     /** @var list<CheckoutField> */
     public array $fields = [];
     /** @var list<AddressCheck> */
@@ -87,6 +90,11 @@ final class FixedExtensions implements InstalledExtensions
     public function cartRules(): array
     {
         return $this->cartRules;
+    }
+
+    public function cartLineTypes(): array
+    {
+        return $this->cartLineTypes;
     }
 
     public function checkoutFields(): array

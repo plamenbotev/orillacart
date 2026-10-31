@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Shared\Extension;
 
 use OrillaCart\Extension\Assistant\AssistantTool;
+use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -51,6 +52,11 @@ interface InstalledExtensions
      * @return list<CartRule>
      */
     public function cartRules(): array;
+
+    /**
+     * @return list<CartLineType>
+     */
+    public function cartLineTypes(): array;
 
     /**
      * @return list<CheckoutField>

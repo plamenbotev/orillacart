@@ -75,7 +75,7 @@ use Psr\Log\LoggerInterface;
  * (every way, when the coupon says so).
  * The items coupons give (GivenItems) are items like any other: the coupon that gives one takes its price off.
  *
- * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, given: ?string, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
+ * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, given: ?string, add_on: array{type: string, label: string}|null, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
  * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string, shop_shipping: array{carrier: string, rate: string, collect_at: ?PickupPointView}|null, shop_fees: list<string>}
  */
 final readonly class OrderPricing
@@ -104,7 +104,7 @@ final readonly class OrderPricing
      * first), and the bill. An item may carry its own unit price, which the shop sets when it edits an order or
      * keeps from it.
      *
-     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, add_on?: array{type: string, label: string}|null, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
      * @param string|null  $postcode   the shipping address's postcode, for rates that ship to some postcodes only
      * @param list<string> $codes      coupon codes; those that do not hold are left out, with the reason
@@ -256,7 +256,7 @@ final readonly class OrderPricing
     }
 
     /**
-     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, add_on?: array{type: string, label: string}|null, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      *                                    extra: what the answers to the product's forms add to each item; personalisation: those answers
      * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      * @param list<string> $codes
@@ -330,7 +330,7 @@ final readonly class OrderPricing
             $unitPrice = (string) array_reduce($parts, static fn(Money $sum, array $part): Money => $sum->add($part['unit']), Money::zero());
             $total = Money::of($unitPrice)->times($line['quantity']);
             $taxesOf[] = array_map(static fn(array $part): array => ['total' => $part['unit']->times($line['quantity']), 'taxes' => $part['taxes'], 'group' => $part['group'], 'tax_code' => $part['tax_code'], 'taxed' => $part['taxed']], $parts);
-            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'places' => [], 'given' => $line['given'] ?? null, 'personalisation' => $line['personalisation'] ?? []];
+            $lines[] = ['quote' => $quote, 'option_ids' => $line['option_ids'], 'bundle_choices' => $line['bundle_choices'] ?? [], 'quantity' => $line['quantity'], 'unit_price' => $unitPrice, 'total' => $total, 'discount' => Money::zero(), 'tax' => Money::zero(), 'places' => [], 'given' => $line['given'] ?? null, 'add_on' => $line['add_on'] ?? null, 'personalisation' => $line['personalisation'] ?? []];
             if ($quote->type === 'physical') {
                 $parcel[] = new ParcelItem($line['quantity'], $quote->weight, $quote->length, $quote->width, $quote->height, $quote->shippingClassId);
             }
@@ -729,10 +729,16 @@ final readonly class OrderPricing
             array_map(static fn(QuotedBundleItem $item): array => ['name' => $item->name, 'quantity' => $item->quantity], $line['quote']->contents),
             $line['quote']->contents === [] ? [] : $line['bundle_choices'],
             $line['personalisation'],
-            type: $line['given'] === null ? 'item' : 'given',
+            type: match (true) {
+                $line['given'] !== null => 'given',
+                $line['add_on'] !== null => 'add_on',
+                default => 'item',
+            },
             shopWords: $this->shopWords($line),
             givenCode: $line['given'],
             givenDescription: $given->description ?? '',
+            addOnType: $line['add_on']['type'] ?? null,
+            addOnLabel: $line['add_on']['label'] ?? '',
         );
     }
 
@@ -874,7 +880,7 @@ final readonly class OrderPricing
      * Whether an import scheme takes the order's goods: what they are worth before shipping and tax, in the shop's
      * currency (a price entered with tax without the shop's), and the dearest of them for limits per item.
      *
-     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
+     * @param list<array{product_id: int, option_ids: list<int>, bundle_choices?: list<int>, quantity: int, unit_price?: ?string, given?: ?string, add_on?: array{type: string, label: string}|null, extra?: string, personalisation?: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}> $items
      * @param array<int, ItemQuote> $quoted
      */
     private function importDecision(array $items, array $quoted, ?TaxAddress $shipping, string $currency, bool $inclusive): ImportDecision

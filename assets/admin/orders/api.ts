@@ -85,7 +85,9 @@ export interface OrderLine {
 	/** An item (sold or given), the shipping or a fee. */
 	kind?: 'item' | 'shipping' | 'fee';
 	/** What the line is: an item sold, one a discount gave, the shipping or a fee. */
-	type?: 'item' | 'given' | 'shipping' | 'fee';
+	type?: 'item' | 'given' | 'add_on' | 'shipping' | 'fee';
+	/** For an add-on's item: its cart line type. */
+	add_on?: { type: string; label: string } | null;
 	/** For an item given: the discount that gave it. */
 	given_by?: { code: string; description: string } | null;
 	/** Its place in the order, as refunds and edits name it. */

@@ -49,7 +49,7 @@ final readonly class NewOrderLine
         public array $bundleChoices = [],
         /** @var list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}> the answers to the product's forms, as sold */
         public array $personalisation = [],
-        /** "item", "given" (by a discount), "shipping" or "fee". */
+        /** "item", "given" (by a discount), "add_on" (kept by an add-on), "shipping" or "fee". */
         public string $type = 'item',
         /**
          * Its name, options, contents and answers in the shop's own language, where the shopper's differ (design 51).
@@ -60,5 +60,8 @@ final readonly class NewOrderLine
         /** For an item given: the discount's code and description. */
         public ?string $givenCode = null,
         public string $givenDescription = '',
+        /** For an add-on's item: its line type's id and label. */
+        public ?string $addOnType = null,
+        public string $addOnLabel = '',
     ) {}
 }

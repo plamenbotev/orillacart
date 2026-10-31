@@ -33,6 +33,8 @@
                             {% if line.type == 'given' %}
                                 {# translators: %s: the offer that gives the item, as the shop describes it -#}
                                 <br><small class="orillacart-gift">{{ line.given_label ? __('Free with %s')|format(line.given_label) : __('Free gift') }}</small>
+                            {% elseif line.type == 'add_on' and line.given_label %}
+                                <br><small class="orillacart-cart__kept">{{ line.given_label }}</small>
                             {% endif %}
                             {% for option in line.options %}
                                 <br><small>{{ option.attribute }}: {{ option.option }}</small>
@@ -68,7 +70,7 @@
                         <td data-label="{{ __('Total') }}">{{ line.type == 'given' ? __('Free') : (shown ? shown.lines[loop.index0].total : line.total)|money(cart.currency) }}</td>
                         <td>
                             {# translators: %s: what is removed: a product, an attribute or a gift card -#}
-                            <button type="button" class="orillacart-remove" data-orillacart-remove="{{ line.id }}" aria-label="{{ __('Remove %s')|format(line.name) }}">&times;</button>
+                            {% if line.removable %}<button type="button" class="orillacart-remove" data-orillacart-remove="{{ line.id }}" aria-label="{{ __('Remove %s')|format(line.name) }}">&times;</button>{% endif %}
                         </td>
                     </tr>
                 {% endfor %}
