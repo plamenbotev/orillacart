@@ -1,7 +1,8 @@
 {#
  # The promotions the cart gets and could still get, inside the Promotion progress block: one list item each, the
  # applied ones marked (data-orillacart-promotion="applied") for the script to keep or leave out as the block says.
- # promotions: as PromotionWords gives them; bar: {money, now, max, percent} or none.
+ # promotions: as PromotionWords gives them, a price rule's next quantity tier among them; bar: {money, now, max,
+ # percent} or none.
  #}
 {% import 'storefront/_promotion_words.html.twig' as words %}
 <ul class="orillacart-promotion-progress__list">
@@ -23,7 +24,13 @@
                 {%- else -%}
                     {%- if p.description -%}<span class="orillacart-promotion__name">{{ p.description }}</span> {% endif -%}
                     {%- set reward = words.reward(p) -%}
-                    {%- if p.short and p.units_short > 0 -%}
+                    {%- if p.kind == 'price_tier' and p.amount -%}
+                        {# translators: 1: items to add, such as 1 more Lamp, 2: an amount of money, the price of each then -#}
+                        {{ __('Add %1$s to pay %2$s each.')|e|format(words.items(p, p.units_short), p.amount|money(p.currency)|e)|raw }}
+                    {%- elseif p.kind == 'price_tier' -%}
+                        {# translators: %s: items to add, such as 1 more Lamp -#}
+                        {{ __('Add %s to pay less for each.')|e|format(words.items(p, p.units_short))|raw }}
+                    {%- elseif p.short and p.units_short > 0 -%}
                         {# translators: 1: an amount of money, 2: items to add, such as 1 more item, 3: what the promotion gives, such as 10% off -#}
                         {{ __('Spend %1$s more and add %2$s to get %3$s.')|e|format(p.short|money(p.currency)|e, words.items(p, p.units_short), reward)|raw }}
                     {%- elseif p.short -%}

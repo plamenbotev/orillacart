@@ -604,7 +604,7 @@ final class TestShop
             $this->givenItems = new GivenItems($this->carts, $this->pricing, $quotes, $this->currencies, $this->discounts),
         );
         $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
-        $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies);
+        $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content));
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));

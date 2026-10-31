@@ -407,7 +407,7 @@ The shopper wants the free items a discount gives after all, having removed them
 
 ### `GET /cart/promotions`
 
-The promotions the shopper's cart gets and what it still needs for others, as the Promotion progress block shows them ({html}, empty for nothing to say): the storefront script fills the block in with it on cached pages, and as the cart changes.
+The promotions the shopper's cart gets and what it still needs for others, a lower price by quantity among them, as the Promotion progress block shows them ({html}, empty for nothing to say): the storefront script fills the block in with it on cached pages, and as the cart changes.
 
 - Who: anyone
 

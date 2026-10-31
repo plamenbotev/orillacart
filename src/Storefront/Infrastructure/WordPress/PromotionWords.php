@@ -14,7 +14,7 @@ use OrillaCart\Shared\View\TemplateRenderer;
 /**
  * Promotions as the promotion blocks show them (templates/storefront/_promotion_words.html.twig): what each is for
  * by name (its products, categories and brands, the items buy-get gives, the gift) in the shopper's language
- * (design 51), and the bar for what the cart lacks most.
+ * (design 51), and the bar for what the cart lacks most. A quantity tier's product is named as a coupon's are.
  */
 final readonly class PromotionWords
 {
@@ -77,8 +77,8 @@ final readonly class PromotionWords
             'kind' => $promotion->kind,
             'description' => $promotion->description,
             'amount' => $promotion->amount,
-            // A whole hundred percent off is free.
-            'free' => Money::of($promotion->amount)->compare(Money::of('100')) === 0,
+            // A whole hundred percent off is free. A quantity tier's amount is its price, or none.
+            'free' => $promotion->kind !== PromotionView::PRICE_TIER && Money::of($promotion->amount)->compare(Money::of('100')) === 0,
             'currency' => $promotion->currency,
             'min_subtotal' => $promotion->minSubtotal,
             'min_quantity' => $promotion->minQuantity,

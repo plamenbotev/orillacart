@@ -102,6 +102,29 @@ final readonly class ShopperPrices
         return \count($tiers) > 1 ? $tiers : [];
     }
 
+    /**
+     * The quantities above this one where a rule that holds for the item has a tier, lowest first: where its price
+     * may change as more are bought.
+     *
+     * @return list<int>
+     */
+    public function tierQuantities(PricedItem $item, int $above): array
+    {
+        $quantities = [];
+        foreach ($this->rules as $rule) {
+            if ($rule->holdsFor($item, $this->groups, $this->now)) {
+                foreach ($rule->tiers() as $tier) {
+                    if ($tier->minQuantity > $above) {
+                        $quantities[$tier->minQuantity] = $tier->minQuantity;
+                    }
+                }
+            }
+        }
+        sort($quantities);
+
+        return $quantities;
+    }
+
     /** When a rule that holds for the item starts or ends next, for the guest price the search index keeps. */
     public function nextChange(PricedItem $item): ?\DateTimeImmutable
     {

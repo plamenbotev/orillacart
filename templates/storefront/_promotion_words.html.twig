@@ -42,10 +42,19 @@
 
 {#
  # The deal on its own, as a product's page tells it: "Buy 2, get 1 free", "10% off on orders of €50.00 or more",
- # "Free Tote bag when you buy 3 or more"; the gift linked to when link is set.
+ # "Free Tote bag when you buy 3 or more", a quantity tier's "Buy 3 or more: €18.00 each"; the gift linked to when
+ # link is set.
  #}
 {% macro deal(p, link = false) -%}
-    {%- if p.kind == 'free_gift' and p.gift -%}
+    {%- if p.kind == 'price_tier' -%}
+        {%- if p.amount -%}
+            {# translators: 1: how many items, 2: an amount of money, the price of each -#}
+            {%- set headline = __('Buy %1$d or more: %2$s each')|e|format(p.min_quantity, p.amount|money(p.currency)|e) -%}
+        {%- else -%}
+            {# translators: %d: how many items -#}
+            {%- set headline = __('Buy %d or more: less each')|e|format(p.min_quantity) -%}
+        {%- endif -%}
+    {%- elseif p.kind == 'free_gift' and p.gift -%}
         {%- set gift = link and p.gift.url ? '<a href="' ~ p.gift.url|e('html_attr') ~ '">' ~ p.gift.name|e ~ '</a>' : p.gift.name|e -%}
         {# translators: 1: how many of the gift, 2: the gift, a product's name -#}
         {%- set headline = _n('Free %2$s', '%1$d × %2$s free', p.get)|e|format(p.get, gift) -%}
@@ -80,7 +89,7 @@
     {%- if p.min_subtotal -%}
         {# translators: 1: a deal, such as 10% off, 2: an amount of money -#}
         {{- __('%1$s on orders of %2$s or more')|e|format(headline, p.min_subtotal|money(p.currency)|e)|raw -}}
-    {%- elseif p.min_quantity > 1 and p.kind != 'buy_get' -%}
+    {%- elseif p.min_quantity > 1 and p.kind not in ['buy_get', 'price_tier'] -%}
         {# translators: 1: a deal, such as 10% off, 2: how many items -#}
         {{- __('%1$s when you buy %2$d or more')|e|format(headline, p.min_quantity)|raw -}}
     {%- else -%}
