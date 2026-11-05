@@ -7,7 +7,6 @@ import {
 	Flex,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -21,6 +20,7 @@ import {
 	rebuildSearchIndex,
 	type SearchEngine,
 } from './search';
+import { Skeleton } from '../shared/ui';
 
 /**
  * Which engine the shop page searches with, and how far behind its index is. OpenSearch is checked before the
@@ -71,7 +71,12 @@ export function SearchEngineCard() {
 					</Notice>
 				) }
 				{ state === null ? (
-					! error && <Spinner />
+					! error && (
+						<Skeleton
+							lines={ 3 }
+							widths={ [ '60%', '90%', '40%' ] }
+						/>
+					)
 				) : (
 					<>
 						{ state.works !== null && state.message !== '' && (

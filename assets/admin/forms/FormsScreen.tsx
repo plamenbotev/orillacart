@@ -6,7 +6,6 @@ import {
 	Flex,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 	ToggleControl,
 } from '@wordpress/components';
@@ -33,7 +32,7 @@ import {
 	type ShopForm,
 } from './api';
 import { draftsOf, FieldsEditor, type FieldDraft } from './FieldsEditor';
-import { Page } from '../shared/ui';
+import { Page, Skeleton } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -78,7 +77,9 @@ export function FormsScreen() {
 	if ( forms === null ) {
 		return (
 			<Page title={ __( 'Forms', 'orillacart' ) }>
-				{ notice || <Spinner /> }
+				{ notice || (
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+				) }
 			</Page>
 		);
 	}
@@ -124,7 +125,7 @@ export function FormsScreen() {
 					{ forms.length === 0 ? (
 						<p>{ __( 'No forms yet.', 'orillacart' ) }</p>
 					) : (
-						<table className="widefat striped">
+						<table className="oc-table">
 							<thead>
 								<tr>
 									<th>{ __( 'Name', 'orillacart' ) }</th>

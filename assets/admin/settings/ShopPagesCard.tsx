@@ -5,7 +5,6 @@ import {
 	CardHeader,
 	Notice,
 	SelectControl,
-	Spinner,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -20,6 +19,7 @@ import {
 	type PageChoice,
 	type ShopPages,
 } from './pages';
+import { Skeleton } from '../shared/ui';
 
 type Status =
 	| { kind: 'idle' }
@@ -128,7 +128,12 @@ export function ShopPagesCard() {
 					</Notice>
 				) }
 				{ form === null ? (
-					status.kind !== 'error' && <Spinner />
+					status.kind !== 'error' && (
+						<Skeleton
+							lines={ 3 }
+							widths={ [ '60%', '90%', '40%' ] }
+						/>
+					)
 				) : (
 					<form onSubmit={ submit }>
 						{ parts.map( ( part ) => (

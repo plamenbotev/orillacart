@@ -5,7 +5,6 @@ import {
 	CardHeader,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -18,6 +17,7 @@ import {
 	type DownloadDelivery,
 	fetchDownloadDelivery,
 } from './delivery';
+import { Skeleton } from '../shared/ui';
 
 const METHODS: { value: DeliveryMethod; label: string }[] = [
 	{
@@ -89,7 +89,12 @@ export function DownloadDeliveryCard() {
 					</Notice>
 				) }
 				{ delivery === null ? (
-					error === null && <Spinner />
+					error === null && (
+						<Skeleton
+							lines={ 3 }
+							widths={ [ '60%', '90%', '40%' ] }
+						/>
+					)
 				) : (
 					<>
 						<p>

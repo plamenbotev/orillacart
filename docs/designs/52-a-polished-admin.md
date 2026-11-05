@@ -1,6 +1,6 @@
 # 52 · A polished admin
 
-Status: agreed (2026-11-05). PLAN items 299–305 (steps 1–7).
+Status: built (2026-11-06). PLAN items 299–305 (steps 1–7).
 
 The admin works and does a great deal, but it reads as twenty screens that each grew on their own: a flat menu of
 twenty entries, forms that stretch every field to the same width, one-column pages that scroll for six thousand
@@ -145,8 +145,9 @@ A screen the owner opens in the morning:
 - One icon set (`@wordpress/icons`) for actions and empty states; no dashicons in React.
 - Contrast and type: body 13 px as wp-admin, titles 20/16/13 with the same weights everywhere; help text the
   WP grey (`#757575`) that passes contrast on white.
-- Screenshots of every screen in `tests/e2e/admin-screens.spec.ts`, compared on CI with a small tolerance, so
-  a change to the system shows on every screen.
+- Every screen opened by `tests/e2e/admin-look.spec.ts`: its frame, its group highlighted, no error, and a
+  screenshot attached to the run's artifacts. A pixel comparison was left out: fonts differ between the
+  machines that run it, so a tolerance either hides real changes or fails on none.
 
 ## Order and size
 

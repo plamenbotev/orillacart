@@ -4,7 +4,6 @@ import {
 	CardBody,
 	CardHeader,
 	Notice,
-	Spinner,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -29,7 +28,7 @@ import { SellingStep } from './steps/SellingStep';
 import { ShippingStep } from './steps/ShippingStep';
 import { TaxStep } from './steps/TaxStep';
 import type { StepProps } from './steps/types';
-import { Page } from '../shared/ui';
+import { Page, Skeleton } from '../shared/ui';
 
 /** The steps in order; key is the step whose answers the server keeps, or null for one that keeps none. */
 const STEPS: {
@@ -120,7 +119,7 @@ export function SetupScreen() {
 		profile?.country !== country;
 	if ( answers === null || waiting ) {
 		return error === null ? (
-			<Spinner />
+			<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
 		) : (
 			<Notice status="error" isDismissible={ false }>
 				{ error }

@@ -63,7 +63,7 @@ export function ProblemsCard() {
 				) }
 				{ problems !== null && problems.problems.length > 0 && (
 					<>
-						<table className="widefat striped">
+						<table className="oc-table">
 							<thead>
 								<tr>
 									<th>{ __( 'Last seen', 'orillacart' ) }</th>

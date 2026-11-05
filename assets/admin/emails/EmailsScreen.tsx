@@ -6,7 +6,6 @@ import {
 	CheckboxControl,
 	ComboboxControl,
 	Notice,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -28,7 +27,7 @@ import {
 import './emails.css';
 import { TemplateEditor } from './TemplateEditor';
 import { templateLabel } from './templates';
-import { Page } from '../shared/ui';
+import { Page, Skeleton } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -106,7 +105,11 @@ export function EmailsScreen() {
 	if ( settings === null ) {
 		return (
 			<Page title={ __( 'Emails', 'orillacart' ) }>
-				{ message !== null ? notice : <Spinner /> }
+				{ message !== null ? (
+					notice
+				) : (
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+				) }
 			</Page>
 		);
 	}
@@ -315,7 +318,7 @@ export function EmailsScreen() {
 					<h2>{ __( 'Templates', 'orillacart' ) }</h2>
 				</CardHeader>
 				<CardBody>
-					<table className="widefat striped">
+					<table className="oc-table">
 						<tbody>
 							{ templates.map( ( template ) => (
 								<tr key={ template.name }>

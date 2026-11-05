@@ -6,7 +6,6 @@ import {
 	ComboboxControl,
 	Flex,
 	FlexItem,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -30,6 +29,7 @@ import {
 	type Shipment,
 	type ShipItems,
 } from './api';
+import { Skeleton } from '../shared/ui';
 
 interface CardProps {
 	order: Order;
@@ -276,7 +276,7 @@ export function ShipmentsCard( {
 	useEffect( () => void load(), [ order.number ] );
 
 	if ( state === null ) {
-		return <Spinner />;
+		return <Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />;
 	}
 	if (
 		! state.sendable &&

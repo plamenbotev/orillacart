@@ -8,7 +8,6 @@ import {
 	FlexItem,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -51,6 +50,7 @@ import {
 	EmptyState,
 	Page,
 	Section,
+	Skeleton,
 } from '../shared/ui';
 
 type ListField =
@@ -152,7 +152,11 @@ export function ShippingScreen() {
 	if ( carriers === null ) {
 		return (
 			<Page title={ __( 'Shipping', 'orillacart' ) }>
-				{ message !== null ? notice : <Spinner /> }
+				{ message !== null ? (
+					notice
+				) : (
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+				) }
 			</Page>
 		);
 	}

@@ -280,7 +280,7 @@ function ListCard( {
 					<p>{ __( 'No gift cards yet.', 'orillacart' ) }</p>
 				) }
 				{ found !== null && found.cards.length > 0 && (
-					<table className="widefat striped">
+					<table className="oc-table">
 						<thead>
 							<tr>
 								<th>{ __( 'Card', 'orillacart' ) }</th>

@@ -5,7 +5,6 @@ import {
 	CheckboxControl,
 	Notice,
 	RadioControl,
-	Spinner,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -18,6 +17,7 @@ import {
 	saveStorefrontSettings,
 	type StorefrontSettings,
 } from './storefront';
+import { Skeleton } from '../shared/ui';
 
 const SHARING = [
 	{
@@ -108,7 +108,12 @@ export function StorefrontCard() {
 					</Notice>
 				) }
 				{ settings === null ? (
-					message === null && <Spinner />
+					message === null && (
+						<Skeleton
+							lines={ 3 }
+							widths={ [ '60%', '90%', '40%' ] }
+						/>
+					)
 				) : (
 					<>
 						<CheckboxControl

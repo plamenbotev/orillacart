@@ -16,6 +16,7 @@ use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\GiftCards\Application\Dto\AdjustBalance;
 use OrillaCart\GiftCards\Application\Dto\GiftCardCodeInput;
 use OrillaCart\GiftCards\Application\Dto\GiftCardSettingsView;
+use OrillaCart\GiftCards\Application\Dto\GiftCardView;
 use OrillaCart\GiftCards\Application\Dto\IssueGiftCard;
 use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
 use OrillaCart\Ordering\Application\Dto\AddressData;
@@ -68,12 +69,12 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertSame(['54', '30', '24'], [$order->total, $order->giftCardTotal, $order->amountDue]);
         $request = $this->shop->payPalApi->created[0];
         self::assertSame(['24.00', [], null], [$request->amount, $request->items, $request->breakdown], 'the provider is asked for the rest only');
-        self::assertSame('0', $this->shop->giftCards->card($issued->card->id)->card->balance);
+        self::assertSame('0', $this->shop->giftCards->card(self::id($issued->card))->card->balance);
 
         $this->shop->payPalApi->captureStatus = 'DECLINED';
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
         self::assertSame('failed', $this->shop->orders->order($placed->number)->status);
-        $card = $this->shop->giftCards->card($issued->card->id);
+        $card = $this->shop->giftCards->card(self::id($issued->card));
         self::assertSame('30', $card->card->balance, 'the failed order gave it back');
         self::assertSame(['30', '-30', '30'], array_reverse(array_map(static fn($entry): string => $entry->amount, $card->entries)));
     }
@@ -81,7 +82,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     public function testPayNowAsksForTheShareAGiftCardSpentElsewhereNoLongerPays(): void
     {
         [$placed, $issued] = $this->failedWithACard();
-        $this->shop->giftCards->adjust($issued->card->id, new AdjustBalance('-30', 'Spent in the shop downstairs'), 1);
+        $this->shop->giftCards->adjust(self::id($issued->card), new AdjustBalance('-30', 'Spent in the shop downstairs'), 1);
 
         $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('paypal'));
 
@@ -94,7 +95,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     public function testPayNowAsksForTheRestWhenAGiftCardHasPartOfItsShareLeft(): void
     {
         [$placed, $issued] = $this->failedWithACard();
-        $this->shop->giftCards->adjust($issued->card->id, new AdjustBalance('-20', 'Spent in the shop downstairs'), 1);
+        $this->shop->giftCards->adjust(self::id($issued->card), new AdjustBalance('-20', 'Spent in the shop downstairs'), 1);
 
         $this->shop->payNow->pay($this->shop->receipts->issue($placed->number), new PayOrder('paypal'));
 
@@ -102,13 +103,13 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['10', '44'], [$order->giftCardTotal, $order->amountDue]);
         self::assertSame('10', $order->giftCards[0]['amount']);
-        self::assertSame('0', $this->shop->giftCards->card($issued->card->id)->card->balance);
+        self::assertSame('0', $this->shop->giftCards->card(self::id($issued->card))->card->balance);
     }
 
     public function testALatePaymentCountsAsPaidOnlyWhatCame(): void
     {
         [$placed, $issued] = $this->failedWithACard();
-        $this->shop->giftCards->adjust($issued->card->id, new AdjustBalance('-30', 'Spent in the shop downstairs'), 1);
+        $this->shop->giftCards->adjust(self::id($issued->card), new AdjustBalance('-30', 'Spent in the shop downstairs'), 1);
 
         self::assertTrue($this->shop->orders->paidAfterClosing($placed->number, 'TX-LATE', '', '24'));
 
@@ -125,7 +126,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
 
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['30', '54', null], [$order->giftCardTotal, $order->refundable, $order->attention]);
-        self::assertSame('0', $this->shop->giftCards->card($issued->card->id)->card->balance);
+        self::assertSame('0', $this->shop->giftCards->card(self::id($issued->card))->card->balance);
     }
 
     public function testAGiftCardThatPaysEverythingLeavesNothingToPay(): void
@@ -140,7 +141,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($owner, $this->order(null));
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['processing', '54', '0'], [$order->status, $order->refundable, $order->amountDue]);
-        self::assertSame('46', $this->shop->giftCards->card($issued->card->id)->card->balance);
+        self::assertSame('46', $this->shop->giftCards->card(self::id($issued->card))->card->balance);
     }
 
     public function testACardThatCannotPaySaysWhy(): void
@@ -171,7 +172,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $owner = $this->cart([10, 1]);
         $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
         $plan = $this->shop->giftCardPayments->plan([$issued->code], null, false, \OrillaCart\Shared\Domain\Money::of('54'), 'EUR');
-        $this->shop->giftCards->adjust($issued->card->id, new AdjustBalance('-10', 'Spent in the shop downstairs'), 1);
+        $this->shop->giftCards->adjust(self::id($issued->card), new AdjustBalance('-10', 'Spent in the shop downstairs'), 1);
 
         $this->expectException(GiftCardRuleViolation::class);
         $this->shop->transactions->run(fn() => $this->shop->giftCardPayments->pay(999, $plan, 'EUR'));
@@ -261,7 +262,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([20, 2]), $this->order('bank_transfer', null));
         $this->shop->orders->markPaid($placed->number, null);
         $cards = $this->cards();
-        $this->shop->giftCards->adjust($cards[1]->id, new AdjustBalance('-10', 'Spent at the shop'), 1);
+        $this->shop->giftCards->adjust(self::id($cards[1]), new AdjustBalance('-10', 'Spent at the shop'), 1);
 
         $this->shop->refunds->refund($placed->number, new MakeRefund('25', [new RefundLine(0, 1)], outside: true), 1);
         self::assertSame([[false, '0'], [true, '15']], array_map(static fn($card): array => [$card->active, $card->balance], $this->cards()), 'the one with the most left goes first');
@@ -353,7 +354,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $this->shop->payPalApi->captureStatus = 'DECLINED';
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
         $this->shop->payPalApi->captureStatus = 'COMPLETED';
-        self::assertSame('30', $this->shop->giftCards->card($issued->card->id)->card->balance);
+        self::assertSame('30', $this->shop->giftCards->card(self::id($issued->card))->card->balance);
 
         return [$placed, $issued];
     }
@@ -374,5 +375,13 @@ final class GiftCardsAtCheckoutTest extends TestCase
     private function order(?string $payment, ?int $rate = -1): PlaceOrder
     {
         return new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $rate === -1 ? "rate:{$this->rate}" : null, payment: $payment);
+    }
+
+    /** A saved card's id; store credit not yet saved has none. */
+    private static function id(GiftCardView $card): int
+    {
+        self::assertNotNull($card->id, 'the card is saved');
+
+        return $card->id;
     }
 }

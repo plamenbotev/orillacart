@@ -6,7 +6,6 @@ import {
 	CheckboxControl,
 	Notice,
 	SelectControl,
-	Spinner,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -21,6 +20,7 @@ import {
 	type LegalSettings,
 	type PageChoice,
 } from './pages';
+import { Skeleton } from '../shared/ui';
 
 type Status =
 	| { kind: 'idle' }
@@ -143,7 +143,12 @@ export function LegalCard() {
 					</Notice>
 				) }
 				{ form === null ? (
-					status.kind !== 'error' && <Spinner />
+					status.kind !== 'error' && (
+						<Skeleton
+							lines={ 3 }
+							widths={ [ '60%', '90%', '40%' ] }
+						/>
+					)
 				) : (
 					<form onSubmit={ submit }>
 						{ pages.map( ( page ) => (

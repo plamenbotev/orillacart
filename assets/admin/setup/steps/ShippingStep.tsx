@@ -3,7 +3,6 @@ import {
 	CheckboxControl,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -23,6 +22,7 @@ import {
 	testShippingSettings,
 } from '../api';
 import { answered, text, type StepProps } from './types';
+import { Skeleton } from '../../shared/ui';
 
 interface ZonePrices {
 	zone: string;
@@ -109,7 +109,7 @@ export function ShippingStep( { answers, profile, save, fail }: StepProps ) {
 	}, [] );
 
 	if ( zones === null ) {
-		return <Spinner />;
+		return <Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />;
 	}
 	const change = ( zone: string, changed: Partial< ZonePrices > ) =>
 		setPrices( ( current ) =>

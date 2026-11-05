@@ -1,9 +1,10 @@
-import { Button, Spinner } from '@wordpress/components';
+import { Button } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 import { addSampleData, fetchSampleData, removeSampleData } from '../api';
 import type { StepProps } from './types';
+import { Skeleton } from '../../shared/ui';
 
 /**
  * The first products: one of the shop's, a file of them, or the sample products to try the shop with.
@@ -23,7 +24,7 @@ export function ProductsStep( { next, fail }: StepProps ) {
 	}, [] );
 
 	if ( present === null ) {
-		return <Spinner />;
+		return <Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />;
 	}
 
 	return (

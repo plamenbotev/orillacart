@@ -166,7 +166,7 @@ export function WebhooksCard() {
 					</Notice>
 				) }
 				{ webhooks !== null && webhooks.length > 0 && (
-					<table className="widefat striped">
+					<table className="oc-table">
 						<thead>
 							<tr>
 								<th>{ __( 'Name', 'orillacart' ) }</th>

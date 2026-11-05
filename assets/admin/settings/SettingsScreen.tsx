@@ -4,7 +4,6 @@ import {
 	FormTokenField,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { Fragment, useEffect, useState } from '@wordpress/element';
@@ -37,7 +36,16 @@ import {
 	settingsInput,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
-import { Field, More, Page, Row, SaveBar, Section, notify } from '../shared/ui';
+import {
+	Field,
+	More,
+	notify,
+	Page,
+	Row,
+	SaveBar,
+	Section,
+	Skeleton,
+} from '../shared/ui';
 
 type Status =
 	| { kind: 'idle' }
@@ -158,7 +166,9 @@ export function SettingsScreen() {
 				</Notice>
 			) }
 			{ settings === null || form === null ? (
-				status.kind !== 'error' && <Spinner />
+				status.kind !== 'error' && (
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+				)
 			) : (
 				<form id="orillacart-settings" onSubmit={ submit }>
 					<Section

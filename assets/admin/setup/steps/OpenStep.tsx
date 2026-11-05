@@ -1,4 +1,4 @@
-import { Button, Notice, Spinner } from '@wordpress/components';
+import { Button, Notice } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -12,6 +12,7 @@ import {
 	sendTestEmail,
 } from '../api';
 import type { StepProps } from './types';
+import { Skeleton } from '../../shared/ui';
 
 /**
  * The check before opening: what stops the shop from selling, then what is advised, each with the screen that
@@ -35,7 +36,7 @@ export function OpenStep( { fail }: StepProps ) {
 	useEffect( check, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	if ( report === null || opensSoon === null ) {
-		return <Spinner />;
+		return <Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />;
 	}
 	const link = ( fix: string | null ) =>
 		fix === null ? null : (

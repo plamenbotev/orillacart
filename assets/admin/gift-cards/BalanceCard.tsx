@@ -19,7 +19,7 @@ export function BalanceEntries( { detail }: { detail: GiftCardDetail } ) {
 		return <p>{ __( 'Nothing yet.', 'orillacart' ) }</p>;
 	}
 	return (
-		<table className="widefat striped orillacart-balance-entries">
+		<table className="oc-table orillacart-balance-entries">
 			<thead>
 				<tr>
 					<th>{ __( 'When', 'orillacart' ) }</th>

@@ -4,7 +4,6 @@ import {
 	CardBody,
 	CardHeader,
 	Notice,
-	Spinner,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
@@ -13,7 +12,7 @@ import { errorMessage } from '../shared/api';
 import { type Check, fetchStatus, reportText, type Status } from './api';
 import { ChangeLogCard } from './ChangeLogCard';
 import { ProblemsCard } from './ProblemsCard';
-import { Page } from '../shared/ui';
+import { Page, Skeleton } from '../shared/ui';
 
 const LABELS: Record< Check[ 'status' ], string > = {
 	good: __( 'Good', 'orillacart' ),
@@ -54,7 +53,9 @@ export function StatusScreen() {
 					{ error }
 				</Notice>
 			) }
-			{ status === null && error === null && <Spinner /> }
+			{ status === null && error === null && (
+				<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+			) }
 			{ status !== null && (
 				<>
 					<Card className="orillacart-card">
@@ -100,7 +101,7 @@ export function StatusScreen() {
 								<h2>{ section.title }</h2>
 							</CardHeader>
 							<CardBody>
-								<table className="widefat striped">
+								<table className="oc-table">
 									<tbody>
 										{ section.fields.map( ( field ) => (
 											<tr key={ field.label }>

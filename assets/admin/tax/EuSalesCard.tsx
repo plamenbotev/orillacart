@@ -86,7 +86,7 @@ export function EuSalesCard( {
 						) }
 					</p>
 				) }
-				<table className="widefat striped">
+				<table className="oc-table">
 					<thead>
 						<tr>
 							<th>{ __( 'Country', 'orillacart' ) }</th>

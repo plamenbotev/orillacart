@@ -7,7 +7,6 @@ import {
 	FlexItem,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -21,6 +20,7 @@ import {
 	type OfferedCurrency,
 	saveCurrencies,
 } from './currencies';
+import { Skeleton } from '../shared/ui';
 
 const ROUNDINGS = [
 	{ value: 'decimals', label: __( 'To the cent', 'orillacart' ) },
@@ -94,7 +94,12 @@ export function CurrenciesCard( { currency }: { currency: string } ) {
 					</Notice>
 				) }
 				{ settings === null ? (
-					message === null && <Spinner />
+					message === null && (
+						<Skeleton
+							lines={ 3 }
+							widths={ [ '60%', '90%', '40%' ] }
+						/>
+					)
 				) : (
 					<form
 						onSubmit={ ( event ) => {

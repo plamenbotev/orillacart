@@ -48,6 +48,7 @@ import {
 import { download, toCsv } from './csv';
 import { change, day, PRESETS, presetOf } from './periods';
 import './reports.css';
+import { Page } from '../shared/ui';
 
 const TABS: { name: Tab; title: string }[] = [
 	{ name: 'sales', title: __( 'Overview', 'orillacart' ) },
@@ -160,196 +161,205 @@ export function ReportsScreen() {
 	const preset = presetOf( query.from, query.to, today );
 
 	return (
-		<div className="orillacart-reports">
-			<Flex
-				className="orillacart-reports__toolbar"
-				align="flex-end"
-				wrap
-				gap={ 3 }
-			>
-				<FlexItem>
-					<SelectControl
-						__next40pxDefaultSize
-						label={ __( 'Period', 'orillacart' ) }
-						value={ preset }
-						options={ [
-							...PRESETS.map( ( item ) => ( {
-								value: item.key,
-								label: item.label,
-							} ) ),
-							{
-								value: 'custom',
-								label: __( 'Chosen days', 'orillacart' ),
-							},
-						] }
-						onChange={ ( key ) => {
-							const chosen = PRESETS.find(
-								( item ) => item.key === key
-							);
-							if ( chosen ) {
-								const [ start, end ] = chosen.range( today );
-								update( {
-									from: day( start ),
-									to: day( end ),
-								} );
-							}
-						} }
-					/>
-				</FlexItem>
-				<FlexItem>
-					<TextControl
-						__next40pxDefaultSize
-						type="date"
-						label={ __( 'From', 'orillacart' ) }
-						value={ query.from }
-						max={ query.to }
-						onChange={ ( from ) =>
-							from !== '' && update( { from } )
-						}
-					/>
-				</FlexItem>
-				<FlexItem>
-					<TextControl
-						__next40pxDefaultSize
-						type="date"
-						label={ __( 'To', 'orillacart' ) }
-						value={ query.to }
-						min={ query.from }
-						onChange={ ( to ) => to !== '' && update( { to } ) }
-					/>
-				</FlexItem>
-				<FlexItem>
-					<SelectControl
-						__next40pxDefaultSize
-						label={ __( 'Compare with', 'orillacart' ) }
-						value={ query.compare }
-						options={ [
-							{
-								value: 'previous',
-								label: __( 'The days before', 'orillacart' ),
-							},
-							{
-								value: 'year',
-								label: __(
-									'The same days a year before',
-									'orillacart'
-								),
-							},
-							{
-								value: 'none',
-								label: __( 'Nothing', 'orillacart' ),
-							},
-						] }
-						onChange={ ( compare ) =>
-							update( { compare: compare as Compare } )
-						}
-					/>
-				</FlexItem>
-				{ ( tab === 'sales' || tab === 'customers' ) && (
+		<Page title={ __( 'Reports', 'orillacart' ) }>
+			<div className="orillacart-reports">
+				<Flex
+					className="orillacart-reports__toolbar"
+					align="flex-end"
+					wrap
+					gap={ 3 }
+				>
 					<FlexItem>
 						<SelectControl
 							__next40pxDefaultSize
-							label={ __( 'Show by', 'orillacart' ) }
-							value={ query.interval }
+							label={ __( 'Period', 'orillacart' ) }
+							value={ preset }
+							options={ [
+								...PRESETS.map( ( item ) => ( {
+									value: item.key,
+									label: item.label,
+								} ) ),
+								{
+									value: 'custom',
+									label: __( 'Chosen days', 'orillacart' ),
+								},
+							] }
+							onChange={ ( key ) => {
+								const chosen = PRESETS.find(
+									( item ) => item.key === key
+								);
+								if ( chosen ) {
+									const [ start, end ] =
+										chosen.range( today );
+									update( {
+										from: day( start ),
+										to: day( end ),
+									} );
+								}
+							} }
+						/>
+					</FlexItem>
+					<FlexItem>
+						<TextControl
+							__next40pxDefaultSize
+							type="date"
+							label={ __( 'From', 'orillacart' ) }
+							value={ query.from }
+							max={ query.to }
+							onChange={ ( from ) =>
+								from !== '' && update( { from } )
+							}
+						/>
+					</FlexItem>
+					<FlexItem>
+						<TextControl
+							__next40pxDefaultSize
+							type="date"
+							label={ __( 'To', 'orillacart' ) }
+							value={ query.to }
+							min={ query.from }
+							onChange={ ( to ) => to !== '' && update( { to } ) }
+						/>
+					</FlexItem>
+					<FlexItem>
+						<SelectControl
+							__next40pxDefaultSize
+							label={ __( 'Compare with', 'orillacart' ) }
+							value={ query.compare }
 							options={ [
 								{
-									value: '',
+									value: 'previous',
 									label: __(
-										'What suits the period',
+										'The days before',
 										'orillacart'
 									),
 								},
 								{
-									value: 'day',
-									label: __( 'Day', 'orillacart' ),
+									value: 'year',
+									label: __(
+										'The same days a year before',
+										'orillacart'
+									),
 								},
 								{
-									value: 'week',
-									label: __( 'Week', 'orillacart' ),
-								},
-								{
-									value: 'month',
-									label: __( 'Month', 'orillacart' ),
+									value: 'none',
+									label: __( 'Nothing', 'orillacart' ),
 								},
 							] }
-							onChange={ ( interval ) =>
-								update( {
-									interval: interval as Interval | '',
-								} )
+							onChange={ ( compare ) =>
+								update( { compare: compare as Compare } )
 							}
 						/>
 					</FlexItem>
+					{ ( tab === 'sales' || tab === 'customers' ) && (
+						<FlexItem>
+							<SelectControl
+								__next40pxDefaultSize
+								label={ __( 'Show by', 'orillacart' ) }
+								value={ query.interval }
+								options={ [
+									{
+										value: '',
+										label: __(
+											'What suits the period',
+											'orillacart'
+										),
+									},
+									{
+										value: 'day',
+										label: __( 'Day', 'orillacart' ),
+									},
+									{
+										value: 'week',
+										label: __( 'Week', 'orillacart' ),
+									},
+									{
+										value: 'month',
+										label: __( 'Month', 'orillacart' ),
+									},
+								] }
+								onChange={ ( interval ) =>
+									update( {
+										interval: interval as Interval | '',
+									} )
+								}
+							/>
+						</FlexItem>
+					) }
+					<FlexItem>
+						<Button
+							variant="secondary"
+							disabled={ report === null || loading }
+							onClick={ () => report && exportCsv( tab, report ) }
+						>
+							{ __( 'Download CSV', 'orillacart' ) }
+						</Button>
+					</FlexItem>
+				</Flex>
+
+				{ error !== null && (
+					<Notice status="error" isDismissible={ false }>
+						{ error }
+					</Notice>
 				) }
-				<FlexItem>
-					<Button
-						variant="secondary"
-						disabled={ report === null || loading }
-						onClick={ () => report && exportCsv( tab, report ) }
+				{ notice !== null && (
+					<Notice
+						status="success"
+						onRemove={ () => setNotice( null ) }
 					>
-						{ __( 'Download CSV', 'orillacart' ) }
-					</Button>
-				</FlexItem>
-			</Flex>
+						{ notice }
+					</Notice>
+				) }
+				{ report !== null && (
+					<FrameNotices
+						frame={ report.frame }
+						onRefresh={ () => setReload( reload + 1 ) }
+						onRebuild={ () =>
+							rebuildReports()
+								.then( () => {
+									setNotice(
+										__(
+											'Every order is being counted again in the background.',
+											'orillacart'
+										)
+									);
+									setReload( reload + 1 );
+								} )
+								.catch( ( caught: unknown ) =>
+									setError( errorMessage( caught ) )
+								)
+						}
+					/>
+				) }
 
-			{ error !== null && (
-				<Notice status="error" isDismissible={ false }>
-					{ error }
-				</Notice>
-			) }
-			{ notice !== null && (
-				<Notice status="success" onRemove={ () => setNotice( null ) }>
-					{ notice }
-				</Notice>
-			) }
-			{ report !== null && (
-				<FrameNotices
-					frame={ report.frame }
-					onRefresh={ () => setReload( reload + 1 ) }
-					onRebuild={ () =>
-						rebuildReports()
-							.then( () => {
-								setNotice(
-									__(
-										'Every order is being counted again in the background.',
-										'orillacart'
-									)
-								);
-								setReload( reload + 1 );
-							} )
-							.catch( ( caught: unknown ) =>
-								setError( errorMessage( caught ) )
-							)
+				<TabPanel
+					className="orillacart-reports__tabs"
+					tabs={ TABS }
+					initialTabName={ tab }
+					onSelect={ ( name ) => {
+						if ( name !== tab ) {
+							setReport( null );
+							setTab( name as Tab );
+						}
+					} }
+				>
+					{ () =>
+						report === null || loading ? (
+							<div className="orillacart-reports__loading">
+								<Spinner />
+							</div>
+						) : (
+							<TabContent
+								tab={ tab }
+								report={ report }
+								query={ query }
+								onQuery={ update }
+							/>
+						)
 					}
-				/>
-			) }
-
-			<TabPanel
-				className="orillacart-reports__tabs"
-				tabs={ TABS }
-				initialTabName={ tab }
-				onSelect={ ( name ) => {
-					if ( name !== tab ) {
-						setReport( null );
-						setTab( name as Tab );
-					}
-				} }
-			>
-				{ () =>
-					report === null || loading ? (
-						<div className="orillacart-reports__loading">
-							<Spinner />
-						</div>
-					) : (
-						<TabContent
-							tab={ tab }
-							report={ report }
-							query={ query }
-							onQuery={ update }
-						/>
-					)
-				}
-			</TabPanel>
-		</div>
+				</TabPanel>
+			</div>
+		</Page>
 	);
 }
 
@@ -1414,7 +1424,7 @@ function RankingTable( {
 		);
 	}
 	return (
-		<table className="widefat striped orillacart-reports__table">
+		<table className="oc-table orillacart-reports__table">
 			<thead>
 				<tr>
 					{ header.map( ( title, index ) => (

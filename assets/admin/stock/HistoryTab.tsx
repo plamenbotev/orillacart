@@ -5,7 +5,6 @@ import {
 	FlexItem,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -24,6 +23,7 @@ import {
 	type StockHistoryQuery,
 	type StockReason,
 } from './api';
+import { Skeleton } from '../shared/ui';
 
 export const REASONS: Record< StockReason, string > = {
 	sale: __( 'Sold', 'orillacart' ),
@@ -184,11 +184,11 @@ export function HistoryTab() {
 				</FlexItem>
 			</Flex>
 			{ history === null ? (
-				<Spinner />
+				<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
 			) : (
 				<>
 					{ history.totals.length > 0 && (
-						<table className="widefat striped orillacart-stock-totals">
+						<table className="oc-table orillacart-stock-totals">
 							<thead>
 								<tr>
 									<th>{ __( 'Stockroom', 'orillacart' ) }</th>
@@ -211,7 +211,7 @@ export function HistoryTab() {
 							</tbody>
 						</table>
 					) }
-					<table className="widefat striped">
+					<table className="oc-table">
 						<thead>
 							<tr>
 								<th>{ __( 'When', 'orillacart' ) }</th>

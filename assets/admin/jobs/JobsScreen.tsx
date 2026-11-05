@@ -28,7 +28,7 @@ import {
 import { laneLabel, typeLabel } from './labels';
 import './jobs.css';
 import { useLatest } from '../shared/useLatest';
-import { Page } from '../shared/ui';
+import { EmptyState, Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -219,7 +219,7 @@ function LanesCard( { overview }: { overview: Overview } ) {
 				<h2>{ __( 'Now', 'orillacart' ) }</h2>
 			</CardHeader>
 			<CardBody>
-				<table className="widefat striped orillacart-jobs__table">
+				<table className="oc-table orillacart-jobs__table">
 					<thead>
 						<tr>
 							<th>{ __( 'Lane', 'orillacart' ) }</th>
@@ -295,7 +295,7 @@ function WorkersCard( {
 								) }
 					</p>
 				) : (
-					<table className="widefat striped orillacart-jobs__table">
+					<table className="oc-table orillacart-jobs__table">
 						<thead>
 							<tr>
 								<th>{ __( 'Worker', 'orillacart' ) }</th>
@@ -574,7 +574,15 @@ function FailedCard( { overview, changed, onDone, onError }: FailedCardProps ) {
 						callback: ( items ) => remove( ids( items ) ),
 					},
 				] }
-				empty={ <p>{ __( 'No job failed.', 'orillacart' ) }</p> }
+				empty={
+					<EmptyState
+						title={ __( 'No job failed.', 'orillacart' ) }
+						description={ __(
+							'Jobs that fail wait here with their errors, to retry once the cause is fixed.',
+							'orillacart'
+						) }
+					/>
+				}
 			/>
 		</>
 	);
@@ -699,7 +707,7 @@ function HistoryCard( { overview }: { overview: Overview } ) {
 				{ byType.size === 0 ? (
 					<p>{ __( 'No job ran yet.', 'orillacart' ) }</p>
 				) : (
-					<table className="widefat striped orillacart-jobs__table">
+					<table className="oc-table orillacart-jobs__table">
 						<thead>
 							<tr>
 								<th>{ __( 'Type', 'orillacart' ) }</th>
@@ -749,7 +757,7 @@ function ScheduledCard( { overview }: { overview: Overview } ) {
 						'orillacart'
 					) }
 				</p>
-				<table className="widefat striped orillacart-jobs__table">
+				<table className="oc-table orillacart-jobs__table">
 					<thead>
 						<tr>
 							<th>{ __( 'Job', 'orillacart' ) }</th>

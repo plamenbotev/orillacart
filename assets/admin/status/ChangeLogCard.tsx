@@ -106,7 +106,7 @@ export function ChangeLogCard() {
 						{ log.records.length === 0 ? (
 							<p>{ __( 'No changes yet.', 'orillacart' ) }</p>
 						) : (
-							<table className="widefat striped">
+							<table className="oc-table">
 								<thead>
 									<tr>
 										<th>{ __( 'When', 'orillacart' ) }</th>

@@ -65,7 +65,7 @@ import { type ItemRow, ItemRows } from './ItemRows';
 import { RefundsCard } from './RefundsCard';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import { useOtherLanguages } from '../shared/Translations';
-import { Columns, Page } from '../shared/ui';
+import { Columns, Page, Skeleton } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -154,7 +154,14 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 	if ( order === null ) {
 		return (
 			<Page title={ __( 'Order', 'orillacart' ) } back={ back }>
-				{ message !== null ? notice : <Spinner /> }
+				{ message !== null ? (
+					notice
+				) : (
+					<Skeleton
+						lines={ 4 }
+						widths={ [ '50%', '90%', '70%', '30%' ] }
+					/>
+				) }
 			</Page>
 		);
 	}

@@ -7,7 +7,6 @@ import {
 	Flex,
 	FlexItem,
 	RadioControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -27,6 +26,7 @@ import { currencyDecimals, money, roundDecimal, when } from './labels';
 import { useConfirm } from '../shared/useConfirm';
 import { useLatest } from '../shared/useLatest';
 import { MoneyControl } from '../shared/MoneyControl';
+import { Skeleton } from '../shared/ui';
 
 interface RefundsCardProps {
 	order: Order;
@@ -182,7 +182,7 @@ export function RefundsCard( {
 	}, [ order.number, order.refunded_total ] );
 
 	if ( state === null ) {
-		return <Spinner />;
+		return <Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />;
 	}
 	if ( ! state.paid && state.refunds.length === 0 ) {
 		return null;

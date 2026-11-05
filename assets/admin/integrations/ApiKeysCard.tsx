@@ -106,7 +106,7 @@ export function ApiKeysCard( { catalogue }: Props ) {
 					</Notice>
 				) }
 				{ keys !== null && keys.length > 0 && (
-					<table className="widefat striped">
+					<table className="oc-table">
 						<thead>
 							<tr>
 								<th>{ __( 'Name', 'orillacart' ) }</th>

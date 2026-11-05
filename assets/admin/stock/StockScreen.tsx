@@ -6,7 +6,6 @@ import {
 	Notice,
 	SearchControl,
 	SelectControl,
-	Spinner,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
@@ -24,6 +23,7 @@ import {
 } from './api';
 import { useLatest } from '../shared/useLatest';
 import { useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { Skeleton } from '../shared/ui';
 
 const MODES: Record< string, string > = {
 	tracked: __( 'Counted', 'orillacart' ),
@@ -378,10 +378,12 @@ export function StockScreen() {
 			</Flex>
 
 			{ sheet === null ? (
-				status.kind !== 'error' && <Spinner />
+				status.kind !== 'error' && (
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+				)
 			) : (
 				<>
-					<table className="wp-list-table widefat striped orillacart-stock__table">
+					<table className="oc-table orillacart-stock__table">
 						<thead>
 							<tr>
 								<th

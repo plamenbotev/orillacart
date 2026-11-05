@@ -4,7 +4,6 @@ import {
 	CardBody,
 	CardHeader,
 	CheckboxControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useRef, useState } from '@wordpress/element';
@@ -18,6 +17,7 @@ import {
 	type ImportRegistration,
 	type ImportSchemes,
 } from './api';
+import { Skeleton } from '../shared/ui';
 
 /**
  * The import schemes the shop sells low-value goods under: with its number there, it charges their VAT or GST at
@@ -64,7 +64,7 @@ export function ImportSchemesCard( {
 		return (
 			<Card className="orillacart-card">
 				<CardBody>
-					<Spinner />
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
 				</CardBody>
 			</Card>
 		);
@@ -87,7 +87,7 @@ export function ImportSchemesCard( {
 						'orillacart'
 					) }
 				</p>
-				<table className="widefat striped">
+				<table className="oc-table">
 					<thead>
 						<tr>
 							<th>{ __( 'Scheme', 'orillacart' ) }</th>

@@ -1,9 +1,4 @@
-import {
-	Button,
-	CheckboxControl,
-	Notice,
-	Spinner,
-} from '@wordpress/components';
+import { Button, CheckboxControl, Notice } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -18,6 +13,7 @@ import {
 	type SetupResult,
 } from '../api';
 import { answered, flag, type StepProps } from './types';
+import { Skeleton } from '../../shared/ui';
 
 const STEP_NAMES: Record< string, string > = {
 	opening: __( 'Opening', 'orillacart' ),
@@ -80,7 +76,7 @@ export function ReviewStep( { answers, next, fail }: StepProps ) {
 	}, [] );
 
 	if ( plan === null || soon === null ) {
-		return <Spinner />;
+		return <Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />;
 	}
 	const steps = Array.from(
 		new Set( plan.changes.map( ( change ) => change.step ) )

@@ -6,7 +6,6 @@ import {
 	CheckboxControl,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 	TextareaControl,
 } from '@wordpress/components';
@@ -21,6 +20,7 @@ import {
 	type InvoiceSettings,
 	saveInvoiceSettings,
 } from './invoices';
+import { Skeleton } from '../shared/ui';
 
 /**
  * The seller's details the shop's invoices show, as the law asks, and how their numbers read. A paid order gets
@@ -98,7 +98,12 @@ export function InvoicesCard() {
 					</Notice>
 				) }
 				{ settings === null ? (
-					message === null && <Spinner />
+					message === null && (
+						<Skeleton
+							lines={ 3 }
+							widths={ [ '60%', '90%', '40%' ] }
+						/>
+					)
 				) : (
 					<>
 						<p>

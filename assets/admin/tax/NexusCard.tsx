@@ -7,7 +7,6 @@ import {
 	FlexItem,
 	Notice,
 	SelectControl,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useRef, useState } from '@wordpress/element';
@@ -26,6 +25,7 @@ import {
 	type NexusWindow,
 	saveNexusThresholds,
 } from './api';
+import { Skeleton } from '../shared/ui';
 
 /**
  * Where the shop may owe US states sales tax: its sales and orders in each state against the thresholds it
@@ -69,7 +69,7 @@ export function NexusCard( {
 		return (
 			<Card className="orillacart-card">
 				<CardBody>
-					<Spinner />
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
 				</CardBody>
 			</Card>
 		);
@@ -176,7 +176,7 @@ export function NexusCard( {
 				{ report.states.length === 0 ? (
 					<p>{ __( 'No sales to US states yet.', 'orillacart' ) }</p>
 				) : (
-					<table className="widefat striped">
+					<table className="oc-table">
 						<thead>
 							<tr>
 								<th>{ __( 'State', 'orillacart' ) }</th>

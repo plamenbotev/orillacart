@@ -6,7 +6,6 @@ import {
 	CheckboxControl,
 	Flex,
 	Notice,
-	Spinner,
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
@@ -25,7 +24,7 @@ import {
 import { errorMessage } from '../shared/api';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
 import { useUnsavedChanges } from '../shared/useUnsavedChanges';
-import { Page } from '../shared/ui';
+import { Page, Skeleton } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -66,7 +65,7 @@ export function AttributeSetsScreen() {
 						{ message.text }
 					</Notice>
 				) : (
-					<Spinner />
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
 				) }
 			</Page>
 		);

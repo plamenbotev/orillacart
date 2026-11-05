@@ -4,7 +4,6 @@ import {
 	CardBody,
 	CardHeader,
 	Notice,
-	Spinner,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
@@ -19,6 +18,7 @@ import {
 	fetchFilters,
 	type SearchFilter,
 } from './filters';
+import { Skeleton } from '../shared/ui';
 
 /**
  * In the shop's order, as the storefront lists them.
@@ -98,7 +98,9 @@ export function FiltersCard() {
 						{ message.text }
 					</Notice>
 				) }
-				{ filters === null && message === null && <Spinner /> }
+				{ filters === null && message === null && (
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+				) }
 				{ filters !== null && filters.length === 0 && (
 					<p>
 						<em>
@@ -110,7 +112,7 @@ export function FiltersCard() {
 					</p>
 				) }
 				{ filters !== null && filters.length > 0 && (
-					<table className="widefat striped orillacart-filters">
+					<table className="oc-table orillacart-filters">
 						<thead>
 							<tr>
 								<th>{ __( 'Filter', 'orillacart' ) }</th>
