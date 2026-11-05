@@ -465,7 +465,7 @@ Design 52: one design system, eight menu entries, a home, scannable lists, the o
 | ✅ | 301 | P1 | Step 3: Home, with today's figures, the "Needs you" list, recent orders and a slot for add-ons | 4fc9d54 |
 | ✅ | 302 | P1 | Step 4: lists with status badges, attention icons, row click, saved views, bulk actions; the customer's card as its own view | f56c35c |
 | ✅ | 303 | P1 | Step 5: the order and the customer's card in two columns with a sticky header and the actions in it; items as an editable table; history and notes as one timeline | 917641d |
-| ⬜ | 304 | P1 | Step 6: settings in tabs and short sections, field widths by content, rare options behind an expander, carriers and payment methods as lists | |
+| ✅ | 304 | P1 | Step 6: settings in tabs and short sections, field widths by content, rare options behind an expander, carriers and payment methods as lists | cc9153c |
 | ⬜ | 305 | P1 | Step 7: empty states and skeletons everywhere, keyboard focus, 1024 px and 782 px layouts, one icon set, screenshot comparison of every screen on CI | |
 | ✅ | 306 | P2 | Opening a customer's card on the Customers screen shows "Something went wrong. The error has been logged." though the card opens | f56c35c |
 | ⬜ | 307 | P3 | `bin/demo-shop.php` stops with a stock 409 when run again on a site that already holds the demo | |
