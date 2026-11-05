@@ -11,5 +11,6 @@ export { Skeleton } from './Skeleton';
 export { DataTable, type Column } from './DataTable';
 export { Chips } from './Chips';
 export { Columns } from './Columns';
+export { SaveBar } from './SaveBar';
 export { notify, Toasts, forgetToasts } from './toasts';
 export { useSave } from './useSave';

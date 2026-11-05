@@ -1,7 +1,5 @@
 import {
 	Button,
-	Card,
-	CardBody,
 	CheckboxControl,
 	FormTokenField,
 	Notice,
@@ -39,7 +37,7 @@ import {
 	settingsInput,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
-import { Page } from '../shared/ui';
+import { Field, More, Page, Row, SaveBar, Section, notify } from '../shared/ui';
 
 type Status =
 	| { kind: 'idle' }
@@ -133,6 +131,7 @@ export function SettingsScreen() {
 				setSettings( saved );
 				setForm( settingsInput( saved ) );
 				setStatus( { kind: 'saved' } );
+				notify( __( 'Settings saved.', 'orillacart' ) );
 			} )
 			.catch( ( error: unknown ) => {
 				const apiError = toApiError( error );
@@ -158,159 +157,223 @@ export function SettingsScreen() {
 					{ status.message }
 				</Notice>
 			) }
-			{ status.kind === 'saved' && (
-				<Notice status="success" isDismissible={ false }>
-					{ __( 'Settings saved.', 'orillacart' ) }
-				</Notice>
-			) }
 			{ settings === null || form === null ? (
 				status.kind !== 'error' && <Spinner />
 			) : (
-				<Card className="orillacart-settings-card">
-					<CardBody>
-						<form onSubmit={ submit }>
-							<TextControl
-								__next40pxDefaultSize
-								label={ __( 'Currency', 'orillacart' ) }
-								help={
-									fieldError( 'currency' ) ??
-									__(
-										'Three-letter ISO code, such as EUR or USD.',
+				<form id="orillacart-settings" onSubmit={ submit }>
+					<Section
+						title={ __( 'Currency and units', 'orillacart' ) }
+						description={ __(
+							'What the shop prices in, and how it weighs and measures.',
+							'orillacart'
+						) }
+					>
+						<Row>
+							<Field size="xs">
+								<TextControl
+									__next40pxDefaultSize
+									label={ __( 'Currency', 'orillacart' ) }
+									help={
+										fieldError( 'currency' ) ??
+										__(
+											'Three-letter ISO code, such as EUR or USD.',
+											'orillacart'
+										)
+									}
+									value={ form.currency }
+									maxLength={ 3 }
+									onChange={ ( value ) =>
+										update(
+											'currency',
+											value.toUpperCase()
+										)
+									}
+								/>
+							</Field>
+							<Field size="xs">
+								<TextControl
+									__next40pxDefaultSize
+									label={ __(
+										'Currency sign',
 										'orillacart'
-									)
-								}
-								value={ form.currency }
-								maxLength={ 3 }
-								onChange={ ( value ) =>
-									update( 'currency', value.toUpperCase() )
-								}
-							/>
-							<TextControl
-								__next40pxDefaultSize
-								label={ __( 'Currency sign', 'orillacart' ) }
-								help={
-									fieldError( 'currency_sign' ) ??
-									__(
-										'Such as $ or лв. Empty: the currency code is shown.',
+									) }
+									help={
+										fieldError( 'currency_sign' ) ??
+										__(
+											'Such as $ or лв. Empty: the currency code is shown.',
+											'orillacart'
+										)
+									}
+									value={ form.currency_sign }
+									maxLength={ 8 }
+									onChange={ ( value ) =>
+										update( 'currency_sign', value )
+									}
+								/>
+							</Field>
+							<Field size="m">
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __(
+										'Where the sign goes',
 										'orillacart'
-									)
-								}
-								value={ form.currency_sign }
-								maxLength={ 8 }
-								onChange={ ( value ) =>
-									update( 'currency_sign', value )
-								}
-							/>
-							<SelectControl
-								__next40pxDefaultSize
-								label={ __(
-									'Where the sign goes',
-									'orillacart'
-								) }
-								help={ fieldError( 'currency_position' ) }
-								value={ form.currency_position }
-								options={ settings.currency_positions.map(
-									( position ) => ( {
-										label:
-											POSITIONS[ position ] ?? position,
-										value: position,
-									} )
-								) }
-								onChange={ ( value ) =>
-									update( 'currency_position', value )
-								}
-							/>
-							<SelectControl
-								__next40pxDefaultSize
-								label={ __( 'Price decimals', 'orillacart' ) }
-								help={
-									fieldError( 'fewer_decimals' ) ??
-									__(
-										'Amounts are priced, charged and shown with these decimals. Fewer than the currency has suit shops that price in whole amounts, as PayPal takes forints.',
+									) }
+									help={ fieldError( 'currency_position' ) }
+									value={ form.currency_position }
+									options={ settings.currency_positions.map(
+										( position ) => ( {
+											label:
+												POSITIONS[ position ] ??
+												position,
+											value: position,
+										} )
+									) }
+									onChange={ ( value ) =>
+										update( 'currency_position', value )
+									}
+								/>
+							</Field>
+							<Field size="m">
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __(
+										'Price decimals',
 										'orillacart'
-									)
-								}
-								value={
-									form.fewer_decimals === null
-										? ''
-										: String( form.fewer_decimals )
-								}
-								options={ decimalChoices(
-									form.currency === settings.currency
-										? settings.currency_decimals
-										: null
-								) }
-								onChange={ ( value ) =>
-									update(
-										'fewer_decimals',
-										value === ''
-											? null
-											: Number.parseInt( value, 10 )
-									)
-								}
-							/>
-							<SelectControl
-								__next40pxDefaultSize
-								label={ __( 'Weight unit', 'orillacart' ) }
-								help={ fieldError( 'weight_unit' ) }
-								value={ form.weight_unit }
-								options={ settings.weight_units.map(
-									( unit ) => ( { label: unit, value: unit } )
-								) }
-								onChange={ ( value ) =>
-									update( 'weight_unit', value )
-								}
-							/>
-							<SelectControl
-								__next40pxDefaultSize
-								label={ __( 'Dimension unit', 'orillacart' ) }
-								help={ fieldError( 'dimension_unit' ) }
-								value={ form.dimension_unit }
-								options={ settings.dimension_units.map(
-									( unit ) => ( { label: unit, value: unit } )
-								) }
-								onChange={ ( value ) =>
-									update( 'dimension_unit', value )
-								}
-							/>
-							<LocationFields
-								countries={ countries }
-								value={ {
-									country: form.shop_country,
-									state: form.shop_state,
-								} }
-								onChange={ ( location ) =>
-									setForm(
-										( current ) =>
-											current && {
-												...current,
-												shop_country: location.country,
-												shop_state: location.state,
-											}
-									)
-								}
-								countryLabel={ __(
-									'Shop country',
-									'orillacart'
-								) }
-								stateLabel={ __( 'Shop state', 'orillacart' ) }
-								anyState={ __( '— Not set —', 'orillacart' ) }
-								optionalCountry
-								countryError={ fieldError( 'shop_country' ) }
-								stateError={ fieldError( 'shop_state' ) }
-							/>
-							<TextControl
-								__next40pxDefaultSize
-								label={ __( 'Shop postcode', 'orillacart' ) }
-								help={ fieldError( 'shop_postcode' ) }
-								value={ form.shop_postcode ?? '' }
-								onChange={ ( value ) =>
-									update(
-										'shop_postcode',
-										value.trim() === '' ? null : value
-									)
-								}
-							/>
+									) }
+									help={
+										fieldError( 'fewer_decimals' ) ??
+										__(
+											'Amounts are priced, charged and shown with these decimals. Fewer than the currency has suit shops that price in whole amounts, as PayPal takes forints.',
+											'orillacart'
+										)
+									}
+									value={
+										form.fewer_decimals === null
+											? ''
+											: String( form.fewer_decimals )
+									}
+									options={ decimalChoices(
+										form.currency === settings.currency
+											? settings.currency_decimals
+											: null
+									) }
+									onChange={ ( value ) =>
+										update(
+											'fewer_decimals',
+											value === ''
+												? null
+												: Number.parseInt( value, 10 )
+										)
+									}
+								/>
+							</Field>
+						</Row>
+						<Row>
+							<Field size="xs">
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __( 'Weight unit', 'orillacart' ) }
+									help={ fieldError( 'weight_unit' ) }
+									value={ form.weight_unit }
+									options={ settings.weight_units.map(
+										( unit ) => ( {
+											label: unit,
+											value: unit,
+										} )
+									) }
+									onChange={ ( value ) =>
+										update( 'weight_unit', value )
+									}
+								/>
+							</Field>
+							<Field size="xs">
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __(
+										'Dimension unit',
+										'orillacart'
+									) }
+									help={ fieldError( 'dimension_unit' ) }
+									value={ form.dimension_unit }
+									options={ settings.dimension_units.map(
+										( unit ) => ( {
+											label: unit,
+											value: unit,
+										} )
+									) }
+									onChange={ ( value ) =>
+										update( 'dimension_unit', value )
+									}
+								/>
+							</Field>
+						</Row>
+					</Section>
+					<Section
+						title={ __( 'Where the shop is', 'orillacart' ) }
+						description={ __(
+							'Taxes and shipping start from here.',
+							'orillacart'
+						) }
+					>
+						<Row>
+							<Field size="m">
+								<LocationFields
+									countries={ countries }
+									value={ {
+										country: form.shop_country,
+										state: form.shop_state,
+									} }
+									onChange={ ( location ) =>
+										setForm(
+											( current ) =>
+												current && {
+													...current,
+													shop_country:
+														location.country,
+													shop_state: location.state,
+												}
+										)
+									}
+									countryLabel={ __(
+										'Shop country',
+										'orillacart'
+									) }
+									stateLabel={ __(
+										'Shop state',
+										'orillacart'
+									) }
+									anyState={ __(
+										'— Not set —',
+										'orillacart'
+									) }
+									optionalCountry
+									countryError={ fieldError(
+										'shop_country'
+									) }
+									stateError={ fieldError( 'shop_state' ) }
+								/>
+							</Field>
+							<Field size="s">
+								<TextControl
+									__next40pxDefaultSize
+									label={ __(
+										'Shop postcode',
+										'orillacart'
+									) }
+									help={ fieldError( 'shop_postcode' ) }
+									value={ form.shop_postcode ?? '' }
+									onChange={ ( value ) =>
+										update(
+											'shop_postcode',
+											value.trim() === '' ? null : value
+										)
+									}
+								/>
+							</Field>
+						</Row>
+					</Section>
+					<Section title={ __( 'Selling', 'orillacart' ) }>
+						<Field size="l">
 							<FormTokenField
 								__next40pxDefaultSize
 								label={ __( 'Sell to', 'orillacart' ) }
@@ -349,151 +412,8 @@ export function SettingsScreen() {
 									)
 								}
 							/>
-							<CheckboxControl
-								label={ __(
-									'Catalog only: show products, take no orders',
-									'orillacart'
-								) }
-								checked={ form.catalog_only }
-								onChange={ ( value ) =>
-									update( 'catalog_only', value )
-								}
-							/>
-							<CheckboxControl
-								label={ __(
-									'Hide prices; shoppers ask for them',
-									'orillacart'
-								) }
-								help={ __(
-									'Products with a hidden price are not sold online. A product can show its price anyway.',
-									'orillacart'
-								) }
-								checked={ form.hide_prices }
-								onChange={ ( value ) =>
-									update( 'hide_prices', value )
-								}
-							/>
-							<CheckboxControl
-								label={ __(
-									'Show the lowest price of the last 30 days on sales',
-									'orillacart'
-								) }
-								help={ __(
-									'Next to a sale price, as the EU’s Omnibus directive asks of shops announcing a price reduction. The shop keeps each product’s prices from now on to know it.',
-									'orillacart'
-								) }
-								checked={ form.show_lowest_price }
-								onChange={ ( value ) =>
-									update( 'show_lowest_price', value )
-								}
-							/>
-							<TextControl
-								__next40pxDefaultSize
-								type="number"
-								min={ 0 }
-								label={ __( 'Low stock at', 'orillacart' ) }
-								help={ __(
-									'The shop hears daily of items a stockroom holds this many of or fewer. A stockroom or product can say otherwise.',
-									'orillacart'
-								) }
-								value={ String( form.low_stock_threshold ) }
-								onChange={ ( value ) =>
-									update(
-										'low_stock_threshold',
-										Math.max( 0, Number( value ) || 0 )
-									)
-								}
-							/>
-							<TextControl
-								__next40pxDefaultSize
-								type="number"
-								min={ 1 }
-								max={ 365 }
-								label={ __(
-									'Cancel unpaid orders after (days)',
-									'orillacart'
-								) }
-								help={ __(
-									'Orders on hold for a bank transfer or cheque; their stock sells again and the customer hears of it. Empty: never. Cash on delivery waits.',
-									'orillacart'
-								) }
-								value={ form.unpaid_hold_days ?? '' }
-								onChange={ ( value ) =>
-									update(
-										'unpaid_hold_days',
-										value === '' ? null : Number( value )
-									)
-								}
-							/>
-							<TextControl
-								__next40pxDefaultSize
-								type="number"
-								min={ 1 }
-								max={ 365 }
-								label={ __(
-									'Customers may return items within (days)',
-									'orillacart'
-								) }
-								help={ __(
-									'Counted from when the order shipped; customers ask from their order page, and you approve or refuse. Empty: you take no returns.',
-									'orillacart'
-								) }
-								value={ form.return_days ?? '' }
-								onChange={ ( value ) =>
-									update(
-										'return_days',
-										value === '' ? null : Number( value )
-									)
-								}
-							/>
-							<SelectControl
-								__next40pxDefaultSize
-								label={ __(
-									'Returns from a deal that gave free items',
-									'orillacart'
-								) }
-								help={ __(
-									'Two lamps bought and a third given, one sent back. Spread: each lamp refunds its share of the deal (20 of 60). The others apply once what is kept no longer earns the free lamp; the lamp sent back then refunds what it cost.',
-									'orillacart'
-								) }
-								value={ form.free_items_on_return }
-								options={ [
-									{
-										value: 'spread',
-										label: __(
-											'Each item refunds its share of the deal',
-											'orillacart'
-										),
-									},
-									{
-										value: 'charged',
-										label: __(
-											'Keep its price from the refund',
-											'orillacart'
-										),
-									},
-									{
-										value: 'come_back',
-										label: __(
-											'It comes back with them',
-											'orillacart'
-										),
-									},
-									{
-										value: 'stay_free',
-										label: __(
-											'It stays free',
-											'orillacart'
-										),
-									},
-								] }
-								onChange={ ( value ) =>
-									update(
-										'free_items_on_return',
-										value as SettingsInput[ 'free_items_on_return' ]
-									)
-								}
-							/>
+						</Field>
+						<Field size="s">
 							<TextControl
 								__next40pxDefaultSize
 								inputMode="decimal"
@@ -515,37 +435,204 @@ export function SettingsScreen() {
 									)
 								}
 							/>
-							<SelectControl
-								__next40pxDefaultSize
-								label={ __(
-									'Reports count an order on',
-									'orillacart'
-								) }
-								help={ __(
-									'The day its money came suits periods you file; the day it was placed shows when customers ordered. Changing it counts every order again.',
-									'orillacart'
-								) }
-								value={ form.report_day }
-								options={ [
-									{
-										value: 'paid',
-										label: __(
-											'The day it was paid',
-											'orillacart'
-										),
-									},
-									{
-										value: 'placed',
-										label: __(
-											'The day it was placed',
-											'orillacart'
-										),
-									},
-								] }
-								onChange={ ( value ) =>
-									update( 'report_day', value )
-								}
-							/>
+						</Field>
+						<CheckboxControl
+							label={ __(
+								'Catalog only: show products, take no orders',
+								'orillacart'
+							) }
+							checked={ form.catalog_only }
+							onChange={ ( value ) =>
+								update( 'catalog_only', value )
+							}
+						/>
+						<CheckboxControl
+							label={ __(
+								'Hide prices; shoppers ask for them',
+								'orillacart'
+							) }
+							help={ __(
+								'Products with a hidden price are not sold online. A product can show its price anyway.',
+								'orillacart'
+							) }
+							checked={ form.hide_prices }
+							onChange={ ( value ) =>
+								update( 'hide_prices', value )
+							}
+						/>
+						<CheckboxControl
+							label={ __(
+								'Show the lowest price of the last 30 days on sales',
+								'orillacart'
+							) }
+							help={ __(
+								'Next to a sale price, as the EU’s Omnibus directive asks of shops announcing a price reduction. The shop keeps each product’s prices from now on to know it.',
+								'orillacart'
+							) }
+							checked={ form.show_lowest_price }
+							onChange={ ( value ) =>
+								update( 'show_lowest_price', value )
+							}
+						/>
+					</Section>
+					<Section title={ __( 'Orders and returns', 'orillacart' ) }>
+						<Row>
+							<Field size="xs">
+								<TextControl
+									__next40pxDefaultSize
+									type="number"
+									min={ 0 }
+									label={ __( 'Low stock at', 'orillacart' ) }
+									help={ __(
+										'The shop hears daily of items a stockroom holds this many of or fewer. A stockroom or product can say otherwise.',
+										'orillacart'
+									) }
+									value={ String( form.low_stock_threshold ) }
+									onChange={ ( value ) =>
+										update(
+											'low_stock_threshold',
+											Math.max( 0, Number( value ) || 0 )
+										)
+									}
+								/>
+							</Field>
+							<Field size="xs">
+								<TextControl
+									__next40pxDefaultSize
+									type="number"
+									min={ 1 }
+									max={ 365 }
+									label={ __(
+										'Cancel unpaid orders after (days)',
+										'orillacart'
+									) }
+									help={ __(
+										'Orders on hold for a bank transfer or cheque; their stock sells again and the customer hears of it. Empty: never. Cash on delivery waits.',
+										'orillacart'
+									) }
+									value={ form.unpaid_hold_days ?? '' }
+									onChange={ ( value ) =>
+										update(
+											'unpaid_hold_days',
+											value === ''
+												? null
+												: Number( value )
+										)
+									}
+								/>
+							</Field>
+							<Field size="xs">
+								<TextControl
+									__next40pxDefaultSize
+									type="number"
+									min={ 1 }
+									max={ 365 }
+									label={ __(
+										'Customers may return items within (days)',
+										'orillacart'
+									) }
+									help={ __(
+										'Counted from when the order shipped; customers ask from their order page, and you approve or refuse. Empty: you take no returns.',
+										'orillacart'
+									) }
+									value={ form.return_days ?? '' }
+									onChange={ ( value ) =>
+										update(
+											'return_days',
+											value === ''
+												? null
+												: Number( value )
+										)
+									}
+								/>
+							</Field>
+						</Row>
+						<Row>
+							<Field size="m">
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __(
+										'Returns from a deal that gave free items',
+										'orillacart'
+									) }
+									help={ __(
+										'Two lamps bought and a third given, one sent back. Spread: each lamp refunds its share of the deal (20 of 60). The others apply once what is kept no longer earns the free lamp; the lamp sent back then refunds what it cost.',
+										'orillacart'
+									) }
+									value={ form.free_items_on_return }
+									options={ [
+										{
+											value: 'spread',
+											label: __(
+												'Each item refunds its share of the deal',
+												'orillacart'
+											),
+										},
+										{
+											value: 'charged',
+											label: __(
+												'Keep its price from the refund',
+												'orillacart'
+											),
+										},
+										{
+											value: 'come_back',
+											label: __(
+												'It comes back with them',
+												'orillacart'
+											),
+										},
+										{
+											value: 'stay_free',
+											label: __(
+												'It stays free',
+												'orillacart'
+											),
+										},
+									] }
+									onChange={ ( value ) =>
+										update(
+											'free_items_on_return',
+											value as SettingsInput[ 'free_items_on_return' ]
+										)
+									}
+								/>
+							</Field>
+							<Field size="m">
+								<SelectControl
+									__next40pxDefaultSize
+									label={ __(
+										'Reports count an order on',
+										'orillacart'
+									) }
+									help={ __(
+										'The day its money came suits periods you file; the day it was placed shows when customers ordered. Changing it counts every order again.',
+										'orillacart'
+									) }
+									value={ form.report_day }
+									options={ [
+										{
+											value: 'paid',
+											label: __(
+												'The day it was paid',
+												'orillacart'
+											),
+										},
+										{
+											value: 'placed',
+											label: __(
+												'The day it was placed',
+												'orillacart'
+											),
+										},
+									] }
+									onChange={ ( value ) =>
+										update( 'report_day', value )
+									}
+								/>
+							</Field>
+						</Row>
+						<More>
 							<CheckboxControl
 								label={ __(
 									'Remove all shop data when the plugin is deleted',
@@ -560,17 +647,17 @@ export function SettingsScreen() {
 									update( 'remove_data_on_uninstall', value )
 								}
 							/>
-							<Button
-								variant="primary"
-								type="submit"
-								isBusy={ status.kind === 'saving' }
-								disabled={ status.kind === 'saving' }
-							>
-								{ __( 'Save settings', 'orillacart' ) }
-							</Button>
-						</form>
-					</CardBody>
-				</Card>
+						</More>
+					</Section>
+				</form>
+			) }
+			{ form !== null && settings !== null && (
+				<SaveBar
+					dirty={ differs( form, settingsInput( settings ) ) }
+					busy={ status.kind === 'saving' }
+					form="orillacart-settings"
+					label={ __( 'Save settings', 'orillacart' ) }
+				/>
 			) }
 			{ /* Drawn anew after an import: each card loads what the file put in. */ }
 			<Fragment key={ imports }>

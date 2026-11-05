@@ -13,11 +13,12 @@ import { errorMessage } from '../shared/api';
 import { SettingFields } from '../shared/SettingFields';
 import {
 	Badge,
+	type Column,
+	DataTable,
 	Field,
 	Page,
 	Row,
 	Section,
-	Skeleton,
 	useSave,
 } from '../shared/ui';
 import {
@@ -35,6 +36,7 @@ import { TranslationFields, useOtherLanguages } from '../shared/Translations';
  */
 export function PaymentsScreen() {
 	const [ methods, setMethods ] = useState< PaymentMethod[] | null >( null );
+	const [ editing, setEditing ] = useState< string | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
 
 	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
@@ -42,6 +44,68 @@ export function PaymentsScreen() {
 	useEffect( () => {
 		fetchPaymentMethods().then( setMethods ).catch( fail );
 	}, [] );
+
+	const open = methods?.find( ( method ) => method.gateway === editing );
+	const columns: Column< PaymentMethod >[] = [
+		{
+			id: 'name',
+			label: __( 'Method', 'orillacart' ),
+			render: ( method ) => (
+				<Button
+					variant="link"
+					onClick={ () => setEditing( method.gateway ) }
+				>
+					{ method.name }
+				</Button>
+			),
+		},
+		{
+			id: 'active',
+			label: __( 'Status', 'orillacart' ),
+			render: ( method ) =>
+				method.active && method.not_ready !== null ? (
+					<Badge tone="warning">
+						{ __( 'Not ready', 'orillacart' ) }
+					</Badge>
+				) : (
+					<Badge tone={ method.active ? 'success' : 'neutral' }>
+						{ method.active
+							? __( 'Active', 'orillacart' )
+							: __( 'Off', 'orillacart' ) }
+					</Badge>
+				),
+		},
+		{
+			id: 'countries',
+			label: __( 'Billing countries', 'orillacart' ),
+			render: ( method ) =>
+				method.countries.length === 0
+					? __( 'Every country', 'orillacart' )
+					: method.countries.join( ', ' ),
+		},
+		{
+			id: 'fee',
+			label: __( 'Fee', 'orillacart' ),
+			align: 'end',
+			render: ( method ) =>
+				Number( method.fee ) === 0 && Number( method.fee_percent ) === 0
+					? '—'
+					: [
+							Number( method.fee ) === 0 ? null : method.fee,
+							Number( method.fee_percent ) === 0
+								? null
+								: `${ method.fee_percent } %`,
+						]
+							.filter( Boolean )
+							.join( ' + ' ),
+		},
+		{
+			id: 'position',
+			label: __( 'Order', 'orillacart' ),
+			align: 'end',
+			render: ( method ) => String( method.position ),
+		},
+	];
 
 	return (
 		<Page
@@ -53,21 +117,14 @@ export function PaymentsScreen() {
 			error={ error }
 			onDismissError={ () => setError( null ) }
 		>
-			{ methods === null && error === null && (
-				<Section>
-					<Skeleton
-						lines={ 4 }
-						widths={ [ '30%', '60%', '60%', '20%' ] }
-					/>
-				</Section>
-			) }
-			{ methods?.map( ( method ) => (
+			{ open && (
 				<MethodCard
-					key={ method.gateway }
-					method={ method }
+					key={ open.gateway }
+					method={ open }
+					onClose={ () => setEditing( null ) }
 					onSaved={ ( saved ) =>
 						setMethods(
-							methods.map( ( current ) =>
+							( methods ?? [] ).map( ( current ) =>
 								current.gateway === saved.gateway
 									? saved
 									: current
@@ -76,13 +133,25 @@ export function PaymentsScreen() {
 					}
 					onError={ fail }
 				/>
-			) ) }
+			) }
+			<Section>
+				<DataTable
+					columns={ columns }
+					rows={ [ ...( methods ?? [] ) ].sort(
+						( a, b ) => a.position - b.position
+					) }
+					rowKey={ ( method ) => method.gateway }
+					loading={ methods === null && error === null }
+					caption={ __( 'Payment methods', 'orillacart' ) }
+				/>
+			</Section>
 		</Page>
 	);
 }
 
 interface MethodCardProps {
 	method: PaymentMethod;
+	onClose: () => void;
 	onSaved: ( method: PaymentMethod ) => void;
 	onError: ( error: unknown ) => void;
 }
@@ -101,7 +170,7 @@ const inputOf = ( method: PaymentMethod ): PaymentMethodInput => ( {
 	...( method.translations && { translations: method.translations } ),
 } );
 
-function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
+function MethodCard( { method, onClose, onSaved, onError }: MethodCardProps ) {
 	const [ draft, setDraft ] = useState< PaymentMethodInput >(
 		inputOf( method )
 	);
@@ -188,6 +257,11 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 						<code>{ method.notification_url }</code>
 					</>
 				)
+			}
+			action={
+				<Button variant="tertiary" onClick={ onClose }>
+					{ __( 'Close', 'orillacart' ) }
+				</Button>
 			}
 			footer={
 				<Button

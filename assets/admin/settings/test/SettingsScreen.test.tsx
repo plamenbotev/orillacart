@@ -235,7 +235,9 @@ describe( 'SettingsScreen', () => {
 		);
 
 		expect(
-			await screen.findByText( 'Settings saved.', NOTICE )
+			await screen.findByText( 'Settings saved.', {
+				selector: '.components-snackbar__content',
+			} )
 		).toBeVisible();
 		expect( mockedFetch ).toHaveBeenLastCalledWith( {
 			path: '/orillacart/v1/settings',

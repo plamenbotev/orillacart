@@ -101,6 +101,10 @@ describe( 'ShippingScreen', () => {
 		const user = userEvent.setup();
 		render( <ShippingScreen /> );
 
+		// The list first; the carrier's form opens from it.
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Courier' } )
+		);
 		await screen.findByRole( 'heading', { name: 'Courier' } );
 		const shipsTo = screen.getAllByLabelText( 'Ships to' )[ 0 ];
 		if ( shipsTo === undefined ) {
@@ -158,6 +162,10 @@ describe( 'ShippingScreen', () => {
 		const user = userEvent.setup();
 		render( <ShippingScreen /> );
 
+		// The list first; the carrier's form opens from it.
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Courier' } )
+		);
 		await screen.findByRole( 'heading', { name: 'Courier' } );
 		const name = (
 			await screen.findAllByLabelText( 'Name in Deutsch' )
@@ -187,6 +195,10 @@ describe( 'ShippingScreen', () => {
 		const user = userEvent.setup();
 		render( <ShippingScreen /> );
 
+		// The list first; the carrier's form opens from it.
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Courier' } )
+		);
 		await screen.findByRole( 'heading', { name: 'Courier' } );
 		await user.selectOptions(
 			screen.getAllByLabelText( 'Prices from' )[ 0 ] as HTMLElement,
@@ -214,6 +226,10 @@ describe( 'ShippingScreen', () => {
 		const user = userEvent.setup();
 		render( <ShippingScreen /> );
 
+		// The list first; the carrier's form opens from it.
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Courier' } )
+		);
 		await screen.findByRole( 'heading', { name: 'Courier' } );
 		await user.selectOptions(
 			screen.getAllByLabelText( 'Prices from' )[ 0 ] as HTMLElement,
@@ -259,6 +275,10 @@ describe( 'ShippingScreen', () => {
 		const user = userEvent.setup();
 		render( <ShippingScreen /> );
 
+		// The list first; the carrier's form opens from it.
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Courier' } )
+		);
 		await screen.findByRole( 'heading', { name: 'Courier' } );
 		await user.click(
 			screen.getAllByLabelText(
@@ -320,6 +340,10 @@ describe( 'ShippingScreen', () => {
 		const user = userEvent.setup();
 		render( <ShippingScreen /> );
 
+		// The header's button opens the form for a new carrier.
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Add a carrier' } )
+		);
 		await screen.findByRole( 'heading', { name: 'Add a carrier' } );
 		const names = screen.getAllByLabelText( 'Name' );
 		const name = names[ names.length - 1 ];
@@ -329,10 +353,8 @@ describe( 'ShippingScreen', () => {
 		await user.type( name, 'Post' );
 		const add = screen.getAllByRole( 'button', { name: 'Add a rate' } );
 		await user.click( add[ add.length - 1 ] as HTMLElement );
-		await user.type(
-			screen.getAllByLabelText( 'Rate name' )[ 1 ] as HTMLElement,
-			'Anywhere'
-		);
+		// One form at a time: the new carrier's rate is the only one.
+		await user.type( screen.getByLabelText( 'Rate name' ), 'Anywhere' );
 		await user.click(
 			screen.getByRole( 'button', { name: 'Add carrier' } )
 		);

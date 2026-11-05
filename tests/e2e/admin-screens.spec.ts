@@ -180,6 +180,10 @@ test.describe( 'The admin', () => {
 		requestUtils,
 	} ) => {
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart-shipping' );
+		await page
+			.locator( 'header' )
+			.getByRole( 'button', { name: 'Add a carrier' } )
+			.click();
 		const card = page.locator( '.orillacart-card', {
 			has: page.getByRole( 'heading', { name: 'Add a carrier' } ),
 		} );
@@ -210,6 +214,7 @@ test.describe( 'The admin', () => {
 		page,
 	} ) => {
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart-payments' );
+		await page.getByRole( 'button', { name: 'Cash on delivery' } ).click();
 		const card = page.locator( '.orillacart-card', {
 			has: page.getByRole( 'heading', { name: 'Cash on delivery' } ),
 		} );
@@ -222,6 +227,7 @@ test.describe( 'The admin', () => {
 		).toBeVisible();
 
 		await page.reload();
+		await page.getByRole( 'button', { name: 'Cash on delivery' } ).click();
 		await expect(
 			page
 				.locator( '.orillacart-card', {

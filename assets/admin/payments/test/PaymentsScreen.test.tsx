@@ -94,6 +94,10 @@ describe( 'PaymentsScreen', () => {
 		const user = userEvent.setup();
 		render( <PaymentsScreen /> );
 
+		// The list first; a method's form opens from it.
+		await user.click(
+			await screen.findByRole( 'button', { name: 'PayPal' } )
+		);
 		await screen.findByRole( 'heading', { name: 'PayPal' } );
 		expect( screen.getByLabelText( 'Secret' ) ).toHaveValue( '' );
 		expect(
@@ -104,6 +108,10 @@ describe( 'PaymentsScreen', () => {
 		).toBeVisible();
 		expect( screen.getAllByText( 'Webhook address:' ) ).toHaveLength( 1 );
 
+		await user.click(
+			screen.getByRole( 'button', { name: 'Cash on delivery' } )
+		);
+		await screen.findByRole( 'heading', { name: 'Cash on delivery' } );
 		const countries = screen.getAllByLabelText( 'Billing countries' )[ 0 ];
 		await user.type( countries as HTMLElement, 'bg, ro' );
 		const fee = screen.getAllByLabelText( 'Fixed amount' )[ 0 ];
@@ -147,6 +155,9 @@ describe( 'PaymentsScreen', () => {
 		const user = userEvent.setup();
 		render( <PaymentsScreen /> );
 
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Cash on delivery' } )
+		);
 		const fee = await screen.findByLabelText( 'Fixed amount' );
 		await user.clear( fee );
 		await user.type( fee, '0.00' );

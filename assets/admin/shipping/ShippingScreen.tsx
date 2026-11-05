@@ -12,7 +12,7 @@ import {
 	TextControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
 import { errorMessage } from '../shared/api';
@@ -44,7 +44,14 @@ import {
 	useOtherLanguages,
 	type ContentLanguage,
 } from '../shared/Translations';
-import { Page } from '../shared/ui';
+import {
+	Badge,
+	type Column,
+	DataTable,
+	EmptyState,
+	Page,
+	Section,
+} from '../shared/ui';
 
 type ListField =
 	'regions' | 'postcodes' | 'excluded_regions' | 'excluded_postcodes';
@@ -87,6 +94,7 @@ const MEASURE_LABELS: Record< Measure, string > = {
  */
 export function ShippingScreen() {
 	const [ carriers, setCarriers ] = useState< Carrier[] | null >( null );
+	const [ editing, setEditing ] = useState< number | 'new' | null >( null );
 	const [ groups, setGroups ] = useState< TaxGroup[] >( [] );
 	const [ classes, setClasses ] = useState< ShippingClass[] >( [] );
 	const [ methods, setMethods ] = useState< ShippingMethod[] >( [] );
@@ -160,55 +168,148 @@ export function ShippingScreen() {
 			)
 		);
 
+	const open =
+		editing === 'new'
+			? null
+			: carriers.find( ( carrier ) => carrier.id === editing );
+	const summary = ( carrier: Carrier ): string => {
+		if ( carrier.pickup_locations.length > 0 ) {
+			return sprintf(
+				/* translators: %d: how many places */
+				_n(
+					'Pickup at %d place',
+					'Pickup at %d places',
+					carrier.pickup_locations.length,
+					'orillacart'
+				),
+				carrier.pickup_locations.length
+			);
+		}
+		if ( carrier.method !== null ) {
+			return (
+				methods.find( ( method ) => method.id === carrier.method )
+					?.name ?? carrier.method
+			);
+		}
+		return sprintf(
+			/* translators: %d: how many rates */
+			_n( '%d rate', '%d rates', carrier.rates.length, 'orillacart' ),
+			carrier.rates.length
+		);
+	};
+	const columns: Column< Carrier >[] = [
+		{
+			id: 'name',
+			label: __( 'Carrier', 'orillacart' ),
+			render: ( carrier ) => (
+				<Button
+					variant="link"
+					onClick={ () => setEditing( carrier.id ) }
+				>
+					{ carrier.name }
+				</Button>
+			),
+		},
+		{
+			id: 'active',
+			label: __( 'Status', 'orillacart' ),
+			render: ( carrier ) => (
+				<Badge tone={ carrier.active ? 'success' : 'neutral' }>
+					{ carrier.active
+						? __( 'Active', 'orillacart' )
+						: __( 'Off', 'orillacart' ) }
+				</Badge>
+			),
+		},
+		{
+			id: 'prices',
+			label: __( 'Prices from', 'orillacart' ),
+			render: summary,
+		},
+		{
+			id: 'position',
+			label: __( 'Order', 'orillacart' ),
+			align: 'end',
+			render: ( carrier ) => String( carrier.position ),
+		},
+	];
+
 	return (
 		<Page
 			title={ __( 'Shipping', 'orillacart' ) }
 			description={ __(
-				'Checkout offers every rate whose regions include the address and whose limits the order fits, carriers in their order. Limits include both ends; leave the highest value empty for no end. Weight, volume and sizes add up over every item that ships.',
+				'Checkout offers every rate whose regions include the address and whose limits the order fits, carriers in their order.',
 				'orillacart'
 			) }
+			actions={
+				editing === null && (
+					<Button
+						variant="primary"
+						onClick={ () => setEditing( 'new' ) }
+					>
+						{ __( 'Add a carrier', 'orillacart' ) }
+					</Button>
+				)
+			}
 		>
 			{ notice }
-			{ carriers.map( ( carrier ) => (
+			{ editing !== null && ( editing === 'new' || open ) && (
 				<CarrierCard
-					key={ carrier.id }
-					carrier={ carrier }
+					key={
+						editing === 'new' ? `new-${ carriers.length }` : editing
+					}
+					carrier={ open ?? null }
 					groups={ groups }
 					classes={ classes }
 					methods={ methods }
+					onClose={ () => setEditing( null ) }
 					onSaved={ ( saved ) => {
 						replace( saved );
+						setEditing( saved.id );
 						setMessage( {
 							status: 'success',
-							text: __( 'Carrier saved.', 'orillacart' ),
+							text:
+								editing === 'new'
+									? __( 'Carrier added.', 'orillacart' )
+									: __( 'Carrier saved.', 'orillacart' ),
 						} );
 					} }
-					onDeleted={ () =>
+					onDeleted={ () => {
 						setCarriers(
 							carriers.filter(
-								( current ) => current.id !== carrier.id
+								( current ) => current.id !== editing
 							)
-						)
-					}
+						);
+						setEditing( null );
+					} }
 					onError={ fail }
 				/>
-			) ) }
-			<CarrierCard
-				key={ `new-${ carriers.length }` }
-				carrier={ null }
-				groups={ groups }
-				classes={ classes }
-				methods={ methods }
-				onSaved={ ( saved ) => {
-					replace( saved );
-					setMessage( {
-						status: 'success',
-						text: __( 'Carrier added.', 'orillacart' ),
-					} );
-				} }
-				onDeleted={ () => undefined }
-				onError={ fail }
-			/>
+			) }
+			<Section>
+				<DataTable
+					columns={ columns }
+					rows={ carriers }
+					rowKey={ ( carrier ) => carrier.id }
+					caption={ __( 'Carriers', 'orillacart' ) }
+					empty={
+						<EmptyState
+							title={ __( 'No carriers yet.', 'orillacart' ) }
+							description={ __(
+								'A carrier is a way to ship, with its rates by region, weight and order value; or the shop’s own pickup.',
+								'orillacart'
+							) }
+							action={
+								<Button
+									variant="primary"
+									onClick={ () => setEditing( 'new' ) }
+								>
+									{ __( 'Add a carrier', 'orillacart' ) }
+								</Button>
+							}
+						/>
+					}
+				/>
+			</Section>
 			<ShippingClassesCard
 				classes={ classes }
 				onChange={ setClasses }
@@ -225,6 +326,7 @@ interface CarrierCardProps {
 	classes: ShippingClass[];
 	/** The shipping methods add-ons bring, which can price a carrier instead of its rates. */
 	methods: ShippingMethod[];
+	onClose: () => void;
 	onSaved: ( carrier: Carrier ) => void;
 	onDeleted: () => void;
 	onError: ( error: unknown ) => void;
@@ -277,6 +379,7 @@ function CarrierCard( {
 	groups,
 	classes,
 	methods,
+	onClose,
 	onSaved,
 	onDeleted,
 	onError,
@@ -340,6 +443,9 @@ function CarrierCard( {
 				<h2>
 					{ carrier?.name ?? __( 'Add a carrier', 'orillacart' ) }
 				</h2>
+				<Button variant="tertiary" onClick={ onClose }>
+					{ __( 'Close', 'orillacart' ) }
+				</Button>
 				{ carrier !== null &&
 					( confirming ? (
 						<Flex justify="flex-end" expanded={ false }>

@@ -668,3 +668,28 @@ body.folded .oc-toasts {
 .oc-items-table td {
 	vertical-align: middle;
 }
+
+/* The save bar: at the bottom while a form has unsaved changes */
+.oc-save-bar {
+	position: sticky;
+	bottom: 0;
+	z-index: 10;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--oc-space-4);
+	margin: 0 0 var(--oc-space-5);
+	padding: var(--oc-space-3) var(--oc-space-4);
+	border: 1px solid var(--oc-border);
+	border-radius: var(--oc-radius);
+	background: var(--oc-surface);
+	box-shadow: 0 -4px 16px rgb(0 0 0 / 6%);
+}
+
+.oc-save-bar--dirty {
+	border-color: var(--oc-accent);
+}
+
+.oc-save-bar__hint {
+	color: var(--oc-text-muted);
+}
