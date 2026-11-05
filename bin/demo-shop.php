@@ -184,7 +184,7 @@ foreach ($products as $position => [$title, $category, $brand, $colour, $details
                 $body['sale'] = ['price' => $variation[3]];
             }
             $made = demo_api('POST', "/products/{$id}/variations", $body);
-            demo_api('PUT', "/stock/variation/{$made['id']}", ['levels' => [['stockroom_id' => $room, 'quantity' => $stock]]]);
+            demo_api('PUT', "/stock/variation/{$made['id']}", ['levels' => [['stockroom_id' => $room, 'change' => $stock]]]);
         }
     }
     demo_image($id, $title, $colour);
