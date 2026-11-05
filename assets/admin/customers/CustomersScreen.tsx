@@ -108,7 +108,6 @@ export function CustomersScreen() {
 						key={ selected.id }
 						customer={ selected }
 						groups={ groups }
-						onClose={ () => setSelected( null ) }
 						onSaved={ ( saved ) => {
 							setSelectedNow( saved );
 							load();

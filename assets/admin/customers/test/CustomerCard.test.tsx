@@ -103,7 +103,6 @@ describe( 'CustomerCard', () => {
 			<CustomerCard
 				groups={ [] }
 				customer={ ADA }
-				onClose={ () => undefined }
 				onSaved={ onSaved }
 				onError={ ( error ) => {
 					throw error;
@@ -183,7 +182,6 @@ describe( 'CustomerCard', () => {
 			<CustomerCard
 				groups={ [] }
 				customer={ ADA }
-				onClose={ () => undefined }
 				onSaved={ () => undefined }
 				onError={ ( error ) => {
 					throw error;

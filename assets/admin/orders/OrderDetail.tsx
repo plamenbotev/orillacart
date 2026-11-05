@@ -4,8 +4,12 @@ import {
 	CardBody,
 	CardHeader,
 	CheckboxControl,
+	DropdownMenu,
 	Flex,
 	FlexItem,
+	MenuGroup,
+	MenuItem,
+	Modal,
 	Notice,
 	SelectControl,
 	Spinner,
@@ -14,6 +18,7 @@ import {
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import { moreVertical } from '@wordpress/icons';
 
 import type { Address } from '../shared/address';
 import { AddressFields } from '../shared/AddressFields';
@@ -60,7 +65,7 @@ import { type ItemRow, ItemRows } from './ItemRows';
 import { RefundsCard } from './RefundsCard';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import { useOtherLanguages } from '../shared/Translations';
-import { Page } from '../shared/ui';
+import { Columns, Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -154,6 +159,11 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 		);
 	}
 
+	const unpaid =
+		order.paid_at === null && ! CLOSED_STATUSES.includes( order.status );
+	const reload = () =>
+		fetchOrder( order.number ).then( setOrder ).catch( fail );
+
 	return (
 		<Page
 			title={ sprintf(
@@ -162,7 +172,26 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				order.number,
 				STATUS_LABELS[ order.status ]
 			) }
+			description={ sprintf(
+				/* translators: 1: date and time, 2: payment method, 3: "Paid" or "Not paid yet" */
+				__( 'Placed %1$s · %2$s · %3$s', 'orillacart' ),
+				when( order.placed_at ),
+				order.payment_name,
+				order.paid_at === null
+					? __( 'Not paid yet', 'orillacart' )
+					: __( 'Paid', 'orillacart' )
+			) }
 			back={ back }
+			sticky
+			actions={
+				<HeaderActions
+					order={ order }
+					unpaid={ unpaid }
+					onSaved={ done }
+					onDeleted={ onBack }
+					onError={ fail }
+				/>
+			}
 		>
 			{ leaving }
 			<Guarded>
@@ -179,284 +208,455 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 						onError={ fail }
 					/>
 				) }
-				<Summary order={ order } />
-				<InvoicesList order={ order } />
-				{ order.status === 'on_hold' && (
-					<ItemsCard
-						// Seeded from the order: a fresh one, from another card or a refund, seeds it again.
-						key={ JSON.stringify( [
-							order.lines,
-							order.shipping_option,
-							order.pickup_point,
-						] ) }
-						order={ order }
-						onSaved={ done(
-							__( 'The items were changed.', 'orillacart' )
-						) }
-						onError={ fail }
-					/>
-				) }
-				{ order.status === 'on_hold' && (
-					<ChargesCard
-						order={ order }
-						onSaved={ done(
-							__( 'The charges were changed.', 'orillacart' )
-						) }
-						onError={ fail }
-					/>
-				) }
-				{ order.status === 'on_hold' && (
-					<PriceChangesCard
-						order={ order }
-						onSaved={ done(
-							__( 'The price was changed.', 'orillacart' )
-						) }
-						onError={ fail }
-					/>
-				) }
-				{ order.paid_at === null &&
-					! CLOSED_STATUSES.includes( order.status ) && (
-						<PaymentCard
-							order={ order }
-							onSaved={ done(
-								__(
-									'The order is marked as paid.',
-									'orillacart'
-								)
-							) }
-							onError={ fail }
-						/>
-					) }
-				{ order.next_statuses.length > 0 && (
-					<StatusCard
-						order={ order }
-						onSaved={ done(
-							__( 'The status was changed.', 'orillacart' )
-						) }
-						onError={ fail }
-					/>
-				) }
-				{ order.lines.some( ( line ) => line.restockable > 0 ) && (
-					<RestockCard
-						order={ order }
-						onSaved={ done(
-							__( 'The items went back in stock.', 'orillacart' )
-						) }
-						onError={ fail }
-					/>
-				) }
-				<ReturnsCard
-					order={ order }
-					onChanged={ () =>
-						fetchOrder( order.number )
-							.then( setOrder )
-							.catch( fail )
-					}
-					onError={ fail }
-				/>
-				<RefundsCard
-					// What was refunded changes when a return is refunded: the card loads its refunds again.
-					key={ order.refunded_total }
-					order={ order }
-					onRefunded={ ( text ) =>
-						fetchOrder( order.number )
-							.then( done( text ) )
-							.catch( fail )
-					}
-					onError={ fail }
-				/>
-				{ order.shipping !== null && (
-					<ShipmentsCard
-						order={ order }
-						onError={ fail }
-						onChanged={ () =>
-							fetchOrder( order.number )
-								.then( setOrder )
-								.catch( fail )
-						}
-					/>
-				) }
-				<ActionsCard
-					order={ order }
-					onRan={ ( result, label ) =>
-						done( result.message || label )( result.order )
-					}
-					onError={ fail }
-				/>
-				<NotesCard
-					order={ order }
-					onSaved={ done(
-						__( 'The note was added.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-				<ContactCard
-					key={ JSON.stringify( [
-						order.email,
-						order.billing,
-						order.shipping_address,
-						order.fields,
-					] ) }
-					order={ order }
-					onSaved={ done(
-						__( 'The customer’s details were saved.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-				<AccountCard
-					order={ order }
-					onSaved={ done(
-						__( 'The order’s account was changed.', 'orillacart' )
-					) }
-					onError={ fail }
-				/>
-				{ order.downloads.length > 0 && (
-					<DownloadsCard
-						order={ order }
-						onSaved={ done(
-							__( 'The downloads were changed.', 'orillacart' )
-						) }
-						onError={ fail }
-					/>
-				) }
-				<EmailCard
-					order={ order }
-					onSent={ ( sent ) =>
-						setMessage(
-							sent
-								? {
-										status: 'success',
-										text: __(
-											'The email was sent.',
-											'orillacart'
-										),
-									}
-								: {
-										status: 'error',
-										text: __(
-											'The email could not be sent; see the site’s error log.',
-											'orillacart'
-										),
-									}
-						)
-					}
-					onError={ fail }
-				/>
-				<Flex justify="flex-start">
-					{ ! order.anonymised && (
-						<AnonymiseButton
-							order={ order }
-							onSaved={ done(
-								__(
-									'The customer’s details were erased from the order.',
-									'orillacart'
-								)
-							) }
-							onError={ fail }
-						/>
-					) }
-					{ order.paid_at === null &&
-						[ 'cancelled', 'failed' ].includes( order.status ) && (
-							<DeleteButton
+				<Columns
+					side={
+						<>
+							<ContactCard
+								key={ JSON.stringify( [
+									order.email,
+									order.billing,
+									order.shipping_address,
+									order.fields,
+								] ) }
 								order={ order }
-								onDeleted={ onBack }
+								onSaved={ done(
+									__(
+										'The customer’s details were saved.',
+										'orillacart'
+									)
+								) }
 								onError={ fail }
 							/>
+							<AccountCard
+								order={ order }
+								onSaved={ done(
+									__(
+										'The order’s account was changed.',
+										'orillacart'
+									)
+								) }
+								onError={ fail }
+							/>
+							{ order.downloads.length > 0 && (
+								<DownloadsCard
+									order={ order }
+									onSaved={ done(
+										__(
+											'The downloads were changed.',
+											'orillacart'
+										)
+									) }
+									onError={ fail }
+								/>
+							) }
+							<EmailCard
+								order={ order }
+								onSent={ ( sent ) =>
+									setMessage(
+										sent
+											? {
+													status: 'success',
+													text: __(
+														'The email was sent.',
+														'orillacart'
+													),
+												}
+											: {
+													status: 'error',
+													text: __(
+														'The email could not be sent; see the site’s error log.',
+														'orillacart'
+													),
+												}
+									)
+								}
+								onError={ fail }
+							/>
+							<ActionsCard
+								order={ order }
+								onRan={ ( result, label ) =>
+									done( result.message || label )(
+										result.order
+									)
+								}
+								onError={ fail }
+							/>
+						</>
+					}
+				>
+					<Summary order={ order } />
+					<InvoicesList order={ order } />
+					{ order.status === 'on_hold' && (
+						<ItemsCard
+							// Seeded from the order: a fresh one, from another card or a refund, seeds it again.
+							key={ JSON.stringify( [
+								order.lines,
+								order.shipping_option,
+								order.pickup_point,
+							] ) }
+							order={ order }
+							onSaved={ done(
+								__( 'The items were changed.', 'orillacart' )
+							) }
+							onError={ fail }
+						/>
+					) }
+					{ order.status === 'on_hold' && (
+						<ChargesCard
+							order={ order }
+							onSaved={ done(
+								__( 'The charges were changed.', 'orillacart' )
+							) }
+							onError={ fail }
+						/>
+					) }
+					{ order.status === 'on_hold' && (
+						<PriceChangesCard
+							order={ order }
+							onSaved={ done(
+								__( 'The price was changed.', 'orillacart' )
+							) }
+							onError={ fail }
+						/>
+					) }
+					{ order.lines.some( ( line ) => line.restockable > 0 ) && (
+						<RestockCard
+							order={ order }
+							onSaved={ done(
+								__(
+									'The items went back in stock.',
+									'orillacart'
+								)
+							) }
+							onError={ fail }
+						/>
+					) }
+					<ReturnsCard
+						order={ order }
+						onChanged={ reload }
+						onError={ fail }
+					/>
+					<RefundsCard
+						// What was refunded changes when a return is refunded: the card loads its refunds again.
+						key={ order.refunded_total }
+						order={ order }
+						onRefunded={ ( text ) =>
+							fetchOrder( order.number )
+								.then( done( text ) )
+								.catch( fail )
+						}
+						onError={ fail }
+					/>
+					{ order.shipping !== null && (
+						<ShipmentsCard
+							order={ order }
+							onError={ fail }
+							onChanged={ reload }
+						/>
+					) }
+					<NotesCard
+						order={ order }
+						onSaved={ done(
+							__( 'The note was added.', 'orillacart' )
 						) }
-				</Flex>
+						onError={ fail }
+					/>
+				</Columns>
 			</Guarded>
 		</Page>
 	);
 }
 
 /**
- * Erases the customer's details from the order, as a privacy request asks, keeping its sums for the books.
+ * The order's actions, in its header: mark it as paid, move it along, and under "More" the rare ones, erasing
+ * the customer's details and deleting it.
+ *
  * @param props
- * @param props.order
- * @param props.onSaved
- * @param props.onError
+ * @param props.order     The order.
+ * @param props.unpaid    Whether "Mark as paid" is offered.
+ * @param props.onSaved   Makes the handler of a saved order, given what to say.
+ * @param props.onDeleted What to do once the order is gone.
+ * @param props.onError   Receives a failed call.
  */
-function AnonymiseButton( { order, onSaved, onError }: CardProps ) {
-	const [ busy, run ] = useBusy();
-	const [ confirmation, confirm ] = useConfirm();
-
-	return (
-		<>
-			{ confirmation }
-			<Button
-				variant="secondary"
-				isBusy={ busy }
-				disabled={ busy }
-				onClick={ () =>
-					confirm(
-						__(
-							'The customer’s name, email, addresses, phone, note and downloads go from this order for good. What was bought and paid stays, for the books.',
-							'orillacart'
-						),
-						() =>
-							run( () =>
-								anonymiseOrder( order.number )
-									.then( onSaved )
-									.catch( onError )
-							),
-						__( 'Erase', 'orillacart' )
-					)
-				}
-			>
-				{ __( 'Erase the customer’s details', 'orillacart' ) }
-			</Button>
-		</>
-	);
-}
-
-function DeleteButton( {
+function HeaderActions( {
 	order,
+	unpaid,
+	onSaved,
 	onDeleted,
 	onError,
 }: {
 	order: Order;
+	unpaid: boolean;
+	onSaved: ( text: string ) => ( saved: Order ) => void;
 	onDeleted: () => void;
 	onError: ( error: unknown ) => void;
 } ) {
-	const [ confirming, setConfirming ] = useState( false );
+	const [ paying, setPaying ] = useState( false );
+	const [ moving, setMoving ] = useState( false );
+	const [ confirmation, confirm ] = useConfirm();
 	const [ busy, run ] = useBusy();
 
-	if ( ! confirming ) {
-		return (
-			<Button
-				variant="secondary"
-				isDestructive
-				onClick={ () => setConfirming( true ) }
+	return (
+		<>
+			{ confirmation }
+			{ unpaid && (
+				<Button variant="primary" onClick={ () => setPaying( true ) }>
+					{ __( 'Mark as paid', 'orillacart' ) }
+				</Button>
+			) }
+			{ order.next_statuses.length > 0 && (
+				<Button
+					variant={ unpaid ? 'secondary' : 'primary' }
+					onClick={ () => setMoving( true ) }
+				>
+					{ __( 'Change status', 'orillacart' ) }
+				</Button>
+			) }
+			<DropdownMenu
+				icon={ moreVertical }
+				label={ __( 'More', 'orillacart' ) }
+				toggleProps={ { variant: 'secondary' } }
 			>
-				{ __( 'Delete this order for good', 'orillacart' ) }
-			</Button>
-		);
-	}
+				{ ( { onClose } ) => (
+					<MenuGroup>
+						{ ! order.anonymised && (
+							<MenuItem
+								onClick={ () => {
+									onClose();
+									confirm(
+										__(
+											'The customer’s name, email, addresses, phone, note and downloads go from this order for good. What was bought and paid stays, for the books.',
+											'orillacart'
+										),
+										() =>
+											run( () =>
+												anonymiseOrder( order.number )
+													.then(
+														onSaved(
+															__(
+																'The customer’s details were erased from the order.',
+																'orillacart'
+															)
+														)
+													)
+													.catch( onError )
+											),
+										__( 'Erase', 'orillacart' )
+									);
+								} }
+							>
+								{ __(
+									'Erase the customer’s details',
+									'orillacart'
+								) }
+							</MenuItem>
+						) }
+						{ order.paid_at === null &&
+							[ 'cancelled', 'failed' ].includes(
+								order.status
+							) && (
+								<MenuItem
+									isDestructive
+									onClick={ () => {
+										onClose();
+										confirm(
+											__(
+												'The order and its history go for good.',
+												'orillacart'
+											),
+											() =>
+												run( () =>
+													deleteOrder( order.number )
+														.then( onDeleted )
+														.catch( onError )
+												),
+											__( 'Delete', 'orillacart' )
+										);
+									} }
+								>
+									{ __(
+										'Delete this order for good',
+										'orillacart'
+									) }
+								</MenuItem>
+							) }
+					</MenuGroup>
+				) }
+			</DropdownMenu>
+			{ paying && (
+				<MarkPaidModal
+					order={ order }
+					onClose={ () => setPaying( false ) }
+					onSaved={ ( saved ) => {
+						setPaying( false );
+						onSaved(
+							__( 'The order is marked as paid.', 'orillacart' )
+						)( saved );
+					} }
+					onError={ onError }
+				/>
+			) }
+			{ moving && (
+				<ChangeStatusModal
+					order={ order }
+					onClose={ () => setMoving( false ) }
+					onSaved={ ( saved ) => {
+						setMoving( false );
+						onSaved(
+							__( 'The status was changed.', 'orillacart' )
+						)( saved );
+					} }
+					onError={ onError }
+				/>
+			) }
+			{ busy && <Spinner /> }
+		</>
+	);
+}
+
+interface ModalProps {
+	order: Order;
+	onClose: () => void;
+	onSaved: ( saved: Order ) => void;
+	onError: ( error: unknown ) => void;
+}
+
+function MarkPaidModal( { order, onClose, onSaved, onError }: ModalProps ) {
+	const [ note, setNote ] = useState( '' );
+	const [ busy, run ] = useBusy();
 
 	return (
-		<Notice status="warning" isDismissible={ false }>
-			<p>
-				{ __( 'The order and its history go for good.', 'orillacart' ) }
-			</p>
-			<Button
-				variant="primary"
-				isDestructive
-				isBusy={ busy }
-				disabled={ busy }
-				onClick={ () =>
+		<Modal
+			title={ __( 'Mark as paid', 'orillacart' ) }
+			size="medium"
+			onRequestClose={ onClose }
+		>
+			<form
+				className="oc-modal-form"
+				onSubmit={ ( event ) => {
+					event.preventDefault();
 					run( () =>
-						deleteOrder( order.number )
-							.then( onDeleted )
+						markPaid( order.number, note )
+							.then( onSaved )
 							.catch( onError )
-					)
-				}
+					);
+				} }
 			>
-				{ __( 'Delete', 'orillacart' ) }
-			</Button>
-			<Button variant="tertiary" onClick={ () => setConfirming( false ) }>
-				{ __( 'Keep it', 'orillacart' ) }
-			</Button>
-		</Notice>
+				<p>
+					{ [ 'pending_payment', 'on_hold' ].includes( order.status )
+						? __(
+								'The money came: the order is then fulfilled.',
+								'orillacart'
+							)
+						: __(
+								'The order is being fulfilled before its payment, as for cash on delivery.',
+								'orillacart'
+							) }
+				</p>
+				<TextControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+					label={ __(
+						'How the money came (optional)',
+						'orillacart'
+					) }
+					value={ note }
+					onChange={ setNote }
+				/>
+				<div className="oc-modal-form__actions">
+					<Button variant="tertiary" onClick={ onClose }>
+						{ __( 'Cancel', 'orillacart' ) }
+					</Button>
+					<Button
+						variant="primary"
+						type="submit"
+						isBusy={ busy }
+						disabled={ busy }
+					>
+						{ __( 'Mark as paid', 'orillacart' ) }
+					</Button>
+				</div>
+			</form>
+		</Modal>
+	);
+}
+
+function ChangeStatusModal( { order, onClose, onSaved, onError }: ModalProps ) {
+	const [ status, setStatus ] = useState< Status >(
+		order.next_statuses[ 0 ] ?? order.status
+	);
+	const [ note, setNote ] = useState( '' );
+	const [ busy, run ] = useBusy();
+
+	return (
+		<Modal
+			title={ __( 'Change the status', 'orillacart' ) }
+			size="medium"
+			onRequestClose={ onClose }
+		>
+			<form
+				className="oc-modal-form"
+				onSubmit={ ( event ) => {
+					event.preventDefault();
+					run( () =>
+						changeStatus( order.number, status, note )
+							.then( onSaved )
+							.catch( onError )
+					);
+				} }
+			>
+				<SelectControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+					label={ __( 'Move the order to', 'orillacart' ) }
+					value={ status }
+					options={ order.next_statuses.map( ( next ) => ( {
+						value: next,
+						label: STATUS_LABELS[ next ],
+					} ) ) }
+					onChange={ ( value ) => setStatus( value as Status ) }
+				/>
+				{ status === 'cancelled' && (
+					<p>
+						{ __(
+							'Cancelling puts the items back in stock.',
+							'orillacart'
+						) }
+					</p>
+				) }
+				{ status === 'completed' && order.paid_at === null && (
+					<p>
+						{ __(
+							'Completing it records the payment, as when the courier hands over the cash.',
+							'orillacart'
+						) }
+					</p>
+				) }
+				<TextControl
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+					label={ __(
+						'Note for the history (optional)',
+						'orillacart'
+					) }
+					value={ note }
+					onChange={ setNote }
+				/>
+				<div className="oc-modal-form__actions">
+					<Button variant="tertiary" onClick={ onClose }>
+						{ __( 'Cancel', 'orillacart' ) }
+					</Button>
+					<Button
+						variant="primary"
+						type="submit"
+						isBusy={ busy }
+						disabled={ busy }
+					>
+						{ __( 'Change status', 'orillacart' ) }
+					</Button>
+				</div>
+			</form>
+		</Modal>
 	);
 }
 
@@ -464,7 +664,7 @@ function Summary( { order }: { order: Order } ) {
 	return (
 		<Card className="orillacart-card">
 			<CardBody>
-				<table className="widefat striped">
+				<table className="oc-table">
 					<thead>
 						<tr>
 							<th>{ __( 'Item', 'orillacart' ) }</th>
@@ -888,7 +1088,7 @@ function TaxByJurisdiction( { order }: { order: Order } ) {
 	return (
 		<details className="orillacart-tax-jurisdictions">
 			<summary>{ __( 'Tax by jurisdiction', 'orillacart' ) }</summary>
-			<table className="widefat striped">
+			<table className="oc-table">
 				<thead>
 					<tr>
 						<th>{ __( 'Jurisdiction', 'orillacart' ) }</th>
@@ -933,79 +1133,6 @@ interface CardProps {
 	order: Order;
 	onSaved: ( order: Order ) => void;
 	onError: ( error: unknown ) => void;
-}
-
-function StatusCard( { order, onSaved, onError }: CardProps ) {
-	const [ status, setStatus ] = useState< Status >(
-		order.next_statuses[ 0 ] ?? order.status
-	);
-	const [ note, setNote ] = useState( '' );
-	const [ busy, run ] = useBusy();
-
-	return (
-		<Card className="orillacart-card">
-			<CardHeader>
-				<h2>{ __( 'Status', 'orillacart' ) }</h2>
-			</CardHeader>
-			<CardBody>
-				<SelectControl
-					__next40pxDefaultSize
-					label={ __( 'Move the order to', 'orillacart' ) }
-					value={ status }
-					options={ order.next_statuses.map( ( next ) => ( {
-						value: next,
-						label: STATUS_LABELS[ next ],
-					} ) ) }
-					onChange={ ( value ) => setStatus( value as Status ) }
-				/>
-				{ status === 'cancelled' && (
-					<p>
-						{ __(
-							'Cancelling puts the items back in stock.',
-							'orillacart'
-						) }
-					</p>
-				) }
-				{ status === 'completed' && order.paid_at === null && (
-					<p>
-						{ __(
-							'Completing it records the payment, as when the courier hands over the cash.',
-							'orillacart'
-						) }
-					</p>
-				) }
-				<TextControl
-					__next40pxDefaultSize
-					label={ __(
-						'Note for the history (optional)',
-						'orillacart'
-					) }
-					value={ note }
-					onChange={ setNote }
-				/>
-				<Button
-					variant="primary"
-					isBusy={ busy }
-					disabled={ busy }
-					onClick={ () =>
-						run( () =>
-							changeStatus( order.number, status, note )
-								.then( ( saved ) => {
-									setNote( '' );
-									setStatus(
-										saved.next_statuses[ 0 ] ?? saved.status
-									);
-									onSaved( saved );
-								} )
-								.catch( onError )
-						)
-					}
-				>
-					{ __( 'Change status', 'orillacart' ) }
-				</Button>
-			</CardBody>
-		</Card>
-	);
 }
 
 /**
@@ -1347,58 +1474,6 @@ function PriceChangesCard( { order, onSaved, onError }: CardProps ) {
  * @param props.onSaved
  * @param props.onError
  */
-function PaymentCard( { order, onSaved, onError }: CardProps ) {
-	const [ note, setNote ] = useState( '' );
-	const [ busy, setBusy ] = useState( false );
-
-	return (
-		<Card className="orillacart-card">
-			<CardHeader>
-				<h2>{ __( 'Payment', 'orillacart' ) }</h2>
-			</CardHeader>
-			<CardBody>
-				<p>
-					{ [ 'pending_payment', 'on_hold' ].includes( order.status )
-						? __(
-								'The order waits for its payment. Once the money came, mark it as paid: it is then fulfilled.',
-								'orillacart'
-							)
-						: __(
-								'The order is being fulfilled before its payment, as for cash on delivery.',
-								'orillacart'
-							) }
-				</p>
-				<TextControl
-					__next40pxDefaultSize
-					label={ __(
-						'How the money came (optional)',
-						'orillacart'
-					) }
-					value={ note }
-					onChange={ setNote }
-				/>
-				<Button
-					variant="secondary"
-					isBusy={ busy }
-					disabled={ busy }
-					onClick={ () => {
-						setBusy( true );
-						markPaid( order.number, note )
-							.then( ( saved ) => {
-								setNote( '' );
-								onSaved( saved );
-							} )
-							.catch( onError )
-							.finally( () => setBusy( false ) );
-					} }
-				>
-					{ __( 'Mark as paid', 'orillacart' ) }
-				</Button>
-			</CardBody>
-		</Card>
-	);
-}
-
 /**
  * Items of an order refunded by amount, which kept their stock: once they come back, they go back in stock.
  * @param props
@@ -1491,22 +1566,9 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 				<h2>{ __( 'History', 'orillacart' ) }</h2>
 			</CardHeader>
 			<CardBody>
-				<ul>
-					{ order.notes.map( ( note, index ) => (
-						<li key={ index }>
-							<small>{ when( note.created_at ) }</small>
-							{ note.for_customer && (
-								<small>
-									{ ' ' }
-									· { __( 'to the customer', 'orillacart' ) }
-								</small>
-							) }
-							<div>{ note.text }</div>
-						</li>
-					) ) }
-				</ul>
 				<TextareaControl
 					label={ __( 'Add a note', 'orillacart' ) }
+					rows={ 2 }
 					value={ text }
 					onChange={ setText }
 				/>
@@ -1533,6 +1595,25 @@ function NotesCard( { order, onSaved, onError }: CardProps ) {
 				>
 					{ __( 'Add note', 'orillacart' ) }
 				</Button>
+				<ol className="oc-timeline">
+					{ [ ...order.notes ].reverse().map( ( note, index ) => (
+						<li
+							key={ index }
+							className={
+								note.for_customer
+									? 'oc-timeline__entry oc-timeline__entry--customer'
+									: 'oc-timeline__entry'
+							}
+						>
+							<span className="oc-timeline__when">
+								{ when( note.created_at ) }
+								{ note.for_customer &&
+									` · ${ __( 'to the customer', 'orillacart' ) }` }
+							</span>
+							<p className="oc-timeline__text">{ note.text }</p>
+						</li>
+					) ) }
+				</ol>
 			</CardBody>
 		</Card>
 	);

@@ -47,6 +47,10 @@ test.describe( 'The admin', () => {
 			page.getByRole( 'heading', { name: `Order #${ order } — On hold` } )
 		).toBeVisible();
 		await page.getByRole( 'button', { name: 'Mark as paid' } ).click();
+		await page
+			.getByRole( 'dialog' )
+			.getByRole( 'button', { name: 'Mark as paid' } )
+			.click();
 		await expect(
 			page.getByRole( 'heading', {
 				name: `Order #${ order } — Processing`,
@@ -126,7 +130,8 @@ test.describe( 'The admin', () => {
 				.getByText( 'The items were changed.' )
 		).toBeVisible();
 		await expect(
-			page.getByRole( 'cell', { name: /E2E Hoodie – S/ } )
+			// In the summary's table and in the items being edited.
+			page.getByRole( 'cell', { name: /E2E Hoodie – S/ } ).first()
 		).toBeVisible();
 	} );
 
@@ -163,10 +168,12 @@ test.describe( 'The admin', () => {
 		const number = /#(\d+)/.exec(
 			( await heading.textContent() ) ?? ''
 		)?.[ 1 ];
-		await page
+		await page.getByRole( 'button', { name: 'Change status' } ).click();
+		const dialog = page.getByRole( 'dialog' );
+		await dialog
 			.getByLabel( 'Move the order to' )
 			.selectOption( { label: 'Cancelled' } );
-		await page.getByRole( 'button', { name: 'Change status' } ).click();
+		await dialog.getByRole( 'button', { name: 'Change status' } ).click();
 		await expect(
 			page.getByRole( 'heading', { name: /— Cancelled$/ } )
 		).toBeVisible();

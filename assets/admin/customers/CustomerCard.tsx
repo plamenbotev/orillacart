@@ -1,8 +1,5 @@
 import {
 	Button,
-	Card,
-	CardBody,
-	CardHeader,
 	CheckboxControl,
 	Flex,
 	TextareaControl,
@@ -35,11 +32,11 @@ import {
 } from './api';
 import { TaxExemptions } from './TaxExemptions';
 import { shopDateTime, shopDate } from '../shared/dates';
+import { Columns, Section } from '../shared/ui';
 
 interface CustomerCardProps {
 	groups: CustomerGroup[];
 	customer: Customer;
-	onClose: () => void;
 	onSaved: ( customer: Customer ) => void;
 	onError: ( error: unknown ) => void;
 }
@@ -57,7 +54,6 @@ interface CustomerCardProps {
 export function CustomerCard( {
 	groups,
 	customer,
-	onClose,
 	onSaved,
 	onError,
 }: CustomerCardProps ) {
@@ -66,56 +62,67 @@ export function CustomerCard( {
 	);
 
 	return (
-		<Card className="orillacart-card">
-			<CardHeader>
-				<h2>
-					{ sprintf(
-						/* translators: 1: name, 2: email */
-						__( '%1$s (%2$s)', 'orillacart' ),
-						`${ customer.first_name } ${ customer.last_name }`,
-						customer.email
-					) }
-				</h2>
-				<Button variant="tertiary" onClick={ onClose }>
-					{ __( 'Close', 'orillacart' ) }
-				</Button>
-			</CardHeader>
-			<CardBody>
-				<Value customer={ customer } />
+		<Columns
+			side={
+				<>
+					<Section title={ __( 'Customer', 'orillacart' ) }>
+						<p className="oc-section__description">
+							<a href={ `mailto:${ customer.email }` }>
+								{ customer.email }
+							</a>
+						</p>
+						<Value customer={ customer } />
+						{ groups.length > 0 && (
+							<>
+								<h3>
+									{ __( 'Customer groups', 'orillacart' ) }
+								</h3>
+								{ groups.map( ( group ) => (
+									<CheckboxControl
+										key={ group.id }
+										label={ group.name }
+										checked={ member.includes( group.id ) }
+										onChange={ ( on ) => {
+											const next = on
+												? [ ...member, group.id ]
+												: member.filter(
+														( id ) =>
+															id !== group.id
+													);
+											setCustomerGroups(
+												customer.id,
+												next
+											)
+												.then( ( saved ) =>
+													setMember( saved.group_ids )
+												)
+												.catch( onError );
+										} }
+									/>
+								) ) }
+							</>
+						) }
+					</Section>
+					<Section title={ __( 'Addresses', 'orillacart' ) }>
+						<AddressBook
+							customer={ customer }
+							onSaved={ onSaved }
+							onError={ onError }
+						/>
+					</Section>
+				</>
+			}
+		>
+			<Section title={ __( 'Notes', 'orillacart' ) }>
 				<Notes customer={ customer } onError={ onError } />
+			</Section>
+			<Section title={ __( 'Tax exemptions', 'orillacart' ) }>
 				<TaxExemptions customerId={ customer.id } onError={ onError } />
-				{ groups.length > 0 && (
-					<>
-						<h3>{ __( 'Customer groups', 'orillacart' ) }</h3>
-						{ groups.map( ( group ) => (
-							<CheckboxControl
-								key={ group.id }
-								label={ group.name }
-								checked={ member.includes( group.id ) }
-								onChange={ ( on ) => {
-									const next = on
-										? [ ...member, group.id ]
-										: member.filter(
-												( id ) => id !== group.id
-											);
-									setCustomerGroups( customer.id, next )
-										.then( ( saved ) =>
-											setMember( saved.group_ids )
-										)
-										.catch( onError );
-								} }
-							/>
-						) ) }
-					</>
-				) }
-				<AddressBook
-					customer={ customer }
-					onSaved={ onSaved }
-					onError={ onError }
-				/>
+			</Section>
+			<Section>
 				<StoreCredit customer={ customer } onError={ onError } />
-			</CardBody>
-		</Card>
+			</Section>
+		</Columns>
 	);
 }
 
@@ -240,7 +247,6 @@ function Notes( {
 
 	return (
 		<>
-			<h3>{ __( 'Notes', 'orillacart' ) }</h3>
 			{ confirmation }
 			<TextareaControl
 				__nextHasNoMarginBottom
@@ -323,7 +329,6 @@ function AddressBook( {
 
 	return (
 		<>
-			<h3>{ __( 'Addresses', 'orillacart' ) }</h3>
 			<p>
 				{ __(
 					'Checkout fills these in for the customer and saves the addresses they order with.',

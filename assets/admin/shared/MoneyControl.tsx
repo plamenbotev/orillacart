@@ -12,6 +12,10 @@ interface Props {
 	value: string;
 	onChange: ( value: string ) => void;
 	help?: string | undefined;
+	/** The label for screen readers only, in a table cell. */
+	hideLabelFromVision?: boolean;
+	/** What the empty field says; "0.00" by default. */
+	placeholder?: string;
 	/** The decimals amounts have; the shop's when not given. */
 	decimals?: number;
 	disabled?: boolean;
@@ -59,6 +63,8 @@ export function MoneyControl( {
 	value,
 	onChange,
 	help,
+	hideLabelFromVision = false,
+	placeholder,
 	decimals = shopDecimals(),
 	disabled = false,
 }: Props ) {
@@ -67,9 +73,10 @@ export function MoneyControl( {
 		<TextControl
 			__next40pxDefaultSize
 			label={ label }
+			hideLabelFromVision={ hideLabelFromVision }
 			value={ value }
 			inputMode={ decimals === 0 ? 'numeric' : 'decimal' }
-			placeholder={ ( 0 ).toFixed( decimals ) }
+			placeholder={ placeholder ?? ( 0 ).toFixed( decimals ) }
 			className={ problem === null ? '' : 'is-invalid' }
 			help={ problem ?? help }
 			disabled={ disabled }

@@ -69,7 +69,6 @@ export function TaxExemptions( {
 
 	return (
 		<>
-			<h3>{ __( 'Tax exemptions', 'orillacart' ) }</h3>
 			{ confirmation }
 			<ul className="orillacart-notes">
 				{ exemptions.map( ( exemption ) => (

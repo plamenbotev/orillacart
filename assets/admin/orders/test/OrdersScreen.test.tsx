@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -186,12 +186,19 @@ describe( 'OrdersScreen', () => {
 
 		await screen.findByRole( 'heading', { name: 'Order #7 — On hold' } );
 		expect( screen.getByText( 'Order placed.' ) ).toBeVisible();
+		// The header's action opens the form; its button has the same name.
+		await user.click(
+			screen.getByRole( 'button', { name: 'Change status' } )
+		);
+		const dialog = screen.getByRole( 'dialog' );
 		await user.type(
-			screen.getByLabelText( 'Note for the history (optional)' ),
+			within( dialog ).getByLabelText(
+				'Note for the history (optional)'
+			),
 			'Paid at the bank.'
 		);
 		await user.click(
-			screen.getByRole( 'button', { name: 'Change status' } )
+			within( dialog ).getByRole( 'button', { name: 'Change status' } )
 		);
 
 		expect(
@@ -311,8 +318,12 @@ describe( 'OrdersScreen', () => {
 		const user = userEvent.setup();
 		render( <OrderDetail id={ 7 } onBack={ () => {} } /> );
 
+		// Under "More" in the header.
 		await user.click(
-			await screen.findByRole( 'button', {
+			await screen.findByRole( 'button', { name: 'More' } )
+		);
+		await user.click(
+			await screen.findByRole( 'menuitem', {
 				name: 'Erase the customer’s details',
 			} )
 		);

@@ -48,6 +48,8 @@ export interface PageProps {
 	tabs?: Tab[];
 	selectedTab?: string;
 	onSelectTab?: ( id: string ) => void;
+	/** The header stays at the top while a long view scrolls: a detail view's actions are always at hand. */
+	sticky?: boolean;
 	/** A problem the screen met, above everything: a message, or null for none. */
 	error?: string | null;
 	onDismissError?: () => void;
@@ -70,6 +72,7 @@ export function Page( {
 	tabs,
 	selectedTab,
 	onSelectTab,
+	sticky = false,
 	error = null,
 	onDismissError,
 	children,
@@ -84,7 +87,13 @@ export function Page( {
 
 	return (
 		<div className="oc-page">
-			<header className="oc-page__header">
+			<header
+				className={
+					sticky
+						? 'oc-page__header oc-page__header--sticky'
+						: 'oc-page__header'
+				}
+			>
 				<div className="oc-page__heading">
 					{ back &&
 						( back.href !== undefined ? (

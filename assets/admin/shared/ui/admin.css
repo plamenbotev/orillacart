@@ -567,11 +567,104 @@ body.folded .oc-toasts {
 	display: flex;
 	flex-direction: column;
 	gap: var(--oc-space-4);
-	min-width: min(28rem, 80vw);
 }
 
 .oc-modal-form__actions {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--oc-space-2);
+}
+
+/* A sticky header: a detail view's actions stay at hand while it scrolls */
+.oc-page__header--sticky {
+	position: sticky;
+	top: 32px;
+	z-index: 20;
+	margin: 0 -20px var(--oc-space-5);
+	padding: var(--oc-space-3) 20px;
+	border-bottom: 1px solid var(--oc-border);
+	background: #f0f0f1;
+}
+
+@media (max-width: 782px) {
+	.oc-page__header--sticky {
+		top: 46px;
+		margin: 0 -10px var(--oc-space-4);
+		padding: var(--oc-space-2) 10px;
+	}
+}
+
+/* Two columns: the work in the main one, the facts beside it */
+.oc-columns {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0 var(--oc-space-5);
+	align-items: start;
+}
+
+@media (min-width: 1280px) {
+	.oc-columns {
+		grid-template-columns: minmax(0, 1fr) minmax(20rem, 24rem);
+	}
+}
+
+.oc-columns__main,
+.oc-columns__side {
+	min-width: 0;
+}
+
+.oc-columns__side .components-card form {
+	max-width: none;
+}
+
+/* A timeline: the order's history, newest first */
+.oc-timeline {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.oc-timeline__entry {
+	position: relative;
+	padding: 0 0 var(--oc-space-4) var(--oc-space-5);
+	border-left: 2px solid var(--oc-border);
+}
+
+.oc-timeline__entry:last-child {
+	padding-bottom: 0;
+}
+
+.oc-timeline__entry::before {
+	content: "";
+	position: absolute;
+	top: 4px;
+	left: -6px;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--oc-border-strong);
+}
+
+.oc-timeline__entry--customer::before {
+	background: var(--oc-accent);
+}
+
+.oc-timeline__when {
+	display: block;
+	color: var(--oc-text-muted);
+	font-size: 12px;
+}
+
+.oc-timeline__text {
+	margin: var(--oc-space-1) 0 0;
+	white-space: pre-wrap;
+}
+
+/* Items as a table one edits in place */
+.oc-items-table .oc-field {
+	margin: 0;
+}
+
+.oc-items-table td {
+	vertical-align: middle;
 }
