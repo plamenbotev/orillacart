@@ -41,6 +41,7 @@ import { RatesCsv } from './RatesCsv';
 import { RateModal } from './RateModal';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -102,8 +103,7 @@ export function TaxScreen() {
 
 	if ( groups === null || settings === null ) {
 		return (
-			<>
-				<h1>{ __( 'Tax', 'orillacart' ) }</h1>
+			<Page title={ __( 'Tax', 'orillacart' ) }>
 				{ message !== null ? (
 					<Notice status={ message.status } isDismissible={ false }>
 						{ message.text }
@@ -111,15 +111,14 @@ export function TaxScreen() {
 				) : (
 					<Spinner />
 				) }
-			</>
+			</Page>
 		);
 	}
 
 	const group = groups.find( ( candidate ) => candidate.id === selected );
 
 	return (
-		<>
-			<h1>{ __( 'Tax', 'orillacart' ) }</h1>
+		<Page title={ __( 'Tax', 'orillacart' ) }>
 			{ message !== null && (
 				<Notice
 					status={ message.status }
@@ -193,7 +192,7 @@ export function TaxScreen() {
 				}
 				onError={ fail }
 			/>
-		</>
+		</Page>
 	);
 }
 

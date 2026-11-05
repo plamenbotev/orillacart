@@ -36,6 +36,7 @@ import {
 } from './api';
 import { AdjustForm, BalanceEntries } from './BalanceCard';
 import { fromLocal, shopDate } from '../shared/dates';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -62,9 +63,8 @@ export function GiftCardsScreen() {
 	};
 
 	return (
-		<>
+		<Page title={ __( 'Gift cards', 'orillacart' ) }>
 			{ leaving }
-			<h1>{ __( 'Gift cards', 'orillacart' ) }</h1>
 			{ message !== null && (
 				<Notice
 					status={ message.status }
@@ -124,7 +124,7 @@ export function GiftCardsScreen() {
 				}
 				onError={ fail }
 			/>
-		</>
+		</Page>
 	);
 }
 

@@ -21,6 +21,7 @@ import { createOrder, type OrderQuote, quoteOrder } from './api';
 import { type ItemRow, ItemRows } from './ItemRows';
 import { money } from './labels';
 import { useLatest } from '../shared/useLatest';
+import { Page } from '../shared/ui';
 
 interface NewOrderProps {
 	onCreated: ( id: number ) => void;
@@ -162,11 +163,13 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 	};
 
 	return (
-		<>
-			<Button variant="link" onClick={ onBack }>
-				{ __( '← All orders', 'orillacart' ) }
-			</Button>
-			<h1>{ __( 'New order', 'orillacart' ) }</h1>
+		<Page
+			title={ __( 'New order', 'orillacart' ) }
+			back={ {
+				label: __( 'All orders', 'orillacart' ),
+				onClick: onBack,
+			} }
+		>
 			{ error !== null && (
 				<Notice status="error" onRemove={ () => setError( null ) }>
 					{ error }
@@ -404,6 +407,6 @@ export function NewOrder( { onCreated, onBack }: NewOrderProps ) {
 					</CardBody>
 				</Card>
 			) }
-		</>
+		</Page>
 	);
 }

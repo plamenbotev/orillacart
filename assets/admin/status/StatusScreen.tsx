@@ -13,6 +13,7 @@ import { errorMessage } from '../shared/api';
 import { type Check, fetchStatus, reportText, type Status } from './api';
 import { ChangeLogCard } from './ChangeLogCard';
 import { ProblemsCard } from './ProblemsCard';
+import { Page } from '../shared/ui';
 
 const LABELS: Record< Check[ 'status' ], string > = {
 	good: __( 'Good', 'orillacart' ),
@@ -47,8 +48,7 @@ export function StatusScreen() {
 	};
 
 	return (
-		<>
-			<h1>{ __( 'Status', 'orillacart' ) }</h1>
+		<Page title={ __( 'Status', 'orillacart' ) }>
 			{ error !== null && (
 				<Notice status="error" isDismissible={ false }>
 					{ error }
@@ -119,6 +119,6 @@ export function StatusScreen() {
 					<ChangeLogCard />
 				</>
 			) }
-		</>
+		</Page>
 	);
 }

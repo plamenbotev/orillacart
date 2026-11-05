@@ -25,6 +25,7 @@ import {
 } from '../inventory/api';
 import { errorMessage } from '../shared/api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -69,8 +70,7 @@ export function StockroomsScreen() {
 
 	if ( stockrooms === null ) {
 		return (
-			<>
-				<h1>{ __( 'Stockrooms', 'orillacart' ) }</h1>
+			<Page title={ __( 'Stockrooms', 'orillacart' ) }>
 				{ message !== null ? (
 					<Notice status={ message.status } isDismissible={ false }>
 						{ message.text }
@@ -78,7 +78,7 @@ export function StockroomsScreen() {
 				) : (
 					<Spinner />
 				) }
-			</>
+			</Page>
 		);
 	}
 
@@ -91,14 +91,13 @@ export function StockroomsScreen() {
 		);
 
 	return (
-		<>
-			<h1>{ __( 'Stockrooms', 'orillacart' ) }</h1>
-			<p>
-				{ __(
-					'Orders take stock from the active stockroom that delivers fastest first. Stock in inactive stockrooms is not sold.',
-					'orillacart'
-				) }
-			</p>
+		<Page
+			title={ __( 'Stockrooms', 'orillacart' ) }
+			description={ __(
+				'Orders take stock from the active stockroom that delivers fastest first. Stock in inactive stockrooms is not sold.',
+				'orillacart'
+			) }
+		>
 			{ message !== null && (
 				<Notice
 					status={ message.status }
@@ -141,7 +140,7 @@ export function StockroomsScreen() {
 				onDeleted={ () => undefined }
 				onError={ fail }
 			/>
-		</>
+		</Page>
 	);
 }
 

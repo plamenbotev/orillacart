@@ -6,6 +6,7 @@ namespace OrillaCart\Forms\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class FormsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class FormsPage implements AdminPage
         return 'forms';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Settings;
+    }
+
     public function menuOrder(): int
     {
-        return 61;
+        return 6;
     }
 }

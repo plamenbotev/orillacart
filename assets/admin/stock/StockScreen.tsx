@@ -187,7 +187,6 @@ export function StockScreen() {
 
 	return (
 		<>
-			<h1>{ __( 'Stock', 'orillacart' ) }</h1>
 			<p>
 				{ __(
 					'How many of each item every stockroom holds. An empty field means the stockroom holds none and keeps no count; with every field empty an item is at 0 in one. To sell an item without limit, make it Always available.',

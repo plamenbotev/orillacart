@@ -6,6 +6,7 @@ namespace OrillaCart\Coupons\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class CouponsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class CouponsPage implements AdminPage
         return 'coupons';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Marketing;
+    }
+
     public function menuOrder(): int
     {
-        return 25;
+        return 1;
     }
 }

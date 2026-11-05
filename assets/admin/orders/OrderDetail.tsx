@@ -60,6 +60,7 @@ import { type ItemRow, ItemRows } from './ItemRows';
 import { RefundsCard } from './RefundsCard';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import { useOtherLanguages } from '../shared/Translations';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -135,11 +136,10 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 		fetchOrder( id ).then( setOrder ).catch( fail );
 	}, [ id ] );
 
-	const back = (
-		<Button variant="link" onClick={ () => guard( onBack ) }>
-			{ __( '← All orders', 'orillacart' ) }
-		</Button>
-	);
+	const back = {
+		label: __( 'All orders', 'orillacart' ),
+		onClick: () => guard( onBack ),
+	};
 	const notice = message !== null && (
 		<Notice status={ message.status } onRemove={ () => setMessage( null ) }>
 			{ message.text }
@@ -148,26 +148,24 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 
 	if ( order === null ) {
 		return (
-			<>
-				{ back }
+			<Page title={ __( 'Order', 'orillacart' ) } back={ back }>
 				{ message !== null ? notice : <Spinner /> }
-			</>
+			</Page>
 		);
 	}
 
 	return (
-		<>
+		<Page
+			title={ sprintf(
+				/* translators: 1: order number, 2: status */
+				__( 'Order #%1$d — %2$s', 'orillacart' ),
+				order.number,
+				STATUS_LABELS[ order.status ]
+			) }
+			back={ back }
+		>
 			{ leaving }
 			<Guarded>
-				{ back }
-				<h1>
-					{ sprintf(
-						/* translators: 1: order number, 2: status */
-						__( 'Order #%1$d — %2$s', 'orillacart' ),
-						order.number,
-						STATUS_LABELS[ order.status ]
-					) }
-				</h1>
 				{ notice }
 				{ order.attention !== null && (
 					<AttentionNotice
@@ -367,7 +365,7 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 						) }
 				</Flex>
 			</Guarded>
-		</>
+		</Page>
 	);
 }
 

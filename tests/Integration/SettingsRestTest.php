@@ -164,6 +164,40 @@ final class SettingsRestTest extends RestTestCase
         self::assertIsArray($submenu);
         $items = $submenu[AdminPageRegistrar::MENU_SLUG] ?? [];
         self::assertIsArray($items);
-        self::assertContains('Settings', array_column($items, 0));
+        // Design 52: one entry per group; the group's other pages are in the submenu but hidden, reached as tabs.
+        $isHidden = static fn(mixed $item): bool => \is_array($item) && ($item[4] ?? '') === AdminPageRegistrar::HIDDEN_CLASS;
+        $shown = array_values(array_filter($items, static fn(mixed $item): bool => !$isHidden($item)));
+        self::assertSame(['Orders', 'Customers', 'Catalog', 'Marketing', 'Reports', 'Settings', 'System'], array_column($shown, 0));
+        $hidden = array_column(array_filter($items, $isHidden), 2);
+        self::assertContains('orillacart-tax', $hidden, 'Tax is a tab of Settings');
+        self::assertContains('orillacart-setup', $hidden, 'the setup is reached by its links');
+    }
+
+    public function testASettingsTabKnowsItsGroupAndTheOtherTabs(): void
+    {
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        require_once ABSPATH . 'wp-admin/includes/screen.php';
+        require_once ABSPATH . 'wp-admin/includes/class-wp-screen.php';
+        $this->actAs('administrator');
+        do_action('admin_menu');
+
+        // The screen's frame reads the group and tabs the registrar prints before the page's script.
+        set_current_screen('shop_page_orillacart-tax');
+        do_action('admin_enqueue_scripts', 'shop_page_orillacart-tax');
+        $printed = wp_scripts()->get_data('orillacart-tax', 'before');
+        self::assertIsArray($printed);
+        $line = array_values(array_filter($printed, static fn(mixed $line): bool => \is_string($line) && str_starts_with($line, 'window.orillacartAdmin = ')))[0] ?? null;
+        self::assertIsString($line);
+        $navigation = json_decode(substr($line, \strlen('window.orillacartAdmin = '), -1), true, flags: JSON_THROW_ON_ERROR);
+
+        self::assertIsArray($navigation);
+        self::assertSame('tax', $navigation['page']);
+        self::assertSame('Settings', $navigation['group']);
+        self::assertIsArray($navigation['tabs']);
+        self::assertSame(['settings', 'tax', 'shipping', 'payments', 'emails', 'forms', 'integrations'], array_column($navigation['tabs'], 'id'));
+        $first = $navigation['tabs'][0];
+        self::assertIsArray($first);
+        self::assertIsString($first['href']);
+        self::assertStringEndsWith('admin.php?page=orillacart-settings', $first['href']);
     }
 }

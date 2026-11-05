@@ -28,6 +28,7 @@ import {
 import './emails.css';
 import { TemplateEditor } from './TemplateEditor';
 import { templateLabel } from './templates';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -85,16 +86,15 @@ export function EmailsScreen() {
 
 	if ( editing !== null ) {
 		return (
-			<>
+			<Page title={ __( 'Emails', 'orillacart' ) }>
 				{ leaving }
-				<h1>{ __( 'Emails', 'orillacart' ) }</h1>
 				<Guarded>
 					<TemplateEditor
 						name={ editing }
 						onClose={ () => guard( () => setEditing( null ) ) }
 					/>
 				</Guarded>
-			</>
+			</Page>
 		);
 	}
 
@@ -105,10 +105,9 @@ export function EmailsScreen() {
 	);
 	if ( settings === null ) {
 		return (
-			<>
-				<h1>{ __( 'Emails', 'orillacart' ) }</h1>
+			<Page title={ __( 'Emails', 'orillacart' ) }>
 				{ message !== null ? notice : <Spinner /> }
-			</>
+			</Page>
 		);
 	}
 
@@ -142,8 +141,7 @@ export function EmailsScreen() {
 	};
 
 	return (
-		<>
-			<h1>{ __( 'Emails', 'orillacart' ) }</h1>
+		<Page title={ __( 'Emails', 'orillacart' ) }>
 			{ notice }
 			<form onSubmit={ submit }>
 				<Card className="orillacart-card">
@@ -349,6 +347,6 @@ export function EmailsScreen() {
 					</table>
 				</CardBody>
 			</Card>
-		</>
+		</Page>
 	);
 }

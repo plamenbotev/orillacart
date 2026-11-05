@@ -24,6 +24,7 @@ import { NewOrder } from './NewOrder';
 import { OrderDetail } from './OrderDetail';
 import { useLatest } from '../shared/useLatest';
 import { ExportDialog } from '../shared/ExportDialog';
+import { Page } from '../shared/ui';
 
 type Payments = { value: string; label: string }[];
 
@@ -337,16 +338,25 @@ export function OrdersScreen() {
 	}
 
 	return (
-		<>
-			<h1 className="wp-heading-inline">
-				{ __( 'Orders', 'orillacart' ) }
-			</h1>{ ' ' }
-			<Button variant="secondary" onClick={ () => setCreating( true ) }>
-				{ __( 'Add order', 'orillacart' ) }
-			</Button>{ ' ' }
-			<Button variant="secondary" onClick={ () => setExporting( true ) }>
-				{ __( 'Export', 'orillacart' ) }
-			</Button>
+		<Page
+			title={ __( 'Orders', 'orillacart' ) }
+			actions={
+				<>
+					<Button
+						variant="primary"
+						onClick={ () => setCreating( true ) }
+					>
+						{ __( 'Add order', 'orillacart' ) }
+					</Button>
+					<Button
+						variant="secondary"
+						onClick={ () => setExporting( true ) }
+					>
+						{ __( 'Export', 'orillacart' ) }
+					</Button>
+				</>
+			}
+		>
 			{ exporting && (
 				<ExportDialog
 					kind="orders"
@@ -420,7 +430,7 @@ export function OrdersScreen() {
 				] }
 				empty={ <p>{ __( 'No orders found.', 'orillacart' ) }</p> }
 			/>
-		</>
+		</Page>
 	);
 }
 

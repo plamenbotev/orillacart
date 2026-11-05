@@ -6,6 +6,7 @@ namespace OrillaCart\Integrations\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class IntegrationsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class IntegrationsPage implements AdminPage
         return 'integrations';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Settings;
+    }
+
     public function menuOrder(): int
     {
-        return 97;
+        return 7;
     }
 }

@@ -6,6 +6,7 @@ namespace OrillaCart\Notifications\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class EmailsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class EmailsPage implements AdminPage
         return 'emails';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Settings;
+    }
+
     public function menuOrder(): int
     {
-        return 95;
+        return 5;
     }
 }

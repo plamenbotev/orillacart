@@ -6,6 +6,7 @@ namespace OrillaCart\Exchange\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 /**
  * Shop → Import and export: the products file out and back in.
@@ -32,8 +33,13 @@ final readonly class ExchangePage implements AdminPage
         return 'exchange';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Catalog;
+    }
+
     public function menuOrder(): int
     {
-        return 74;
+        return 5;
     }
 }

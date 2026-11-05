@@ -6,6 +6,7 @@ namespace OrillaCart\Tax\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class TaxPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class TaxPage implements AdminPage
         return 'tax';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Settings;
+    }
+
     public function menuOrder(): int
     {
-        return 50;
+        return 2;
     }
 }

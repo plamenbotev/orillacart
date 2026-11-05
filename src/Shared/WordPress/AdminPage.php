@@ -28,6 +28,9 @@ interface AdminPage
     /** Name of the admin script entry point, built to build/admin/<script>.js. */
     public function script(): string;
 
-    /** Position in the Shop menu; the lowest opens when the top-level entry is clicked. */
+    /** The menu entry it belongs to; a group with several pages shows them as tabs. */
+    public function group(): MenuGroup;
+
+    /** Position among its group's tabs; the lowest is the group's entry and opens when it is clicked. */
     public function menuOrder(): int;
 }

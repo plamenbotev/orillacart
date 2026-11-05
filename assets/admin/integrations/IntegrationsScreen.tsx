@@ -6,6 +6,7 @@ import { ApiKeysCard } from './ApiKeysCard';
 import { AssistantCard } from './AssistantCard';
 import { type AssistantCatalogue, fetchAssistantCatalogue } from './api';
 import { WebhooksCard } from './WebhooksCard';
+import { Page } from '../shared/ui';
 
 /**
  * Shop → Integrations: how other software works with the shop: an AI assistant and API keys to call it, webhooks
@@ -24,11 +25,10 @@ export function IntegrationsScreen() {
 	}, [] );
 
 	return (
-		<>
-			<h1>{ __( 'Integrations', 'orillacart' ) }</h1>
+		<Page title={ __( 'Integrations', 'orillacart' ) }>
 			<AssistantCard catalogue={ catalogue } error={ error } />
 			<ApiKeysCard catalogue={ catalogue } />
 			<WebhooksCard />
-		</>
+		</Page>
 	);
 }

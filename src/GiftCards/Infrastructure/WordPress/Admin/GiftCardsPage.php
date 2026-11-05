@@ -6,6 +6,7 @@ namespace OrillaCart\GiftCards\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class GiftCardsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class GiftCardsPage implements AdminPage
         return 'gift-cards';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Marketing;
+    }
+
     public function menuOrder(): int
     {
-        return 27;
+        return 3;
     }
 }

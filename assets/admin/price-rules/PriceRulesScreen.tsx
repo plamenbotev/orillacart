@@ -45,6 +45,7 @@ import {
 	TIER_KINDS,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -181,26 +182,25 @@ export function PriceRulesScreen() {
 	];
 
 	return (
-		<>
-			{ confirmation }
-			{ leaving }
-			<h1>
-				{ __( 'Price rules', 'orillacart' ) }{ ' ' }
-				{ editing === null && (
+		<Page
+			title={ __( 'Price rules', 'orillacart' ) }
+			description={ __(
+				'Where several rules hold for an item, the shopper gets the lowest price, then the rules that combine take their amount off it. A rule leaves items on sale alone unless it says it goes with sales; discount codes still apply on top unless it says they do not.',
+				'orillacart'
+			) }
+			actions={
+				editing === null && (
 					<Button
-						variant="secondary"
+						variant="primary"
 						onClick={ () => setEditing( 'new' ) }
 					>
 						{ __( 'Add a rule', 'orillacart' ) }
 					</Button>
-				) }
-			</h1>
-			<p>
-				{ __(
-					'Where several rules hold for an item, the shopper gets the lowest price, then the rules that combine take their amount off it. A rule leaves items on sale alone unless it says it goes with sales; discount codes still apply on top unless it says they do not.',
-					'orillacart'
-				) }
-			</p>
+				)
+			}
+		>
+			{ confirmation }
+			{ leaving }
 			{ message !== null && (
 				<Notice
 					status={ message.status }
@@ -282,13 +282,44 @@ export function PriceRulesScreen() {
 				] }
 				empty={ <p>{ __( 'No price rules yet.', 'orillacart' ) }</p> }
 			/>
+		</Page>
+	);
+}
+
+/**
+ * The Shop → Marketing → Automatic discounts screen: discounts on the order that need no code.
+ */
+export function AutomaticDiscountsScreen() {
+	const [ message, setMessage ] = useState< Message >( null );
+
+	return (
+		<Page
+			title={ __( 'Automatic discounts', 'orillacart' ) }
+			description={ __(
+				'Discounts on the whole order that need no code, such as 10 % off orders over 100 or free shipping over 50. They apply wherever they hold, before coupon codes.',
+				'orillacart'
+			) }
+		>
+			{ message !== null && (
+				<Notice
+					status={ message.status }
+					onRemove={ () => setMessage( null ) }
+				>
+					{ message.text }
+				</Notice>
+			) }
 			<AutomaticDiscounts
 				onMessage={ ( text ) =>
 					setMessage( { status: 'success', text } )
 				}
-				onError={ fail }
+				onError={ ( error ) =>
+					setMessage( {
+						status: 'error',
+						text: errorMessage( error, couponFields() ),
+					} )
+				}
 			/>
-		</>
+		</Page>
 	);
 }
 
@@ -341,12 +372,6 @@ function AutomaticDiscounts( {
 				) }
 			</CardHeader>
 			<CardBody>
-				<p>
-					{ __(
-						'Discounts on the whole order that need no code, such as 10 % off orders over 100 or free shipping over 50. They apply wherever they hold, before coupon codes.',
-						'orillacart'
-					) }
-				</p>
 				{ editing !== null && (
 					<Guarded>
 						<CouponForm

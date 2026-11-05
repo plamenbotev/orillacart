@@ -6,6 +6,7 @@ namespace OrillaCart\Payment\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class PaymentsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class PaymentsPage implements AdminPage
         return 'payments';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Settings;
+    }
+
     public function menuOrder(): int
     {
-        return 90;
+        return 4;
     }
 }

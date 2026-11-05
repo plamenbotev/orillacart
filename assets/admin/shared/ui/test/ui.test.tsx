@@ -55,9 +55,7 @@ describe( 'The design system', () => {
 		expect(
 			screen.getByText( 'The shop did not answer.', NOTICE )
 		).toBeVisible();
-		await user.click(
-			screen.getByRole( 'button', { name: 'Close' } )
-		);
+		await user.click( screen.getByRole( 'button', { name: 'Close' } ) );
 		expect( onDismissError ).toHaveBeenCalled();
 	} );
 
@@ -78,6 +76,43 @@ describe( 'The design system', () => {
 		expect(
 			screen.getByRole( 'link', { name: 'Stock' } )
 		).not.toHaveAttribute( 'aria-current' );
+	} );
+
+	it( 'shows the group and its tabs the registrar printed, unless the screen is a detail view', () => {
+		window.orillacartAdmin = {
+			page: 'tax',
+			group: 'Settings',
+			tabs: [
+				{
+					id: 'settings',
+					label: 'General',
+					href: '?page=orillacart-settings',
+				},
+				{ id: 'tax', label: 'Tax', href: '?page=orillacart-tax' },
+			],
+		};
+		const { unmount } = render(
+			<Page title="Tax" description="How tax is charged." />
+		);
+
+		expect(
+			screen.getByRole( 'heading', { level: 1, name: 'Settings' } )
+		).toBeVisible();
+		expect( screen.getByRole( 'link', { name: 'Tax' } ) ).toHaveAttribute(
+			'aria-current',
+			'page'
+		);
+		expect( screen.getByText( 'How tax is charged.' ) ).toBeVisible();
+		unmount();
+
+		render( <Page title="Order #7" back={ { label: 'All orders' } } /> );
+		expect(
+			screen.getByRole( 'heading', { level: 1, name: 'Order #7' } )
+		).toBeVisible();
+		expect(
+			screen.queryByRole( 'link', { name: 'Tax' } )
+		).not.toBeInTheDocument();
+		delete window.orillacartAdmin;
 	} );
 
 	it( 'keeps a badge beside a heading out of its name', () => {

@@ -1,7 +1,7 @@
 /**
  * The admin's design system (design 52): the parts every screen is built from.
  */
-export { Page, type PageProps, type Tab } from './Page';
+export { Page, adminNavigation, type PageProps, type Tab } from './Page';
 export { Section, type SectionProps } from './Section';
 export { Field, Row, type FieldSize } from './Field';
 export { Hint, More } from './Help';

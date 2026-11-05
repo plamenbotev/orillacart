@@ -32,6 +32,7 @@ import { NewsletterCard } from './NewsletterCard';
 import { money } from '../orders/labels';
 import { useLatest } from '../shared/useLatest';
 import { shopDate } from '../shared/dates';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -144,9 +145,8 @@ export function CustomersScreen() {
 	useEffect( load, [ load ] );
 
 	return (
-		<>
+		<Page title={ __( 'Customers', 'orillacart' ) }>
 			{ leaving }
-			<h1>{ __( 'Customers', 'orillacart' ) }</h1>
 			{ message !== null && (
 				<Notice
 					status={ message.status }
@@ -264,7 +264,7 @@ export function CustomersScreen() {
 					</p>
 				}
 			/>
-		</>
+		</Page>
 	);
 }
 

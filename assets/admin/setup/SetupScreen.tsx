@@ -29,6 +29,7 @@ import { SellingStep } from './steps/SellingStep';
 import { ShippingStep } from './steps/ShippingStep';
 import { TaxStep } from './steps/TaxStep';
 import type { StepProps } from './steps/types';
+import { Page } from '../shared/ui';
 
 /** The steps in order; key is the step whose answers the server keeps, or null for one that keeps none. */
 const STEPS: {
@@ -142,8 +143,7 @@ export function SetupScreen() {
 		} );
 
 	return (
-		<>
-			<h1>{ __( 'Set up the shop', 'orillacart' ) }</h1>
+		<Page title={ __( 'Set up the shop', 'orillacart' ) }>
 			<nav aria-label={ __( 'Setup steps', 'orillacart' ) }>
 				<ol className="orillacart-setup__steps">
 					{ STEPS.map( ( { key, label }, index ) => (
@@ -198,6 +198,6 @@ export function SetupScreen() {
 					{ __( 'Back', 'orillacart' ) }
 				</Button>
 			) }
-		</>
+		</Page>
 	);
 }

@@ -33,6 +33,7 @@ import {
 	type ShopForm,
 } from './api';
 import { draftsOf, FieldsEditor, type FieldDraft } from './FieldsEditor';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -76,10 +77,9 @@ export function FormsScreen() {
 
 	if ( forms === null ) {
 		return (
-			<>
-				<h1>{ __( 'Forms', 'orillacart' ) }</h1>
+			<Page title={ __( 'Forms', 'orillacart' ) }>
 				{ notice || <Spinner /> }
-			</>
+			</Page>
 		);
 	}
 
@@ -110,15 +110,14 @@ export function FormsScreen() {
 	};
 
 	return (
-		<>
+		<Page
+			title={ __( 'Forms', 'orillacart' ) }
+			description={ __(
+				'Questions for shoppers. On the product page, the answers go with the item bought and can add to its price: an engraving, a name to print, a logo. At checkout, they go with the order: a purchase order number, a delivery note.',
+				'orillacart'
+			) }
+		>
 			{ leaving }
-			<h1>{ __( 'Forms', 'orillacart' ) }</h1>
-			<p>
-				{ __(
-					'Questions for shoppers. On the product page, the answers go with the item bought and can add to its price: an engraving, a name to print, a logo. At checkout, they go with the order: a purchase order number, a delivery note.',
-					'orillacart'
-				) }
-			</p>
 			{ notice }
 			<Card className="orillacart-card">
 				<CardBody>
@@ -222,7 +221,7 @@ export function FormsScreen() {
 					/>
 				</Guarded>
 			) }
-		</>
+		</Page>
 	);
 }
 

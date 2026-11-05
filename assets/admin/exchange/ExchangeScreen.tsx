@@ -4,6 +4,7 @@ import { __ } from '@wordpress/i18n';
 
 import { ExportDialog } from '../shared/ExportDialog';
 import { ImportCard } from './ImportCard';
+import { Page } from '../shared/ui';
 
 /**
  * The Shop → Import and export screen: the products file, every product and variation with the columns the shop
@@ -13,8 +14,7 @@ export function ExchangeScreen() {
 	const [ exporting, setExporting ] = useState( false );
 
 	return (
-		<>
-			<h1>{ __( 'Import and export', 'orillacart' ) }</h1>
+		<Page title={ __( 'Import and export', 'orillacart' ) }>
 			<Card className="orillacart-card">
 				<CardHeader>
 					<h2>{ __( 'Export products', 'orillacart' ) }</h2>
@@ -44,6 +44,6 @@ export function ExchangeScreen() {
 					onClose={ () => setExporting( false ) }
 				/>
 			) }
-		</>
+		</Page>
 	);
 }

@@ -28,6 +28,7 @@ import {
 import { laneLabel, typeLabel } from './labels';
 import './jobs.css';
 import { useLatest } from '../shared/useLatest';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -124,8 +125,7 @@ export function JobsScreen() {
 	};
 
 	return (
-		<>
-			<h1>{ __( 'Background jobs', 'orillacart' ) }</h1>
+		<Page title={ __( 'Background jobs', 'orillacart' ) }>
 			{ message !== null && (
 				<Notice
 					status={ message.status }
@@ -165,7 +165,7 @@ export function JobsScreen() {
 					<ScheduledCard overview={ overview } />
 				</>
 			) }
-		</>
+		</Page>
 	);
 }
 

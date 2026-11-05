@@ -6,6 +6,7 @@ namespace OrillaCart\Settings\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class SettingsPage implements AdminPage
 {
@@ -16,7 +17,7 @@ final readonly class SettingsPage implements AdminPage
 
     public function title(): string
     {
-        return __('Settings', 'orillacart');
+        return __('General', 'orillacart');
     }
 
     public function capability(): string
@@ -29,8 +30,13 @@ final readonly class SettingsPage implements AdminPage
         return 'settings';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Settings;
+    }
+
     public function menuOrder(): int
     {
-        return 100;
+        return 1;
     }
 }

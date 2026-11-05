@@ -6,6 +6,7 @@ namespace OrillaCart\Settings\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 /** Shop → Setup: where the shop sells from, how it is paid and ships, and its first products, in a few steps. */
 final readonly class SetupPage implements AdminPage
@@ -32,8 +33,13 @@ final readonly class SetupPage implements AdminPage
         return 'setup';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Hidden;
+    }
+
     public function menuOrder(): int
     {
-        return 100;
+        return 1;
     }
 }

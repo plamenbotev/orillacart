@@ -44,6 +44,7 @@ import {
 	useOtherLanguages,
 	type ContentLanguage,
 } from '../shared/Translations';
+import { Page } from '../shared/ui';
 
 type ListField =
 	'regions' | 'postcodes' | 'excluded_regions' | 'excluded_postcodes';
@@ -142,10 +143,9 @@ export function ShippingScreen() {
 
 	if ( carriers === null ) {
 		return (
-			<>
-				<h1>{ __( 'Shipping', 'orillacart' ) }</h1>
+			<Page title={ __( 'Shipping', 'orillacart' ) }>
 				{ message !== null ? notice : <Spinner /> }
-			</>
+			</Page>
 		);
 	}
 
@@ -161,14 +161,13 @@ export function ShippingScreen() {
 		);
 
 	return (
-		<>
-			<h1>{ __( 'Shipping', 'orillacart' ) }</h1>
-			<p>
-				{ __(
-					'Checkout offers every rate whose regions include the address and whose limits the order fits, carriers in their order. Limits include both ends; leave the highest value empty for no end. Weight, volume and sizes add up over every item that ships.',
-					'orillacart'
-				) }
-			</p>
+		<Page
+			title={ __( 'Shipping', 'orillacart' ) }
+			description={ __(
+				'Checkout offers every rate whose regions include the address and whose limits the order fits, carriers in their order. Limits include both ends; leave the highest value empty for no end. Weight, volume and sizes add up over every item that ships.',
+				'orillacart'
+			) }
+		>
 			{ notice }
 			{ carriers.map( ( carrier ) => (
 				<CarrierCard
@@ -215,7 +214,7 @@ export function ShippingScreen() {
 				onChange={ setClasses }
 				onError={ fail }
 			/>
-		</>
+		</Page>
 	);
 }
 

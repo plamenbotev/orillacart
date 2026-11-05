@@ -6,6 +6,7 @@ namespace OrillaCart\Inventory\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class StockroomsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class StockroomsPage implements AdminPage
         return 'stockrooms';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Catalog;
+    }
+
     public function menuOrder(): int
     {
-        return 70;
+        return 2;
     }
 }

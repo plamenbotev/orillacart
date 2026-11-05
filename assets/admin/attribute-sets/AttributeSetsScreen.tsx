@@ -25,6 +25,7 @@ import {
 import { errorMessage } from '../shared/api';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
 import { useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -59,8 +60,7 @@ export function AttributeSetsScreen() {
 
 	if ( sets === null ) {
 		return (
-			<>
-				<h1>{ __( 'Attribute sets', 'orillacart' ) }</h1>
+			<Page title={ __( 'Attribute sets', 'orillacart' ) }>
 				{ message !== null ? (
 					<Notice status={ message.status } isDismissible={ false }>
 						{ message.text }
@@ -68,22 +68,21 @@ export function AttributeSetsScreen() {
 				) : (
 					<Spinner />
 				) }
-			</>
+			</Page>
 		);
 	}
 
 	const set = sets.find( ( candidate ) => candidate.id === selected );
 
 	return (
-		<>
+		<Page
+			title={ __( 'Attribute sets', 'orillacart' ) }
+			description={ __(
+				'Attributes that several products share, such as size for clothing. A product offers the attributes of the sets you choose for it, while they are active.',
+				'orillacart'
+			) }
+		>
 			{ leaving }
-			<h1>{ __( 'Attribute sets', 'orillacart' ) }</h1>
-			<p>
-				{ __(
-					'Attributes that several products share, such as size for clothing. A product offers the attributes of the sets you choose for it, while they are active.',
-					'orillacart'
-				) }
-			</p>
 			{ message !== null && (
 				<Notice
 					status={ message.status }
@@ -144,7 +143,7 @@ export function AttributeSetsScreen() {
 					/>
 				</Guarded>
 			) }
-		</>
+		</Page>
 	);
 }
 

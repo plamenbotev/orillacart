@@ -6,6 +6,7 @@ namespace OrillaCart\Catalog\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class AttributeSetsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class AttributeSetsPage implements AdminPage
         return 'attribute-sets';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::Catalog;
+    }
+
     public function menuOrder(): int
     {
-        return 60;
+        return 3;
     }
 }

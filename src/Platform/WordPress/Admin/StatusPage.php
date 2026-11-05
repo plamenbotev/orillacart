@@ -6,6 +6,7 @@ namespace OrillaCart\Platform\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class StatusPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class StatusPage implements AdminPage
         return 'status';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::System;
+    }
+
     public function menuOrder(): int
     {
-        return 99;
+        return 1;
     }
 }

@@ -39,6 +39,7 @@ import {
 	settingsInput,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
+import { Page } from '../shared/ui';
 
 type Status =
 	| { kind: 'idle' }
@@ -141,8 +142,17 @@ export function SettingsScreen() {
 	};
 
 	return (
-		<>
-			<h1>{ __( 'Shop settings', 'orillacart' ) }</h1>
+		<Page
+			title={ __( 'Settings', 'orillacart' ) }
+			actions={
+				<Button
+					variant="secondary"
+					href="admin.php?page=orillacart-setup"
+				>
+					{ __( 'Set up the shop', 'orillacart' ) }
+				</Button>
+			}
+		>
 			{ status.kind === 'error' && (
 				<Notice status="error" isDismissible={ false }>
 					{ status.message }
@@ -579,6 +589,6 @@ export function SettingsScreen() {
 			<ArchiveCard
 				onImported={ () => setImports( ( count ) => count + 1 ) }
 			/>
-		</>
+		</Page>
 	);
 }

@@ -3,6 +3,7 @@ import { __ } from '@wordpress/i18n';
 
 import { HistoryTab } from './HistoryTab';
 import { StockScreen } from './StockScreen';
+import { Page } from '../shared/ui';
 
 /**
  * Shop → Stock: the levels every stockroom holds, to count and correct, and the history of how they moved. The
@@ -11,25 +12,22 @@ import { StockScreen } from './StockScreen';
  */
 export function StockPage() {
 	return (
-		<TabPanel
-			tabs={ [
-				{ name: 'levels', title: __( 'Levels', 'orillacart' ) },
-				{ name: 'history', title: __( 'History', 'orillacart' ) },
-			] }
-		>
-			{ ( tab ) => (
-				<>
-					<div hidden={ tab.name !== 'levels' }>
-						<StockScreen />
-					</div>
-					{ tab.name === 'history' && (
-						<>
-							<h1>{ __( 'Stock history', 'orillacart' ) }</h1>
-							<HistoryTab />
-						</>
-					) }
-				</>
-			) }
-		</TabPanel>
+		<Page title={ __( 'Stock', 'orillacart' ) }>
+			<TabPanel
+				tabs={ [
+					{ name: 'levels', title: __( 'Levels', 'orillacart' ) },
+					{ name: 'history', title: __( 'History', 'orillacart' ) },
+				] }
+			>
+				{ ( tab ) => (
+					<>
+						<div hidden={ tab.name !== 'levels' }>
+							<StockScreen />
+						</div>
+						{ tab.name === 'history' && <HistoryTab /> }
+					</>
+				) }
+			</TabPanel>
+		</Page>
 	);
 }

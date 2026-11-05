@@ -6,6 +6,7 @@ namespace OrillaCart\Jobs\Infrastructure\WordPress\Admin;
 
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\WordPress\AdminPage;
+use OrillaCart\Shared\WordPress\MenuGroup;
 
 final readonly class JobsPage implements AdminPage
 {
@@ -29,8 +30,13 @@ final readonly class JobsPage implements AdminPage
         return 'jobs';
     }
 
+    public function group(): MenuGroup
+    {
+        return MenuGroup::System;
+    }
+
     public function menuOrder(): int
     {
-        return 98;
+        return 2;
     }
 }
