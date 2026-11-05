@@ -1,7 +1,7 @@
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import type { Status } from './api';
-import { shopDateTime } from '../shared/dates';
+import { daysAgo, shopDateTime } from '../shared/dates';
 
 export const STATUS_LABELS: Record< Status, string > = {
 	pending_payment: __( 'Pending payment', 'orillacart' ),
@@ -178,5 +178,23 @@ export function money( amount: string, currency: string ): string {
  * @return The date and time on the shop's clock, in the browser's language.
  */
 export function when( date: string ): string {
+	const ago = daysAgo( date );
+	const time = shopDateTime( date, { timeStyle: 'short' } );
+	if ( ago === 0 ) {
+		/* translators: %s: a time */
+		return sprintf( __( 'Today, %s', 'orillacart' ), time );
+	}
+	if ( ago === 1 ) {
+		/* translators: %s: a time */
+		return sprintf( __( 'Yesterday, %s', 'orillacart' ), time );
+	}
+	if ( ago > 1 && ago < 7 ) {
+		return shopDateTime( date, {
+			weekday: 'long',
+			hour: 'numeric',
+			minute: '2-digit',
+		} );
+	}
+
 	return shopDateTime( date );
 }

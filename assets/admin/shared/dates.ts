@@ -59,6 +59,37 @@ const shopZone = (): string | undefined =>
 	typeof window === 'undefined' ? undefined : window.orillacartTimeZone;
 
 /**
+ * A moment's day in the shop's calendar, as the API and the date filters take it: YYYY-MM-DD.
+ *
+ * @param at       The moment; now when not given.
+ * @param timeZone The time zone; the shop's when not given.
+ */
+export const shopDay = (
+	at: Date = new Date(),
+	timeZone: string | undefined = shopZone()
+): string =>
+	new Date( at.getTime() + offsetAt( at, timeZone ) )
+		.toISOString()
+		.slice( 0, 10 );
+
+/**
+ * How many of the shop's calendar days ago a moment was: 0 today, 1 yesterday; negative for a moment to come.
+ *
+ * @param iso      The moment.
+ * @param now      The present; the clock's when not given.
+ * @param timeZone The time zone; the shop's when not given.
+ */
+export const daysAgo = (
+	iso: string,
+	now: Date = new Date(),
+	timeZone: string | undefined = shopZone()
+): number => {
+	const wallDay = ( at: Date ) =>
+		Math.floor( ( at.getTime() + offsetAt( at, timeZone ) ) / 86_400_000 );
+	return wallDay( now ) - wallDay( new Date( iso ) );
+};
+
+/**
  * An ISO 8601 moment as a datetime-local field shows it, in the shop's time zone.
  *
  * @param iso      The moment, or null for none.

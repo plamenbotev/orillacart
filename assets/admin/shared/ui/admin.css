@@ -517,3 +517,61 @@ body.folded .oc-toasts {
 .oc-needs__line a:hover {
 	text-decoration: underline;
 }
+
+/* Chips: the quick views above a list */
+.oc-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--oc-space-2);
+	margin: 0 0 var(--oc-space-4);
+}
+
+.oc-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--oc-space-2);
+	padding: var(--oc-space-1) var(--oc-space-3);
+	border: 1px solid var(--oc-border);
+	border-radius: 999px;
+	background: var(--oc-surface);
+	color: var(--oc-text);
+	font: inherit;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.6;
+	cursor: pointer;
+}
+
+.oc-chip:hover {
+	border-color: var(--oc-border-strong);
+}
+
+.oc-chip:focus-visible {
+	outline: 2px solid var(--oc-accent);
+	outline-offset: 1px;
+}
+
+.oc-chip[aria-pressed="true"] {
+	border-color: var(--oc-accent);
+	background: var(--oc-info-bg);
+	color: var(--oc-info);
+}
+
+.oc-chip__count {
+	color: var(--oc-text-muted);
+	font-weight: 400;
+}
+
+/* The list's modal forms: a change of status for several orders */
+.oc-modal-form {
+	display: flex;
+	flex-direction: column;
+	gap: var(--oc-space-4);
+	min-width: min(28rem, 80vw);
+}
+
+.oc-modal-form__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--oc-space-2);
+}

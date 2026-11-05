@@ -36,7 +36,7 @@ import {
 } from './api';
 import { AdjustForm, BalanceEntries } from './BalanceCard';
 import { fromLocal, shopDate } from '../shared/dates';
-import { Page } from '../shared/ui';
+import { Badge, Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -58,7 +58,7 @@ export function GiftCardsScreen() {
 	const shown = ( made: IssuedGiftCard ) => {
 		setIssued( made );
 		// The card open may have a change to its balance typed: asked about, as opening any other card is.
-		setSelected( made.card.id );
+		setSelected( made.card.id ?? null );
 		setVersion( ( current ) => current + 1 );
 	};
 
@@ -292,18 +292,28 @@ function ListCard( {
 						</thead>
 						<tbody>
 							{ found.cards.map( ( card ) => (
-								<tr key={ card.id }>
+								<tr key={ card.id ?? card.label }>
 									<td>
 										<Button
 											variant="link"
 											onClick={ () =>
+												card.id !== null &&
 												onSelect( card.id )
 											}
 										>
 											{ card.label }
 										</Button>
-										{ ! card.active &&
-											` (${ __( 'off', 'orillacart' ) })` }
+										{ ! card.active && (
+											<>
+												{ ' ' }
+												<Badge>
+													{ __(
+														'Off',
+														'orillacart'
+													) }
+												</Badge>
+											</>
+										) }
 									</td>
 									<td>
 										{ card.recipient_name ||

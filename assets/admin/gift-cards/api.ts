@@ -2,7 +2,8 @@ import apiFetch from '@wordpress/api-fetch';
 import { addQueryArgs } from '@wordpress/url';
 
 export interface GiftCard {
-	id: number;
+	/** Null for a customer's store credit while they have none. */
+	id: number | null;
 	kind: 'gift_card' | 'store_credit';
 	/** "Gift card ····7KQ2", or "Store credit". */
 	label: string;

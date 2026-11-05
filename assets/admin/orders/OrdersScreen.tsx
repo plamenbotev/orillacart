@@ -1,13 +1,19 @@
-import { Button, Notice } from '@wordpress/components';
+import {
+	Button,
+	Notice,
+	SelectControl,
+	TextControl,
+} from '@wordpress/components';
 import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useMemo, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { addQueryArgs } from '@wordpress/url';
 
 import { fetchPaymentMethods } from '../payments/api';
 import { errorMessage } from '../shared/api';
 import {
+	changeStatus,
 	deleteOrder,
 	fetchOrderFacets,
 	fetchOrders,
@@ -16,6 +22,7 @@ import {
 	type OrderSummary,
 	PAID,
 	type Paid,
+	type Status,
 	STATUSES,
 } from './api';
 import { ordersQuery, viewArgs, viewFromArgs } from './listView';
@@ -24,7 +31,15 @@ import { NewOrder } from './NewOrder';
 import { OrderDetail } from './OrderDetail';
 import { useLatest } from '../shared/useLatest';
 import { ExportDialog } from '../shared/ExportDialog';
-import { Page } from '../shared/ui';
+import {
+	Badge,
+	Chips,
+	EmptyState,
+	Page,
+	StatusBadge,
+	notify,
+} from '../shared/ui';
+import { shopDay } from '../shared/dates';
 
 type Payments = { value: string; label: string }[];
 
@@ -115,7 +130,12 @@ const fields = (
 			label: STATUS_LABELS[ status ],
 		} ) ),
 		filterBy: { operators: [ 'isAny' ] },
-		render: ( { item } ) => STATUS_LABELS[ item.status ],
+		render: ( { item } ) => (
+			<StatusBadge
+				status={ item.status }
+				label={ STATUS_LABELS[ item.status ] }
+			/>
+		),
 	},
 	{
 		id: 'attention',
@@ -127,9 +147,9 @@ const fields = (
 		filterBy: { operators: [ 'is' ] },
 		render: ( { item } ) =>
 			item.needs_attention ? (
-				<strong className="orillacart-orders__attention">
+				<Badge tone="danger">
 					{ __( 'Needs attention', 'orillacart' ) }
-				</strong>
+				</Badge>
 			) : null,
 	},
 	{
@@ -138,7 +158,11 @@ const fields = (
 		type: 'number',
 		getValue: ( { item } ) => Number( item.total ),
 		filterBy: { operators: [ 'greaterThanOrEqual', 'lessThanOrEqual' ] },
-		render: ( { item } ) => money( item.total, item.currency ),
+		render: ( { item } ) => (
+			<span className="oc-num">
+				{ money( item.total, item.currency ) }
+			</span>
+		),
 	},
 	{
 		id: 'payment',
@@ -254,6 +278,53 @@ const DEFAULT_VIEW: View = {
 	layout: {},
 };
 
+type Filters = NonNullable< View[ 'filters' ] >;
+
+/** The quick views above the list: each a set of filters. */
+const QUICK_VIEWS: { id: string; label: string; filters: () => Filters }[] = [
+	{ id: 'all', label: __( 'All', 'orillacart' ), filters: () => [] },
+	{
+		id: 'attention',
+		label: __( 'Needs attention', 'orillacart' ),
+		filters: () => [ { field: 'attention', operator: 'is', value: 'yes' } ],
+	},
+	{
+		id: 'on_hold',
+		label: __( 'On hold', 'orillacart' ),
+		filters: () => [
+			{ field: 'status', operator: 'isAny', value: [ 'on_hold' ] },
+		],
+	},
+	{
+		id: 'ship',
+		label: __( 'To ship', 'orillacart' ),
+		filters: () => [
+			{ field: 'status', operator: 'isAny', value: [ 'processing' ] },
+		],
+	},
+	{
+		id: 'today',
+		label: __( 'Today', 'orillacart' ),
+		filters: () => [
+			{
+				field: 'placed_at',
+				operator: 'on',
+				value: shopDay(),
+			},
+		],
+	},
+];
+
+/** Which quick view the filters are, or null for a view of one's own. */
+function quickViewOf( filters: Filters | undefined ): string | null {
+	const current = JSON.stringify( filters ?? [] );
+	return (
+		QUICK_VIEWS.find(
+			( item ) => JSON.stringify( item.filters() ) === current
+		)?.id ?? null
+	);
+}
+
 /**
  * The Shop → Orders screen: every order, newest first, and one order at a time to work on.
  */
@@ -281,6 +352,7 @@ export function OrdersScreen() {
 	const [ exporting, setExporting ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
 	const latest = useLatest();
+	const quickView = quickViewOf( view.filters );
 
 	useEffect( () => {
 		fetchPaymentMethods()
@@ -385,6 +457,26 @@ export function OrdersScreen() {
 					{ error }
 				</Notice>
 			) }
+			<Chips
+				label={ __( 'Quick views', 'orillacart' ) }
+				items={ QUICK_VIEWS.map( ( { id, label } ) => ( {
+					id,
+					label,
+				} ) ) }
+				selected={ quickView }
+				onSelect={ ( id ) => {
+					const chosen = QUICK_VIEWS.find(
+						( item ) => item.id === id
+					);
+					if ( chosen ) {
+						setView( {
+							...view,
+							page: 1,
+							filters: chosen.filters(),
+						} );
+					}
+				} }
+			/>
 			<DataViews< OrderSummary >
 				view={ view }
 				onChangeView={ setView }
@@ -415,6 +507,38 @@ export function OrdersScreen() {
 						},
 					},
 					{
+						id: 'status',
+						label: __( 'Change status', 'orillacart' ),
+						supportsBulk: true,
+						modalHeader: __( 'Change the status', 'orillacart' ),
+						RenderModal: ( { items, closeModal } ) => (
+							<ChangeStatus
+								orders={ items }
+								onDone={ ( failure, changed ) => {
+									closeModal?.();
+									if ( failure !== null ) {
+										setError( failure );
+									}
+									if ( changed > 0 ) {
+										notify(
+											sprintf(
+												/* translators: %d: how many orders */
+												_n(
+													'The status of %d order was changed.',
+													'The status of %d orders was changed.',
+													changed,
+													'orillacart'
+												),
+												changed
+											)
+										);
+									}
+									load();
+								} }
+							/>
+						),
+					},
+					{
 						id: 'delete',
 						label: __( 'Delete', 'orillacart' ),
 						supportsBulk: true,
@@ -436,7 +560,22 @@ export function OrdersScreen() {
 						),
 					},
 				] }
-				empty={ <p>{ __( 'No orders found.', 'orillacart' ) }</p> }
+				empty={
+					<EmptyState
+						title={ __( 'No orders found.', 'orillacart' ) }
+						description={
+							quickView === 'all' && view.search === ''
+								? __(
+										'Orders show here as customers place them, or when you add one.',
+										'orillacart'
+									)
+								: __(
+										'None match this view; try another, or clear the search.',
+										'orillacart'
+									)
+						}
+					/>
+				}
 			/>
 		</Page>
 	);
@@ -489,5 +628,88 @@ function DeleteOrders( {
 				{ __( 'Delete', 'orillacart' ) }
 			</Button>
 		</>
+	);
+}
+
+/**
+ * Moves several orders to a status at once, with one note for their histories; an order the move is not allowed
+ * for is reported and the rest go on.
+ *
+ * @param props        The orders and what to do afterwards.
+ * @param props.orders The orders chosen.
+ * @param props.onDone Receives the first failure, or null, and how many were changed.
+ */
+function ChangeStatus( {
+	orders,
+	onDone,
+}: {
+	orders: OrderSummary[];
+	onDone: ( failure: string | null, changed: number ) => void;
+} ) {
+	const [ status, setStatus ] = useState< Status >( 'processing' );
+	const [ note, setNote ] = useState( '' );
+	const [ busy, setBusy ] = useState( false );
+	const move = async () => {
+		setBusy( true );
+		let failure: string | null = null;
+		let changed = 0;
+		for ( const order of orders ) {
+			try {
+				await changeStatus( order.number, status, note );
+				changed += 1;
+			} catch ( reason ) {
+				failure ??= errorMessage( reason );
+			}
+		}
+		onDone( failure, changed );
+	};
+
+	return (
+		<form
+			className="oc-modal-form"
+			onSubmit={ ( event ) => {
+				event.preventDefault();
+				move();
+			} }
+		>
+			<p>
+				{ sprintf(
+					/* translators: %d: how many orders */
+					_n(
+						'Move %d order to:',
+						'Move %d orders to:',
+						orders.length,
+						'orillacart'
+					),
+					orders.length
+				) }
+			</p>
+			<SelectControl
+				__next40pxDefaultSize
+				label={ __( 'Status', 'orillacart' ) }
+				value={ status }
+				options={ STATUSES.map( ( value ) => ( {
+					value,
+					label: STATUS_LABELS[ value ],
+				} ) ) }
+				onChange={ ( value ) => setStatus( value as Status ) }
+			/>
+			<TextControl
+				__next40pxDefaultSize
+				label={ __( 'Note for the history (optional)', 'orillacart' ) }
+				value={ note }
+				onChange={ setNote }
+			/>
+			<div className="oc-modal-form__actions">
+				<Button
+					variant="primary"
+					type="submit"
+					isBusy={ busy }
+					disabled={ busy }
+				>
+					{ __( 'Change status', 'orillacart' ) }
+				</Button>
+			</div>
+		</form>
 	);
 }

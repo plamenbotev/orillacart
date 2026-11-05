@@ -10,7 +10,8 @@ use OrillaCart\Shared\Domain\Text;
 final readonly class GiftCardView
 {
     public function __construct(
-        public int $id,
+        /** Null for a customer's store credit while they have none: nothing is saved until some is added. */
+        public ?int $id,
         /** gift_card or store_credit */
         public string $kind,
         /** "Gift card ····7KQ2", or "Store credit". */
@@ -35,7 +36,7 @@ final readonly class GiftCardView
     public static function of(GiftCard $card): self
     {
         return new self(
-            $card->id(),
+            $card->savedId(),
             $card->kind()->value,
             $card->label(),
             $card->codeEnd(),

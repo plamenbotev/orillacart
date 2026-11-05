@@ -1,4 +1,4 @@
-import { currencyDecimals, money, roundDecimal } from '../labels';
+import { currencyDecimals, money, roundDecimal, when } from '../labels';
 
 describe( 'money', () => {
 	beforeEach( () => {
@@ -30,5 +30,25 @@ describe( 'money', () => {
 		expect( roundDecimal( '7', 0 ) ).toBe( '7' );
 		expect( roundDecimal( 'lots', 2 ) ).toBeNull();
 		expect( money( '1.005', 'EUR' ) ).toBe( '1,01 €' );
+	} );
+} );
+
+describe( 'when', () => {
+	beforeEach( () => {
+		window.orillacartTimeZone = 'UTC';
+		jest.useFakeTimers().setSystemTime(
+			new Date( '2026-11-06T09:00:00Z' )
+		);
+	} );
+	afterEach( () => {
+		jest.useRealTimers();
+		delete window.orillacartTimeZone;
+	} );
+
+	it( 'says today and yesterday, the weekday within the week, and the date after', () => {
+		expect( when( '2026-11-06T05:52:00Z' ) ).toMatch( /^Today, 5:52/ );
+		expect( when( '2026-11-05T15:35:00Z' ) ).toMatch( /^Yesterday, 3:35/ );
+		expect( when( '2026-11-03T08:21:00Z' ) ).toMatch( /^Tuesday/ );
+		expect( when( '2026-10-23T05:52:00Z' ) ).toMatch( /Oct 23, 2026/ );
 	} );
 } );

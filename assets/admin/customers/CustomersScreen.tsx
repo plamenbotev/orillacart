@@ -1,40 +1,21 @@
-import {
-	Button,
-	Card,
-	CardBody,
-	CardHeader,
-	CheckboxControl,
-	Notice,
-	RadioControl,
-	TextControl,
-} from '@wordpress/components';
 import { DataViews, type Field, type View } from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
-import { useConfirm } from '../shared/useConfirm';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
 import {
 	type Customer,
 	type CustomerGroup,
 	type CustomerPage,
-	type CustomerSettings,
-	deleteGroup,
 	fetchCustomers,
-	fetchCustomerSettings,
 	fetchGroups,
-	saveCustomerSettings,
-	saveGroup,
 } from './api';
 import { CustomerCard } from './CustomerCard';
-import { NewsletterCard } from './NewsletterCard';
 import { money } from '../orders/labels';
 import { useLatest } from '../shared/useLatest';
 import { shopDate } from '../shared/dates';
-import { Page } from '../shared/ui';
-
-type Message = { status: 'success' | 'error'; text: string } | null;
+import { EmptyState, Page, notify } from '../shared/ui';
 
 const FIELDS: Field< Customer >[] = [
 	{
@@ -66,34 +47,10 @@ const FIELDS: Field< Customer >[] = [
 	},
 ];
 
-const MODES = [
-	{
-		value: 'optional',
-		label: __(
-			'Customers may make an account when they order',
-			'orillacart'
-		),
-	},
-	{
-		value: 'required',
-		label: __(
-			'Customers must log in or make an account to order',
-			'orillacart'
-		),
-	},
-	{
-		value: 'disabled',
-		label: __( 'Everyone orders as a guest', 'orillacart' ),
-	},
-];
-
 /**
- * The Shop → Customers screen: whether customers have accounts, and the customers who made one.
+ * The Shop → Customers screen: the customers who made an account, and one at a time to work on.
  */
 export function CustomersScreen() {
-	const [ settings, setSettings ] = useState< CustomerSettings | null >(
-		null
-	);
 	const [ view, setView ] = useState< View >( {
 		type: 'table',
 		page: 1,
@@ -110,26 +67,13 @@ export function CustomersScreen() {
 	const setSelected = ( next: Parameters< typeof setSelectedNow >[ 0 ] ) =>
 		next !== selected && guard( () => setSelectedNow( next ) );
 	const [ groups, setGroups ] = useState< CustomerGroup[] >( [] );
-	const [ message, setMessage ] = useState< Message >( null );
+	const [ error, setError ] = useState< string | null >( null );
 
-	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: errorMessage( error ) } );
-	const saveSettings = ( changed: CustomerSettings ) =>
-		saveCustomerSettings( changed )
-			.then( ( saved ) => {
-				setSettings( saved );
-				setMessage( {
-					status: 'success',
-					text: __( 'Saved.', 'orillacart' ),
-				} );
-			} )
-			.catch( fail );
+	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
 
 	useEffect( () => {
-		fetchCustomerSettings().then( setSettings ).catch( fail );
 		fetchGroups().then( setGroups ).catch( fail );
 	}, [] );
-	const reloadGroups = () => fetchGroups().then( setGroups ).catch( fail );
 	const latest = useLatest();
 	const load = useCallback( () => {
 		latest(
@@ -144,76 +88,21 @@ export function CustomersScreen() {
 	}, [ view, latest ] );
 	useEffect( load, [ load ] );
 
-	return (
-		<Page title={ __( 'Customers', 'orillacart' ) }>
-			{ leaving }
-			{ message !== null && (
-				<Notice
-					status={ message.status }
-					onRemove={ () => setMessage( null ) }
-				>
-					{ message.text }
-				</Notice>
-			) }
-			{ settings !== null && (
-				<Card className="orillacart-card">
-					<CardHeader>
-						<h2>{ __( 'Accounts', 'orillacart' ) }</h2>
-					</CardHeader>
-					<CardBody>
-						<RadioControl
-							label={ __( 'Customer accounts', 'orillacart' ) }
-							hideLabelFromVision
-							selected={ settings.accounts }
-							options={ MODES }
-							onChange={ ( value ) =>
-								saveSettings( {
-									...settings,
-									accounts:
-										value as CustomerSettings[ 'accounts' ],
-								} )
-							}
-						/>
-						{ settings.accounts !== 'disabled' && (
-							<CheckboxControl
-								label={ __(
-									'A new account takes the orders placed with its email before',
-									'orillacart'
-								) }
-								help={ __(
-									'Its owner proved the address by following the link emailed to it. Off, an account takes only the order placed while asking for it.',
-									'orillacart'
-								) }
-								checked={ settings.guest_orders }
-								onChange={ ( guestOrders ) =>
-									saveSettings( {
-										...settings,
-										guest_orders: guestOrders,
-									} )
-								}
-							/>
-						) }
-					</CardBody>
-				</Card>
-			) }
-			<NewsletterCard
-				onSaved={ () =>
-					setMessage( {
-						status: 'success',
-						text: __( 'Saved.', 'orillacart' ),
-					} )
+	if ( selected !== null ) {
+		return (
+			<Page
+				title={
+					`${ selected.first_name } ${ selected.last_name }`.trim() ||
+					selected.email
 				}
-				onError={ fail }
-			/>
-			<GroupsCard
-				groups={ groups }
-				onChanged={ () => {
-					reloadGroups();
-					load();
+				back={ {
+					label: __( 'All customers', 'orillacart' ),
+					onClick: () => setSelected( null ),
 				} }
-				onError={ fail }
-			/>
-			{ selected !== null && (
+				error={ error }
+				onDismissError={ () => setError( null ) }
+			>
+				{ leaving }
 				<Guarded>
 					<CustomerCard
 						key={ selected.id }
@@ -223,15 +112,22 @@ export function CustomersScreen() {
 						onSaved={ ( saved ) => {
 							setSelectedNow( saved );
 							load();
-							setMessage( {
-								status: 'success',
-								text: __( 'Saved.', 'orillacart' ),
-							} );
+							notify( __( 'Saved.', 'orillacart' ) );
 						} }
 						onError={ fail }
 					/>
 				</Guarded>
-			) }
+			</Page>
+		);
+	}
+
+	return (
+		<Page
+			title={ __( 'Customers', 'orillacart' ) }
+			error={ error }
+			onDismissError={ () => setError( null ) }
+		>
+			{ leaving }
 			<DataViews< Customer >
 				view={ view }
 				onChangeView={ setView }
@@ -256,162 +152,18 @@ export function CustomersScreen() {
 					},
 				] }
 				empty={
-					<p>
-						{ __(
+					<EmptyState
+						title={ __(
 							'No customers have made an account yet.',
 							'orillacart'
 						) }
-					</p>
+						description={ __(
+							'Customers who make an account at checkout or in the shop show here; guests are on their orders.',
+							'orillacart'
+						) }
+					/>
 				}
 			/>
 		</Page>
-	);
-}
-
-function GroupsCard( {
-	groups,
-	onChanged,
-	onError,
-}: {
-	groups: CustomerGroup[];
-	onChanged: () => void;
-	onError: ( error: unknown ) => void;
-} ) {
-	const [ name, setName ] = useState( '' );
-	const [ renaming, setRenaming ] = useState< {
-		id: number;
-		name: string;
-	} | null >( null );
-	const [ confirmation, confirm ] = useConfirm();
-	return (
-		<Card className="orillacart-card">
-			{ confirmation }
-			<CardHeader>
-				<h2>{ __( 'Customer groups', 'orillacart' ) }</h2>
-			</CardHeader>
-			<CardBody>
-				<p>
-					{ __(
-						'Groups such as Wholesale or VIP; price rules give them their own prices. Put customers in groups from their details below.',
-						'orillacart'
-					) }
-				</p>
-				{ groups.length > 0 && (
-					<ul className="orillacart-groups">
-						{ groups.map( ( group ) => (
-							<li key={ group.id }>
-								{ sprintf(
-									/* translators: 1: group name, 2: number of customers */
-									__( '%1$s (%2$d)', 'orillacart' ),
-									group.name,
-									group.members
-								) }{ ' ' }
-								{ renaming?.id === group.id ? (
-									<form
-										className="orillacart-groups__rename"
-										onSubmit={ ( event ) => {
-											event.preventDefault();
-											if ( renaming.name.trim() === '' ) {
-												return;
-											}
-											saveGroup( group.id, renaming.name )
-												.then( () => {
-													setRenaming( null );
-													onChanged();
-												} )
-												.catch( onError );
-										} }
-									>
-										<TextControl
-											__next40pxDefaultSize
-											label={ __(
-												'New name',
-												'orillacart'
-											) }
-											value={ renaming.name }
-											onChange={ ( value ) =>
-												setRenaming( {
-													id: group.id,
-													name: value,
-												} )
-											}
-										/>
-										<Button
-											variant="secondary"
-											type="submit"
-										>
-											{ __( 'Rename', 'orillacart' ) }
-										</Button>{ ' ' }
-										<Button
-											variant="tertiary"
-											onClick={ () =>
-												setRenaming( null )
-											}
-										>
-											{ __( 'Cancel', 'orillacart' ) }
-										</Button>
-									</form>
-								) : (
-									<Button
-										variant="link"
-										onClick={ () =>
-											setRenaming( {
-												id: group.id,
-												name: group.name,
-											} )
-										}
-									>
-										{ __( 'Rename', 'orillacart' ) }
-									</Button>
-								) }{ ' ' }
-								<Button
-									variant="link"
-									isDestructive
-									onClick={ () =>
-										confirm(
-											sprintf(
-												/* translators: %s: group name */
-												__(
-													'Delete the group %s? Its customers leave it, and its price rules apply to no one.',
-													'orillacart'
-												),
-												group.name
-											),
-											() =>
-												deleteGroup( group.id )
-													.then( onChanged )
-													.catch( onError )
-										)
-									}
-								>
-									{ __( 'Delete', 'orillacart' ) }
-								</Button>
-							</li>
-						) ) }
-					</ul>
-				) }
-				<form
-					onSubmit={ ( event ) => {
-						event.preventDefault();
-						saveGroup( null, name )
-							.then( () => {
-								setName( '' );
-								onChanged();
-							} )
-							.catch( onError );
-					} }
-				>
-					<TextControl
-						__next40pxDefaultSize
-						label={ __( 'New group', 'orillacart' ) }
-						value={ name }
-						onChange={ setName }
-					/>
-					<Button variant="secondary" type="submit">
-						{ __( 'Add the group', 'orillacart' ) }
-					</Button>
-				</form>
-			</CardBody>
-		</Card>
 	);
 }

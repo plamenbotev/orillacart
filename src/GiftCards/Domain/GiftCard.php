@@ -121,6 +121,12 @@ class GiftCard
         return $this->id ?? throw new \LogicException('The gift card has no id until it is saved.');
     }
 
+    /** The id, or null until it is saved: a customer's store credit is such a card while they have none. */
+    public function savedId(): ?int
+    {
+        return $this->id;
+    }
+
     public function kind(): GiftCardKind
     {
         return $this->kind;

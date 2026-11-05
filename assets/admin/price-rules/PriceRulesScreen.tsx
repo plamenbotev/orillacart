@@ -45,7 +45,7 @@ import {
 	TIER_KINDS,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
-import { Page } from '../shared/ui';
+import { Badge, EmptyState, Page } from '../shared/ui';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -178,6 +178,13 @@ export function PriceRulesScreen() {
 				item.active
 					? __( 'Active', 'orillacart' )
 					: __( 'Off', 'orillacart' ),
+			render: ( { item } ) => (
+				<Badge tone={ item.active ? 'success' : 'neutral' }>
+					{ item.active
+						? __( 'Active', 'orillacart' )
+						: __( 'Off', 'orillacart' ) }
+				</Badge>
+			),
 		},
 	];
 
@@ -280,7 +287,15 @@ export function PriceRulesScreen() {
 						},
 					},
 				] }
-				empty={ <p>{ __( 'No price rules yet.', 'orillacart' ) }</p> }
+				empty={
+					<EmptyState
+						title={ __( 'No price rules yet.', 'orillacart' ) }
+						description={ __(
+							'A rule prices part of the catalog for everyone or a customer group: a trade price, a sale, a price by quantity.',
+							'orillacart'
+						) }
+					/>
+				}
 			/>
 		</Page>
 	);

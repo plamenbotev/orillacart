@@ -294,11 +294,15 @@ test.describe( 'The admin', () => {
 		try {
 			await admin.visitAdminPage(
 				'admin.php',
-				'page=orillacart-customers'
+				'page=orillacart-customer-settings'
 			);
 			await page.getByLabel( 'New group' ).fill( 'E2E Trade' );
 			await page.getByRole( 'button', { name: 'Add the group' } ).click();
 			await expect( page.getByText( 'E2E Trade' ).first() ).toBeVisible();
+			await admin.visitAdminPage(
+				'admin.php',
+				'page=orillacart-customers'
+			);
 			await page.getByRole( 'searchbox' ).fill( email );
 			await expect( page.getByText( email ) ).toBeVisible();
 		} finally {

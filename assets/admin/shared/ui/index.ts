@@ -9,5 +9,6 @@ export { Badge, StatusBadge, toneOf, type Tone } from './Badge';
 export { EmptyState } from './EmptyState';
 export { Skeleton } from './Skeleton';
 export { DataTable, type Column } from './DataTable';
+export { Chips } from './Chips';
 export { notify, Toasts, forgetToasts } from './toasts';
 export { useSave } from './useSave';
