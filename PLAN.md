@@ -468,7 +468,7 @@ Design 52: one design system, eight menu entries, a home, scannable lists, the o
 | ✅ | 304 | P1 | Step 6: settings in tabs and short sections, field widths by content, rare options behind an expander, carriers and payment methods as lists | cc9153c |
 | ✅ | 305 | P1 | Step 7: empty states and skeletons everywhere, keyboard focus, 1024 px and 782 px layouts, one icon set, screenshot comparison of every screen on CI | 0844db5 |
 | ✅ | 306 | P2 | Opening a customer's card on the Customers screen shows "Something went wrong. The error has been logged." though the card opens | f56c35c |
-| ⬜ | 307 | P3 | `bin/demo-shop.php` stops with a stock 409 when run again on a site that already holds the demo | |
+| ✅ | 307 | P3 | `bin/demo-shop.php` stops with a stock 409 when run again on a site that already holds the demo | c0e7e86 |
 
 ## Deliberately not carried over
 
