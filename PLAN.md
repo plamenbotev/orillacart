@@ -454,6 +454,22 @@ What WooCommerce needs an extension for, out of the box: cards and the other way
 | ✅ | 297 | P1 | Stripe Checkout as the shop's own gateway (`stripe`, "Card"), on the extension API: a Checkout Session per payment (the order's lines with shipping, tax and fees when they add up and nothing is discounted, else the order as one line; the customer's email, the address the goods go to, the order and payment in metadata; an idempotency key per site and payment), whatever the Stripe account offers (cards with 3-D Secure, wallets, Link, bank debits, pay later). Settings: secret or restricted key, Test mode (keys checked against it), webhook signing secret (needed live). Back from Stripe: paid, failed, or held while a bank debit clears (not cancelled as unpaid); going back closes the session; the cancel address names the payment by its signature. Signed webhooks (five minutes' tolerance, each event once) settle sessions, bank debits that cleared or failed, refunds made at Stripe and disputes; refunds by amount to the payment intent, refused with Stripe's reason; payments and refunds asked about hourly; Test button, Site Health. Amounts in each currency's smallest unit as Stripe counts it (yen whole, dinars in fils, krónur in hundredths of whole amounts). The customer's email in a `PaymentSession` (extension API 19) | ff83c8d |
 | ✅ | 298 | P1 | The release could not send an email once Twig noticed a deprecation: PHP-Scoper had moved Symfony's global `trigger_deprecation()` under the prefix while the libraries call it by its global name, so the notice was a fatal error (the smoke test's order email). `trigger_deprecation` is exposed, so scoper-autoload.php declares the global alias, and the build checks it is there; the email `slot` asks the sandbox with `isSandboxed()`, not the deprecated `isSandboxedGlobally()` | 7dc1e4f |
 
+## A polished admin (2026-11-05)
+
+Design 52: one design system, eight menu entries, a home, scannable lists, the order in two columns, settings in tabs.
+
+| | # | P | Item | Commits |
+|---|---|---|---|---|
+| ⬜ | 299 | P1 | A polished admin, step 1 (design 52): the design system in `assets/admin/shared/ui/` (Page, Section, Field sizes, Row, Help, Badge and StatusBadge, EmptyState, Skeleton, Toast with `useSave`, DataTable) with tokens in one `admin.css`; Coupons and Payments on it | |
+| ⬜ | 300 | P1 | Step 2: eight menu entries (Home, Orders, Customers, Catalog, Marketing, Reports, Settings, System), tabbed group screens with `&tab=`, Setup out of the menu, add-on pages name their group | |
+| ⬜ | 301 | P1 | Step 3: Home, with today's figures, the "Needs you" list, recent orders and a slot for add-ons | |
+| ⬜ | 302 | P1 | Step 4: lists with status badges, attention icons, row click, saved views, bulk actions; the customer's card as its own view | |
+| ⬜ | 303 | P1 | Step 5: the order and the customer's card in two columns with a sticky header and the actions in it; items as an editable table; history and notes as one timeline | |
+| ⬜ | 304 | P1 | Step 6: settings in tabs and short sections, field widths by content, rare options behind an expander, carriers and payment methods as lists | |
+| ⬜ | 305 | P1 | Step 7: empty states and skeletons everywhere, keyboard focus, 1024 px and 782 px layouts, one icon set, screenshot comparison of every screen on CI | |
+| ⬜ | 306 | P2 | Opening a customer's card on the Customers screen shows "Something went wrong. The error has been logged." though the card opens | |
+| ⬜ | 307 | P3 | `bin/demo-shop.php` stops with a stock 409 when run again on a site that already holds the demo | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
