@@ -5,6 +5,8 @@ import {
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
+import { Field } from './ui/Field';
+
 /** A setting a payment gateway or shipping method declares (OrillaCart\Extension\Setting). */
 export interface Setting {
 	key: string;
@@ -57,25 +59,29 @@ export function SettingFields( {
 				}
 				if ( field.type === 'choice' ) {
 					return (
-						<SelectControl
-							key={ field.key }
-							__next40pxDefaultSize
-							label={ field.label }
-							help={ field.help }
-							value={ String( values[ field.key ] ?? '' ) }
-							options={ [
-								{
-									label: __( '— Choose —', 'orillacart' ),
-									value: '',
-								},
-								...Object.entries( field.choices ).map(
-									( [ value, label ] ) => ( { value, label } )
-								),
-							] }
-							onChange={ ( value ) =>
-								onChange( field.key, value )
-							}
-						/>
+						<Field key={ field.key } size="m">
+							<SelectControl
+								__next40pxDefaultSize
+								label={ field.label }
+								help={ field.help }
+								value={ String( values[ field.key ] ?? '' ) }
+								options={ [
+									{
+										label: __( '— Choose —', 'orillacart' ),
+										value: '',
+									},
+									...Object.entries( field.choices ).map(
+										( [ value, label ] ) => ( {
+											value,
+											label,
+										} )
+									),
+								] }
+								onChange={ ( value ) =>
+									onChange( field.key, value )
+								}
+							/>
+						</Field>
 					);
 				}
 				const saved =
@@ -83,7 +89,10 @@ export function SettingFields( {
 				// A saved secret sent as false is cleared; sent empty, it stays.
 				const clearing = saved && values[ field.key ] === false;
 				return (
-					<div key={ field.key }>
+					<Field
+						key={ field.key }
+						size={ field.type === 'number' ? 'xs' : 'l' }
+					>
 						<TextControl
 							__next40pxDefaultSize
 							type={
@@ -124,7 +133,7 @@ export function SettingFields( {
 								}
 							/>
 						) }
-					</div>
+					</Field>
 				);
 			} ) }
 		</>

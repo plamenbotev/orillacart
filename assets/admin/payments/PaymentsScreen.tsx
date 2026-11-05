@@ -1,13 +1,7 @@
 import {
 	Button,
-	Card,
-	CardBody,
-	CardHeader,
 	CheckboxControl,
-	Flex,
-	FlexItem,
 	Notice,
-	Spinner,
 	TextControl,
 	TextareaControl,
 } from '@wordpress/components';
@@ -18,6 +12,15 @@ import type { FormEvent } from 'react';
 import { errorMessage } from '../shared/api';
 import { SettingFields } from '../shared/SettingFields';
 import {
+	Badge,
+	Field,
+	Page,
+	Row,
+	Section,
+	Skeleton,
+	useSave,
+} from '../shared/ui';
+import {
 	fetchPaymentMethods,
 	type PaymentMethod,
 	type PaymentMethodInput,
@@ -27,64 +30,54 @@ import {
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { TranslationFields, useOtherLanguages } from '../shared/Translations';
 
-type Message = { status: 'success' | 'error'; text: string } | null;
-
 /**
  * The Shop → Payments screen: the ways customers can pay, each turned on and set up here.
  */
 export function PaymentsScreen() {
 	const [ methods, setMethods ] = useState< PaymentMethod[] | null >( null );
-	const [ message, setMessage ] = useState< Message >( null );
+	const [ error, setError ] = useState< string | null >( null );
 
-	const fail = ( error: unknown ) =>
-		setMessage( { status: 'error', text: errorMessage( error ) } );
+	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
 
 	useEffect( () => {
 		fetchPaymentMethods().then( setMethods ).catch( fail );
 	}, [] );
 
-	const notice = message !== null && (
-		<Notice status={ message.status } onRemove={ () => setMessage( null ) }>
-			{ message.text }
-		</Notice>
-	);
-
 	return (
-		<>
-			<h1>{ __( 'Payments', 'orillacart' ) }</h1>
-			<p>
-				{ __(
-					'Checkout offers the active methods that serve the customer’s billing country, in their order. Orders paid offline wait on hold until you have the money.',
-					'orillacart'
-				) }
-			</p>
-			{ methods === null && message === null && <Spinner /> }
-			{ notice }
+		<Page
+			title={ __( 'Payments', 'orillacart' ) }
+			description={ __(
+				'Checkout offers the active methods that serve the customer’s billing country, in their order. Orders paid offline wait on hold until you have the money.',
+				'orillacart'
+			) }
+			error={ error }
+			onDismissError={ () => setError( null ) }
+		>
+			{ methods === null && error === null && (
+				<Section>
+					<Skeleton
+						lines={ 4 }
+						widths={ [ '30%', '60%', '60%', '20%' ] }
+					/>
+				</Section>
+			) }
 			{ methods?.map( ( method ) => (
 				<MethodCard
 					key={ method.gateway }
 					method={ method }
-					onSaved={ ( saved ) => {
+					onSaved={ ( saved ) =>
 						setMethods(
 							methods.map( ( current ) =>
 								current.gateway === saved.gateway
 									? saved
 									: current
 							)
-						);
-						setMessage( {
-							status: 'success',
-							text: sprintf(
-								/* translators: %s: payment method name */
-								__( '%s saved.', 'orillacart' ),
-								saved.name
-							),
-						} );
-					} }
+						)
+					}
 					onError={ fail }
 				/>
 			) ) }
-		</>
+		</Page>
 	);
 }
 
@@ -138,18 +131,28 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 	const [ countries, setCountries ] = useState(
 		method.countries.join( ', ' )
 	);
+	const [ busy, save ] = useSave( onError );
 
 	const submit = ( event: FormEvent ) => {
 		event.preventDefault();
-		savePaymentMethod( method.gateway, {
-			...draft,
-			fee: draft.fee.trim() === '' ? '0' : draft.fee.trim(),
-			fee_percent:
-				draft.fee_percent.trim() === ''
-					? '0'
-					: draft.fee_percent.trim(),
-		} )
-			.then( ( saved ) => {
+		save(
+			() =>
+				savePaymentMethod( method.gateway, {
+					...draft,
+					fee: draft.fee.trim() === '' ? '0' : draft.fee.trim(),
+					fee_percent:
+						draft.fee_percent.trim() === ''
+							? '0'
+							: draft.fee_percent.trim(),
+				} ),
+			( saved ) =>
+				sprintf(
+					/* translators: %s: payment method name */
+					__( '%s saved.', 'orillacart' ),
+					saved.name
+				)
+		).then( ( saved ) => {
+			if ( saved ) {
 				setDraft( {
 					...draft,
 					settings: saved.settings,
@@ -157,8 +160,8 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 					fee_percent: saved.fee_percent,
 				} );
 				onSaved( saved );
-			} )
-			.catch( onError );
+			}
+		} );
 	};
 	const setSetting = ( key: string, value: string | boolean ) =>
 		setDraft( {
@@ -166,66 +169,91 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 			settings: { ...draft.settings, [ key ]: value },
 		} );
 
+	const formId = `orillacart-payment-${ method.gateway }`;
+
 	return (
-		<Card className="orillacart-card">
-			<CardHeader>
-				<h2>{ method.name }</h2>
-				{ method.active && method.not_ready !== null && (
-					<Notice status="warning" isDismissible={ false }>
-						{ sprintf(
-							/* translators: %s: what the payment method needs */
-							__(
-								'Checkout does not offer it. %s',
-								'orillacart'
-							),
-							method.not_ready
-						) }
-					</Notice>
-				) }
-			</CardHeader>
-			<CardBody>
-				<form onSubmit={ submit }>
-					<Flex align="flex-end">
-						<FlexItem isBlock>
-							<TextControl
-								__next40pxDefaultSize
-								label={ __( 'Name at checkout', 'orillacart' ) }
-								value={ draft.name }
-								onChange={ ( name ) =>
-									setDraft( { ...draft, name } )
-								}
-							/>
-							{ translate(
-								'name',
-								__( 'Name at checkout', 'orillacart' )
-							) }
-						</FlexItem>
-						<FlexItem>
-							<TextControl
-								__next40pxDefaultSize
-								type="number"
-								min={ 0 }
-								label={ __( 'Order', 'orillacart' ) }
-								value={ String( draft.position ) }
-								onChange={ ( value ) =>
-									setDraft( {
-										...draft,
-										position: Math.max(
-											0,
-											Number.parseInt( value, 10 ) || 0
-										),
-									} )
-								}
-							/>
-						</FlexItem>
-					</Flex>
-					<CheckboxControl
-						label={ __( 'Active', 'orillacart' ) }
-						checked={ draft.active }
-						onChange={ ( active ) =>
-							setDraft( { ...draft, active } )
-						}
-					/>
+		<Section
+			title={ method.name }
+			titleAside={
+				<Badge tone={ draft.active ? 'success' : 'neutral' }>
+					{ draft.active
+						? __( 'Active', 'orillacart' )
+						: __( 'Off', 'orillacart' ) }
+				</Badge>
+			}
+			description={
+				method.notification_url !== null && (
+					<>
+						{ __( 'Webhook address:', 'orillacart' ) }{ ' ' }
+						<code>{ method.notification_url }</code>
+					</>
+				)
+			}
+			footer={
+				<Button
+					variant="primary"
+					type="submit"
+					form={ formId }
+					isBusy={ busy }
+					disabled={ busy || draft.name.trim() === '' }
+				>
+					{ sprintf(
+						/* translators: %s: what is saved: a payment method, a carrier or a stockroom */
+						__( 'Save %s', 'orillacart' ),
+						method.name
+					) }
+				</Button>
+			}
+		>
+			{ method.active && method.not_ready !== null && (
+				<Notice status="warning" isDismissible={ false }>
+					{ sprintf(
+						/* translators: %s: what the payment method needs */
+						__( 'Checkout does not offer it. %s', 'orillacart' ),
+						method.not_ready
+					) }
+				</Notice>
+			) }
+			<form id={ formId } onSubmit={ submit }>
+				<Row>
+					<Field size="m">
+						<TextControl
+							__next40pxDefaultSize
+							label={ __( 'Name at checkout', 'orillacart' ) }
+							value={ draft.name }
+							onChange={ ( name ) =>
+								setDraft( { ...draft, name } )
+							}
+						/>
+					</Field>
+					<Field size="xs">
+						<TextControl
+							__next40pxDefaultSize
+							type="number"
+							min={ 0 }
+							label={ __( 'Order', 'orillacart' ) }
+							help={ __( 'Lowest first.', 'orillacart' ) }
+							value={ String( draft.position ) }
+							onChange={ ( value ) =>
+								setDraft( {
+									...draft,
+									position: Math.max(
+										0,
+										Number.parseInt( value, 10 ) || 0
+									),
+								} )
+							}
+						/>
+					</Field>
+				</Row>
+				{ translate( 'name', __( 'Name at checkout', 'orillacart' ) ) }
+				<CheckboxControl
+					label={ __( 'Active', 'orillacart' ) }
+					help={ __( 'Checkout offers it.', 'orillacart' ) }
+					checked={ draft.active }
+					onChange={ ( active ) => setDraft( { ...draft, active } ) }
+				/>
+				<Field size="m">
 					<TextControl
 						__next40pxDefaultSize
 						label={ __( 'Billing countries', 'orillacart' ) }
@@ -247,42 +275,58 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 							} );
 						} }
 					/>
+				</Field>
+				<Field size="l">
 					<TextareaControl
+						__nextHasNoMarginBottom
 						label={ __( 'Instructions at checkout', 'orillacart' ) }
+						rows={ 3 }
 						value={ draft.instructions }
 						onChange={ ( instructions ) =>
 							setDraft( { ...draft, instructions } )
 						}
 					/>
-					{ translate(
-						'instructions',
-						__( 'Instructions at checkout', 'orillacart' ),
-						true
-					) }
+				</Field>
+				{ translate(
+					'instructions',
+					__( 'Instructions at checkout', 'orillacart' ),
+					true
+				) }
+				<Field size="l">
 					<TextareaControl
+						__nextHasNoMarginBottom
 						label={ __( 'Note on the receipt', 'orillacart' ) }
 						help={ __(
 							'Such as your bank details for a bank transfer.',
 							'orillacart'
 						) }
+						rows={ 3 }
 						value={ draft.receipt_note }
 						onChange={ ( receiptNote ) =>
 							setDraft( { ...draft, receipt_note: receiptNote } )
 						}
 					/>
-					{ translate(
-						'receipt_note',
-						__( 'Note on the receipt', 'orillacart' ),
-						true
+				</Field>
+				{ translate(
+					'receipt_note',
+					__( 'Note on the receipt', 'orillacart' ),
+					true
+				) }
+				<SettingFields
+					fields={ method.fields }
+					values={ draft.settings }
+					secretsSet={ method.secrets_set }
+					onChange={ setSetting }
+				/>
+				<h3>{ __( 'Fee', 'orillacart' ) }</h3>
+				<p className="description">
+					{ __(
+						'What an order paid this way pays besides its items and shipping, taxed at the default tax group. Leave both at 0 for none.',
+						'orillacart'
 					) }
-					<fieldset className="orillacart-fee">
-						<legend>{ __( 'Fee', 'orillacart' ) }</legend>
-						<p className="description">
-							{ __(
-								'What an order paid this way pays besides its items and shipping, taxed at the default tax group: a fixed amount and a percentage of the items and shipping. Leave both at 0 for none.',
-								'orillacart'
-							) }
-						</p>
+				</p>
+				<Row>
+					<Field size="xs">
 						<TextControl
 							__next40pxDefaultSize
 							label={ __( 'Fixed amount', 'orillacart' ) }
@@ -291,14 +335,22 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 								setDraft( { ...draft, fee } )
 							}
 						/>
+					</Field>
+					<Field size="xs">
 						<TextControl
 							__next40pxDefaultSize
 							label={ __( 'Percentage', 'orillacart' ) }
+							help={ __(
+								'Of the items and shipping.',
+								'orillacart'
+							) }
 							value={ draft.fee_percent }
 							onChange={ ( percent ) =>
 								setDraft( { ...draft, fee_percent: percent } )
 							}
 						/>
+					</Field>
+					<Field size="m">
 						<TextControl
 							__next40pxDefaultSize
 							label={ __( 'Name in the totals', 'orillacart' ) }
@@ -311,36 +363,13 @@ function MethodCard( { method, onSaved, onError }: MethodCardProps ) {
 								setDraft( { ...draft, fee_label: label } )
 							}
 						/>
-						{ translate(
-							'fee_label',
-							__( 'Name in the totals', 'orillacart' )
-						) }
-					</fieldset>
-					<SettingFields
-						fields={ method.fields }
-						values={ draft.settings }
-						secretsSet={ method.secrets_set }
-						onChange={ setSetting }
-					/>
-					{ method.notification_url !== null && (
-						<p>
-							{ __( 'Webhook address:', 'orillacart' ) }{ ' ' }
-							<code>{ method.notification_url }</code>
-						</p>
-					) }
-					<Button
-						variant="primary"
-						type="submit"
-						disabled={ draft.name.trim() === '' }
-					>
-						{ sprintf(
-							/* translators: %s: what is saved: a payment method, a carrier or a stockroom */
-							__( 'Save %s', 'orillacart' ),
-							method.name
-						) }
-					</Button>
-				</form>
-			</CardBody>
-		</Card>
+					</Field>
+				</Row>
+				{ translate(
+					'fee_label',
+					__( 'Name in the totals', 'orillacart' )
+				) }
+			</form>
+		</Section>
 	);
 }

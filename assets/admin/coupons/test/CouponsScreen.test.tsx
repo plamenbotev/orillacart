@@ -73,7 +73,7 @@ describe( 'CouponsScreen', () => {
 
 		expect(
 			await screen.findByText( 'The coupon WELCOME was saved.', {
-				selector: '.components-notice__content',
+				selector: '.components-snackbar__content',
 			} )
 		).toBeVisible();
 		const saved = requests.find( ( request ) => request.method === 'POST' );

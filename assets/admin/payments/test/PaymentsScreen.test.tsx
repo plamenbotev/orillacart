@@ -10,7 +10,7 @@ import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
 
-const NOTICE = { selector: '.components-notice__content' };
+const NOTICE = { selector: '.components-snackbar__content' };
 
 const paypal = {
 	gateway: 'paypal',

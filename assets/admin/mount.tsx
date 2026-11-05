@@ -1,5 +1,6 @@
 import { createRoot } from '@wordpress/element';
 
+import './shared/ui/admin.css';
 import './shared/screen.css';
 import type { ComponentType } from 'react';
 import type { Root } from 'react-dom/client';

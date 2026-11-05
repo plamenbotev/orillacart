@@ -1,19 +1,19 @@
 import {
 	Button,
-	Card,
-	CardBody,
-	CardHeader,
 	CheckboxControl,
-	Flex,
-	FlexItem,
 	FormTokenField,
 	Notice,
 	SelectControl,
 	TextControl,
 } from '@wordpress/components';
-import { DataViews, type Field, type View } from '@wordpress/dataviews';
+import {
+	DataViews,
+	type Field as ListField,
+	type View,
+} from '@wordpress/dataviews';
 import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
+import { tag } from '@wordpress/icons';
 
 import { type Named, ProductTokens, TermTokens } from '../shared/CatalogTokens';
 import { errorMessage, type FieldLabels } from '../shared/api';
@@ -21,6 +21,16 @@ import { TranslationFields, useOtherLanguages } from '../shared/Translations';
 import { fromLocal, shopDateTime, toLocal } from '../shared/dates';
 import { useConfirm } from '../shared/useConfirm';
 import { useLeaveGuard } from '../shared/useLeaveGuard';
+import {
+	Badge,
+	EmptyState,
+	Field,
+	notify,
+	Page,
+	Row,
+	Section,
+	useSave,
+} from '../shared/ui';
 import {
 	type Coupon,
 	type CouponFields,
@@ -34,8 +44,6 @@ import {
 	saveCoupon,
 } from './api';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
-
-type Message = { status: 'success' | 'error'; text: string } | null;
 
 export const KIND_LABELS: Record< Kind, string > = {
 	percent: __( 'Percentage off', 'orillacart' ),
@@ -106,7 +114,7 @@ export function discountLabel( coupon: CouponFields ): string {
 	}
 }
 
-const FIELDS: Field< Coupon >[] = [
+const FIELDS: ListField< Coupon >[] = [
 	{
 		id: 'code',
 		label: __( 'Code', 'orillacart' ),
@@ -148,6 +156,13 @@ const FIELDS: Field< Coupon >[] = [
 			item.active
 				? __( 'Active', 'orillacart' )
 				: __( 'Off', 'orillacart' ),
+		render: ( { item } ) => (
+			<Badge tone={ item.active ? 'success' : 'neutral' }>
+				{ item.active
+					? __( 'Active', 'orillacart' )
+					: __( 'Off', 'orillacart' ) }
+			</Badge>
+		),
 	},
 ];
 
@@ -199,13 +214,10 @@ export function CouponsScreen() {
 	// Another row, or none, only once unsaved changes are let go; the row open stays as it is.
 	const setEditing = ( next: Parameters< typeof setEditingNow >[ 0 ] ) =>
 		next !== editing && guard( () => setEditingNow( next ) );
-	const [ message, setMessage ] = useState< Message >( null );
+	const [ error, setError ] = useState< string | null >( null );
 
-	const fail = ( error: unknown ) =>
-		setMessage( {
-			status: 'error',
-			text: errorMessage( error, couponFields() ),
-		} );
+	const fail = ( failure: unknown ) =>
+		setError( errorMessage( failure, couponFields() ) );
 	const load = useCallback( () => {
 		fetchCoupons( {
 			search: view.search === '' ? undefined : view.search,
@@ -217,29 +229,25 @@ export function CouponsScreen() {
 	}, [ view ] );
 	useEffect( load, [ load ] );
 
+	const add = (
+		<Button variant="primary" onClick={ () => setEditing( 'new' ) }>
+			{ __( 'Add a coupon', 'orillacart' ) }
+		</Button>
+	);
+
 	return (
-		<>
+		<Page
+			title={ __( 'Coupons', 'orillacart' ) }
+			description={ __(
+				'Codes customers enter at the cart or checkout: what each takes off, on which items, when and for whom it holds.',
+				'orillacart'
+			) }
+			actions={ editing === null && add }
+			error={ error }
+			onDismissError={ () => setError( null ) }
+		>
 			{ confirmation }
 			{ leaving }
-			<h1>
-				{ __( 'Coupons', 'orillacart' ) }{ ' ' }
-				{ editing === null && (
-					<Button
-						variant="secondary"
-						onClick={ () => setEditing( 'new' ) }
-					>
-						{ __( 'Add a coupon', 'orillacart' ) }
-					</Button>
-				) }
-			</h1>
-			{ message !== null && (
-				<Notice
-					status={ message.status }
-					onRemove={ () => setMessage( null ) }
-				>
-					{ message.text }
-				</Notice>
-			) }
 			{ editing !== null && (
 				<Guarded>
 					<CouponForm
@@ -249,17 +257,16 @@ export function CouponsScreen() {
 						onSaved={ ( saved ) => {
 							setEditingNow( null );
 							load();
-							setMessage( {
-								status: 'success',
-								text: sprintf(
+							notify(
+								sprintf(
 									/* translators: %s: coupon code */
 									__(
 										'The coupon %s was saved.',
 										'orillacart'
 									),
 									saved.code
-								),
-							} );
+								)
+							);
 						} }
 						onError={ fail }
 					/>
@@ -310,9 +317,19 @@ export function CouponsScreen() {
 						},
 					},
 				] }
-				empty={ <p>{ __( 'No coupons yet.', 'orillacart' ) }</p> }
+				empty={
+					<EmptyState
+						icon={ tag }
+						title={ __( 'No coupons yet.', 'orillacart' ) }
+						description={ __(
+							'A coupon is a code customers enter for a discount, free shipping or a gift.',
+							'orillacart'
+						) }
+						action={ add }
+					/>
+				}
 			/>
-		</>
+		</Page>
 	);
 }
 
@@ -351,7 +368,11 @@ export function CouponForm( {
 	useUnsavedChanges( differs( fields, opened ) );
 	const [ categories, setCategories ] = useState< Named[] >( [] );
 	const [ brands, setBrands ] = useState< Named[] >( [] );
-	const [ busy, setBusy ] = useState( false );
+	const [ busy, save ] = useSave( onError );
+	const formId =
+		coupon === null
+			? 'orillacart-coupon-new'
+			: `orillacart-coupon-${ coupon.id }`;
 
 	useEffect( () => {
 		fetchTerms( 'orillacart_category' )
@@ -381,14 +402,26 @@ export function CouponForm( {
 	}
 
 	return (
-		<Card className="orillacart-card">
-			<CardHeader>
-				<h2>{ title }</h2>
+		<Section
+			title={ title }
+			action={
 				<Button variant="tertiary" onClick={ onClose }>
 					{ __( 'Close', 'orillacart' ) }
 				</Button>
-			</CardHeader>
-			<CardBody>
+			}
+			footer={
+				<Button
+					variant="primary"
+					type="submit"
+					form={ formId }
+					isBusy={ busy }
+					disabled={ busy }
+				>
+					{ __( 'Save the coupon', 'orillacart' ) }
+				</Button>
+			}
+		>
+			<>
 				{ ( coupon?.missing_product_ids ?? [] ).length > 0 && (
 					<Notice status="warning" isDismissible={ false }>
 						{ coupon?.gift_product_id !== null &&
@@ -412,18 +445,17 @@ export function CouponForm( {
 					</Notice>
 				) }
 				<form
+					id={ formId }
 					onSubmit={ ( event ) => {
 						event.preventDefault();
-						setBusy( true );
-						saveCoupon( coupon?.id ?? null, fields )
-							.then( onSaved )
-							.catch( onError )
-							.finally( () => setBusy( false ) );
+						save( () =>
+							saveCoupon( coupon?.id ?? null, fields )
+						).then( ( saved ) => saved && onSaved( saved ) );
 					} }
 				>
-					<Flex align="flex-start" wrap>
+					<Row>
 						{ ! automatic && (
-							<FlexItem isBlock>
+							<Field size="m">
 								<TextControl
 									__next40pxDefaultSize
 									label={ __( 'Code', 'orillacart' ) }
@@ -437,9 +469,9 @@ export function CouponForm( {
 									}
 									required
 								/>
-							</FlexItem>
+							</Field>
 						) }
-						<FlexItem isBlock>
+						<Field size="l">
 							<TextControl
 								__next40pxDefaultSize
 								label={ __( 'Description', 'orillacart' ) }
@@ -471,10 +503,10 @@ export function CouponForm( {
 									} )
 								}
 							/>
-						</FlexItem>
-					</Flex>
-					<Flex align="flex-start" wrap>
-						<FlexItem isBlock>
+						</Field>
+					</Row>
+					<Row>
+						<Field size="m">
 							<SelectControl
 								__next40pxDefaultSize
 								label={ __( 'Discount', 'orillacart' ) }
@@ -512,10 +544,10 @@ export function CouponForm( {
 									} );
 								} }
 							/>
-						</FlexItem>
+						</Field>
 						{ fields.kind === 'buy_get' && (
 							<>
-								<FlexItem isBlock>
+								<Field size="xs">
 									<TextControl
 										__next40pxDefaultSize
 										type="number"
@@ -529,8 +561,8 @@ export function CouponForm( {
 											)
 										}
 									/>
-								</FlexItem>
-								<FlexItem isBlock>
+								</Field>
+								<Field size="xs">
 									<TextControl
 										__next40pxDefaultSize
 										type="number"
@@ -544,11 +576,11 @@ export function CouponForm( {
 											)
 										}
 									/>
-								</FlexItem>
+								</Field>
 							</>
 						) }
 						{ fields.kind === 'free_gift' && (
-							<FlexItem isBlock>
+							<Field size="xs">
 								<TextControl
 									__next40pxDefaultSize
 									type="number"
@@ -565,11 +597,11 @@ export function CouponForm( {
 										)
 									}
 								/>
-							</FlexItem>
+							</Field>
 						) }
 						{ fields.kind !== 'free_shipping' &&
 							fields.kind !== 'free_gift' && (
-								<FlexItem isBlock>
+								<Field size="s">
 									<TextControl
 										__next40pxDefaultSize
 										label={ amountLabel( fields.kind ) }
@@ -587,11 +619,11 @@ export function CouponForm( {
 										}
 										required
 									/>
-								</FlexItem>
+								</Field>
 							) }
 						{ ( fields.kind === 'percent' ||
 							fields.kind === 'buy_get' ) && (
-							<FlexItem isBlock>
+							<Field size="s">
 								<TextControl
 									__next40pxDefaultSize
 									label={ __(
@@ -603,9 +635,9 @@ export function CouponForm( {
 										set( 'cap', optional( value ) )
 									}
 								/>
-							</FlexItem>
+							</Field>
 						) }
-					</Flex>
+					</Row>
 					<CheckboxControl
 						label={ __(
 							'Active: customers can use it',
@@ -759,8 +791,8 @@ export function CouponForm( {
 					/>
 
 					<h3>{ __( 'When it holds', 'orillacart' ) }</h3>
-					<Flex align="flex-start" wrap>
-						<FlexItem isBlock>
+					<Row>
+						<Field size="m">
 							<TextControl
 								__next40pxDefaultSize
 								type="datetime-local"
@@ -770,8 +802,8 @@ export function CouponForm( {
 									set( 'starts_at', fromLocal( value ) )
 								}
 							/>
-						</FlexItem>
-						<FlexItem isBlock>
+						</Field>
+						<Field size="m">
 							<TextControl
 								__next40pxDefaultSize
 								type="datetime-local"
@@ -781,10 +813,10 @@ export function CouponForm( {
 									set( 'ends_at', fromLocal( value ) )
 								}
 							/>
-						</FlexItem>
-					</Flex>
-					<Flex align="flex-start" wrap>
-						<FlexItem isBlock>
+						</Field>
+					</Row>
+					<Row>
+						<Field size="s">
 							<TextControl
 								__next40pxDefaultSize
 								label={ __(
@@ -796,8 +828,8 @@ export function CouponForm( {
 									set( 'min_subtotal', optional( value ) )
 								}
 							/>
-						</FlexItem>
-						<FlexItem isBlock>
+						</Field>
+						<Field size="s">
 							<TextControl
 								__next40pxDefaultSize
 								label={ __( 'Largest order', 'orillacart' ) }
@@ -806,8 +838,8 @@ export function CouponForm( {
 									set( 'max_subtotal', optional( value ) )
 								}
 							/>
-						</FlexItem>
-						<FlexItem isBlock>
+						</Field>
+						<Field size="s">
 							<TextControl
 								__next40pxDefaultSize
 								type="number"
@@ -827,37 +859,39 @@ export function CouponForm( {
 									)
 								}
 							/>
-						</FlexItem>
-					</Flex>
-					<FormTokenField
-						__next40pxDefaultSize
-						label={ __(
-							'Only for orders shipped to (country codes, such as BG)',
-							'orillacart'
-						) }
-						value={ fields.countries }
-						onChange={ ( tokens ) =>
-							set(
-								'countries',
-								tokens
-									.map( ( token ) =>
-										( typeof token === 'string'
-											? token
-											: token.value
+						</Field>
+					</Row>
+					<Field size="l">
+						<FormTokenField
+							__next40pxDefaultSize
+							label={ __(
+								'Only for orders shipped to (country codes, such as BG)',
+								'orillacart'
+							) }
+							value={ fields.countries }
+							onChange={ ( tokens ) =>
+								set(
+									'countries',
+									tokens
+										.map( ( token ) =>
+											( typeof token === 'string'
+												? token
+												: token.value
+											)
+												.trim()
+												.toUpperCase()
 										)
-											.trim()
-											.toUpperCase()
-									)
-									.filter( ( code ) =>
-										/^[A-Z]{2}$/.test( code )
-									)
-							)
-						}
-					/>
+										.filter( ( code ) =>
+											/^[A-Z]{2}$/.test( code )
+										)
+								)
+							}
+						/>
+					</Field>
 
 					<h3>{ __( 'Limits', 'orillacart' ) }</h3>
-					<Flex align="flex-start" wrap>
-						<FlexItem isBlock>
+					<Row>
+						<Field size="s">
 							<TextControl
 								__next40pxDefaultSize
 								type="number"
@@ -871,8 +905,8 @@ export function CouponForm( {
 									set( 'usage_limit', count( value ) )
 								}
 							/>
-						</FlexItem>
-						<FlexItem isBlock>
+						</Field>
+						<Field size="s">
 							<TextControl
 								__next40pxDefaultSize
 								type="number"
@@ -892,8 +926,8 @@ export function CouponForm( {
 									set( 'per_customer_limit', count( value ) )
 								}
 							/>
-						</FlexItem>
-					</Flex>
+						</Field>
+					</Row>
 					<CheckboxControl
 						label={ __( 'Show to shoppers', 'orillacart' ) }
 						help={
@@ -940,16 +974,8 @@ export function CouponForm( {
 						checked={ fields.combines }
 						onChange={ ( value ) => set( 'combines', value ) }
 					/>
-					<Button
-						variant="primary"
-						type="submit"
-						isBusy={ busy }
-						disabled={ busy }
-					>
-						{ __( 'Save the coupon', 'orillacart' ) }
-					</Button>
 				</form>
-			</CardBody>
-		</Card>
+			</>
+		</Section>
 	);
 }

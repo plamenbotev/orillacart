@@ -51,7 +51,11 @@ test.describe( 'The admin', () => {
 	} ) => {
 		await removeCoupons( requestUtils );
 		await admin.visitAdminPage( 'admin.php', 'page=orillacart-coupons' );
-		await page.getByRole( 'button', { name: 'Add a coupon' } ).click();
+		// The header's button; the empty state offers one too.
+		await page
+			.locator( 'header' )
+			.getByRole( 'button', { name: 'Add a coupon' } )
+			.click();
 		await page
 			.getByRole( 'textbox', { name: 'Code' } )
 			.fill( 'e2e-spring' );
