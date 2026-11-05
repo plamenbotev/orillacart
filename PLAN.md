@@ -461,7 +461,7 @@ Design 52: one design system, eight menu entries, a home, scannable lists, the o
 | | # | P | Item | Commits |
 |---|---|---|---|---|
 | ✅ | 299 | P1 | A polished admin, step 1 (design 52): the design system in `assets/admin/shared/ui/` (Page, Section, Field sizes, Row, Help, Badge and StatusBadge, EmptyState, Skeleton, Toast with `useSave`, DataTable) with tokens in one `admin.css`; Coupons and Payments on it | dc1158e |
-| ⬜ | 300 | P1 | Step 2: eight menu entries (Home, Orders, Customers, Catalog, Marketing, Reports, Settings, System), tabbed group screens with `&tab=`, Setup out of the menu, add-on pages name their group | |
+| ✅ | 300 | P1 | Step 2: eight menu entries (Home, Orders, Customers, Catalog, Marketing, Reports, Settings, System), tabbed group screens with `&tab=`, Setup out of the menu, add-on pages name their group | f42a4f3 |
 | ⬜ | 301 | P1 | Step 3: Home, with today's figures, the "Needs you" list, recent orders and a slot for add-ons | |
 | ⬜ | 302 | P1 | Step 4: lists with status badges, attention icons, row click, saved views, bulk actions; the customer's card as its own view | |
 | ⬜ | 303 | P1 | Step 5: the order and the customer's card in two columns with a sticky header and the actions in it; items as an editable table; history and notes as one timeline | |
