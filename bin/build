@@ -78,6 +78,8 @@ if [ "$status" -ne 1 ]; then
     exit 1
 fi
 grep -rqE '^namespace OrillaCart\\Vendor\\Symfony\\' "$OUT/vendor" || { echo "No prefixed Symfony code found" >&2; exit 1; }
+# The libraries call trigger_deprecation() by its global name; only the alias makes a deprecation a notice, not a fatal.
+grep -q "function trigger_deprecation()" "$OUT/vendor/scoper-autoload.php" || { echo "scoper-autoload.php does not alias trigger_deprecation()" >&2; exit 1; }
 
 # A prefixed string that still holds a regex back-reference (\1) was a replacement pattern, not a class name.
 status=0; grep -rnE "['\"]OrillaCart\\\\{1,2}Vendor\\\\{1,2}[^'\"]*\\\\[0-9]" "$OUT/vendor" --include='*.php' > "$WORK/mangled.txt" || status=$?

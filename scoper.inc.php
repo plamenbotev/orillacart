@@ -224,4 +224,10 @@ return [
     'expose-global-constants' => false,
     'expose-global-classes' => false,
     'expose-global-functions' => false,
+    // Symfony's deprecation-contracts declares trigger_deprecation() globally and Twig, Symfony and Doctrine call it
+    // unqualified from their namespaces, which PHP resolves to the global name. Prefixed, the declaration moves to
+    // OrillaCart\Vendor and the calls find nothing: the first deprecation a library notices is a fatal error.
+    // Exposing it keeps the declaration prefixed and has scoper-autoload.php declare the global name as an alias
+    // when no other plugin's copy did.
+    'expose-functions' => ['trigger_deprecation'],
 ];

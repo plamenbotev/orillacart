@@ -191,7 +191,7 @@ final class ShopExtension extends AbstractExtension
      */
     public function slot(Environment $twig, string $name, array $arguments = []): string
     {
-        if ($twig->hasExtension(SandboxExtension::class) && $twig->getExtension(SandboxExtension::class)->isSandboxedGlobally() && !str_starts_with($name, 'email_')) {
+        if ($twig->hasExtension(SandboxExtension::class) && $twig->getExtension(SandboxExtension::class)->isSandboxed() && !str_starts_with($name, 'email_')) {
             throw new SecurityNotAllowedFunctionError(\sprintf('An email reaches only the email_ slots, not "%s".', $name), 'slot');
         }
         if (!\function_exists('do_action')) {
