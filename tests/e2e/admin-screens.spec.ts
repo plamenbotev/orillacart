@@ -44,6 +44,39 @@ async function removeCoupons( requestUtils: RequestUtils ) {
 }
 
 test.describe( 'The admin', () => {
+	test( 'opens on Home, with the figures, what needs the shop and the latest orders', async ( {
+		admin,
+		page,
+	} ) => {
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart' );
+
+		await expect(
+			page.getByRole( 'heading', { level: 1, name: 'Home' } )
+		).toBeVisible();
+		await expect(
+			page.getByText( 'Last 7 days', { exact: true } )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'heading', { name: 'Needs you' } )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'heading', { name: 'Latest orders' } )
+		).toBeVisible();
+		// The menu's groups, and no more.
+		await expect(
+			page.locator( '#toplevel_page_orillacart li:visible a' )
+		).toHaveText( [
+			'Home',
+			'Orders',
+			'Customers',
+			'Catalog',
+			'Marketing',
+			'Reports',
+			'Settings',
+			'System',
+		] );
+	} );
+
 	test( 'adds a coupon on the Coupons screen', async ( {
 		admin,
 		page,

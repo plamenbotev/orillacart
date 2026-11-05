@@ -268,8 +268,16 @@ export function OrdersScreen() {
 		[ payments, facets ]
 	);
 	const [ page, setPage ] = useState< OrderPage | null >( null );
-	const [ selected, setSelected ] = useState< number | null >( null );
-	const [ creating, setCreating ] = useState( false );
+	// A link can open one order (?order=165) or the new order form (?new=1): the Home screen's do.
+	const [ selected, setSelected ] = useState< number | null >( () => {
+		const number = Number(
+			new URLSearchParams( window.location.search ).get( 'order' )
+		);
+		return Number.isInteger( number ) && number > 0 ? number : null;
+	} );
+	const [ creating, setCreating ] = useState(
+		() => new URLSearchParams( window.location.search ).get( 'new' ) === '1'
+	);
 	const [ exporting, setExporting ] = useState( false );
 	const [ error, setError ] = useState< string | null >( null );
 	const latest = useLatest();

@@ -18,6 +18,7 @@ use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Home\HomeContributor;
 use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Log;
 use OrillaCart\Extension\Marketing\MailingList;
@@ -98,6 +99,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $assistantTools = [];
     /** @var array<string, ProductBlock> */
     private array $productBlocks = [];
+    /** @var array<string, HomeContributor> */
+    private array $homeContributors = [];
     private bool $collected = false;
     private bool $collecting = false;
     /** @var array<string, true> the action's callbacks when it ran, by priority and key */
@@ -307,6 +310,20 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->productBlocks);
+    }
+
+    public function homeContributor(HomeContributor $contributor): void
+    {
+        if ($this->accepts('home contributor', $contributor->id(), $this->homeContributors[$contributor->id()] ?? null, $contributor)) {
+            $this->homeContributors[$contributor->id()] = $contributor;
+        }
+    }
+
+    public function homeContributors(): array
+    {
+        $this->collect();
+
+        return array_values($this->homeContributors);
     }
 
     public function orders(): Orders

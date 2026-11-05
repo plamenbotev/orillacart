@@ -28,7 +28,8 @@ final class Version
      * whose settings the shop manager can test (TestsSettings). 15: tools for the shop's AI assistant
      * (Assistant\AssistantTool). 16: blocks for product pages, cards and landing pages (Storefront\ProductBlock). 17: products translated by Polylang or
      * WPML (Catalog\ProductLanguages). 18: lines an add-on keeps in the cart, sold as order lines of their type
-     * (Cart\CartLineType), and each OrderLine's type. 19: the customer's email in a PaymentSession.
+     * (Cart\CartLineType), and each OrderLine's type. 19: the customer's email in a PaymentSession. 20: figures and "Needs you" lines on the Home screen
+     * (Home\HomeContributor).
      */
-    public const int CURRENT = 19;
+    public const int CURRENT = 20;
 }

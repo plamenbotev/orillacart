@@ -39,7 +39,7 @@ test.describe( 'The admin', () => {
 		admin,
 		page,
 	} ) => {
-		await admin.visitAdminPage( 'admin.php', 'page=orillacart' );
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart-orders' );
 		await page.getByRole( 'searchbox' ).fill( 'e2e-admin@example.com' );
 		await page.getByRole( 'button', { name: `#${ order }` } ).click();
 
@@ -107,7 +107,7 @@ test.describe( 'The admin', () => {
 			},
 		} );
 
-		await admin.visitAdminPage( 'admin.php', 'page=orillacart' );
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart-orders' );
 		await page.getByRole( 'searchbox' ).fill( 'e2e-admin@example.com' );
 		await page
 			.getByRole( 'button', { name: `#${ second.number }` } )
@@ -134,7 +134,7 @@ test.describe( 'The admin', () => {
 		admin,
 		page,
 	} ) => {
-		await admin.visitAdminPage( 'admin.php', 'page=orillacart' );
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart-orders' );
 		await page.getByRole( 'button', { name: 'Add order' } ).click();
 		await page.getByLabel( 'Email' ).fill( 'e2e-phone@example.com' );
 		await page.getByLabel( 'First name' ).fill( BILLING.first_name );

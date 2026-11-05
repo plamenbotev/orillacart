@@ -34,7 +34,8 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   searches of the orders and products lists, and `products()`; 9 since tax services, order adjusters and
   `orderPrices()`; 10 since e-invoice senders; 11 since gateways naming the account a payment is made in
   (`NamesAccounts`); 12 since mailing lists that delete contacts (`ForgetsSubscribers`); 13 since shipments
-  booked but not collected (`Tracking::BOOKED`); 14 since settings the shop manager can test (`TestsSettings`); 19 since the customer's email in a `PaymentSession`.
+  booked but not collected (`Tracking::BOOKED`); 14 since settings the shop manager can test (`TestsSettings`); 19 since the customer's email in a `PaymentSession`;
+  20 since figures and "Needs you" lines on the Home screen (`Home\HomeContributor`).
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.
@@ -623,6 +624,33 @@ if ($registry->version() >= 17) {
   extension API's other value objects. `orillacart_product_viewed` passes the page's post, which may be a
   translation: take it to `product()` first.
 - **`languages()`** lists the site's content language codes, and is empty when no plugin translates the site.
+
+## The Home screen
+
+Shop → Home shows what the shop did today and this week, what needs the shop manager ("Needs you": orders that
+wait, low stock, failed jobs, status warnings), and the latest orders. An add-on puts its own figures and lines
+there with a `OrillaCart\Extension\Home\HomeContributor`:
+
+```php
+$registry->homeContributor(new class implements OrillaCart\Extension\Home\HomeContributor {
+    public function id(): string { return 'acme_returns'; }
+    public function tiles(): array
+    {
+        return [new OrillaCart\Extension\Home\HomeTile('Returns', '3', 'open', admin_url('admin.php?page=acme-returns'))];
+    }
+    public function needsYou(): array
+    {
+        return [new OrillaCart\Extension\Home\HomeLine('3 returns to accept', admin_url('admin.php?page=acme-returns'), OrillaCart\Extension\Home\HomeLine::WARNING)];
+    }
+});
+```
+
+- `tiles()` gives figures, each a label, the value as text, a line under it and where it leads; they come after
+  the shop's own.
+- `needsYou()` gives lines for what waits now, each with where to act and how pressing it is (`ATTENTION`,
+  `WARNING`, `INFO`); give none when nothing waits, so the list can say "Nothing needs you."
+- Both are asked each time the screen opens: keep them quick. A contributor that throws is logged and left off
+  the screen; the screen still shows.
 
 ## Page slots
 

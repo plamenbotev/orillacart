@@ -55,7 +55,7 @@ try {
 	await admin.click( '#wp-submit' );
 	await admin.waitForURL( /wp-admin/ );
 
-	await admin.goto( `${ SITE }/wp-admin/admin.php?page=orillacart` );
+	await admin.goto( `${ SITE }/wp-admin/admin.php?page=orillacart-orders` );
 	await admin
 		.locator( '.dataviews-view-table, .dataviews-no-results' )
 		.first()

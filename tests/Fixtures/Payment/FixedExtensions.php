@@ -176,4 +176,9 @@ final class FixedExtensions implements InstalledExtensions
     {
         return [];
     }
+
+    public function homeContributors(): array
+    {
+        return [];
+    }
 }

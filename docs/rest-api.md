@@ -1057,6 +1057,14 @@ A new code for a gift card, sent to whom it is for; the old one pays no more.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+## /home
+
+### `GET /home`
+
+The Home screen in one answer: today's and the week's figures, what needs the shop manager, the latest orders, and what add-ons put there; nothing changes.
+
+- Who: shop managers
+
 ## /imports
 
 ### `POST /imports/products`

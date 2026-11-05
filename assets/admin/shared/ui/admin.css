@@ -434,7 +434,86 @@ body.folded .oc-toasts {
 }
 
 /* Fields in a card keep their spacing from each other, and tokens their own */
-[id^="orillacart-admin-"] .oc-section .components-card__body > .components-checkbox-control,
-[id^="orillacart-admin-"] .oc-section .components-card__body > .components-toggle-control {
+[id^="orillacart-admin-"]
+	.oc-section
+	.components-card__body
+	> .components-checkbox-control,
+[id^="orillacart-admin-"]
+	.oc-section
+	.components-card__body
+	> .components-toggle-control {
 	margin-bottom: var(--oc-space-3);
+}
+
+/* Home: the figures as tiles, and what needs the shop manager */
+.oc-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+	gap: var(--oc-space-4);
+	margin: 0 0 var(--oc-space-5);
+}
+
+.oc-tile {
+	display: flex;
+	flex-direction: column;
+	gap: var(--oc-space-1);
+	padding: var(--oc-space-4);
+	border: 1px solid var(--oc-border);
+	border-radius: var(--oc-radius);
+	background: var(--oc-surface);
+	color: var(--oc-text);
+	text-decoration: none;
+}
+
+.oc-tile--link:hover,
+.oc-tile--link:focus-visible {
+	border-color: var(--oc-accent);
+	color: var(--oc-text);
+}
+
+.oc-tile__label {
+	color: var(--oc-text-muted);
+	font-size: 12px;
+}
+
+.oc-tile__value {
+	font-size: 20px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+.oc-tile__detail {
+	color: var(--oc-text-muted);
+	font-size: 12px;
+}
+
+.oc-sparkline {
+	margin-top: var(--oc-space-2);
+	color: var(--oc-accent);
+}
+
+.oc-needs {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.oc-needs__line {
+	display: flex;
+	align-items: center;
+	gap: var(--oc-space-3);
+	padding: var(--oc-space-3) 0;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.oc-needs__line:last-child {
+	border-bottom: 0;
+}
+
+.oc-needs__line a {
+	text-decoration: none;
+}
+
+.oc-needs__line a:hover {
+	text-decoration: underline;
 }

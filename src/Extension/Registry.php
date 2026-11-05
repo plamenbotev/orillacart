@@ -15,6 +15,7 @@ use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Home\HomeContributor;
 use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\FindsOrders;
@@ -118,6 +119,9 @@ interface Registry
 
     /** A block for product pages, product cards and landing pages. Since version 16. */
     public function productBlock(ProductBlock $block): void;
+
+    /** Figures and "Needs you" lines on the Home screen (version 20). */
+    public function homeContributor(HomeContributor $contributor): void;
 
     /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     public function log(): Log;

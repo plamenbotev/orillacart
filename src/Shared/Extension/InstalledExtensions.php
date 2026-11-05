@@ -13,6 +13,7 @@ use OrillaCart\Extension\Catalog\ProductFilter;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Home\HomeContributor;
 use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Marketing\MailingList;
 use OrillaCart\Extension\Order\FindsOrders;
@@ -141,4 +142,11 @@ interface InstalledExtensions
      * @return list<ProductBlock>
      */
     public function productBlocks(): array;
+
+    /**
+     * What add-ons put on the Home screen, by id.
+     *
+     * @return list<HomeContributor>
+     */
+    public function homeContributors(): array;
 }
