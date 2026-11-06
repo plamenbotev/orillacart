@@ -37,6 +37,6 @@ final readonly class EmailsPage implements AdminPage
 
     public function menuOrder(): int
     {
-        return 5;
+        return 8;
     }
 }

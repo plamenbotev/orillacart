@@ -37,6 +37,6 @@ final readonly class PaymentsPage implements AdminPage
 
     public function menuOrder(): int
     {
-        return 4;
+        return 7;
     }
 }

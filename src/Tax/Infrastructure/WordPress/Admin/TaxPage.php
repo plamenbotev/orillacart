@@ -37,6 +37,6 @@ final readonly class TaxPage implements AdminPage
 
     public function menuOrder(): int
     {
-        return 2;
+        return 5;
     }
 }

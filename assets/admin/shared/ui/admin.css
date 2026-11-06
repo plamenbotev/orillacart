@@ -190,6 +190,16 @@
 }
 
 /* Fields: a width that says what goes in, side by side in a row */
+/*
+ * A field's size narrows the control, not its label or help: a 7rem input reads as a count, but its help is a
+ * sentence and takes the row. Controls outside a Field are bounded too, at "l", so nothing spans the page unless it
+ * says "full".
+ */
+.oc-section,
+.oc-field {
+	--oc-field-width: var(--oc-field-l);
+}
+
 .oc-field {
 	min-width: 0;
 	max-width: 100%;
@@ -197,23 +207,41 @@
 }
 
 .oc-field--xs {
-	width: var(--oc-field-xs);
+	--oc-field-width: var(--oc-field-xs);
 }
 
 .oc-field--s {
-	width: var(--oc-field-s);
+	--oc-field-width: var(--oc-field-s);
 }
 
 .oc-field--m {
-	width: var(--oc-field-m);
+	--oc-field-width: var(--oc-field-m);
 }
 
 .oc-field--l {
-	width: var(--oc-field-l);
+	--oc-field-width: var(--oc-field-l);
 }
 
 .oc-field--full {
+	--oc-field-width: 100%;
 	width: 100%;
+}
+
+:is(.oc-section, .oc-field)
+	:is(
+		.components-text-control__input,
+		.components-textarea-control__input,
+		.components-input-control__container,
+		.components-combobox-control__suggestions-container,
+		.components-form-token-field__input-container
+	) {
+	max-width: var(--oc-field-width);
+}
+
+/* A table's inputs fill their cells */
+.oc-table
+	:is(.components-text-control__input, .components-input-control__container) {
+	max-width: none;
 }
 
 .oc-field .components-base-control,
@@ -221,15 +249,36 @@
 	margin-bottom: 0;
 }
 
+/* Help reads as a sentence, however wide the row */
+:is(.oc-section, .oc-field) .components-base-control__help {
+	max-width: 64ch;
+}
+
+/* Controls outside a Field keep their distance too, radio groups included */
+.oc-section .components-card__body > .components-base-control,
+.oc-section .components-card__body > fieldset.components-radio-control {
+	margin-bottom: var(--oc-space-4);
+}
+
 .oc-row {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-start;
-	gap: 0 var(--oc-space-4);
+	gap: 0 var(--oc-space-5);
+}
+
+/* In a row, a field is as wide as its control; one with help spreads out so the help can be read */
+.oc-row > .oc-field {
+	flex: 0 1 var(--oc-field-width);
+}
+
+.oc-row > .oc-field:has(.components-base-control__help),
+.oc-row > .oc-field--full {
+	flex: 1 1 var(--oc-field-width);
 }
 
 .oc-row > .oc-field--full {
-	flex: 1 1 var(--oc-field-s);
+	flex-basis: var(--oc-field-s);
 	width: auto;
 }
 
@@ -431,18 +480,6 @@ body.folded .oc-toasts {
 /* Numbers that line up */
 .oc-num {
 	font-variant-numeric: tabular-nums;
-}
-
-/* Fields in a card keep their spacing from each other, and tokens their own */
-[id^="orillacart-admin-"]
-	.oc-section
-	.components-card__body
-	> .components-checkbox-control,
-[id^="orillacart-admin-"]
-	.oc-section
-	.components-card__body
-	> .components-toggle-control {
-	margin-bottom: var(--oc-space-3);
 }
 
 /* Home: the figures as tiles, and what needs the shop manager */
@@ -692,4 +729,32 @@ body.folded .oc-toasts {
 
 .oc-save-bar__hint {
 	color: var(--oc-text-muted);
+}
+
+/* Buttons side by side in a section's body */
+.oc-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--oc-space-2);
+}
+
+/* A field holding a button beside inputs with labels: the button sits on the inputs' line */
+.oc-field--aligned {
+	padding-top: 24px;
+}
+
+.oc-muted {
+	color: var(--oc-text-muted);
+}
+
+.oc-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	border: 0;
 }

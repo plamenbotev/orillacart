@@ -1,8 +1,5 @@
 import {
 	Button,
-	Card,
-	CardBody,
-	CardHeader,
 	Notice,
 	SelectControl,
 	TextControl,
@@ -17,7 +14,7 @@ import {
 	type DownloadDelivery,
 	fetchDownloadDelivery,
 } from './delivery';
-import { Skeleton } from '../shared/ui';
+import { Field, notify, Section, Skeleton } from '../shared/ui';
 
 const METHODS: { value: DeliveryMethod; label: string }[] = [
 	{
@@ -39,9 +36,9 @@ const METHODS: { value: DeliveryMethod; label: string }[] = [
 
 /**
  * How bought files are sent: by PHP, or by the web server once PHP has checked the link. A method is kept only
- * after a test file went through it.
+ * after a test file went through it, so its button tests rather than saves.
  */
-export function DownloadDeliveryCard() {
+export function DownloadDeliverySection() {
 	const [ delivery, setDelivery ] = useState< DownloadDelivery | null >(
 		null
 	);
@@ -70,7 +67,12 @@ export function DownloadDeliveryCard() {
 		setTesting( true );
 		setError( null );
 		changeDownloadDelivery( method, prefix )
-			.then( show )
+			.then( ( result ) => {
+				show( result );
+				if ( result.works ) {
+					notify( __( 'Downloads go this way now.', 'orillacart' ) );
+				}
+			} )
 			.catch( ( failure: unknown ) =>
 				setError( errorMessage( failure ) )
 			)
@@ -78,31 +80,37 @@ export function DownloadDeliveryCard() {
 	};
 
 	return (
-		<Card className="orillacart-settings-card">
-			<CardHeader>
-				<h2>{ __( 'Sending downloads', 'orillacart' ) }</h2>
-			</CardHeader>
-			<CardBody>
-				{ error !== null && (
-					<Notice status="error" isDismissible={ false }>
-						{ error }
-					</Notice>
-				) }
-				{ delivery === null ? (
-					error === null && (
-						<Skeleton
-							lines={ 3 }
-							widths={ [ '60%', '90%', '40%' ] }
-						/>
-					)
-				) : (
-					<>
-						<p>
-							{ __(
-								'The web server can send bought files once the shop has checked the link, which frees PHP during long downloads. A way is kept only after a test file went through it.',
-								'orillacart'
-							) }
-						</p>
+		<Section
+			title={ __( 'Sending downloads', 'orillacart' ) }
+			description={ __(
+				'The web server can send bought files once the shop has checked the link, which frees PHP during long downloads. A way is kept only after a test file went through it.',
+				'orillacart'
+			) }
+			footer={
+				delivery !== null && (
+					<Button
+						variant="primary"
+						isBusy={ testing }
+						disabled={ testing }
+						onClick={ test }
+					>
+						{ __( 'Test and use', 'orillacart' ) }
+					</Button>
+				)
+			}
+		>
+			{ error !== null && (
+				<Notice status="error" isDismissible={ false }>
+					{ error }
+				</Notice>
+			) }
+			{ delivery === null ? (
+				error === null && (
+					<Skeleton lines={ 3 } widths={ [ '60%', '90%', '40%' ] } />
+				)
+			) : (
+				<>
+					<Field size="l">
 						<SelectControl
 							__next40pxDefaultSize
 							label={ __( 'Who sends the files', 'orillacart' ) }
@@ -112,7 +120,9 @@ export function DownloadDeliveryCard() {
 								setMethod( value as DeliveryMethod )
 							}
 						/>
-						{ method === 'x_accel_redirect' && (
+					</Field>
+					{ method === 'x_accel_redirect' && (
+						<Field size="m">
 							<TextControl
 								__next40pxDefaultSize
 								label={ __(
@@ -126,34 +136,24 @@ export function DownloadDeliveryCard() {
 								value={ prefix }
 								onChange={ setPrefix }
 							/>
-						) }
-						{ delivery.works !== null && (
-							<Notice
-								status={
-									delivery.works ? 'success' : 'warning'
-								}
-								isDismissible={ false }
-							>
-								{ delivery.message }
-							</Notice>
-						) }
-						{ delivery.works === false &&
-							delivery.server_rule !== '' && (
-								<pre className="orillacart-server-rule">
-									{ delivery.server_rule }
-								</pre>
-							) }
-						<Button
-							variant="primary"
-							isBusy={ testing }
-							disabled={ testing }
-							onClick={ test }
+						</Field>
+					) }
+					{ delivery.works !== null && (
+						<Notice
+							status={ delivery.works ? 'success' : 'warning' }
+							isDismissible={ false }
 						>
-							{ __( 'Test and use', 'orillacart' ) }
-						</Button>
-					</>
-				) }
-			</CardBody>
-		</Card>
+							{ delivery.message }
+						</Notice>
+					) }
+					{ delivery.works === false &&
+						delivery.server_rule !== '' && (
+							<pre className="orillacart-server-rule">
+								{ delivery.server_rule }
+							</pre>
+						) }
+				</>
+			) }
+		</Section>
 	);
 }

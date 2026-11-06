@@ -6,7 +6,7 @@ import {
 	SelectControl,
 	TextControl,
 } from '@wordpress/components';
-import { Fragment, useEffect, useState } from '@wordpress/element';
+import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 import type { FormEvent } from 'react';
 
@@ -18,16 +18,13 @@ import {
 } from '../shared/api';
 import { fetchCountries, type Country } from '../shared/geography';
 import { LocationFields } from '../shared/LocationFields';
-import { ArchiveCard } from './ArchiveCard';
-import { CurrenciesCard } from './CurrenciesCard';
-import { DownloadDeliveryCard } from './DownloadDeliveryCard';
-import { FiltersCard } from './FiltersCard';
-import { InvoicesCard } from './InvoicesCard';
-import { ReviewsCard } from './ReviewsCard';
-import { SearchEngineCard } from './SearchEngineCard';
-import { LegalCard } from './LegalCard';
-import { ShopPagesCard } from './ShopPagesCard';
-import { StorefrontCard } from './StorefrontCard';
+import { CurrenciesSection } from './CurrenciesSection';
+import { SettingsFileSection } from './SettingsFileSection';
+import {
+	type CurrencySettings,
+	fetchCurrencies,
+	saveCurrencies,
+} from './currencies';
 import {
 	fetchSettings,
 	saveSettings,
@@ -93,23 +90,33 @@ export function SettingsScreen() {
 	const [ settings, setSettings ] = useState< Settings | null >( null );
 	const [ countries, setCountries ] = useState< Country[] >( [] );
 	const [ form, setForm ] = useState< SettingsInput | null >( null );
+	/** The other currencies as saved, and as the form holds them: part of this form, saved with it. */
+	const [ currencies, setCurrencies ] = useState< CurrencySettings | null >(
+		null
+	);
+	const [ offered, setOffered ] = useState< CurrencySettings | null >( null );
 	const [ violations, setViolations ] = useState< Violation[] >( [] );
 	const [ status, setStatus ] = useState< Status >( { kind: 'idle' } );
 	// Counts the settings files imported: each loads the screen's settings anew, so a save after it does not put
 	// back what the file changed.
 	const [ imports, setImports ] = useState( 0 );
-	useUnsavedChanges(
-		form !== null &&
+	const dirty =
+		( form !== null &&
 			settings !== null &&
-			differs( form, settingsInput( settings ) )
-	);
+			differs( form, settingsInput( settings ) ) ) ||
+		( offered !== null &&
+			currencies !== null &&
+			differs( offered, currencies, [ 'rate' ] ) );
+	useUnsavedChanges( dirty );
 
 	useEffect( () => {
-		Promise.all( [ fetchSettings(), fetchCountries() ] )
-			.then( ( [ loaded, list ] ) => {
+		Promise.all( [ fetchSettings(), fetchCountries(), fetchCurrencies() ] )
+			.then( ( [ loaded, list, others ] ) => {
 				setSettings( loaded );
 				setCountries( list );
 				setForm( settingsInput( loaded ) );
+				setCurrencies( others );
+				setOffered( others );
 			} )
 			.catch( ( error: unknown ) =>
 				setStatus( {
@@ -135,9 +142,17 @@ export function SettingsScreen() {
 		setStatus( { kind: 'saving' } );
 		setViolations( [] );
 		saveSettings( form )
-			.then( ( saved ) => {
+			.then( async ( saved ) => {
 				setSettings( saved );
 				setForm( settingsInput( saved ) );
+				if (
+					offered !== null &&
+					differs( offered, currencies, [ 'rate' ] )
+				) {
+					const others = await saveCurrencies( offered );
+					setCurrencies( others );
+					setOffered( others );
+				}
 				setStatus( { kind: 'saved' } );
 				notify( __( 'Settings saved.', 'orillacart' ) );
 			} )
@@ -318,6 +333,15 @@ export function SettingsScreen() {
 							</Field>
 						</Row>
 					</Section>
+					{ offered !== null && (
+						<CurrenciesSection
+							currency={ form.currency }
+							offered={ offered.offered }
+							onChange={ ( list ) =>
+								setOffered( { offered: list } )
+							}
+						/>
+					) }
 					<Section
 						title={ __( 'Where the shop is', 'orillacart' ) }
 						description={ __(
@@ -663,27 +687,13 @@ export function SettingsScreen() {
 			) }
 			{ form !== null && settings !== null && (
 				<SaveBar
-					dirty={ differs( form, settingsInput( settings ) ) }
+					dirty={ dirty }
 					busy={ status.kind === 'saving' }
 					form="orillacart-settings"
 					label={ __( 'Save settings', 'orillacart' ) }
 				/>
 			) }
-			{ /* Drawn anew after an import: each card loads what the file put in. */ }
-			<Fragment key={ imports }>
-				{ settings !== null && (
-					<CurrenciesCard currency={ settings.currency } />
-				) }
-				<ShopPagesCard />
-				<LegalCard />
-				<InvoicesCard />
-				<ReviewsCard />
-				<StorefrontCard />
-				<DownloadDeliveryCard />
-				<FiltersCard />
-				<SearchEngineCard />
-			</Fragment>
-			<ArchiveCard
+			<SettingsFileSection
 				onImported={ () => setImports( ( count ) => count + 1 ) }
 			/>
 		</Page>

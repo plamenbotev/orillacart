@@ -37,6 +37,6 @@ final readonly class FormsPage implements AdminPage
 
     public function menuOrder(): int
     {
-        return 6;
+        return 9;
     }
 }

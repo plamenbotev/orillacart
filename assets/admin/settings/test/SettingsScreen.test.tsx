@@ -1,200 +1,34 @@
 import '@testing-library/jest-dom';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
 import { SettingsScreen } from '../SettingsScreen';
 import { lastWrite } from '../../shared/testing';
 import { hasUnsavedChanges } from '../../shared/useUnsavedChanges';
-import { forgetContentLanguages } from '../../shared/Translations';
+import { serve as serveAll, stored } from '../testing';
 
 jest.mock( '@wordpress/api-fetch' );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
 
 // Notices also announce their text in a screen reader live region; look in the notice itself.
 const NOTICE = { selector: '.components-notice__content' };
-
-const stored = {
-	currency: 'EUR',
-	price_decimals: 2,
-	fewer_decimals: null,
-	currency_decimals: 2,
-	weight_unit: 'kg',
-	dimension_unit: 'cm',
-	shop_country: null,
-	shop_state: null,
-	shop_postcode: null,
-	currency_sign: '€',
-	currency_position: 'after_space',
-	catalog_only: false,
-	hide_prices: false,
-	show_lowest_price: false,
-	sell_to: [ 'BG' ],
-	weight_units: [ 'kg', 'g', 'lb', 'oz' ],
-	dimension_units: [ 'cm', 'm', 'mm', 'in' ],
-	currency_positions: [ 'before', 'before_space', 'after', 'after_space' ],
-};
-
-const pages = { shop: 9, cart: 10, checkout: null, account: null };
-
-const countries = [
-	{ code: 'BG', name: 'Bulgaria', in_eu: true, has_states: false },
-	{ code: 'US', name: 'United States', in_eu: false, has_states: true },
-];
+const TOAST = { selector: '.components-snackbar__content' };
 
 /**
- * Answers GET requests by path; PUT requests get the given answer.
+ * Answers the screen's requests; PUT /settings gets the given answer.
  *
  * @param save What PUT /settings resolves or rejects with.
  */
 function serve( save?: () => Promise< unknown > ) {
-	mockedFetch.mockImplementation( ( options ) => {
-		const { path, method } = options as { path: string; method?: string };
-		if ( path === '/orillacart/v1/download-delivery' ) {
-			return Promise.resolve(
-				method === 'PUT'
-					? {
-							method: 'php',
-							internal_prefix: '/orillacart-files/',
-							works: false,
-							message:
-								'The web server did not send the test file.',
-							server_rule: 'XSendFilePath /srv/downloads',
-						}
-					: {
-							method: 'php',
-							internal_prefix: '/orillacart-files/',
-							works: null,
-							message: '',
-							server_rule: '',
-						}
-			);
-		}
-		if ( path.startsWith( '/orillacart/v1/search-engine' ) ) {
-			return Promise.resolve( {
-				engine: method === 'PUT' ? 'opensearch' : 'database',
-				host: method === 'PUT' ? 'https://search.test:9200' : '',
-				username: '',
-				password_set: false,
-				index: 'orillacart',
-				ready: false,
-				due: method === 'PUT' ? 12 : 0,
-				later: 1,
-				parked: {},
-				next_at: null,
-				works: method === 'PUT' ? true : null,
-				message:
-					method === 'PUT'
-						? 'OpenSearch answered. 12 products are being indexed there.'
-						: '',
-				workers: 0,
-			} );
-		}
-		if ( path.startsWith( '/orillacart/v1/search-filters' ) ) {
-			if ( path.endsWith( '/attributes' ) ) {
-				return Promise.resolve( [ 'Colour', 'Size' ] );
-			}
-			return Promise.resolve(
-				method === 'POST'
-					? { id: 2, ...( options as { data: object } ).data }
-					: [
-							{
-								id: 1,
-								label: 'Size',
-								key: 'size',
-								attributes: [ 'Size', 'Размер' ],
-								position: 0,
-							},
-						]
-			);
-		}
-		if ( method === 'PUT' && save ) {
-			return save();
-		}
-		if ( path === '/orillacart/v1/countries' ) {
-			return Promise.resolve( countries );
-		}
-		if ( path === '/orillacart/v1/shop-pages' ) {
-			return Promise.resolve( pages );
-		}
-		if ( path === '/orillacart/v1/legal-settings' ) {
-			return Promise.resolve( {
-				terms: null,
-				withdrawal: null,
-				delivery: null,
-				legal_notice: null,
-				withdrawal_form: null,
-				accept_terms: false,
-				order_button: 'place_order',
-				order_buttons: [ 'place_order', 'buy_now', 'order_and_pay' ],
-				...( method === 'PUT'
-					? ( options as { data: object } ).data
-					: {} ),
-			} );
-		}
-		if ( path === '/orillacart/v1/invoice-settings' ) {
-			return Promise.resolve( {
-				legal_name: '',
-				address: '',
-				vat_number: '',
-				company_number: '',
-				bank_details: '',
-				footer: '',
-				invoice_prefix: 'INV-',
-				credit_note_prefix: 'CN-',
-				yearly: true,
-				attach_to_emails: true,
-				e_invoices: 'none',
-				phone: '',
-				email: '',
-				peppol_id: '',
-			} );
-		}
-		if ( path === '/orillacart/v1/storefront-settings' ) {
-			return Promise.resolve( {
-				structured_data: true,
-				sharing_tags: 'auto',
-				wishlist: 'guests',
-				recently_viewed: true,
-				data_layer: false,
-				hide_single_value_filters: true,
-				list_untranslated: true,
-				notice: false,
-				notice_text: '',
-				notice_link: '',
-				notice_link_label: '',
-				notice_dismissible: true,
-				// PHP's empty array.
-				notice_translations: [],
-			} );
-		}
-		if ( path === '/orillacart/v1/currencies' ) {
-			return Promise.resolve( {
-				offered: [
-					{ code: 'USD', rate: '1.08', rounding: 'decimals' },
-				],
-			} );
-		}
-		if ( path === '/orillacart/v1/review-settings' ) {
-			return Promise.resolve( { policy: 'anyone' } );
-		}
-		if ( path.startsWith( '/wp/v2/pages' ) ) {
-			return Promise.resolve( [
-				{ id: 9, title: { rendered: 'Shop' } },
-				{ id: 10, title: { rendered: 'Cart &amp; more' } },
-			] );
-		}
-		if ( path === '/orillacart/v1/countries/US/states' ) {
-			return Promise.resolve( [
-				{ code: 'CA', name: 'California' },
-				{ code: 'NY', name: 'New York' },
-			] );
-		}
-		return Promise.resolve( stored );
-	} );
+	serveAll( mockedFetch, [], ( { path, method } ) =>
+		save && method === 'PUT' && path === '/orillacart/v1/settings'
+			? save()
+			: undefined
+	);
 }
 
-// The whole Settings screen renders in each test, and role queries over it are slow in jsdom: a busy CI
+// The whole General screen renders in each test, and role queries over it are slow in jsdom: a busy CI
 // runner took over Jest's default 5 seconds.
 jest.setTimeout( 15000 );
 
@@ -235,9 +69,7 @@ describe( 'SettingsScreen', () => {
 		);
 
 		expect(
-			await screen.findByText( 'Settings saved.', {
-				selector: '.components-snackbar__content',
-			} )
+			await screen.findByText( 'Settings saved.', TOAST )
 		).toBeVisible();
 		expect( mockedFetch ).toHaveBeenLastCalledWith( {
 			path: '/orillacart/v1/settings',
@@ -258,21 +90,64 @@ describe( 'SettingsScreen', () => {
 				sell_to: [ 'BG' ],
 			},
 		} );
-		// Many fields to type, on a screen of many cards: slower than most when the machine is busy.
-	}, 15000 );
+	} );
+
+	it( 'saves the other currencies with the settings, only when they changed', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
+
+		await screen.findByLabelText( 'Currency' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save settings' } )
+		);
+		await screen.findByText( 'Settings saved.', TOAST );
+		expect(
+			mockedFetch.mock.calls.filter(
+				( [ request ] ) =>
+					( request as { path: string } ).path ===
+						'/orillacart/v1/currencies' &&
+					( request as { method?: string } ).method === 'PUT'
+			)
+		).toHaveLength( 0 );
+
+		const rate = screen.getByLabelText( '1 EUR is … USD' );
+		await user.clear( rate );
+		await user.type( rate, '1,10' );
+		expect( hasUnsavedChanges() ).toBe( true );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save settings' } )
+		);
+
+		await waitFor( () =>
+			expect( lastWrite( mockedFetch ) ).toEqual( {
+				path: '/orillacart/v1/currencies',
+				method: 'PUT',
+				data: {
+					offered: [
+						{ code: 'USD', rate: '1.10', rounding: 'decimals' },
+					],
+				},
+			} )
+		);
+		await waitFor( () => expect( hasUnsavedChanges() ).toBe( false ) );
+	} );
 
 	it( 'loads the settings anew after a file is imported, so a save does not put the old ones back', async () => {
 		let current = stored;
-		serve( () => {
-			current = { ...stored, currency: 'USD' };
-			return Promise.resolve( { imported: [ 'general' ], refused: {} } );
+		serveAll( mockedFetch, [], ( { path, method } ) => {
+			if ( path === '/orillacart/v1/settings' && method === undefined ) {
+				return Promise.resolve( current );
+			}
+			if ( path === '/orillacart/v1/settings-archive' ) {
+				current = { ...stored, currency: 'USD' };
+				return Promise.resolve( {
+					imported: [ 'general' ],
+					refused: {},
+				} );
+			}
+			return undefined;
 		} );
-		const fetchSettings = mockedFetch.getMockImplementation();
-		mockedFetch.mockImplementation( ( options ) =>
-			( options as { path: string } ).path === '/orillacart/v1/settings'
-				? Promise.resolve( current )
-				: ( fetchSettings as typeof apiFetch )( options )
-		);
 		const user = userEvent.setup();
 		render( <SettingsScreen /> );
 
@@ -291,50 +166,25 @@ describe( 'SettingsScreen', () => {
 		);
 
 		expect(
-			await screen.findByText( 'Imported: general.', NOTICE )
+			await screen.findByText( 'Imported: general.', TOAST )
 		).toBeVisible();
 		await waitFor( () =>
 			expect( screen.getByLabelText( 'Currency' ) ).toHaveValue( 'USD' )
 		);
 	} );
 
-	it.each( [
-		[ 'Currencies', 'Offered currency', 'GBP' ],
-		[ 'Invoices', 'Legal name', 'Lamp Shop Ltd' ],
-	] )(
-		'asks before leaving the page with the %s card changed',
-		async ( _card, label, typed ) => {
-			serve();
-			const user = userEvent.setup();
-			render( <SettingsScreen /> );
+	it( 'asks before leaving the page with a currency changed', async () => {
+		serve();
+		const user = userEvent.setup();
+		render( <SettingsScreen /> );
 
-			const field = await screen.findByLabelText( label );
-			expect( hasUnsavedChanges() ).toBe( false );
-			await user.clear( field );
-			await user.type( field, typed );
+		const field = await screen.findByLabelText( 'Offered currency' );
+		expect( hasUnsavedChanges() ).toBe( false );
+		await user.clear( field );
+		await user.type( field, 'GBP' );
 
-			expect( hasUnsavedChanges() ).toBe( true );
-		}
-	);
-
-	it.each( [
-		[ 'Shop pages', 'Shop', '' ],
-		[ 'Legal', 'The order button says', 'buy_now' ],
-	] )(
-		'asks before leaving the page with the %s card changed',
-		async ( _card, label, chosen ) => {
-			serve();
-			const user = userEvent.setup();
-			render( <SettingsScreen /> );
-
-			await screen.findByLabelText( 'Currency' );
-			const select = await screen.findByLabelText( label );
-			await waitFor( () => expect( hasUnsavedChanges() ).toBe( false ) );
-			await user.selectOptions( select, chosen );
-
-			expect( hasUnsavedChanges() ).toBe( true );
-		}
-	);
+		expect( hasUnsavedChanges() ).toBe( true );
+	} );
 
 	it( 'offers the states of the shop country', async () => {
 		serve( () => Promise.resolve( stored ) );
@@ -404,319 +254,12 @@ describe( 'SettingsScreen', () => {
 
 		render( <SettingsScreen /> );
 
-		// Every card says so: the settings, the shop pages, the legal pages, the invoices, reviews, sharing, the
-		// downloads, filters and search.
+		// Once, for the page: the general settings and the currencies load together.
 		expect(
 			await screen.findAllByText(
 				'You are not allowed to do this.',
 				NOTICE
 			)
-		).toHaveLength( 9 );
-	} );
-
-	it( 'saves the page each part of the shop is on', async () => {
-		const save = jest.fn( () =>
-			Promise.resolve( { ...pages, checkout: 10, cart: null } )
-		);
-		serve( save );
-		const user = userEvent.setup();
-		render( <SettingsScreen /> );
-
-		const cart = await screen.findByRole( 'combobox', { name: 'Cart' } );
-		expect( cart ).toHaveDisplayValue( 'Cart & more' );
-		await user.selectOptions( cart, '' );
-		await user.selectOptions(
-			screen.getByRole( 'combobox', { name: 'Checkout' } ),
-			'10'
-		);
-		await user.click(
-			screen.getByRole( 'button', { name: 'Save shop pages' } )
-		);
-
-		expect(
-			await screen.findByText( 'Shop pages saved.', NOTICE )
-		).toBeVisible();
-		expect( mockedFetch ).toHaveBeenCalledWith( {
-			path: '/orillacart/v1/shop-pages',
-			method: 'PUT',
-			data: { shop: 9, cart: null, checkout: 10, account: null },
-		} );
-	} );
-
-	it( 'chooses the legal pages and what checkout asks', async () => {
-		serve();
-		const user = userEvent.setup();
-		render( <SettingsScreen /> );
-
-		await user.selectOptions(
-			await screen.findByRole( 'combobox', { name: 'Terms of sale' } ),
-			'10'
-		);
-		await user.click(
-			screen.getByRole( 'checkbox', {
-				name: 'Checkout asks customers to accept the terms of sale',
-			} )
-		);
-		await user.selectOptions(
-			screen.getByRole( 'combobox', { name: 'The order button says' } ),
-			'buy_now'
-		);
-		await user.click(
-			screen.getByRole( 'button', { name: 'Save legal settings' } )
-		);
-
-		expect(
-			await screen.findByText( 'Legal settings saved.', NOTICE )
-		).toBeVisible();
-		expect( lastWrite( mockedFetch ) ).toEqual( {
-			path: '/orillacart/v1/legal-settings',
-			method: 'PUT',
-			data: {
-				terms: 10,
-				withdrawal: null,
-				delivery: null,
-				legal_notice: null,
-				withdrawal_form: null,
-				accept_terms: true,
-				order_button: 'buy_now',
-			},
-		} );
-	} );
-
-	it( 'keeps the way downloads are sent only when the test file went through', async () => {
-		serve();
-		const user = userEvent.setup();
-		render( <SettingsScreen /> );
-
-		await user.selectOptions(
-			await screen.findByRole( 'combobox', {
-				name: 'Who sends the files',
-			} ),
-			'x_sendfile'
-		);
-		await user.click(
-			screen.getByRole( 'button', { name: 'Test and use' } )
-		);
-
-		expect(
-			await screen.findByText(
-				'The web server did not send the test file.',
-				NOTICE
-			)
-		).toBeVisible();
-		expect(
-			screen.getByText( 'XSendFilePath /srv/downloads' )
-		).toBeVisible();
-		expect( lastWrite( mockedFetch ) ).toEqual( {
-			path: '/orillacart/v1/download-delivery',
-			method: 'PUT',
-			data: {
-				method: 'x_sendfile',
-				internal_prefix: '/orillacart-files/',
-			},
-		} );
-	} );
-
-	it( 'adds a filter over attributes by name, its key made from its label', async () => {
-		serve();
-		const user = userEvent.setup();
-		render( <SettingsScreen /> );
-
-		expect( await screen.findByText( 'f[size]' ) ).toBeVisible();
-		expect( screen.getByText( 'Size, Размер' ) ).toBeVisible();
-		await user.click(
-			screen.getByRole( 'button', { name: 'Add filter' } )
-		);
-		const dialog = within( await screen.findByRole( 'dialog' ) );
-		await user.type( dialog.getByLabelText( 'Label' ), 'Colour' );
-		expect( dialog.getByLabelText( 'Key in the address' ) ).toHaveValue(
-			'colour'
-		);
-		await user.type(
-			dialog.getByLabelText( 'Attributes it covers' ),
-			'Colour{Enter}'
-		);
-		await user.click(
-			dialog.getByRole( 'button', { name: 'Save filter' } )
-		);
-
-		expect(
-			await screen.findByText( 'Filter added.', {
-				selector: '.components-notice__content',
-			} )
-		).toBeVisible();
-		expect( lastWrite( mockedFetch ) ).toEqual( {
-			path: '/orillacart/v1/search-filters',
-			method: 'POST',
-			data: {
-				label: 'Colour',
-				key: 'colour',
-				attributes: [ 'Colour' ],
-				position: 1,
-				translations: {},
-			},
-		} );
-	} );
-
-	it( 'checks OpenSearch before switching to it', async () => {
-		serve();
-		const user = userEvent.setup();
-		render( <SettingsScreen /> );
-
-		await user.selectOptions(
-			await screen.findByLabelText( 'Search with' ),
-			'opensearch'
-		);
-		await user.type(
-			screen.getByLabelText( 'Address' ),
-			'https://search.test:9200'
-		);
-		await user.click(
-			screen.getByRole( 'button', { name: 'Check and switch' } )
-		);
-
-		expect(
-			await screen.findByText(
-				'OpenSearch answered. 12 products are being indexed there.',
-				NOTICE
-			)
-		).toBeVisible();
-		expect( lastWrite( mockedFetch ) ).toEqual( {
-			path: '/orillacart/v1/search-engine',
-			method: 'PUT',
-			data: {
-				engine: 'opensearch',
-				host: 'https://search.test:9200',
-				username: '',
-				password: '',
-				index: 'orillacart',
-				clear_password: false,
-			},
-		} );
-		expect(
-			screen.getByText(
-				'OpenSearch’s index is being built; the shop searches its database until it is.'
-			)
-		).toBeVisible();
-	} );
-
-	it( 'lists untranslated products as the owner chooses, on a site in several languages', async () => {
-		serve();
-		const served = mockedFetch.getMockImplementation();
-		mockedFetch.mockImplementation( ( options ) =>
-			( options as { path: string } ).path ===
-			'/orillacart/v1/content-languages'
-				? Promise.resolve( [
-						{
-							code: 'en',
-							locale: 'en_US',
-							name: 'English',
-							default: true,
-						},
-						{
-							code: 'de',
-							locale: 'de_DE',
-							name: 'Deutsch',
-							default: false,
-						},
-					] )
-				: served!( options )
-		);
-		forgetContentLanguages();
-		const user = userEvent.setup();
-		render( <SettingsScreen /> );
-
-		await user.click(
-			await screen.findByLabelText(
-				'List products not translated into the language shown'
-			)
-		);
-
-		expect( lastWrite( mockedFetch ) ).toMatchObject( {
-			path: '/orillacart/v1/storefront-settings',
-			method: 'PUT',
-			data: { list_untranslated: false },
-		} );
-	} );
-
-	it( 'has nothing to choose about translations on a site in one language', async () => {
-		serve();
-		forgetContentLanguages();
-		render( <SettingsScreen /> );
-
-		expect(
-			await screen.findByLabelText(
-				'Leave out a shop filter with a single value'
-			)
-		).toBeVisible();
-		expect(
-			screen.queryByLabelText(
-				'List products not translated into the language shown'
-			)
-		).not.toBeInTheDocument();
-	} );
-
-	it( 'saves the store notice with its own button, in each language, with the other settings as they are', async () => {
-		serve();
-		const served = mockedFetch.getMockImplementation();
-		mockedFetch.mockImplementation( ( options ) =>
-			( options as { path: string } ).path ===
-			'/orillacart/v1/content-languages'
-				? Promise.resolve( [
-						{
-							code: 'en',
-							locale: 'en_US',
-							name: 'English',
-							default: true,
-						},
-						{
-							code: 'de',
-							locale: 'de_DE',
-							name: 'Deutsch',
-							default: false,
-						},
-					] )
-				: served!( options )
-		);
-		forgetContentLanguages();
-		const user = userEvent.setup();
-		render( <SettingsScreen /> );
-
-		const save = await screen.findByRole( 'button', {
-			name: 'Save notice',
-		} );
-		expect( save ).toHaveAttribute( 'aria-disabled', 'true' );
-		await user.click(
-			screen.getByLabelText( 'Show a notice over the shop’s pages' )
-		);
-		// Pasted whole: each typed key re-renders the whole screen, too slow for a busy CI runner.
-		await user.click( screen.getByLabelText( 'Notice' ) );
-		await user.paste( 'Free delivery this week' );
-		await user.click( await screen.findByLabelText( 'Notice in Deutsch' ) );
-		await user.paste( 'Kostenlose Lieferung' );
-		await user.type( screen.getByLabelText( 'Link' ), '/sale' );
-		await user.click( screen.getByLabelText( 'Shoppers may close it' ) );
-		expect( lastWrite( mockedFetch ) ).toBeUndefined();
-		expect( hasUnsavedChanges() ).toBe( true );
-
-		await user.click( save );
-
-		await waitFor( () =>
-			expect( lastWrite( mockedFetch ) ).toMatchObject( {
-				path: '/orillacart/v1/storefront-settings',
-				method: 'PUT',
-				data: {
-					wishlist: 'guests',
-					notice: true,
-					notice_text: 'Free delivery this week',
-					notice_link: '/sale',
-					notice_link_label: '',
-					notice_dismissible: false,
-					notice_translations: {
-						text: { de_DE: 'Kostenlose Lieferung' },
-					},
-				},
-			} )
-		);
+		).toHaveLength( 1 );
 	} );
 } );

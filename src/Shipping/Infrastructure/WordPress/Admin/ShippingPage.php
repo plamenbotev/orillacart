@@ -37,6 +37,6 @@ final readonly class ShippingPage implements AdminPage
 
     public function menuOrder(): int
     {
-        return 3;
+        return 6;
     }
 }

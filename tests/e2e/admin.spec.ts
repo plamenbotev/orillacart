@@ -219,7 +219,8 @@ test.describe( 'The admin', () => {
 	} );
 
 	test( 'chooses the page the cart is on', async ( { admin, page } ) => {
-		await admin.visitAdminPage( 'admin.php', 'page=orillacart-settings' );
+		// Design 53: the shop's pages are a tab of Settings with one save bar.
+		await admin.visitAdminPage( 'admin.php', 'page=orillacart-pages' );
 		const cart = page.getByRole( 'combobox', {
 			name: 'Cart',
 			exact: true,
@@ -228,19 +229,20 @@ test.describe( 'The admin', () => {
 		await expect( cart ).not.toHaveValue( '' );
 
 		await cart.selectOption( '' );
-		await page.getByRole( 'button', { name: 'Save shop pages' } ).click();
+		await page.getByRole( 'button', { name: 'Save pages' } ).click();
 		await expect(
 			page
-				.locator( '.components-notice__content' )
-				.getByText( 'Shop pages saved.' )
+				.locator( '.components-snackbar__content' )
+				.getByText( 'Pages saved.' )
 		).toBeVisible();
 
 		await cart.selectOption( current );
-		await page.getByRole( 'button', { name: 'Save shop pages' } ).click();
+		await page.getByRole( 'button', { name: 'Save pages' } ).click();
 		await expect(
 			page
-				.locator( '.components-notice__content' )
-				.getByText( 'Shop pages saved.' )
+				.locator( '.components-snackbar__content' )
+				.getByText( 'Pages saved.' )
+				.last()
 		).toBeVisible();
 	} );
 

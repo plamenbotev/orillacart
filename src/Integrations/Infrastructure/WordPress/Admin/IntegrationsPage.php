@@ -37,6 +37,6 @@ final readonly class IntegrationsPage implements AdminPage
 
     public function menuOrder(): int
     {
-        return 7;
+        return 10;
     }
 }

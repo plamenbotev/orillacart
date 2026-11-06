@@ -1,15 +1,10 @@
-import {
-	Button,
-	Card,
-	CardBody,
-	CardHeader,
-	Notice,
-} from '@wordpress/components';
+import { Button, Notice } from '@wordpress/components';
 import { useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
 import { fetchSettingsArchive, importSettingsArchive } from './archive';
+import { notify, Section } from '../shared/ui';
 
 /**
  * The shop's settings as a file, to keep or to take to another site, and a file of them taken in.
@@ -17,17 +12,13 @@ import { fetchSettingsArchive, importSettingsArchive } from './archive';
  * @param props
  * @param props.onImported Called once a file put something in: the screen loads its settings anew.
  */
-export function ArchiveCard( {
+export function SettingsFileSection( {
 	onImported,
 }: {
 	onImported?: () => void;
 } = {} ) {
-	const [ message, setMessage ] = useState< {
-		status: 'success' | 'warning' | 'error';
-		text: string;
-	} | null >( null );
-	const fail = ( failure: unknown ) =>
-		setMessage( { status: 'error', text: errorMessage( failure ) } );
+	const [ error, setError ] = useState< string | null >( null );
+	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
 
 	const download = () =>
 		fetchSettingsArchive()
@@ -55,9 +46,9 @@ export function ArchiveCard( {
 				if ( result.imported.length > 0 ) {
 					onImported?.();
 				}
-				setMessage( {
-					status: refused.length === 0 ? 'success' : 'warning',
-					text: [
+				setError( null );
+				notify(
+					[
 						result.imported.length > 0
 							? sprintf(
 									/* translators: %s: the sections of settings */
@@ -77,47 +68,41 @@ export function ArchiveCard( {
 							)
 						),
 					].join( ' ' ),
-				} );
+					refused.length > 0
+				);
 			} )
 			.catch( ( failure: unknown ) =>
 				failure instanceof SyntaxError
-					? setMessage( {
-							status: 'error',
-							text: __( 'The file is not JSON.', 'orillacart' ),
-						} )
+					? setError( __( 'The file is not JSON.', 'orillacart' ) )
 					: fail( failure )
 			);
 
 	return (
-		<Card className="orillacart-settings-card">
-			<CardHeader>
-				<h2>{ __( 'Settings file', 'orillacart' ) }</h2>
-			</CardHeader>
-			<CardBody>
-				<p>
-					{ __(
-						'Download what the settings screens save, to keep or to take to another site, and import such a file here. The shop’s pages, its folders and secrets such as passwords stay with each site; payment methods, carriers and tax rates are made on their own screens.',
-						'orillacart'
-					) }
-				</p>
-				{ message !== null && (
-					<Notice
-						status={ message.status }
-						onRemove={ () => setMessage( null ) }
-					>
-						{ message.text }
-					</Notice>
-				) }
-				<p>
-					<Button variant="secondary" onClick={ download }>
-						{ __( 'Download the settings', 'orillacart' ) }
-					</Button>
-				</p>
-				<label htmlFor="orillacart-settings-file">
+		<Section
+			title={ __( 'Settings file', 'orillacart' ) }
+			description={ __(
+				'Download what the settings screens save, to keep or to take to another site, and import such a file here. The shop’s pages, its folders and secrets such as passwords stay with each site; payment methods, carriers and tax rates are made on their own screens.',
+				'orillacart'
+			) }
+		>
+			{ error !== null && (
+				<Notice status="error" onRemove={ () => setError( null ) }>
+					{ error }
+				</Notice>
+			) }
+			<div className="oc-actions">
+				<Button variant="secondary" onClick={ download }>
+					{ __( 'Download the settings', 'orillacart' ) }
+				</Button>
+				<label
+					className="components-button is-tertiary"
+					htmlFor="orillacart-settings-file"
+				>
 					{ __( 'Import a settings file', 'orillacart' ) }
-				</label>{ ' ' }
+				</label>
 				<input
 					id="orillacart-settings-file"
+					className="oc-visually-hidden"
 					type="file"
 					accept="application/json,.json"
 					onChange={ ( event ) => {
@@ -128,7 +113,7 @@ export function ArchiveCard( {
 						event.target.value = '';
 					} }
 				/>
-			</CardBody>
-		</Card>
+			</div>
+		</Section>
 	);
 }

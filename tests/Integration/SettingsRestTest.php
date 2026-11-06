@@ -194,7 +194,7 @@ final class SettingsRestTest extends RestTestCase
         self::assertSame('tax', $navigation['page']);
         self::assertSame('Settings', $navigation['group']);
         self::assertIsArray($navigation['tabs']);
-        self::assertSame(['settings', 'tax', 'shipping', 'payments', 'emails', 'forms', 'integrations'], array_column($navigation['tabs'], 'id'));
+        self::assertSame(['settings', 'pages', 'invoices', 'storefront', 'tax', 'shipping', 'payments', 'emails', 'forms', 'integrations', 'advanced'], array_column($navigation['tabs'], 'id'));
         $first = $navigation['tabs'][0];
         self::assertIsArray($first);
         self::assertIsString($first['href']);
