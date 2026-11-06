@@ -480,6 +480,16 @@ cards with their own save buttons, page-wide inputs and help text squeezed under
 | ✅ | 308 | P1 | A field's size narrows the control only: label and help take the row, help capped at a readable width; unwrapped controls bounded and spaced; introductions as section descriptions | 3dfe0d7 |
 | ✅ | 309 | P1 | Settings in tabs with one form and one save bar each: General (with other currencies), Pages and legal, Invoices, Storefront, Advanced; Shop filters and Search under Catalog › Filters and search | 3dfe0d7 |
 
+## Sharded networks (2026-11-06)
+
+Design 54 (`docs/designs/54-sharded-networks.md`): a SaaS spreads the sites' tables over several databases with
+HyperDB or LudicrousDB; Doctrine borrowed `$wpdb->dbh`, which is then only the last server used.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 310 | P1 | `WordPressConnection` asks the drop-in which server holds the site's shop tables, as for a write, and pins the handle while the drop-in keeps it open; core wpdb unchanged; unit tests with both drop-ins' shapes; docs | 092e71a |
+| ✅ | 311 | P1 | Proved on `oc-ms` with LudicrousDB and a second database holding one site's tables: that site's shop, its network worker turn and its upgrade run on the second database | 092e71a |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
