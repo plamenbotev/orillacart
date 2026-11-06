@@ -470,6 +470,16 @@ Design 52: one design system, eight menu entries, a home, scannable lists, the o
 | ✅ | 306 | P2 | Opening a customer's card on the Customers screen shows "Something went wrong. The error has been logged." though the card opens | f56c35c |
 | ✅ | 307 | P3 | `bin/demo-shop.php` stops with a stock 409 when run again on a site that already holds the demo | c0e7e86 |
 
+## Settings forms (2026-11-06)
+
+Design 53 (`docs/designs/53-settings-forms.md`): the General settings page below the regrouped form was nine older
+cards with their own save buttons, page-wide inputs and help text squeezed under narrow fields.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 308 | P1 | A field's size narrows the control only: label and help take the row, help capped at a readable width; unwrapped controls bounded and spaced; introductions as section descriptions | 3dfe0d7 |
+| ✅ | 309 | P1 | Settings in tabs with one form and one save bar each: General (with other currencies), Pages and legal, Invoices, Storefront, Advanced; Shop filters and Search under Catalog › Filters and search | 3dfe0d7 |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
