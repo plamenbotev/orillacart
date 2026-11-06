@@ -14,16 +14,24 @@ use Doctrine\DBAL\Driver\Statement;
  * of the shop's holds what WordPress writes in it (posts, meta, options) and both share the session's settings
  * (the SQL mode wpdb sets). Each call takes wpdb's connection as it is then, as wpdb connects again when the
  * server has dropped it (a long-running worker).
+ *
+ * On a network whose tables are spread over several servers by a database drop-in (HyperDB, LudicrousDB), wpdb
+ * holds one handle per server and `dbh` is only the one its last query used. The drop-in is then asked which
+ * server holds this site's shop tables, as it would be for a write to them (design 54), and that handle is kept
+ * for as long as the drop-in keeps it open: a transaction stays on one server, and so does a read after a write.
  */
 final class WordPressConnection implements Connection
 {
+    /** A shop table of the site, as the drop-in parses it out of a statement to choose the server; never run. */
+    private const string ROUTING_TABLE = 'orillacart_orders';
+
     private ?MysqliConnection $connection = null;
     private ?\mysqli $for = null;
 
     /** Whether WordPress has a connection to share. */
     public static function available(): bool
     {
-        return self::mysqli() !== null;
+        return new self()->mysqli() !== null;
     }
 
     public function prepare(string $sql): Statement
@@ -78,7 +86,7 @@ final class WordPressConnection implements Connection
 
     private function current(): MysqliConnection
     {
-        $mysqli = self::mysqli() ?? throw new \LogicException('WordPress has no database connection to share.');
+        $mysqli = $this->mysqli() ?? throw new \LogicException('WordPress has no database connection to share.');
         if ($mysqli !== $this->for || $this->connection === null) {
             $this->for = $mysqli;
             $this->connection = new MysqliConnection($mysqli);
@@ -87,12 +95,53 @@ final class WordPressConnection implements Connection
         return $this->connection;
     }
 
-    private static function mysqli(): ?\mysqli
+    /**
+     * The handle for this site's tables: the one pinned while the drop-in keeps it open, the drop-in's answer
+     * otherwise, or wpdb's single handle when there is no drop-in.
+     */
+    private function mysqli(): ?\mysqli
     {
         $wpdb = $GLOBALS['wpdb'] ?? null;
-        // Protected, but wpdb lets it be read (wpdb::__get(), "for backward compatibility").
-        $mysqli = $wpdb instanceof \wpdb ? $wpdb->__get('dbh') : null;
+        if (!$wpdb instanceof \wpdb) {
+            return null;
+        }
+        // Only the drop-ins keep several handles; core wpdb has one.
+        if (!property_exists($wpdb, 'dbhs')) {
+            // Protected, but wpdb lets it be read (wpdb::__get(), "for backward compatibility").
+            $mysqli = $wpdb->__get('dbh');
 
-        return $mysqli instanceof \mysqli ? $mysqli : null;
+            return $mysqli instanceof \mysqli ? $mysqli : null;
+        }
+        /** @var mixed $open */
+        $open = $wpdb->dbhs;
+        if ($this->for !== null && \is_array($open) && \in_array($this->for, $open, true)) {
+            return $this->for;
+        }
+
+        return self::askDropIn($wpdb);
+    }
+
+    /**
+     * Asks the drop-in for the server that holds the site's shop tables, with a write-shaped statement it only
+     * parses: a write names the dataset's primary, never a replica.
+     */
+    private static function askDropIn(\wpdb $wpdb): \mysqli
+    {
+        $statement = \sprintf('UPDATE %s%s SET id = id WHERE 0', $wpdb->prefix, self::ROUTING_TABLE);
+        $first = new \ReflectionMethod($wpdb, 'db_connect')->getParameters()[0] ?? null;
+        // HyperDB: db_connect($query). LudicrousDB keeps core's first parameter: db_connect($allow_bail, $query).
+        $handle = self::handle(
+            $first?->getName() === 'query'
+                ? $wpdb->db_connect($statement) // @phpstan-ignore argument.type
+                : $wpdb->db_connect(true, $statement), // @phpstan-ignore arguments.count
+        );
+
+        return $handle ?? throw new \LogicException(\sprintf('The database drop-in (%s) named no server for the tables %s*.', $wpdb::class, $wpdb->prefix . DatabaseConfig::TABLE_PREFIX_SUFFIX));
+    }
+
+    /** What a drop-in answered: a handle, or false when it could not connect. */
+    private static function handle(mixed $answer): ?\mysqli
+    {
+        return $answer instanceof \mysqli ? $answer : null;
     }
 }

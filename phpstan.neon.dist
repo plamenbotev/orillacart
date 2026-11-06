@@ -16,6 +16,8 @@ parameters:
         - tests/Fixtures/Tax/record-legacy-tax.php
         - tests/Fixtures/Catalog/record-legacy-catalog.php
         - tests/Fixtures/Checkout/record-legacy-checkout.php
+        # Core wpdb's shape for unit tests without WordPress; phpstan knows the real class from its stubs.
+        - tests/Fixtures/Database/wpdb.php
     tmpDir: var/phpstan
     scanFiles:
         - tools/phpstan/polylang.stub.php

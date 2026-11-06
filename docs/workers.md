@@ -132,3 +132,30 @@ The main site runs this when the shop is on for the whole network. When the shop
 the bundled **OrillaCart Network** plugin for the network: it runs only the network's side of updates on the main
 site, not the shop. Without it, a worker for the network, WP-CLI and each shop's own visitors still bring them up to
 date, and the shops' admin screens remind super admins of it.
+
+## Sharded networks
+
+A network whose tables are spread over several databases or servers by a database drop-in (HyperDB, LudicrousDB)
+works like any other: the shop keeps asking the drop-in, not `wp-config.php`, where this site's tables are. Doctrine
+never opens a connection of its own inside WordPress. It asks the drop-in for the server that holds the site's shop
+tables, as the drop-in would for a write to them, and keeps that handle for the site's kernel: a transaction stays
+on one server, and a read after a write is not sent to a replica. When the drop-in closes the handle (idle too long
+in a network worker), the next query asks again.
+
+The dataset map is yours. A database per tenant is the simplest shape for a SaaS: map the prefix `wp_N_` to the
+database of site N, and keep the global tables (users, sites, network meta) on the global dataset. With LudicrousDB:
+
+```php
+$wpdb->add_database(['host' => DB_HOST, 'user' => DB_USER, 'password' => DB_PASSWORD, 'name' => DB_NAME, 'dataset' => 'global']);
+$wpdb->add_database(['host' => DB_HOST, 'user' => DB_USER, 'password' => DB_PASSWORD, 'name' => 'tenant_3', 'dataset' => 'tenant3']);
+$wpdb->add_callback(static fn($query, $wpdb) => str_starts_with((string) $wpdb->table, 'wp_3_') ? 'tenant3' : 'global');
+```
+
+Two things to set on the drop-in's side. Reads: a `SELECT` WordPress runs inside a shop transaction may go to a
+replica and not see what the transaction wrote, so send a tenant's reads to its primary (`send_reads_to_primaries`
+in LudicrousDB) or give each dataset one server. Connections: a network worker opens one handle per tenant it
+serves in a run; the drop-in's idle limit (`max_connections`) closes the quiet ones, and the shop asks again when it
+comes back to that site.
+
+The migrations' network walk and `jobs work --network` need nothing more: both switch sites and build the site's
+kernel, and the kernel asks for its handle.
