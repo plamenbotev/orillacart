@@ -44,6 +44,16 @@ loads the tenant's primary, and replicas lighten only WordPress's own reads. A t
 whole load. Serving some of the shop's reads from a replica would be a separate read-only connection path, chosen
 query by query; it is not built and nothing here needs it.
 
+## One dataset per site's shop
+
+The drop-in resolves a dataset per table, so a map may split a site's tables. The shop allows that above one line:
+its own tables of a site, with the site's `posts` and term tables, resolve to one dataset. The connection asks once
+per site, for the orders table, and runs every query on that handle; a split below that line would run queries on a
+server that does not hold the table. The line is where it is because an order's transaction spans several shop
+tables, the foreign keys hold between them, and the reports join order lines to the site's term tables and read
+product titles from its posts. Options, meta and the global tables are reached through the WordPress API, which
+routes each query itself, and may live anywhere.
+
 ## What stays as it is
 
 The per-site kernel, the per-site migrations with the network's walk, and the per-site queues served by

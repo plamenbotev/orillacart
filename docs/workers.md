@@ -161,5 +161,13 @@ What this costs: every query the shop runs itself, for products, carts, orders a
 primary. Replicas lighten only WordPress's own reads (posts, options, users). Size each tenant primary for the
 shop's whole load. Offloading the shop's reads to a replica would need a separate read-only path, which is not built.
 
+The dataset map may split a site's tables, with one rule: a site's shop tables (`wp_N_orillacart_*`), its `posts`
+table and its term tables (`terms`, `term_taxonomy`, `term_relationships`) must resolve to one dataset. The shop
+asks the drop-in once per site, for the orders table, and runs every query on that handle: a transaction spans
+several shop tables, the schema's foreign keys hold between them, and the reports join order lines to the site's
+terms and read product titles from its posts. The site's other WordPress tables (options, meta) and the global
+tables may live anywhere, as the shop reaches them through the WordPress API over wpdb. A site's shop tables cannot
+be extracted one by one to another database: the shop of a site moves whole.
+
 The migrations' network walk and `jobs work --network` need nothing more: both switch sites and build the site's
 kernel, and the kernel asks for its handle.
