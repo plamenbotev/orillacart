@@ -15,6 +15,7 @@ use OrillaCart\Platform\DependencyInjection\RoutePass;
 use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Setup\Application\ReadinessCheck;
 use OrillaCart\Setup\Application\SetupStep;
+use OrillaCart\Shared\Extension\Registrant;
 use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Security\HoldsSealedValues;
@@ -97,6 +98,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(EventSubscriberInterface::class)->addTag('kernel.event_subscriber');
         $builder->registerForAutoconfiguration(JobHandler::class)->addTag(JobHandler::TAG);
         $builder->registerForAutoconfiguration(HostNamespace::class)->addTag(HostNamespace::TAG);
+        $builder->registerForAutoconfiguration(Registrant::class)->addTag(Registrant::TAG);
         $builder->registerForAutoconfiguration(OrderLookup::class)->addTag(OrderLookup::LOOKUP_TAG);
         $builder->registerForAutoconfiguration(OrderMark::class)->addTag(OrderMark::MARK_TAG);
         $builder->registerForAutoconfiguration(TaxGroupUse::class)->addTag(TaxGroupUse::TAG);

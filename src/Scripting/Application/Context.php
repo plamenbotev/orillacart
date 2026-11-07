@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Scripting\Application;
 
 use OrillaCart\Scripting\Application\Dto\Budget;
+use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Application\Dto\HostFunction;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\ScriptError;
@@ -23,14 +24,10 @@ final class Context
     private int $bytes = 0;
     private float $startedAt;
 
-    /**
-     * @param list<string> $permissions what the extension was granted: `orders:read`, `http`, …
-     */
     public function __construct(
         private readonly HostCatalog $catalog,
         private readonly Budget $budget = new Budget(),
-        private readonly array $permissions = [],
-        public readonly string $extension = '',
+        public readonly Grant $grant = new Grant(),
     ) {
         $this->startedAt = hrtime(true) / 1e9;
     }
@@ -73,12 +70,12 @@ final class Context
         $this->count($function);
         $this->step();
 
-        return ($function->callable)(...$captured, ...$args);
+        return ($function->callable)($this, ...$captured, ...$args);
     }
 
     private function allow(HostFunction $function): void
     {
-        if ($function->needs !== null && !\in_array($function->needs, $this->permissions, true)) {
+        if ($function->needs !== null && !$this->grant->allows($function->needs)) {
             throw new ScriptError(\sprintf('"%s" needs the permission "%s", which the extension was not granted', $function->name, $function->needs));
         }
     }

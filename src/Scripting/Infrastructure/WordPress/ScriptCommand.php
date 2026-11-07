@@ -59,7 +59,7 @@ final readonly class ScriptCommand implements CliCommand
         }
         $permissions = array_values(array_filter(explode(',', $options['grant'] ?? ''), static fn(string $permission): bool => $permission !== ''));
         try {
-            $script = $this->scripts->load($source, 'cli', permissions: $permissions);
+            $script = $this->scripts->load($source, 'cli', grant: new \OrillaCart\Scripting\Application\Dto\Grant('cli', $permissions));
         } catch (\InvalidArgumentException $e) {
             \WP_CLI::error($e->getMessage());
         }

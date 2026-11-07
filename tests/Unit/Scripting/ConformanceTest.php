@@ -112,7 +112,7 @@ final class ConformanceTest extends TestCase
     private static function script(array $permissions = []): \OrillaCart\Scripting\Application\CompiledScript
     {
         if (self::$scripts === null) {
-            $stub = static fn(mixed ...$args): mixed => $args;
+            $stub = static fn(\OrillaCart\Scripting\Application\Context $c, mixed ...$args): mixed => $args;
             $functions = [...new Builtins()->functions(), ...new TimeFunctions(new MockClock('2026-11-07 10:00:00', 'Europe/Sofia'))->functions()];
             $functions[] = new HostFunction('shop.orders.find', $stub, 1, 1, '', 'orders:read', HostFunction::QUERY);
             $catalog = HostCatalog::of($functions);
@@ -120,7 +120,7 @@ final class ConformanceTest extends TestCase
             self::$scripts = new Scripts(new Compiler($catalog), $catalog, self::$store);
         }
 
-        return self::$scripts->load(self::source(), 'conformance', new Budget(bytes: 16 * 1024 * 1024), $permissions);
+        return self::$scripts->load(self::source(), 'conformance', new Budget(bytes: 16 * 1024 * 1024), new \OrillaCart\Scripting\Application\Dto\Grant('conformance', $permissions));
     }
 
     private static function source(): string

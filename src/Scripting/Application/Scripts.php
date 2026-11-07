@@ -6,6 +6,7 @@ namespace OrillaCart\Scripting\Application;
 
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Compiled;
+use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Domain\Parser;
 use OrillaCart\Scripting\Domain\SyntaxError;
 
@@ -41,11 +42,9 @@ final readonly class Scripts
     /**
      * The compiled class, loaded from the store or compiled and kept, as an instance with its own run context.
      *
-     * @param list<string> $permissions
-     *
      * @throws \InvalidArgumentException when the source does not compile; the message lists the findings
      */
-    public function load(string $source, string $scope, Budget $budget = new Budget(), array $permissions = [], string $extension = ''): CompiledScript
+    public function load(string $source, string $scope, Budget $budget = new Budget(), Grant $grant = new Grant()): CompiledScript
     {
         $key = preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '-' . self::checksum($source);
         $className = Compiler::NAMESPACE . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . self::checksum($source);
@@ -56,7 +55,7 @@ final readonly class Scripts
             }
             $this->store->put($key, $className, $compiled->source);
         }
-        $context = new Context($this->catalog, $budget, $permissions, $extension);
+        $context = new Context($this->catalog, $budget, $grant);
         $script = new $className($context);
         \assert($script instanceof CompiledScript);
 

@@ -363,11 +363,12 @@ return static function (ContainerConfigurator $container): void {
             '../src/Shared/Persistence/FullTextQuery.php',
             '../src/Scripting/Application/{Scope,Context,CompiledScript}.php',
             '../src/Exchange/Application/{CsvFile,JsonFile}.php',
+            '../src/Packages/Application/Adapters/',
         ]);
 
     // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
     $services->load('OrillaCart\\', '../src/*/Application/')
-        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php'])
+        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/'])
         ->public();
     // The host functions scripts may call: every tagged namespace, gathered once.
     $services->set(HostCatalog::class)->args(['$namespaces' => tagged_iterator(HostNamespace::TAG)])->public();

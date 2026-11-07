@@ -38,6 +38,7 @@ use OrillaCart\Extension\Tax\TaxProvider;
 use OrillaCart\Extension\Version;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Shared\Extension\InstalledExtensions;
+use OrillaCart\Shared\Extension\Registrant;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
@@ -125,6 +126,9 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly \Closure $orderPrices,
         #[AutowireServiceClosure(ProductTranslations::class)]
         private readonly \Closure $productLanguages,
+        /** @var iterable<Registrant> */
+        #[AutowireIterator(Registrant::TAG)]
+        private readonly iterable $registrants = [],
     ) {}
 
     public function version(): int
@@ -506,6 +510,14 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         try {
             foreach ($this->builtInGateways as $gateway) {
                 $this->paymentGateway($gateway);
+            }
+            // The plugin's own registrants (scripted extensions) go before the PHP add-ons, each on its own.
+            foreach ($this->registrants as $registrant) {
+                try {
+                    $registrant->register($this);
+                } catch (\Throwable $e) {
+                    $this->logger->error('{registrant} failed while registering: {message}', ['registrant' => $registrant::class, 'message' => $e->getMessage(), 'exception' => $e]);
+                }
             }
             if (\function_exists('do_action')) {
                 $this->isolateCallbacks();

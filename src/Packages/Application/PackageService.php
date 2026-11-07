@@ -22,6 +22,7 @@ use OrillaCart\Scripting\Application\CompiledScript;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Compiled;
 use OrillaCart\Scripting\Application\Dto\Finding;
+use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\Catchable;
@@ -165,7 +166,7 @@ final readonly class PackageService
         if (!$compiled->ok()) {
             throw new PackageRuleViolation('The extension does not compile: %s', 'orillacart_extension_does_not_compile', values: [implode('; ', $this->findings($package, $compiled))]);
         }
-        $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $package->granted(), $package->slug());
+        $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $this->grantOf($package));
         $method = 'fn_' . $command->function;
         if (!method_exists($script, $method)) {
             throw new PackageRuleViolation('The extension has no top-level function "%s".', 'orillacart_extension_no_function', values: [$command->function]);
@@ -226,7 +227,7 @@ final readonly class PackageService
         $loaded = [];
         foreach ($this->packages->enabled() as $package) {
             try {
-                $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $package->granted(), $package->slug());
+                $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $this->grantOf($package));
             } catch (\InvalidArgumentException $e) {
                 $this->failed($package->slug(), $e->getMessage());
                 continue;
@@ -266,6 +267,14 @@ final readonly class PackageService
     public function stopped(): int
     {
         return \count(array_filter($this->packages->all(), static fn(Package $package): bool => $package->state() === \OrillaCart\Packages\Domain\PackageState::Stopped));
+    }
+
+    /** What a run of the extension is allowed: its granted permissions, the hosts it declared, its settings. */
+    public function grantOf(Package $package): Grant
+    {
+        $hosts = $this->compile($package)->ok() ? $this->manifest($package)->hosts() : [];
+
+        return new Grant($package->slug(), $package->granted(), $hosts, $package->settings());
     }
 
     private function get(string $slug): Package
