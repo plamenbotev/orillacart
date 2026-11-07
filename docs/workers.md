@@ -157,5 +157,9 @@ in LudicrousDB) or give each dataset one server. Connections: a network worker o
 serves in a run; the drop-in's idle limit (`max_connections`) closes the quiet ones, and the shop asks again when it
 comes back to that site.
 
+What this costs: every query the shop runs itself, for products, carts, orders and reports, goes to the tenant's
+primary. Replicas lighten only WordPress's own reads (posts, options, users). Size each tenant primary for the
+shop's whole load. Offloading the shop's reads to a replica would need a separate read-only path, which is not built.
+
 The migrations' network walk and `jobs work --network` need nothing more: both switch sites and build the site's
 kernel, and the kernel asks for its handle.

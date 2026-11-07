@@ -38,6 +38,12 @@ to the same dataset, so wpdb picks the same primary handle. Reads are the one th
 go to a replica and not see what the transaction wrote, so a tenant's dataset should send reads to its primary
 (`send_reads_to_primaries` in LudicrousDB, a single server per dataset in HyperDB) or run without replicas.
 
+The shop itself never reads from a replica: asking for the primary, as for a write, is what keeps a transaction on
+one server and a read after a write correct. So every query the shop runs, for products, carts, orders and reports,
+loads the tenant's primary, and replicas lighten only WordPress's own reads. A tenant primary is sized for the shop's
+whole load. Serving some of the shop's reads from a replica would be a separate read-only connection path, chosen
+query by query; it is not built and nothing here needs it.
+
 ## What stays as it is
 
 The per-site kernel, the per-site migrations with the network's walk, and the per-site queues served by
