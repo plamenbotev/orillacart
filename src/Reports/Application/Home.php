@@ -25,6 +25,8 @@ use Psr\Log\LoggerInterface;
 final readonly class Home
 {
     private const int RECENT = 5;
+    /** How long an overview is shown again as it was: the to-do counts in the admin bar are kept as long. */
+    private const int KEPT_FOR = 60;
 
     public function __construct(
         private Reports $reports,
@@ -36,6 +38,7 @@ final readonly class Home
         private SetupState $setup,
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
+        private ?HomeCache $cache = null,
     ) {}
 
     /**
@@ -51,7 +54,34 @@ final readonly class Home
      */
     public function overview(): array
     {
+        // Kept a minute, by the day it is for: the figures do not step back over midnight. The cache keeps each
+        // user's own, as add-ons' lines may say what one user may see.
         $day = new \DateTimeImmutable('today', $this->calendar->timezone());
+        $key = $day->format('Y-m-d');
+        $kept = $this->cache?->get($key);
+        if ($kept !== null) {
+            /** @var array{today: array{orders: int, net: string, average_order: string, items: int}, week: array{orders: int, net: string, average_order: string, items: int, series: list<array{date: string, net: string, orders: int}>}, currency: string, needs_you: list<array{kind: string, text: string, count: int, url: string, tone: string}>, setup_finished: bool, recent: list<object>, tiles: list<array{label: string, value: string, detail: string, url: string}>} $kept */
+            return $kept;
+        }
+        $overview = $this->build($day);
+        $this->cache?->put($key, $overview, self::KEPT_FOR);
+
+        return $overview;
+    }
+
+    /**
+     * @return array{
+     *     today: array{orders: int, net: string, average_order: string, items: int},
+     *     week: array{orders: int, net: string, average_order: string, items: int, series: list<array{date: string, net: string, orders: int}>},
+     *     currency: string,
+     *     needs_you: list<array{kind: string, text: string, count: int, url: string, tone: string}>,
+     *     setup_finished: bool,
+     *     recent: list<object>,
+     *     tiles: list<array{label: string, value: string, detail: string, url: string}>
+     * }
+     */
+    private function build(\DateTimeImmutable $day): array
+    {
         $today = $day->format('Y-m-d');
         $weekAgo = $day->modify('-6 days')->format('Y-m-d');
         $todaySales = $this->reports->sales(new ReportQuery($today, $today, interval: 'day', compare: ReportQuery::NONE));
