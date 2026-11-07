@@ -44,7 +44,7 @@ final class ScriptedRoutesTest extends RestTestCase
         parent::setUp();
         $this->actAs('administrator');
         foreach ($this->rows($this->data($this->request('GET', '/extensions'))['extensions']) as $existing) {
-            $this->request('DELETE', '/extensions/' . (string) $existing['id'], nonce: true);
+            $this->request('DELETE', '/extensions/' . (\is_string($existing['id'] ?? null) ? $existing['id'] : ''), nonce: true);
         }
         $this->request('POST', '/extensions', ['id' => 'pages', 'name' => 'Pages', 'files' => [
             'main.ocs' => self::SCRIPT,
@@ -102,7 +102,9 @@ final class ScriptedRoutesTest extends RestTestCase
 
         $answer = $this->request('GET', '/x/pages/hello/ada');
         self::assertSame(503, $answer->get_status(), (string) wp_json_encode($answer->get_data()));
-        self::assertStringContainsString('stopped', (string) $this->data($answer)['message']);
+        $message = $this->data($answer)['message'] ?? null;
+        self::assertIsString($message);
+        self::assertStringContainsString('stopped', $message);
         $packages = self::kernel()->container()->get(PackageService::class);
         \assert($packages instanceof PackageService);
         self::assertSame('stopped', $packages->package('pages')->state);

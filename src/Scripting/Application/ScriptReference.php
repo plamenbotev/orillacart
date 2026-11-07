@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Scripting\Application;
+
+use OrillaCart\Scripting\Application\Dto\HostFunction;
+
+/**
+ * The language as a reference for whoever writes a script, a person or an agent: how it reads, the declarations
+ * the shop takes, every host function with what it takes and needs, the filters and the tests. One source for
+ * the REST route, the MCP resource and the generated docs.
+ */
+final readonly class ScriptReference
+{
+    public const array DECLARATIONS = [
+        'extension "id" { name, version, needs: { orders: read, customers: [read, write], products: read, http: ["host"], templates: override } }' => 'what the extension is and what it asks for',
+        'settings { key: text|secret|boolean|number|choice { label, required, help, of } }' => 'the settings a manager fills in; read with settings.get(key)',
+        'payment_gateway "id" { name; settings {…}; fn start(session, settings); fn not_ready(settings, currency, decimals); fn reference(back); fn returned(reference, back, settings); fn notified(notification, settings); fn check(reference, transaction_id, settings); fn refund(request, settings) }' => 'a payment provider',
+        'shipping_method "id" { name; settings {…}; fn quote(shipment, settings); fn is_ready(settings); fn pickup_points(query, settings); fn create_shipment(request, settings); fn label(number, settings); fn cancel_shipment(number, settings); fn track(number, settings) }' => 'a shipping provider',
+        'cart_rule "id" { fn check(cart) }' => 'refusals of a cart, with cart.refuse() and cart.refuse_line()',
+        'order_fee "id" { fn fee(query) }' => 'a fee on the order, with fee.of()',
+        'price_adjuster "id" { fn adjust(query) }' => 'a product\'s price for a shopper',
+        'order_adjuster "id" { fn adjust(query) }' => 'amounts added to or taken off an order, with price.adjustment()',
+        'checkout_field "id" { label, kind, section, required, choices, help, longest; fn check(answer, context) }' => 'a field at checkout',
+        'order_action "id" { label; fn available(order); fn run(order) }' => 'a button on an order',
+        'order_column "id" { label; fn value(order) }, product_column "id" { label; fn value(item) }' => 'columns of the exports',
+        'order_filter "id" { label; fn find(text) }, product_filter "id" { label; fn find(text) }' => 'filters of the lists, marked with shop.orders.mark() / shop.products.mark(), and searches',
+        'home "id" { fn tiles(); fn needs_you() }' => 'tiles and lines on the Home screen, with home.tile() and home.line()',
+        'assistant_tool "name" { title, description, input, read_only, risk; fn run(arguments, call) }' => 'a tool of the assistant',
+        'product_block "id" { title, description; fn render(product, settings) }' => 'a block for product pages, its HTML cleaned',
+        'mailing_list "id" { name; fn subscribe(subscriber); fn unsubscribe(email); fn forget(email) }' => 'a list the newsletter signs up to',
+        'route METHOD "/path/{param}" { who: public|account|manager, nonce: false } fn(request)' => 'a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html()',
+        'page "/path" { template } fn(request)' => 'a page rendered on the Extension page block, the handler\'s map as the template\'s data',
+        'slot "product_after_details" { template } fn(context)' => 'a template printed in a storefront slot',
+        'template_data "storefront/product.html.twig" fn(context)' => 'what the extension adds to a template\'s context, under ext.<extension>',
+        'object "type" { fields: { name: kind { options } }, index: [field, …] }' => 'a kind of record of the extension\'s: objects.<type>.create/find/update/delete/query/count',
+        'fields on product|order|customer { name: kind }' => 'fields the extension adds to the shop\'s records: fields.get/set/of',
+        'on order_placed fn(event)' => 'a handler run in the background after one of the shop\'s events',
+        'job "name" fn(payload)' => 'a handler run in the background by jobs.push(name, payload)',
+        'every "hourly|twicedaily|daily|weekly" fn()' => 'a handler run on a schedule',
+        'fn name(args) { … }' => 'a function of the extension\'s own, callable from its other functions and the console',
+    ];
+
+    public function __construct(private HostCatalog $catalog) {}
+
+    /**
+     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>}
+     */
+    public function reference(): array
+    {
+        return [
+            'language' => 'Statements: let x = …, x = …, if … { } elif … { } else { }, for item in list { }, for key, value in map { }, while … { }, return, break, continue, try { } catch e { }, fail unavailable("…") | refused("…") | error("…"). Expressions as in Twig: a.b, a["b"], a|filter(args), a is test, a ~ b, a ?? b, a ? b : c, a..b, in, not in, starts with, ends with, and, or, not. Values: null, booleans, numbers, money(amount), strings, [lists], { maps }, fn(args) { }. A statement ends at the end of its line.',
+            'declarations' => self::DECLARATIONS,
+            'functions' => array_values(array_map(static fn(HostFunction $function): array => [
+                'name' => $function->name,
+                'summary' => $function->summary,
+                'arguments' => [$function->leastArguments, $function->mostArguments],
+                'needs' => $function->needs,
+            ], $this->catalog->all())),
+            ...Scripts::vocabulary(),
+        ];
+    }
+}

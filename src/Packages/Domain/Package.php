@@ -59,6 +59,10 @@ class Package
     #[ORM\Column(type: 'sealed_json')]
     private array $settings = [];
 
+    /** @var array<string, string> when each `every` schedule last ran, by its key, as ISO 8601 */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $scheduleRuns = [];
+
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
@@ -297,6 +301,18 @@ class Package
     {
         $this->settings = $settings;
         $this->updatedAt = $at;
+    }
+
+    /** Whether a schedule is due, and if so, counts this as its run. */
+    public function scheduleDue(string $key, int $seconds, \DateTimeImmutable $now): bool
+    {
+        $last = $this->scheduleRuns[$key] ?? null;
+        if ($last !== null && $now->getTimestamp() - (int) strtotime($last) < $seconds - 60) {
+            return false;
+        }
+        $this->scheduleRuns[$key] = $now->format(\DATE_ATOM);
+
+        return true;
     }
 
     public static function checkPath(string $path): void

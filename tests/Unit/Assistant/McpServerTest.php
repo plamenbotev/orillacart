@@ -469,7 +469,7 @@ final class McpServerTest extends TestCase
             }
         };
 
-        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
+        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals, new \OrillaCart\Scripting\Application\ScriptReference(\OrillaCart\Scripting\Application\HostCatalog::of([])))->handle($message, $headers, $caller ?? new Caller(1, 7, false));
     }
 
     /**

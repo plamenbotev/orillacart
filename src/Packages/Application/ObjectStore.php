@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Packages\Application;
+
+use OrillaCart\Packages\Application\Dto\ObjectQuery;
+
+/**
+ * The records an extension keeps: its own objects, and its fields on the shop's products, orders and customers.
+ * Every call is scoped to one extension; one extension never sees another's records.
+ */
+interface ObjectStore
+{
+    /**
+     * @param array<string, mixed> $data
+     * @param list<string>         $indexed the fields to index, from the declaration
+     *
+     * @return array<string, mixed> the record as saved
+     */
+    public function create(string $extension, string $type, array $data, array $indexed): array;
+
+    /** @return array<string, mixed>|null */
+    public function find(string $extension, string $type, int $id): ?array;
+
+    /**
+     * @param array<string, mixed> $data    the fields to change; the rest stay
+     * @param list<string>         $indexed
+     *
+     * @return array<string, mixed>|null the record as saved, null when there is none
+     */
+    public function update(string $extension, string $type, int $id, array $data, array $indexed): ?array;
+
+    public function delete(string $extension, string $type, int $id): bool;
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function query(string $extension, string $type, ObjectQuery $query): array;
+
+    public function count(string $extension, string $type, ObjectQuery $query): int;
+
+    /** A field of the extension's on one of the shop's records. */
+    public function fieldValue(string $extension, string $kind, int $ownerId, string $field): mixed;
+
+    /** @return array<string, mixed> every field of the extension's on the record */
+    public function fieldsOf(string $extension, string $kind, int $ownerId): array;
+
+    public function setField(string $extension, string $kind, int $ownerId, string $field, mixed $value): void;
+
+    /** Everything of the extension: on uninstalling. */
+    public function forgetExtension(string $extension): void;
+
+    /** Everything about a customer, across extensions: on erasure. */
+    public function forgetCustomer(int $customerId): void;
+
+    /**
+     * The extension's records that refer to a customer, for the personal data export.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function ofCustomer(string $extension, int $customerId): array;
+
+    /**
+     * Everything of the extension, for export.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function all(string $extension): array;
+}

@@ -10,6 +10,7 @@ use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\Dto\McpReply;
 use OrillaCart\Assistant\Application\Dto\ToolDefinition;
 use OrillaCart\Assistant\Application\Dto\ToolOutcome;
+use OrillaCart\Scripting\Application\ScriptReference;
 
 /**
  * The shop's MCP server: one JSON-RPC message in, one answer out, over Streamable HTTP with JSON answers.
@@ -57,6 +58,15 @@ final readonly class McpServer
         'name' => 'shop',
         'title' => 'The shop at a glance',
         'description' => 'The shop\'s name and address, country and currency, whether visitors can order, and what still stops it from selling.',
+        'mimeType' => 'application/json',
+    ];
+
+    /** The extension script language, for an agent writing an extension. */
+    private const array REFERENCE = [
+        'uri' => 'orillacart://extensions/reference',
+        'name' => 'extensions_reference',
+        'title' => 'How to write an extension',
+        'description' => 'The script language extensions are written in, the declarations the shop takes, and every host function with what it takes and needs.',
         'mimeType' => 'application/json',
     ];
 
@@ -126,6 +136,7 @@ final readonly class McpServer
         private AssistantContext $context,
         private RequestStates $states,
         private CallApprovals $approvals,
+        private ScriptReference $reference,
     ) {}
 
     /**
@@ -171,7 +182,7 @@ final readonly class McpServer
             'tools/call' => $this->callTool($params, $caller, $modern, $meta),
             'prompts/list' => self::list('prompts', array_map(static fn(array $prompt): array => array_diff_key($prompt, ['text' => true]), array_values(self::PROMPTS)), $modern),
             'prompts/get' => $this->prompt($params),
-            'resources/list' => self::list('resources', [self::OVERVIEW], $modern),
+            'resources/list' => self::list('resources', [self::OVERVIEW, self::REFERENCE], $modern),
             'resources/read' => $this->resource($params),
             'resources/templates/list' => self::list('resourceTemplates', [], $modern),
             default => null,
@@ -337,7 +348,13 @@ final readonly class McpServer
      */
     private function resource(array $params): array|McpReply
     {
-        if (($params['uri'] ?? null) !== self::OVERVIEW['uri']) {
+        $uri = $params['uri'] ?? null;
+        if ($uri === self::REFERENCE['uri']) {
+            $text = json_encode($this->reference->reference(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+            return ['contents' => [['uri' => self::REFERENCE['uri'], 'mimeType' => 'application/json', 'text' => $text === false ? '{}' : $text]]];
+        }
+        if ($uri !== self::OVERVIEW['uri']) {
             return self::error(200, null, self::INVALID_PARAMS, 'No such resource; resources/list names them.');
         }
         $text = json_encode($this->context->overview(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

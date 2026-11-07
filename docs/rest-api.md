@@ -978,6 +978,12 @@ Runs the static check over an extension's files: syntax, unknown names and funct
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /extensions/{id}/data`
+
+The records an extension keeps (its objects), as JSON to keep before uninstalling it.
+
+- Who: shop managers
+
 ### `POST /extensions/{id}/disable`
 
 Switches an extension off: its files, settings and data stay; nothing of it runs until enabled again.

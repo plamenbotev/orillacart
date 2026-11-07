@@ -43,6 +43,7 @@ final readonly class PackageService
         private Scripts $scripts,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private ?ObjectStore $objects = null,
     ) {}
 
     /** @return list<PackageView> */
@@ -130,10 +131,11 @@ final readonly class PackageService
         return $this->view($package, $this->compile($package));
     }
 
-    /** Removes the extension and its files; its compiled class is left to the cache's next clearing. */
+    /** Removes the extension, its files and its records; its compiled class is left to the cache's next clearing. */
     public function uninstall(string $slug): void
     {
         $package = $this->get($slug);
+        $this->objects?->forgetExtension($slug);
         $this->packages->remove($package);
         $this->logger->info('The extension "{extension}" was uninstalled.', ['extension' => $slug]);
     }
@@ -267,6 +269,18 @@ final readonly class PackageService
             $package->succeeded();
             $this->packages->save($package);
         }
+    }
+
+    /** Whether an extension's schedule is due now; the run is recorded when it is. */
+    public function scheduleDue(string $slug, string $key, int $seconds, \DateTimeImmutable $now): bool
+    {
+        $package = $this->packages->find($slug);
+        if ($package === null || !$package->scheduleDue($key, $seconds, $now)) {
+            return false;
+        }
+        $this->packages->save($package);
+
+        return true;
     }
 
     /** How many extensions the shop stopped: for the Home screen. */
