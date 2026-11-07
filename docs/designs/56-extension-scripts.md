@@ -1,6 +1,6 @@
 # 56. Extension scripts
 
-Status: planned (2026-11-07). PLAN items 317–330.
+Status: being built (2026-11-07). PLAN items 317–331; 317–322 done.
 
 Each tenant of a SaaS, or the owner of one shop, extends and edits their own shop without a PHP plugin: new
 payment and shipping providers, new endpoints and pages, new kinds of records and new fields on the shop's own,
