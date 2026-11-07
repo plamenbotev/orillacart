@@ -38,7 +38,10 @@ final readonly class ShopListing
     public const array FILTER_ARGUMENTS = ['brand', 'f', 'price_min', 'price_max', 'in_stock'];
     /** The page of products where the site has no pretty permalinks; older links that the shop sends on. */
     public const string PAGE_ARGUMENT = 'product-page';
-    private const string CACHE_GROUP = 'orillacart_request';
+    /** Results shared by the requests of a site with a persistent object cache; this request's without one. */
+    private const string CACHE_GROUP = 'orillacart_listing';
+    /** How long a listing's total and counts are reused: the index's generation ends it sooner. */
+    private const int RESULTS_FOR = 60;
 
     public function __construct(
         private ShopSearch $search,
@@ -106,9 +109,10 @@ final readonly class ShopListing
         );
 
         // The Products and Product filters blocks of a page search for the same choices: the matches are
-        // counted, and the filters' counts made, once; the other search only fetches its page of them.
-        $key = 'shop_listing:' . md5(serialize([$query->matching(), $this->languages->current()?->locale, IndexChanges::count()]));
-        wp_cache_add_non_persistent_groups([self::CACHE_GROUP]);
+        // counted, and the filters' counts made, once; the other search only fetches its page of them. On a site
+        // with a persistent object cache every request shares them for a minute, or until the index changes
+        // (design 55): the counting and the facets are the costly part, the page of ids is one indexed query.
+        $key = 'shop_listing:' . md5(serialize([$query->matching(), $this->languages->current()?->locale, IndexChanges::generation()]));
         $known = wp_cache_get($key, self::CACHE_GROUP);
         if (\is_array($known) && $known['result'] instanceof SearchResult && ($known['facets'] === true || !$facets)) {
             $ids = $limit < 1 ? [] : $this->search->search($query->pageOnly())->ids;
@@ -116,7 +120,7 @@ final readonly class ShopListing
             return $facets ? new SearchResult($ids, $known['result']->total, $known['result']->facets, $known['result']->priceRange) : new SearchResult($ids, $known['result']->total);
         }
         $result = $this->search->search($query);
-        wp_cache_set($key, ['result' => $result, 'facets' => $facets], self::CACHE_GROUP);
+        wp_cache_set($key, ['result' => $result, 'facets' => $facets], self::CACHE_GROUP, self::RESULTS_FOR);
 
         return $result;
     }

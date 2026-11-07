@@ -188,15 +188,17 @@ final readonly class MysqlCatalogSearch implements CatalogSearch
     }
 
     /**
-     * A value's label in the query's language, where the index has one, else its own.
+     * A value's label in the query's language, where the index has one, else its own. The products of a value may
+     * spell its label differently ("M", "m"): the least by bytes, so the one shown does not follow the row order of
+     * whatever plan the database took.
      */
     private static function label(SearchQuery $query, SqlParams $params): string
     {
         if ($query->locale === null) {
-            return 'MIN(f.label)';
+            return 'CONVERT(MIN(BINARY f.label) USING utf8mb4)';
         }
 
-        return \sprintf('MIN(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(f.labels, %s)), f.label))', $params->add('$."' . $query->locale . '"'));
+        return \sprintf('CONVERT(MIN(BINARY COALESCE(JSON_UNQUOTE(JSON_EXTRACT(f.labels, %s)), f.label)) USING utf8mb4)', $params->add('$."' . $query->locale . '"'));
     }
 
     /**
