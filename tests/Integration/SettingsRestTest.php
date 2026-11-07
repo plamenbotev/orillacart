@@ -160,7 +160,7 @@ final class SettingsRestTest extends RestTestCase
         $this->actAs('administrator');
         // Another test may have built the menu in this process already: this one starts from none.
         $GLOBALS['menu'] = [];
-        $submenu = [];
+        $GLOBALS['submenu'] = [];
 
         do_action('admin_menu');
 

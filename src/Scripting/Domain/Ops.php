@@ -1,0 +1,470 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Scripting\Domain;
+
+use OrillaCart\Shared\Domain\Money;
+
+/**
+ * What the generated PHP does with values: every operator, member read, filter and test of the language is one of
+ * these, so a script can do nothing PHP can that the language cannot. Values are null, bool, int, float, string,
+ * Money, and arrays (lists and maps alike, as PHP has them); nothing else reaches a script.
+ */
+final class Ops
+{
+    /** The filters a script may use, Twig's names. */
+    public const array FILTERS = [
+        'abs', 'capitalize', 'default', 'first', 'join', 'json', 'keys', 'last', 'length', 'lower', 'map', 'merge',
+        'number', 'replace', 'reverse', 'round', 'slice', 'sort', 'split', 'title', 'trim', 'upper', 'values',
+    ];
+    /** The tests a script may use. */
+    public const array TESTS = ['defined', 'empty', 'even', 'iterable', 'list', 'map', 'money', 'null', 'number', 'odd', 'string'];
+
+    public static function truthy(mixed $value): bool
+    {
+        if ($value instanceof Money) {
+            return !$value->isZero();
+        }
+
+        return \is_array($value) ? $value !== [] : (bool) $value;
+    }
+
+    /** `a.name`, `a[key]`: null when there is no such member, as Twig without strict variables. */
+    public static function get(mixed $object, mixed $key): mixed
+    {
+        if (\is_array($object)) {
+            if (\is_int($key) || \is_string($key)) {
+                return $object[$key] ?? null;
+            }
+            if (\is_float($key) && $key === floor($key)) {
+                return $object[(int) $key] ?? null;
+            }
+
+            return null;
+        }
+        if (\is_string($object) && \is_int($key)) {
+            return mb_substr($object, $key, 1) === '' ? null : mb_substr($object, $key, 1);
+        }
+        if ($object instanceof Money && \is_string($key)) {
+            return match ($key) {
+                'amount' => $object->toFixed(),
+                default => null,
+            };
+        }
+
+        return null;
+    }
+
+    /**
+     * `a.b.c = value` on a copy of a: PHP's arrays are values, so the caller keeps the result.
+     *
+     * @param list<mixed> $path
+     *
+     * @return array<mixed>
+     */
+    public static function assign(mixed $root, array $path, mixed $value): array
+    {
+        if (!\is_array($root)) {
+            throw new ScriptError('Only a list or a map takes a member');
+        }
+        $key = array_shift($path);
+        if (!\is_int($key) && !\is_string($key)) {
+            throw new ScriptError('A key is a string or a number');
+        }
+        if ($path === []) {
+            $root[$key] = $value;
+
+            return $root;
+        }
+        $root[$key] = self::assign($root[$key] ?? [], $path, $value);
+
+        return $root;
+    }
+
+    public static function eq(mixed $a, mixed $b): bool
+    {
+        if ($a instanceof Money || $b instanceof Money) {
+            return $a instanceof Money && $b instanceof Money && $a->equals($b);
+        }
+        if (\is_int($a) && \is_float($b) || \is_float($a) && \is_int($b)) {
+            return (float) $a === (float) $b;
+        }
+
+        return $a === $b;
+    }
+
+    /** For `<`, `>`, `<=`, `>=`: numbers with numbers, strings with strings, money with money. */
+    public static function cmp(mixed $a, mixed $b): int
+    {
+        if ($a instanceof Money && $b instanceof Money) {
+            return $a->compare($b);
+        }
+        if ((\is_int($a) || \is_float($a)) && (\is_int($b) || \is_float($b))) {
+            return $a <=> $b;
+        }
+        if (\is_string($a) && \is_string($b)) {
+            return strcmp($a, $b);
+        }
+
+        throw new ScriptError(\sprintf('Cannot compare %s with %s', self::kind($a), self::kind($b)));
+    }
+
+    public static function add(mixed $a, mixed $b): int|float|Money
+    {
+        if ($a instanceof Money && $b instanceof Money) {
+            return $a->add($b);
+        }
+
+        return self::number($a, '+') + self::number($b, '+');
+    }
+
+    public static function sub(mixed $a, mixed $b): int|float|Money
+    {
+        if ($a instanceof Money && $b instanceof Money) {
+            return $a->subtract($b);
+        }
+
+        return self::number($a, '-') - self::number($b, '-');
+    }
+
+    public static function mul(mixed $a, mixed $b): int|float|Money
+    {
+        if ($a instanceof Money && !$b instanceof Money) {
+            return self::times($a, self::number($b, '*'));
+        }
+        if ($b instanceof Money && !$a instanceof Money) {
+            return self::times($b, self::number($a, '*'));
+        }
+
+        return self::number($a, '*') * self::number($b, '*');
+    }
+
+    public static function div(mixed $a, mixed $b): int|float|Money
+    {
+        $divisor = self::number($b, '/');
+        if ((float) $divisor === 0.0) {
+            throw new ScriptError('Division by zero');
+        }
+        if ($a instanceof Money) {
+            return self::times($a, 1 / $divisor);
+        }
+        $result = self::number($a, '/') / $divisor;
+
+        return \is_int($result) ? $result : ($result === floor($result) && abs($result) < PHP_INT_MAX ? (int) $result : $result);
+    }
+
+    public static function intdiv(mixed $a, mixed $b): int
+    {
+        $divisor = self::number($b, '//');
+        if ((float) $divisor === 0.0) {
+            throw new ScriptError('Division by zero');
+        }
+
+        return (int) floor(self::number($a, '//') / $divisor);
+    }
+
+    public static function mod(mixed $a, mixed $b): int|float
+    {
+        $divisor = self::number($b, '%');
+        if ((float) $divisor === 0.0) {
+            throw new ScriptError('Division by zero');
+        }
+
+        $dividend = self::number($a, '%');
+
+        return \is_int($dividend) && \is_int($divisor) ? $dividend % $divisor : fmod($dividend, $divisor);
+    }
+
+    public static function neg(mixed $a): int|float|Money
+    {
+        if ($a instanceof Money) {
+            return Money::zero()->subtract($a);
+        }
+
+        return -self::number($a, '-');
+    }
+
+    /** `a ~ b`: strings; numbers and money by their text; null as nothing. */
+    public static function concat(mixed $a, mixed $b): string
+    {
+        return self::text($a) . self::text($b);
+    }
+
+    public static function in(mixed $needle, mixed $haystack): bool
+    {
+        if (\is_array($haystack)) {
+            foreach ($haystack as $item) {
+                if (self::eq($needle, $item)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        if (\is_string($haystack)) {
+            return str_contains($haystack, self::text($needle));
+        }
+
+        throw new ScriptError(\sprintf('"in" looks in a list, a map or a string, not %s', self::kind($haystack)));
+    }
+
+    public static function startsWith(mixed $a, mixed $b): bool
+    {
+        return str_starts_with(self::text($a), self::text($b));
+    }
+
+    public static function endsWith(mixed $a, mixed $b): bool
+    {
+        return str_ends_with(self::text($a), self::text($b));
+    }
+
+    /**
+     * `a..b`: the integers from a to b, either way; at most 10 000 of them.
+     *
+     * @return list<int>
+     */
+    public static function range(mixed $a, mixed $b): array
+    {
+        $from = (int) self::number($a, '..');
+        $to = (int) self::number($b, '..');
+        if (abs($to - $from) >= 10000) {
+            throw new ScriptError('A range holds at most 10 000 numbers');
+        }
+
+        return range($from, $to);
+    }
+
+    /**
+     * What `for` walks: a list or a map; null walks nothing.
+     *
+     * @return array<mixed>
+     */
+    public static function iterable(mixed $value): array
+    {
+        if ($value === null) {
+            return [];
+        }
+        if (!\is_array($value)) {
+            throw new ScriptError(\sprintf('"for" walks a list or a map, not %s', self::kind($value)));
+        }
+
+        return $value;
+    }
+
+    /**
+     * `f(args)` where f is a value: a function the script made.
+     *
+     * @param list<mixed> $args
+     */
+    public static function invoke(mixed $callable, array $args): mixed
+    {
+        if (!$callable instanceof \Closure) {
+            throw new ScriptError(\sprintf('Cannot call %s', self::kind($callable)));
+        }
+
+        return $callable(...$args);
+    }
+
+    /** A map's key from an expression: a string or a whole number. */
+    public static function key(mixed $value): int|string
+    {
+        if (\is_int($value) || \is_string($value)) {
+            return $value;
+        }
+        if (\is_float($value) && $value === floor($value)) {
+            return (int) $value;
+        }
+
+        throw new ScriptError(\sprintf('A key is a string or a number, not %s', self::kind($value)));
+    }
+
+    /** `fail x`: x an error value from unavailable(), refused() or error(), or a message. */
+    public static function failure(mixed $value): ScriptFailure
+    {
+        if (\is_array($value) && \is_string($value['kind'] ?? null) && \is_string($value['message'] ?? null)) {
+            return new ScriptFailure($value['kind'], $value['message'], $value['data'] ?? null);
+        }
+
+        return new ScriptFailure(ScriptFailure::ERROR, self::text($value));
+    }
+
+    /**
+     * @param list<mixed> $args
+     */
+    public static function filter(string $name, mixed $value, array $args): mixed
+    {
+        switch ($name) {
+            case 'abs':
+                return $value instanceof Money ? ($value->isNegative() ? self::neg($value) : $value) : abs(self::number($value, 'abs'));
+            case 'capitalize':
+                return mb_strtoupper(mb_substr(self::text($value), 0, 1)) . mb_strtolower(mb_substr(self::text($value), 1));
+            case 'default':
+                return self::truthy($value) ? $value : ($args[0] ?? '');
+            case 'first':
+                return \is_array($value) ? ($value === [] ? null : $value[array_key_first($value)]) : mb_substr(self::text($value), 0, 1);
+            case 'join':
+                return implode(self::text($args[0] ?? ''), array_map(self::text(...), self::iterable($value)));
+            case 'json':
+                return (string) json_encode(self::plain($value), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            case 'keys':
+                return array_keys(self::iterable($value));
+            case 'last':
+                return \is_array($value) ? ($value === [] ? null : $value[array_key_last($value)]) : mb_substr(self::text($value), -1);
+            case 'length':
+                return \is_array($value) ? \count($value) : mb_strlen(self::text($value));
+            case 'lower':
+                return mb_strtolower(self::text($value));
+            case 'map':
+                $callback = $args[0] ?? null;
+                if (!$callback instanceof \Closure) {
+                    throw new ScriptError('"map" takes a function');
+                }
+
+                return array_map($callback, self::iterable($value));
+            case 'merge':
+                return array_merge(self::iterable($value), self::iterable($args[0] ?? []));
+            case 'number':
+                return number_format(self::number($value, 'number'), (int) self::number($args[0] ?? 0, 'number'), self::text($args[1] ?? '.'), self::text($args[2] ?? ','));
+            case 'replace':
+                $pairs = self::iterable($args[0] ?? []);
+
+                return strtr(self::text($value), array_combine(array_map(strval(...), array_keys($pairs)), array_map(self::text(...), $pairs)));
+            case 'reverse':
+                return \is_array($value) ? array_reverse($value, !array_is_list($value)) : implode('', array_reverse(mb_str_split(self::text($value))));
+            case 'round':
+                $decimals = (int) self::number($args[0] ?? 0, 'round');
+
+                return $value instanceof Money ? $value->rounded($decimals) : round(self::number($value, 'round'), $decimals);
+            case 'slice':
+                $start = (int) self::number($args[0] ?? 0, 'slice');
+                $length = isset($args[1]) ? (int) self::number($args[1], 'slice') : null;
+
+                return \is_array($value) ? \array_slice($value, $start, $length, !array_is_list($value)) : mb_substr(self::text($value), $start, $length);
+            case 'sort':
+                $sorted = self::iterable($value);
+                $callback = $args[0] ?? null;
+                if ($callback instanceof \Closure) {
+                    uasort($sorted, static fn(mixed $a, mixed $b): int => (int) self::number($callback($a, $b), 'sort'));
+                } else {
+                    uasort($sorted, self::cmp(...));
+                }
+
+                return \is_array($value) && array_is_list($value) ? array_values($sorted) : $sorted;
+            case 'split':
+                $by = self::text($args[0] ?? '');
+
+                return $by === '' ? mb_str_split(self::text($value)) : explode($by, self::text($value));
+            case 'title':
+                return mb_convert_case(self::text($value), MB_CASE_TITLE);
+            case 'trim':
+                return trim(self::text($value), self::text($args[0] ?? " \n\r\t\v\0"));
+            case 'upper':
+                return mb_strtoupper(self::text($value));
+            case 'values':
+                return array_values(self::iterable($value));
+        }
+
+        throw new ScriptError(\sprintf('Unknown filter "%s"', $name));
+    }
+
+    /**
+     * @param list<mixed> $args
+     */
+    public static function test(string $name, mixed $value, array $args): bool
+    {
+        return match ($name) {
+            'defined' => $value !== null,
+            'empty' => !self::truthy($value),
+            'even' => (int) self::number($value, 'even') % 2 === 0,
+            'odd' => (int) self::number($value, 'odd') % 2 !== 0,
+            'iterable' => \is_array($value),
+            'list' => \is_array($value) && array_is_list($value),
+            'map' => \is_array($value) && !array_is_list($value),
+            'money' => $value instanceof Money,
+            'null' => $value === null,
+            'number' => \is_int($value) || \is_float($value),
+            'string' => \is_string($value),
+            default => throw new ScriptError(\sprintf('Unknown test "%s"', $name)),
+        };
+    }
+
+    /** A value as text: for `~`, messages and keys. */
+    public static function text(mixed $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+        if (\is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (\is_int($value) || \is_float($value) || \is_string($value)) {
+            return (string) $value;
+        }
+        if ($value instanceof Money) {
+            return $value->toFixed();
+        }
+
+        throw new ScriptError(\sprintf('Cannot make text of %s', self::kind($value)));
+    }
+
+    /** A value as JSON takes it: money as its amount's text, closures refused. */
+    public static function plain(mixed $value): mixed
+    {
+        if ($value instanceof Money) {
+            return $value->toFixed();
+        }
+        if (\is_array($value)) {
+            return array_map(self::plain(...), $value);
+        }
+        if ($value instanceof \Closure) {
+            throw new ScriptError('A function cannot be made into data');
+        }
+
+        return $value;
+    }
+
+    /** For messages: "a string", "a list", "money". */
+    public static function kind(mixed $value): string
+    {
+        return match (true) {
+            $value === null => 'null',
+            \is_bool($value) => 'a boolean',
+            \is_int($value), \is_float($value) => 'a number',
+            \is_string($value) => 'a string',
+            $value instanceof Money => 'money',
+            \is_array($value) => array_is_list($value) ? 'a list' : 'a map',
+            $value instanceof \Closure => 'a function',
+            default => 'a value',
+        };
+    }
+
+    private static function number(mixed $value, string $op): int|float
+    {
+        if (\is_int($value) || \is_float($value)) {
+            return $value;
+        }
+        if (\is_string($value) && is_numeric($value)) {
+            return str_contains($value, '.') || stripos($value, 'e') !== false ? (float) $value : (int) $value;
+        }
+        if (\is_bool($value)) {
+            return $value ? 1 : 0;
+        }
+
+        throw new ScriptError(\sprintf('"%s" needs a number, not %s', $op, self::kind($value)));
+    }
+
+    private static function times(Money $money, int|float $factor): Money
+    {
+        // Money::times takes whole quantities; a fraction goes through a (positive) rate, rounded as the shop rounds.
+        if (\is_int($factor)) {
+            return $money->times($factor);
+        }
+        if ($factor === 0.0) {
+            return Money::zero();
+        }
+        $scaled = $money->at(number_format(abs($factor), 8, '.', ''));
+
+        return $factor < 0 ? Money::zero()->subtract($scaled) : $scaled;
+    }
+}

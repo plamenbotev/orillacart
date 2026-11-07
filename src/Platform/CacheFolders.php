@@ -16,7 +16,7 @@ use OrillaCart\Shared\Lifecycle\OutsideTheSite;
  */
 final readonly class CacheFolders implements LifecycleListener, OutsideTheSite
 {
-    public const array KINDS = ['twig', 'twig-emails', 'doctrine', 'pdf-fonts'];
+    public const array KINDS = ['twig', 'twig-emails', 'doctrine', 'pdf-fonts', 'scripts'];
 
     public function __construct(private PluginContext $context) {}
 

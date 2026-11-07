@@ -217,6 +217,8 @@ use OrillaCart\Reviews\Domain\ReviewSettingsRepository;
 use OrillaCart\Reviews\Domain\ReviewStore;
 use OrillaCart\Reviews\Infrastructure\WordPress\CommentReviewStore;
 use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
+use OrillaCart\Scripting\Application\Host\HostNamespace;
+use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Search\Application\CatalogSearch;
 use OrillaCart\Search\Application\CategoryTranslations;
 use OrillaCart\Search\Application\ProductTexts;
@@ -329,6 +331,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
 
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 return static function (ContainerConfigurator $container): void {
     $services = $container->services()
@@ -356,13 +359,16 @@ return static function (ContainerConfigurator $container): void {
             '../src/Shared/WordPress/AsHook.php',
             '../src/Search/Infrastructure/Doctrine/SqlParams.php',
             '../src/Shared/Persistence/FullTextQuery.php',
+            '../src/Scripting/Application/{Scope,Context,CompiledScript}.php',
             '../src/Exchange/Application/{CsvFile,JsonFile}.php',
         ]);
 
     // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
     $services->load('OrillaCart\\', '../src/*/Application/')
-        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php'])
+        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php'])
         ->public();
+    // The host functions scripts may call: every tagged namespace, gathered once.
+    $services->set(HostCatalog::class)->args(['$namespaces' => tagged_iterator(HostNamespace::TAG)])->public();
     // Made per shopper by PriceResolver, not a service.
     $services->remove(ShopperPricing::class);
     // Made per batch by the JobRunner, not services.
