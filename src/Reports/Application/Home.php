@@ -11,6 +11,7 @@ use OrillaCart\Extension\Home\HomeTile;
 use OrillaCart\Jobs\Application\JobOverview;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Reports\Application\Dto\ReportQuery;
 use OrillaCart\Settings\Application\SetupState;
 use OrillaCart\Settings\Application\StatusReport;
@@ -39,6 +40,7 @@ final readonly class Home
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
         private ?HomeCache $cache = null,
+        private ?PackageService $packages = null,
     ) {}
 
     /**
@@ -129,6 +131,7 @@ final readonly class Home
         $line('ship', $ship, 'orders to ship', 'orders?status=processing', HomeLine::INFO);
         $line('low_stock', \count($this->lowStock->items()), 'items low in stock', 'stock');
         $line('failed_jobs', $this->jobs->overview()->failed, 'background jobs failed', 'jobs');
+        $line('stopped_extensions', $this->packages?->stopped() ?? 0, 'extensions stopped after failing', 'extensions', HomeLine::ATTENTION);
         $checks = array_filter($this->status->report()['checks'], static fn(array $check): bool => $check['status'] !== 'good');
         $critical = array_filter($checks, static fn(array $check): bool => $check['status'] === 'critical');
         $line('status', \count($checks), 'status checks worth a look', 'status', $critical === [] ? HomeLine::WARNING : HomeLine::ATTENTION);

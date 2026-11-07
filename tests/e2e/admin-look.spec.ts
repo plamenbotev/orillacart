@@ -31,6 +31,7 @@ const SCREENS: { slug: string; group: string }[] = [
 	{ slug: 'orillacart-forms', group: 'Settings' },
 	{ slug: 'orillacart-integrations', group: 'Settings' },
 	{ slug: 'orillacart-advanced', group: 'Settings' },
+	{ slug: 'orillacart-extensions', group: 'Settings' },
 	{ slug: 'orillacart-status', group: 'System' },
 	{ slug: 'orillacart-jobs', group: 'System' },
 	{ slug: 'orillacart-setup', group: '' },

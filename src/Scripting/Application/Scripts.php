@@ -68,6 +68,16 @@ final readonly class Scripts
         return $this->catalog;
     }
 
+    /**
+     * The filters and tests the language has, for the reference.
+     *
+     * @return array{filters: list<string>, tests: list<string>}
+     */
+    public static function vocabulary(): array
+    {
+        return ['filters' => \OrillaCart\Scripting\Domain\Ops::FILTERS, 'tests' => \OrillaCart\Scripting\Domain\Ops::TESTS];
+    }
+
     public static function checksum(string $source): string
     {
         return substr(hash('sha256', $source), 0, 16);

@@ -930,6 +930,105 @@ Chooses which columns the products export holds, in this order; answers with eve
 - Body (JSON):
   - `columns` (list<string>): at least 1 items
 
+## /extensions
+
+### `GET /extensions`
+
+The extensions written in the script language, with where each stands; the files come with one extension.
+
+- Who: shop managers
+
+### `POST /extensions`
+
+Installs a new extension as a draft: its id, name and files, or no files to write them one by one. It runs nothing until enabled.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `id` (string): required; matches `/^[a-z][a-z0-9_]{0,39}$/`
+  - `name` (string): required; not empty; at most 100 characters
+  - `files` (array)
+
+### `POST /extensions/import`
+
+Puts an exported extension in place: a new one as a draft, or the files of the one with the same id replaced (it keeps running its old files until enabled again).
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `id` (string): required; not empty
+  - `name` (string): required; not empty
+  - `version` (string)
+  - `files` (array)
+  - `format` (string): default 'orillacart-extension/1'
+
+### `GET /extensions/{id}`
+
+One extension with its files, its settings as shown, what it needs, and the static check's findings.
+
+- Who: shop managers
+
+### `DELETE /extensions/{id}`
+
+Removes an extension with its files and settings. Export it first to keep a copy.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `POST /extensions/{id}/check`
+
+Runs the static check over an extension's files: syntax, unknown names and functions, arities, permissions it uses but did not declare. Changes nothing.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `POST /extensions/{id}/disable`
+
+Switches an extension off: its files, settings and data stay; nothing of it runs until enabled again.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `POST /extensions/{id}/enable`
+
+Switches an extension on with the permissions granted, which must cover what it declares it needs; it must compile. From then on its providers, routes and handlers run in the shop with those permissions.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `grant` (list<string>)
+
+### `GET /extensions/{id}/export`
+
+An extension as a file to keep or move: its id, name, version and files. Settings and permissions stay with the shop.
+
+- Who: shop managers
+
+### `PUT /extensions/{id}/files/{path}`
+
+Writes one file of an extension (a script ending in .ocs, or a template under templates/), making it when it is not there. An enabled extension keeps running its old files until it is enabled again; the answer's findings are the static check of the new ones.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `content` (string)
+
+### `DELETE /extensions/{id}/files/{path}`
+
+Removes one file of an extension.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `POST /extensions/{id}/run`
+
+The console: runs one top-level function of an extension with the given arguments and its granted permissions; answers what it returned or how it failed, and what the run used.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `function` (string): required; matches `/^[A-Za-z_][A-Za-z0-9_]*$/`
+  - `arguments` (list<mixed>)
+
+### `PUT /extensions/{id}/settings`
+
+Saves the values of the settings an extension declares; a secret sent empty keeps its value, false clears it.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `settings` (array)
+
 ## /form-uploads
 
 ### `POST /form-uploads`
@@ -2094,6 +2193,14 @@ Whether the sample products are in the shop (GET), adds them (POST), or takes th
 Whether the sample products are in the shop (GET), adds them (POST), or takes them away (DELETE).
 
 - Who: shop managers; needs a nonce (not with an API key)
+
+## /script-reference
+
+### `GET /script-reference`
+
+The script language's reference for whoever writes an extension: every host function with what it takes and needs, the filters and the tests.
+
+- Who: shop managers
 
 ## /search-engine
 

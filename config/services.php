@@ -153,6 +153,8 @@ use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineDownloadGrantRepository;
 use OrillaCart\Ordering\Infrastructure\Doctrine\DoctrineOrderRepository;
 use OrillaCart\Ordering\Infrastructure\TaggedOrderLookups;
+use OrillaCart\Packages\Domain\PackageRepository;
+use OrillaCart\Packages\Infrastructure\Doctrine\DoctrinePackageRepository;
 use OrillaCart\Payment\Application\Gateway\BankTransfer;
 use OrillaCart\Payment\Application\Gateway\CashOnDelivery;
 use OrillaCart\Payment\Application\Gateway\Cheque;
@@ -419,6 +421,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ProductRepository::class, DoctrineProductRepository::class);
     $services->alias(AttributeSetRepository::class, DoctrineAttributeSetRepository::class);
     $services->alias(FormRepository::class, DoctrineFormRepository::class);
+    $services->alias(PackageRepository::class, DoctrinePackageRepository::class);
     $services->alias(TranslationRepository::class, DbalTranslationRepository::class);
     $services->alias(FormUploadRepository::class, DoctrineFormUploadRepository::class);
     $services->alias(UploadInspector::class, SafeUploadInspector::class);

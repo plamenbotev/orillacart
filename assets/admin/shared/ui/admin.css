@@ -758,3 +758,18 @@ body.folded .oc-toasts {
 	clip: rect(0 0 0 0);
 	border: 0;
 }
+
+/* Code: scripts and templates in the Extensions editor, and a console's output. */
+.oc-code,
+.oc-code textarea {
+	font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace;
+	font-size: 13px;
+	line-height: 1.5;
+	tab-size: 2;
+	white-space: pre;
+}
+
+.oc-code textarea {
+	overflow: auto;
+	max-width: none;
+}

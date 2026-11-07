@@ -420,7 +420,8 @@ final class Parser
                 $expr = new Index($expr, $key, $token->line, $token->column);
             } elseif ($token->is(TokenKind::Punctuation, '(') && !$declarative) {
                 $this->next();
-                $expr = new Call($expr, $this->arguments(), $token->line, $token->column);
+                // A call is where its name starts, so a finding about it points at the name.
+                $expr = new Call($expr, $this->arguments(), $expr->line, $expr->column);
             } elseif ($token->is(TokenKind::Punctuation, '|')) {
                 $this->next();
                 $name = $this->expect(TokenKind::Word);

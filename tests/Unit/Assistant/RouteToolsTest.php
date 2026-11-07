@@ -120,9 +120,12 @@ final class RouteToolsTest extends TestCase
         'create_tax_group' => 'tax setup',
         'create_tax_rate' => 'tax setup',
         'create_variation' => 'catalog',
+        'disable_package' => 'an extension switched off: its files, settings and data stay',
         'edit_order_items' => 'an unpaid order on hold, priced from the catalog; nothing is charged',
         'finish_setup' => 'only stops the admin offering the setup',
+        'import_package' => 'an extension\'s files put in place as a draft; nothing runs until enabled, which asks',
         'import_tax_rates' => 'tax setup',
+        'install_package' => 'a new extension as a draft; nothing runs until enabled, which asks',
         'mark_order_handled' => 'only takes an order off the attention list (Tool::NONE)',
         'rebuild_reports' => 'reports worked out again',
         'rebuild_search_index' => 'the search index built again',
@@ -134,7 +137,9 @@ final class RouteToolsTest extends TestCase
         'restock_order' => 'refunded items back in stock',
         'retry_failed_jobs' => 'jobs that failed run as they would have',
         'run_order_action' => 'an add-on\'s own order action, which the add-on answers for',
+        'run_package_function' => 'the console: one function of the extension run with the permissions a manager granted when enabling it, which asked',
         'save_email_template' => 'a template saved; nothing is sent',
+        'save_package_settings' => 'the values of an extension\'s own settings',
         'save_product' => 'catalog',
         'send_test_email' => 'goes to the manager who asks, not to customers',
         'set_customer_groups' => 'customer setup',
@@ -164,6 +169,7 @@ final class RouteToolsTest extends TestCase
         'update_variation' => 'catalog',
         'upload_download' => 'a file for a product',
         'upload_product_import' => 'a file for an import, which start_product_import runs',
+        'write_package_file' => 'a file of an extension written; an enabled one runs its old files until enabled again, which asks',
     ];
 
     public function testEveryChangeTheOwnerIsNotAskedAboutIsChosen(): void
