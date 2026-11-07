@@ -30,7 +30,7 @@ final readonly class ScriptReference
         'assistant_tool "name" { title, description, input, read_only, risk; fn run(arguments, call) }' => 'a tool of the assistant',
         'product_block "id" { title, description; fn render(product, settings) }' => 'a block for product pages, its HTML cleaned',
         'mailing_list "id" { name; fn subscribe(subscriber); fn unsubscribe(email); fn forget(email) }' => 'a list the newsletter signs up to',
-        'route METHOD "/path/{param}" { who: public|account|manager, nonce: false } fn(request)' => 'a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html()',
+        'route METHOD "/path/{param}" { who: public|account|manager } fn(request)' => 'a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html(); a browser sends the REST nonce on anything but GET, an app its key or token',
         'page "/path" { template } fn(request)' => 'a page rendered on the Extension page block, the handler\'s map as the template\'s data',
         'slot "product_after_details" { template } fn(context)' => 'a template printed in a storefront slot',
         'template_data "storefront/product.html.twig" fn(context)' => 'what the extension adds to a template\'s context, under ext.<extension>',

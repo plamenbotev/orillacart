@@ -12,7 +12,7 @@ use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Security\Capability;
 
 /**
- * The `route METHOD "/path" { who, nonce } fn(request)` declarations of the enabled extensions as REST routes
+ * The `route METHOD "/path" { who } fn(request)` declarations of the enabled extensions as REST routes
  * under `/x/<extension>/…`, through the same pipeline as the shop's own: authorization, nonce, guards, the change
  * log. A stopped extension keeps its routes, which answer 503, so a caller learns why rather than meeting a 404.
  *
@@ -41,21 +41,26 @@ final class ScriptedRoutes implements DynamicRoutes
             $props = $declaration['props'];
             $who = $props['who'] ?? null;
             $who = \is_array($who) ? ($who['$spec'] ?? 'manager') : ($who ?? 'manager');
-            $routes[] = new RouteDefinition(
-                self::ACTION,
-                $path,
-                [$method],
-                match ($who) {
-                    'public' => Route::PUBLIC,
-                    'account' => Capability::ACCOUNT,
-                    default => Capability::MANAGE_SHOP,
-                },
-                ($props['nonce'] ?? true) === false ? '' : 'wp_rest',
-                self::requirements($path),
-                false,
-                self::GUARD,
-                $method !== 'GET',
-            );
+            try {
+                $routes[] = new RouteDefinition(
+                    self::ACTION,
+                    $path,
+                    [$method],
+                    match ($who) {
+                        'public' => Route::PUBLIC,
+                        'account' => Capability::ACCOUNT,
+                        default => Capability::MANAGE_SHOP,
+                    },
+                    'wp_rest',
+                    self::requirements($path),
+                    false,
+                    self::GUARD,
+                    $method !== 'GET',
+                );
+            } catch (\InvalidArgumentException $e) {
+                // One route the shop cannot take does not keep the site's REST API from registering.
+                $this->packages->failed($loaded->package->slug(), \sprintf('The route %s %s cannot be registered: %s', $method, $declaration['name'] ?? '', $e->getMessage()));
+            }
         }
 
         return $routes;

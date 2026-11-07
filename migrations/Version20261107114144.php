@@ -24,7 +24,10 @@ final class Version20261107114144 extends Migration
             $this->createObjects();
         }
         if (!$this->hasColumn('packages', 'schedule_runs')) {
-            $this->addSql('ALTER TABLE {prefix}packages ADD schedule_runs JSON DEFAULT \'[]\' NOT NULL');
+            // MySQL takes no default on a JSON column: added empty, filled, then required.
+            $this->addSql('ALTER TABLE {prefix}packages ADD schedule_runs JSON DEFAULT NULL');
+            $this->addSql("UPDATE {prefix}packages SET schedule_runs = '[]' WHERE schedule_runs IS NULL");
+            $this->addSql('ALTER TABLE {prefix}packages MODIFY schedule_runs JSON NOT NULL');
         }
     }
 

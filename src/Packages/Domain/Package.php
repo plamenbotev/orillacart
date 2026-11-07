@@ -60,7 +60,7 @@ class Package
     private array $settings = [];
 
     /** @var array<string, string> when each `every` schedule last ran, by its key, as ISO 8601 */
-    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    #[ORM\Column(type: 'json')]
     private array $scheduleRuns = [];
 
     #[ORM\Column]

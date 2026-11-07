@@ -55,7 +55,7 @@ final readonly class ScriptedRouteAction implements RequestHandlerInterface
         preg_match_all('/\{([A-Za-z_][A-Za-z0-9_]*)\}/', $route->path, $names);
         foreach ($names[1] as $name) {
             $value = $request->getAttribute($name);
-            $params[$name] = \is_scalar($value) ? (string) $value : null;
+            $params[$name] = \is_scalar($value) ? rawurldecode((string) $value) : null;
         }
         $headers = [];
         foreach (self::HEADERS as $name) {
