@@ -19,7 +19,7 @@ final class ScriptDocsTest extends TestCase
         if (!class_exists(\wpdb::class, false)) {
             require \dirname(__DIR__, 3) . '/tests/Fixtures/Database/wpdb.php';
         }
-        $GLOBALS['wpdb'] = new \wpdb();
+        $GLOBALS['wpdb'] = new \wpdb('docs', '', 'docs', 'localhost');
         $builder = Kernel::buildContainer(\dirname(__DIR__, 3));
         $builder->getDefinition(ScriptDocumentation::class)->setPublic(true);
         $builder->compile();

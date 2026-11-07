@@ -60,7 +60,7 @@ final class ScriptedObjectsTest extends RestTestCase
 
     public function testObjectsAreCreatedQueriedOnIndexedFieldsAndDeleted(): void
     {
-        $first = $this->call('open', ['Printer on fire', 9]);
+        $first = $this->record($this->call('open', ['Printer on fire', 9]));
         self::assertSame(['Printer on fire', 9, 'open', '2026-12-01', ['a'], null, 'ticket'], [$first['subject'], $first['priority'], $first['state'], $first['due'], $first['tags'], $first['body'], $first['type']]);
         self::assertIsInt($first['id']);
         $this->call('open', ['Coffee', 1]);
@@ -68,23 +68,23 @@ final class ScriptedObjectsTest extends RestTestCase
 
         self::assertSame(['Printer on fire', 'Server down'], $this->call('urgent'));
         self::assertSame(3, $this->call('count_open'));
-        $closed = $this->call('close', [$first['id']]);
+        $closed = $this->record($this->call('close', [$first['id']]));
         self::assertSame('closed', $closed['state']);
         self::assertSame(['Server down'], $this->call('urgent'));
         self::assertSame(2, $this->call('count_open'));
 
-        $page = $this->call('page', [null]);
+        $page = $this->record($this->call('page', [null]));
         self::assertCount(2, $page);
-        $next = $this->call('page', [$page[1]]);
+        $next = $this->record($this->call('page', [$page[1]]));
         self::assertCount(1, $next, 'the cursor is the last id seen');
 
         self::assertTrue($this->call('remove', [$first['id']]));
         self::assertFalse($this->call('remove', [$first['id']]));
 
         $refused = $this->data($this->request('POST', '/extensions/tickets/run', ['function' => 'bad_filter'], nonce: true));
-        self::assertStringContainsString('"body" is not indexed', (string) $this->assoc($refused['failure'])['message']);
+        self::assertStringContainsString('"body" is not indexed', self::text($this->assoc($refused['failure'])['message']));
         $refused = $this->data($this->request('POST', '/extensions/tickets/run', ['function' => 'bad_field'], nonce: true));
-        self::assertStringContainsString('No field "colour" is declared', (string) $this->assoc($refused['failure'])['message']);
+        self::assertStringContainsString('No field "colour" is declared', self::text($this->assoc($refused['failure'])['message']));
 
         $export = $this->data($this->request('GET', '/extensions/tickets/data'));
         self::assertCount(2, (array) $export['objects']);
@@ -103,18 +103,36 @@ final class ScriptedObjectsTest extends RestTestCase
     {
         $this->call('later', ['Ada']);
         do_action('orillacart_order_placed', 4242);
-        do_action(RunExtensionSchedules::hook());
-        do_action(RunExtensionSchedules::hook());
+        $hourly = RunExtensionSchedules::hook();
+        self::assertNotSame('', $hourly);
+        do_action($hourly);
+        do_action($hourly);
         self::assertSame(0, $this->call('count_open'), 'nothing ran yet: the handlers wait for the queue');
 
         $runner = self::kernel()->container()->get(JobRunner::class);
         \assert($runner instanceof JobRunner);
         while ($runner->work([ExtensionJobHandler::QUEUE], 100, 'test')->count() > 0);
 
-        self::assertSame(['Follow up Ada', 'Order 4242'], array_map(static fn(array $t): string => (string) $t['subject'], $this->rows($this->call('urgent_all'))), 'the job and the event');
+        self::assertSame(['Follow up Ada', 'Order 4242'], array_map(static fn(array $t): string => self::text($t['subject']), $this->rows($this->call('urgent_all'))), 'the job and the event');
         self::assertSame(1, $this->call('hourly_count'), 'the schedule ran once in the hour');
     }
 
+    /** @return array<mixed> */
+    private function record(mixed $value): array
+    {
+        self::assertIsArray($value);
+
+        return $value;
+    }
+
+    private static function text(mixed $value): string
+    {
+        self::assertIsString($value);
+
+        return $value;
+    }
+
+    /** @param list<mixed> $arguments */
     private function call(string $function, array $arguments = []): mixed
     {
         $answer = $this->data($this->request('POST', '/extensions/tickets/run', ['function' => $function, 'arguments' => $arguments], nonce: true));

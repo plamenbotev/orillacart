@@ -526,6 +526,7 @@ language stored in its database, written by a person in the admin or by an agent
 | ✅ | 330 | P2 | `on <event>` handlers in jobs of the `extensions` lane, `every` schedules, `jobs.push`; `docs/extension-scripts.md` generated from the host signatures by `bin/script-docs` with a currency test, the MCP resource `orillacart://extensions/reference`; the proof on `oc-ms`: an extension with an object, routes and a page installed on site 3 alone, its records in the tenant database, its routes 404 on site 2 | df7f9490 |
 | ⬜ | 331 | P2 | Versions of an extension's files kept on each save, with rollback, the log of its runs with the budgets used, scripted manager routes as assistant tools, an override's diff against the plugin's template and a stale mark when a release changes it, on the Extensions screen | |
 | ⬜ | 332 | P2 | The extensions' fields on the product, order and customer screens as generic sections built from the declaration, in the REST views under `extensions.<id>`, in templates, as export and import columns, and as search facets when declared | |
+| ✅ | 333 | P1 | The hard gate on generated code: `GeneratedCodeGate` tokenizes every compiled source and refuses any token the compiler does not make, after compiling and before a cache file is included or evaluated; cache files signed with the site's key and thrown away when unsigned, edited or another site's; the compiler quoting strings itself (`var_export` writes NUL as a double-quoted string); hostile-string tests through the compiler | |
 
 ## Deliberately not carried over
 

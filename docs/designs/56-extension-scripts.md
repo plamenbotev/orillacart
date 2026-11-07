@@ -1,6 +1,6 @@
 # 56. Extension scripts
 
-Status: built (2026-11-07). PLAN items 317–330 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
+Status: built (2026-11-07). PLAN items 317–330 and 333 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
 
 Each tenant of a SaaS, or the owner of one shop, extends and edits their own shop without a PHP plugin: new
 payment and shipping providers, new endpoints and pages, new kinds of records and new fields on the shop's own,
@@ -205,6 +205,21 @@ The compiled PHP is never stored in the database: it is derived from the files a
 clears the folder as it clears Twig's; nothing has to be invalidated by hand. On a network each site compiles its
 own, under its own id, so two tenants with the same extension id never share a class.
 
+Compiling to PHP makes the compiler a security boundary: an escaping bug would let a script's string or name
+become PHP that runs with the plugin's powers. The sandbox therefore does not rest on the compiler alone.
+`GeneratedCodeGate` reads every generated source with PHP's own tokenizer and refuses it unless each token is one
+the compiler is known to make: one class extending `CompiledScript`, methods `fn_*`/`m_*`, variables `$v_*`,
+single-quoted strings, static calls on `Ops`, calls on `$this->c`, a short list of keywords; no other class,
+function or constant, no `new`, `eval`, `include`, backtick, interpolated string, variable variable, comment or
+inline HTML. The gate runs after compiling (a refusal is a finding and no source is kept) and again in
+`CompiledScriptStore` before a cache file is included or a source evaluated in memory. Cache files also carry the
+site's signature (`Signatures`, keyed with the site's salt and id) of their source on the last line; a file that is
+unsigned, edited after signing, signed by another site or outside the grammar is deleted and the class compiled
+again. The compiler quotes strings itself (single quotes, only `\` and `'` escaped) because `var_export` writes a
+NUL byte as a double-quoted `"\0"`, which the gate found and refused. `GeneratedCodeGateTest` feeds the compiler
+hostile strings, every byte included, in every place a string reaches the source, and checks the gate passes and
+the value comes back unchanged.
+
 ## Where it runs
 
 Enabling parses every file, runs the static check (syntax, unknown functions, wrong arities, undeclared
@@ -255,7 +270,8 @@ columns and search facets (PLAN 331, 332). Two things the build decided differen
 JSON only (a rendered template travels as `{ html }`), since WordPress's REST server answers JSON; and a route
 cannot waive the REST nonce, since no unsafe route of the shop does. The proof ran on the `oc-ms` network: an
 extension installed on site 3 kept its package and records in the tenant database `wp_t3`, answered its routes
-there, rendered its page block, and did not exist on site 2.
+there, rendered its page block, and did not exist on site 2. The hard gate on generated code and the signed cache
+files (PLAN 333) came after the build, from a review of the compile-to-PHP decision.
 
 ## Open points
 

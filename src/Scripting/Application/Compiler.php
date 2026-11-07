@@ -332,7 +332,7 @@ final class Compiler
         // a.b[c] = v: the root variable takes a copy with the member set.
         $path = [];
         while ($target instanceof Member || $target instanceof Index) {
-            array_unshift($path, $target instanceof Member ? var_export($target->name, true) : self::OPS . '::key(' . $this->expr($target->key, $scope) . ')');
+            array_unshift($path, $target instanceof Member ? self::literal($target->name) : self::OPS . '::key(' . $this->expr($target->key, $scope) . ')');
             $target = $target->object;
         }
         if (!$target instanceof Name || !$scope->has($target->name)) {
@@ -347,10 +347,10 @@ final class Compiler
     private function expr(Expr $expr, Scope $scope): string
     {
         if ($expr instanceof Literal) {
-            return var_export($expr->value, true);
+            return self::literal($expr->value);
         }
         if ($expr instanceof Str) {
-            return var_export($expr->value, true);
+            return self::literal($expr->value);
         }
         if ($expr instanceof ListLit) {
             return '[' . implode(', ', array_map(fn(Expr $item): string => $this->expr($item, $scope), $expr->items)) . ']';
@@ -358,7 +358,7 @@ final class Compiler
         if ($expr instanceof MapLit) {
             $pairs = [];
             foreach ($expr->pairs as [$key, $value]) {
-                $pairs[] = ($key instanceof Str ? var_export($key->value, true) : self::OPS . '::key(' . $this->expr($key, $scope) . ')') . ' => ' . $this->expr($value, $scope);
+                $pairs[] = ($key instanceof Str ? self::literal($key->value) : self::OPS . '::key(' . $this->expr($key, $scope) . ')') . ' => ' . $this->expr($value, $scope);
             }
 
             return '[' . implode(', ', $pairs) . ']';
@@ -383,7 +383,7 @@ final class Compiler
                 return 'null';
             }
 
-            return self::OPS . '::get(' . $this->expr($expr->object, $scope) . ', ' . var_export($expr->name, true) . ')';
+            return self::OPS . '::get(' . $this->expr($expr->object, $scope) . ', ' . self::literal($expr->name) . ')';
         }
         if ($expr instanceof Index) {
             return self::OPS . '::get(' . $this->expr($expr->object, $scope) . ', ' . $this->expr($expr->key, $scope) . ')';
@@ -396,14 +396,14 @@ final class Compiler
                 $this->finding($expr, \sprintf('Unknown filter "%s"', $expr->name));
             }
 
-            return '$this->c->bytes(' . self::OPS . '::filter(' . var_export($expr->name, true) . ', ' . $this->expr($expr->value, $scope) . ', ' . $this->args($expr->args, $scope) . '))';
+            return '$this->c->bytes(' . self::OPS . '::filter(' . self::literal($expr->name) . ', ' . $this->expr($expr->value, $scope) . ', ' . $this->args($expr->args, $scope) . '))';
         }
         if ($expr instanceof Test) {
             if (!\in_array($expr->name, Ops::TESTS, true)) {
                 $this->finding($expr, \sprintf('Unknown test "%s"', $expr->name));
             }
 
-            return ($expr->negated ? '!' : '') . self::OPS . '::test(' . var_export($expr->name, true) . ', ' . $this->expr($expr->value, $scope) . ', ' . $this->args($expr->args, $scope) . ')';
+            return ($expr->negated ? '!' : '') . self::OPS . '::test(' . self::literal($expr->name) . ', ' . $this->expr($expr->value, $scope) . ', ' . $this->args($expr->args, $scope) . ')';
         }
         if ($expr instanceof Unary) {
             $operand = $this->expr($expr->operand, $scope);
@@ -519,7 +519,7 @@ final class Compiler
             $this->finding($expr, \sprintf('"%s" needs the permission "%s": declare it in the extension\'s needs', $name, $function->needs));
         }
 
-        return '$this->c->call(' . var_export($name, true) . ", {$args})";
+        return '$this->c->call(' . self::literal($name) . ", {$args})";
     }
 
     private function lambda(FnExpr $fn, Scope $outer): string
@@ -579,10 +579,24 @@ final class Compiler
             $items = [];
             $list = array_is_list($value);
             foreach ($value as $key => $item) {
-                $items[] = ($list ? '' : var_export($key, true) . ' => ') . $this->phpArray($item);
+                $items[] = ($list ? '' : self::literal($key) . ' => ') . $this->phpArray($item);
             }
 
             return '[' . implode(', ', $items) . ']';
+        }
+
+        return self::literal($value);
+    }
+
+    /**
+     * A PHP literal of a scalar. Strings are single-quoted with only the quote and the backslash escaped, which
+     * is every string PHP can read back as it was, NUL and all; var_export would write a NUL as `"\0"`, a
+     * double-quoted string the GeneratedCodeGate refuses.
+     */
+    private static function literal(mixed $value): string
+    {
+        if (\is_string($value)) {
+            return "'" . strtr($value, ['\\' => '\\\\', "'" => "\\'"]) . "'";
         }
 
         return var_export($value, true);

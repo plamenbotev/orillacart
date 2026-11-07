@@ -210,7 +210,7 @@ final readonly class DoctrineObjectStore implements ObjectStore
             } elseif (\is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1) {
                 $builder->andWhere("{$alias}.valueDate {$operator} :{$parameter}")->setParameter($parameter, new \DateTimeImmutable($value));
             } else {
-                $builder->andWhere("{$alias}.valueText {$operator} :{$parameter}")->setParameter($parameter, mb_substr(\is_scalar($value) ? (string) $value : self::json($value), 0, ExtensionValue::MAX_TEXT));
+                $builder->andWhere("{$alias}.valueText {$operator} :{$parameter}")->setParameter($parameter, mb_substr(\is_string($value) ? $value : self::json($value), 0, ExtensionValue::MAX_TEXT));
             }
         }
 

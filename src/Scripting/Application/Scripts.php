@@ -12,7 +12,8 @@ use OrillaCart\Scripting\Domain\SyntaxError;
 
 /**
  * The language's door: checks a source, compiles it to its class, keeps the class in the store under the source's
- * checksum and gives back an instance ready to run with a budget and permissions.
+ * checksum and gives back an instance ready to run with a budget and permissions. What the compiler made passes
+ * the GeneratedCodeGate before it is kept, and the store checks it again before it is loaded.
  */
 final readonly class Scripts
 {
@@ -36,7 +37,13 @@ final readonly class Scripts
             return new Compiled(Compiler::NAMESPACE . '\\Script_' . $suffix, null, [new Dto\Finding($e->sourceLine, $e->sourceColumn, preg_replace('/ \(line \d+, column \d+\)$/', '', $e->getMessage()) ?? $e->getMessage())]);
         }
 
-        return $this->compiler->compile($program, $suffix);
+        $compiled = $this->compiler->compile($program, $suffix);
+        if ($compiled->source !== null && ($refused = GeneratedCodeGate::refuse($compiled->source)) !== null) {
+            // The compiler made code outside its own grammar: a bug of the compiler's, never run.
+            return new Compiled($compiled->className, null, [...$compiled->findings, new Dto\Finding(1, 1, 'The compiled code was refused (' . $refused . '); the script cannot be run until the compiler is fixed')]);
+        }
+
+        return $compiled;
     }
 
     /**
