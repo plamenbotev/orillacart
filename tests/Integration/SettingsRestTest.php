@@ -158,6 +158,9 @@ final class SettingsRestTest extends RestTestCase
         global $submenu;
         require_once ABSPATH . 'wp-admin/includes/plugin.php';
         $this->actAs('administrator');
+        // Another test may have built the menu in this process already: this one starts from none.
+        $GLOBALS['menu'] = [];
+        $submenu = [];
 
         do_action('admin_menu');
 
