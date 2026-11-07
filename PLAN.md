@@ -503,6 +503,28 @@ thousands of products and a storefront under traffic, read from the queries and 
 | ✅ | 315 | P1 | "Keep history for (days)" setting (365; 90–3650): a daily task deletes older stock movements, past prices (each item's current one kept) and abandoned-cart records | 3b9f7e5 |
 | ✅ | 316 | P2 | The Home screen's overview kept a minute per user and day, as the admin bar's to-do counts are | c87f58c |
 
+## Extension scripts (planned 2026-11-07)
+
+Design 56 (`docs/designs/56-extension-scripts.md`): each tenant extends and edits its own shop in a sandboxed
+language stored in its database, written by a person in the admin or by an agent over MCP. Nothing built yet.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ⬜ | 317 | P1 | The language: lexer, parser with Twig's expression grammar plus statements, cached syntax tree, values (null, bool, number, money, string, list, map, read-only records), errors as values (`fail`, `try`) | |
+| ⬜ | 318 | P1 | The interpreter with budgets (steps, CPU time, memory, outbound calls, queries), the host function model (PHP methods with declared signatures and permissions), the static check (syntax, unknown functions, arities, undeclared permissions, missing handlers), a conformance suite | |
+| ⬜ | 319 | P2 | `wp orillacart script check\|run` for a file against a site, with sample input | |
+| ⬜ | 320 | P1 | Packages: `extensions` and `extension_files` tables, enabling with the static check, the compiled declarations registered on `orillacart_extensions` per site, settings through `Setting`/`Settings` with sealing, permissions asked for and granted, the circuit breaker (ten failures → stopped, routes 503, a Home line) | |
+| ⬜ | 321 | P1 | Settings › Extensions: list, file editor with findings as you type, Check and Run console against a read-only view, settings, permissions, versions with rollback, import and export as a checksummed zip, run log with budgets | |
+| ⬜ | 322 | P1 | MCP area "extensions": list, read, write_file, check, run, enable (risk opening), disable, export; the language reference and host catalogue as the resource `orillacart://extensions/reference` | |
+| ⬜ | 323 | P1 | Scripted providers through the extension API's own contracts: payment gateways (start, returns, notifications, refunds, checks) and shipping methods (quote, pickup points, shipments, labels, tracking), proved with the test fixtures' scenarios; the `http` namespace with per-extension host allow-lists, timeouts and size caps | |
+| ⬜ | 324 | P2 | The other contracts as adapters: cart rules, order fees, price and order adjusters, checkout fields, order actions, columns, filters and searches, home contributors, assistant tools, product blocks, mailing lists | |
+| ⬜ | 325 | P1 | Routes under `/orillacart/v1/x/<extension>/` as real `RouteDefinition`s through HttpKernel (authorization, nonce, API keys, OAuth, guards with a per-extension rate limit, input validation), manager routes as assistant tools with a declared risk | |
+| ⬜ | 326 | P1 | Pages under the shop's pages and the `orillacart/extension-page` block, slot declarations, `respond.html` | |
+| ⬜ | 327 | P1 | Templates from the database: the extension's own, overrides of storefront templates behind a permission through a loader ahead of the theme, sandboxed per source with `SourcePolicyInterface` and the email policy widened for the storefront, refused at save when they do not compile, stale marks when a release changes the original; `template_data` under `ext.<id>` | |
+| ⬜ | 328 | P1 | Custom objects: typed fields and references with cascades, `extension_objects` + `extension_object_values`, indexed `query` with cursors, the static check refusing filters on unindexed fields, deletion with the extension after export | |
+| ⬜ | 329 | P1 | Fields on products, orders and customers: generic admin sections built from the declaration, REST views under `extensions.<id>`, templates as `product.ext.<id>.…`, export and import columns, personal data export and erasure, search facets when declared | |
+| ⬜ | 330 | P2 | `on <event>` handlers in jobs of the `extensions` lane, `every` schedules, `jobs.push`; `docs/extension-scripts.md` and the reference generated from the host signatures with a currency test; the end-to-end proof on `oc-ms`: a gateway, a carrier, a ticket object with a page and an override, written over MCP, enabled by a manager | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
