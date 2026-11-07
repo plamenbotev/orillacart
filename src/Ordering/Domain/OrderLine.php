@@ -17,6 +17,7 @@ use OrillaCart\Shared\Domain\Money;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'order_lines')]
+#[ORM\Index(name: 'line_product', columns: ['product_id'])]
 #[ORM\InheritanceType('SINGLE_TABLE')]
 #[ORM\DiscriminatorColumn(name: 'type', type: 'string', length: 20)]
 #[ORM\DiscriminatorMap(['item' => ItemLine::class, 'given' => GivenItemLine::class, 'add_on' => AddOnItemLine::class, 'charge' => ChargeLine::class, 'shipping' => ShippingLine::class, 'fee' => FeeLine::class])]

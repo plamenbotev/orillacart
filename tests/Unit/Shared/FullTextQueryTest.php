@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Tests\Unit\Search;
+namespace OrillaCart\Tests\Unit\Shared;
 
-use OrillaCart\Search\Infrastructure\Doctrine\FullTextQuery;
+use OrillaCart\Shared\Persistence\FullTextQuery;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

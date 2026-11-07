@@ -17,6 +17,7 @@ use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
+use OrillaCart\Shared\Persistence\FullTextQuery;
 
 final readonly class DoctrineOrderRepository implements OrderRepository
 {
@@ -27,6 +28,7 @@ final readonly class DoctrineOrderRepository implements OrderRepository
     {
         // DQL has no JSON functions of its own; the shop's words are a JSON column.
         $entityManager->getConfiguration()->addCustomStringFunction(JsonValue::NAME, JsonValue::class);
+        $entityManager->getConfiguration()->addCustomNumericFunction(MatchAgainst::NAME, MatchAgainst::class);
     }
 
     public function find(int $id, bool $lock = false): ?Order
@@ -181,15 +183,23 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             $query->andWhere("o.id IN (:marked{$index})")->setParameter("marked{$index}", $ids === [] ? [0] : $ids);
         }
         if ($text !== null) {
-            $like = '%' . addcslashes($text, '%_\\') . '%';
-            $matches = ['o.email LIKE :text', 'o.vatNumber LIKE :text', 'o.transactionId LIKE :text'];
-            foreach (['billing', 'shippingAddress'] as $address) {
-                foreach (['firstName', 'lastName', 'phone', 'street', 'city', 'postcode'] as $field) {
-                    $matches[] = "o.{$address}.{$field} LIKE :text";
-                }
+            // The order's words (email, references, addresses, items by the shop's name and the customer's) in one
+            // FULLTEXT-indexed column (design 55): each word searched starts a word there; the short ones, which
+            // the index leaves out, appear in it.
+            $matches = [];
+            $words = FullTextQuery::parse($text);
+            $conditions = [];
+            if ($words->boolean !== null) {
+                $conditions[] = 'MATCH_AGAINST(o.words, :words) > 0';
+                $query->setParameter('words', $words->boolean);
             }
-            // An item by the shop's name of it, or the customer's (design 51).
-            $matches[] = 'EXISTS (' . \sprintf($lines, 'tl', "tl.name LIKE :text OR JSON_VALUE(tl.shopWords, '$.name') LIKE :text OR tl.sku LIKE :text") . ')';
+            foreach ($words->shortWords as $index => $word) {
+                $conditions[] = "o.words LIKE :short{$index}";
+                $query->setParameter("short{$index}", '%' . addcslashes($word, '%_\\') . '%');
+            }
+            if ($conditions !== []) {
+                $matches[] = '(' . implode(' AND ', $conditions) . ')';
+            }
             $number = ltrim($text, '#');
             if (ctype_digit($number) && \strlen($number) <= 9) {
                 $matches[] = 'o.id = :number';
@@ -199,7 +209,8 @@ final readonly class DoctrineOrderRepository implements OrderRepository
                 $matches[] = 'o.id IN (:found)';
                 $query->setParameter('found', $search->foundIds);
             }
-            $query->andWhere(implode(' OR ', $matches))->setParameter('text', $like);
+            // Only stopwords, or only a number no order has: nothing matches.
+            $query->andWhere($matches === [] ? '1 = 0' : implode(' OR ', $matches));
         }
 
         return $query;
@@ -339,22 +350,26 @@ final readonly class DoctrineOrderRepository implements OrderRepository
 
     public function ofPerson(string $email, ?int $customerId, int $offset, int $limit): array
     {
-        // By email and by account apart, each by its index, then the page of their ids together.
-        $ids = $this->ids('o.email = :email', ['email' => $email]);
-        if ($customerId !== null) {
-            $ids = array_values(array_unique([...$ids, ...$this->ids('o.customerId = :customer', ['customer' => $customerId])]));
-        }
-        sort($ids);
-        $ids = \array_slice($ids, $offset, $limit);
-        if ($ids === []) {
-            return [];
+        /** @var list<Order> */
+        return $this->person($email, $customerId)->select('o')
+            ->orderBy('o.id', 'ASC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()->getResult();
+    }
+
+    /**
+     * The orders of a person: by their email, or by their account. One query, the two indexes merged by the
+     * database, so a person with thousands of orders is paged there and not in memory (design 55).
+     */
+    private function person(string $email, ?int $customerId): QueryBuilder
+    {
+        $query = $this->entityManager->createQueryBuilder()->from(Order::class, 'o');
+        if ($customerId === null) {
+            return $query->where('o.email = :email')->setParameter('email', $email);
         }
 
-        /** @var list<Order> */
-        return $this->entityManager->createQueryBuilder()->select('o')->from(Order::class, 'o')
-            ->where('o.id IN (:ids)')->setParameter('ids', $ids)
-            ->orderBy('o.id', 'ASC')
-            ->getQuery()->getResult();
+        return $query->where('o.email = :email OR o.customerId = :customer')->setParameter('email', $email)->setParameter('customer', $customerId);
     }
 
     public function remove(Order $order): void
@@ -436,20 +451,17 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         if ($productIds === []) {
             return [];
         }
-        // The person's orders by each index apart, then their lines.
-        $orders = $this->ids('o.email = :email', ['email' => $email]);
-        if ($customerId !== null) {
-            $orders = array_values(array_unique([...$orders, ...$this->ids('o.customerId = :customer', ['customer' => $customerId])]));
-        }
-        if ($orders === []) {
-            return [];
-        }
-        $ids = $this->entityManager->createQueryBuilder()->select('DISTINCT l.productId')->from(OrderLine::class, 'l')->join('l.order', 'o')
+        // The lines of the products, by the lines' product index, narrowed to the person's paid orders.
+        $person = $customerId === null ? 'o.email = :email' : '(o.email = :email OR o.customerId = :customer)';
+        $query = $this->entityManager->createQueryBuilder()->select('DISTINCT l.productId')->from(OrderLine::class, 'l')->join('l.order', 'o')
             ->where('l.productId IN (:products)')->setParameter('products', $productIds)
-            ->andWhere('o.id IN (:orders)')->setParameter('orders', $orders)
+            ->andWhere($person)->setParameter('email', $email)
             ->andWhere('o.paidAt IS NOT NULL')
-            ->andWhere('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed])
-            ->getQuery()->getSingleColumnResult();
+            ->andWhere('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed]);
+        if ($customerId !== null) {
+            $query->setParameter('customer', $customerId);
+        }
+        $ids = $query->getQuery()->getSingleColumnResult();
 
         return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids));
     }
@@ -487,23 +499,6 @@ final readonly class DoctrineOrderRepository implements OrderRepository
     private function facetTable(): string
     {
         return $this->entityManager->getClassMetadata(OrderFacet::class)->getTableName();
-    }
-
-    /**
-     * The ids of the orders matching one indexed condition.
-     *
-     * @param array<string, int|string> $parameters
-     *
-     * @return list<int>
-     */
-    private function ids(string $condition, array $parameters): array
-    {
-        $query = $this->entityManager->createQueryBuilder()->select('o.id')->from(Order::class, 'o')->where($condition);
-        foreach ($parameters as $name => $value) {
-            $query->setParameter($name, $value);
-        }
-
-        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $query->getQuery()->getSingleColumnResult()));
     }
 
     public function countChargesTaxedBy(int $taxGroupId): int

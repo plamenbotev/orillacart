@@ -12,6 +12,7 @@ use OrillaCart\Search\Application\Dto\SearchQuery;
 use OrillaCart\Search\Application\Dto\SearchResult;
 use OrillaCart\Search\Application\Dto\SearchSort;
 use OrillaCart\Search\Domain\Facets;
+use OrillaCart\Shared\Persistence\FullTextQuery;
 
 /**
  * Searches the database engine's tables. Product-wide conditions (words, categories, brands, featured, on sale)

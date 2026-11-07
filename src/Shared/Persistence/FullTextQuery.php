@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Search\Infrastructure\Doctrine;
+namespace OrillaCart\Shared\Persistence;
 
 /**
  * Search words as InnoDB FULLTEXT can take them. InnoDB indexes words of three characters or more that are not
  * stopwords, and in boolean mode a required word it did not index matches nothing: "+tv" or "+the" empty the
  * results on MySQL and MariaDB alike. So the long words are required as prefixes ("+lamp*"), the shorter ones
- * must appear in the title, and stopwords are dropped. The tokens split where InnoDB splits: at anything that
+ * must appear in the text itself, and stopwords are dropped. The tokens split where InnoDB splits: at anything that
  * is not a letter, digit or underscore.
  */
 final readonly class FullTextQuery
@@ -25,7 +25,7 @@ final readonly class FullTextQuery
 
     /**
      * @param string|null  $boolean    for MATCH … AGAINST (… IN BOOLEAN MODE); null without long words
-     * @param list<string> $shortWords each must appear in the title
+     * @param list<string> $shortWords each must appear in the text itself (LIKE)
      */
     private function __construct(
         public ?string $boolean,

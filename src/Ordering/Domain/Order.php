@@ -24,6 +24,8 @@ use OrillaCart\Shared\Domain\Text;
 #[ORM\Index(name: 'order_email', columns: ['email'])]
 #[ORM\Index(name: 'order_attention', columns: ['attention_since'])]
 #[ORM\Index(name: 'order_total', columns: ['total', 'id'])]
+#[ORM\Index(name: 'order_placed', columns: ['placed_at'])]
+#[ORM\Index(name: 'order_words', columns: ['words'], flags: ['fulltext'])]
 class Order
 {
     public const int MAX_NOTE_LENGTH = 2000;
@@ -120,6 +122,13 @@ class Order
 
     #[ORM\Column(type: 'text')]
     private string $paymentNote;
+
+    /**
+     * What the shop finds the order by, as FULLTEXT indexes it (design 55): its email, references, addresses and
+     * items' names and SKUs, in one place, so a search is one index lookup and not a scan of fifteen columns.
+     */
+    #[ORM\Column(type: 'text')]
+    private string $words = '';
 
     /** The amounts include tax, as the shop's prices did when it was priced: the total is not subtotal plus tax. */
     #[ORM\Column(options: ['default' => false])]
@@ -298,6 +307,7 @@ class Order
         $this->pricesIncludeTax = $draft->pricesIncludeTax;
         $this->vatNumber = $draft->vatNumber === null ? null : mb_substr($draft->vatNumber, 0, 20);
         $this->reverseCharge = $draft->reverseCharge;
+        $this->index();
         $this->locale = $draft->locale === null || preg_match('/^[A-Za-z]{2,3}(_[A-Za-z0-9]{2,8}){0,2}$/', $draft->locale) !== 1 ? null : $draft->locale;
         $this->fields = self::fieldRows($draft->fields);
         $this->shipsInShopWords($draft->shipping);
@@ -1138,6 +1148,7 @@ class Order
         $this->email = $email;
         $this->billing = $billing;
         $this->shippingAddress = $shippingAddress ?? Address::none();
+        $this->index();
 
         return $readdressed;
     }
@@ -1248,6 +1259,7 @@ class Order
         $this->shippingOption = $shipping?->option;
         $this->shippingName = $shipping === null ? null : mb_substr("{$shipping->carrier} – {$shipping->rate}", 0, 200);
         $this->pickupPointId = $shipping?->pickupPointId;
+        $this->index();
         $this->pickupPoint = $shipping?->pickupPoint === null ? null : mb_substr($shipping->pickupPoint, 0, 255);
         $this->shipsInShopWords($shipping);
         $this->total = $total->toFixed();
@@ -1297,6 +1309,7 @@ class Order
             $this->status = OrderStatus::Processing;
         }
         $this->transactionId = $transactionId;
+        $this->index();
         $this->paidAt = $at;
         // What a provider took, and what gift cards paid besides.
         $this->paidAmount = ($amount === null ? $this->total() : $amount->add($this->giftCardTotal()))->toFixed();
@@ -1415,6 +1428,7 @@ class Order
     {
         if ($this->transactionId === null) {
             $this->transactionId = $transactionId;
+            $this->index();
 
             return false;
         }
@@ -1486,6 +1500,7 @@ class Order
         }
         $this->status = OrderStatus::Processing;
         $this->transactionId = $transactionId;
+        $this->index();
         $this->paidAt = $at;
         // What a provider took, and what gift cards paid besides.
         $this->paidAmount = ($amount === null ? $this->total() : $amount->add($this->giftCardTotal()))->toFixed();
@@ -1530,8 +1545,22 @@ class Order
         }
         $this->grants->clear();
         $this->anonymisedAt = $at;
+        $this->index();
 
         return true;
+    }
+
+    /** Gathers the words the shop finds the order by, whenever one of them changes. */
+    private function index(): void
+    {
+        $words = [$this->email, $this->vatNumber ?? '', $this->transactionId ?? ''];
+        foreach ([$this->billing, $this->shippingAddress] as $address) {
+            array_push($words, $address->firstName(), $address->lastName(), $address->phone(), $address->street(), $address->city(), $address->postcode());
+        }
+        foreach ($this->lines as $line) {
+            array_push($words, $line->name(), $line->shopName(), $line->sku() ?? '');
+        }
+        $this->words = implode(' ', array_values(array_unique(array_filter(array_map(trim(...), $words), static fn(string $word): bool => $word !== ''))));
     }
 
     public function anonymisedAt(): ?\DateTimeImmutable

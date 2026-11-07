@@ -352,7 +352,8 @@ return static function (ContainerConfigurator $container): void {
             '../src/Shared/Http/Routing/{Route,RouteDefinition}.php',
             '../src/Shared/Security/',
             '../src/Shared/WordPress/AsHook.php',
-            '../src/Search/Infrastructure/Doctrine/{FullTextQuery,SqlParams}.php',
+            '../src/Search/Infrastructure/Doctrine/SqlParams.php',
+            '../src/Shared/Persistence/FullTextQuery.php',
             '../src/Exchange/Application/{CsvFile,JsonFile}.php',
         ]);
 

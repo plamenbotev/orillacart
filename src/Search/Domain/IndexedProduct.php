@@ -17,6 +17,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'search_title', columns: ['title'], flags: ['fulltext'])]
 #[ORM\Index(name: 'search_text', columns: ['title', 'text'], flags: ['fulltext'])]
 #[ORM\Index(name: 'search_order', columns: ['menu_order', 'title'])]
+#[ORM\Index(name: 'search_listing', columns: ['original', 'menu_order', 'title'])]
+#[ORM\Index(name: 'search_locale_listing', columns: ['locale', 'menu_order', 'title'])]
 #[ORM\Index(name: 'search_published', columns: ['published_at'])]
 #[ORM\Index(name: 'search_price', columns: ['price_min'])]
 #[ORM\Index(name: 'search_price_max', columns: ['price_max'])]

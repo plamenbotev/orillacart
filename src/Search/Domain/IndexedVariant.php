@@ -12,7 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'search_variants')]
-#[ORM\Index(name: 'search_variant_product', columns: ['product_id'])]
+#[ORM\Index(name: 'search_variant_product', columns: ['product_id', 'in_stock', 'price'])]
 class IndexedVariant
 {
     public function __construct(

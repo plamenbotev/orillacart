@@ -14,6 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'stock_levels')]
 #[ORM\UniqueConstraint(name: 'stockroom_item', columns: ['stockroom_id', 'item_kind', 'item_id'])]
 #[ORM\Index(name: 'item', columns: ['item_kind', 'item_id'])]
+#[ORM\Index(name: 'stock_quantity', columns: ['quantity'])]
 class StockLevel
 {
     #[ORM\Id]
