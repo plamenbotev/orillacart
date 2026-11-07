@@ -133,6 +133,14 @@ the bundled **OrillaCart Network** plugin for the network: it runs only the netw
 site, not the shop. Without it, a worker for the network, WP-CLI and each shop's own visitors still bring them up to
 date, and the shops' admin screens remind super admins of it.
 
+## Under load
+
+A request that pushed jobs runs up to twenty of them after its response, but only on the queues no worker serves:
+with a worker running, requests run none, and PHP's workers are free for shoppers. A shop under real traffic runs a
+worker. It also runs a persistent object cache (Redis, Memcached): the storefront's listings then share their totals
+and filter counts across requests for a minute, or until the search index changes (design 55); without one each
+request counts for itself.
+
 ## Sharded networks
 
 A network whose tables are spread over several databases or servers by a database drop-in (HyperDB, LudicrousDB)

@@ -490,6 +490,19 @@ HyperDB or LudicrousDB; Doctrine borrowed `$wpdb->dbh`, which is then only the l
 | ✅ | 310 | P1 | `WordPressConnection` asks the drop-in which server holds the site's shop tables, as for a write, and pins the handle while the drop-in keeps it open; core wpdb unchanged; unit tests with both drop-ins' shapes; docs | 092e71a |
 | ✅ | 311 | P1 | Proved on `oc-ms` with LudicrousDB and a second database holding one site's tables: that site's shop, its network worker turn and its upgrade run on the second database | 092e71a |
 
+## High volumes (2026-11-07)
+
+Design 55 (`docs/designs/55-high-volumes.md`): what breaks first with hundreds of thousands of orders, tens of
+thousands of products and a storefront under traffic, read from the queries and the schema.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 312 | P1 | The admin's order search over one FULLTEXT `words` column the order keeps current, instead of LIKE over fifteen columns; a person's orders and the reviews' purchase check as one indexed query each | 7c2c959 |
+| ✅ | 313 | P1 | Indexes: orders by day placed, order lines by product, stock levels by quantity, the search documents by what the listing filters and orders by, the variants' index covering stock and price; a facet's label deterministic | 7c2c959 |
+| ✅ | 314 | P1 | A listing's total and facet counts shared by the requests of a site with a persistent object cache, for a minute or until the index changes | c37cc22 |
+| ✅ | 315 | P1 | "Keep history for (days)" setting (365; 90–3650): a daily task deletes older stock movements, past prices (each item's current one kept) and abandoned-cart records | 3b9f7e5 |
+| ✅ | 316 | P2 | The Home screen's overview kept a minute per user and day, as the admin bar's to-do counts are | c87f58c |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
