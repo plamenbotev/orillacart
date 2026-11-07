@@ -22,4 +22,7 @@ interface StockMovementRepository
      * @return list<array{reason: StockReason, stockroomId: int, stockroom: string, in: int, out: int}>
      */
     public function totals(MovementSearch $search): array;
+
+    /** Deletes the movements made before then, as the shop keeps its history for so long; how many went. */
+    public function forgetBefore(\DateTimeImmutable $before): int;
 }

@@ -26,6 +26,12 @@ final readonly class PriceHistory
         private ClockInterface $clock,
     ) {}
 
+    /** Deletes the prices older than the shop keeps its history (a setting), each item's current one kept; how many went. */
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        return $this->points->forgetBefore($before);
+    }
+
     /**
      * Keeps the prices of the offers (a guest's, as the shop shows them to everyone) that changed.
      *

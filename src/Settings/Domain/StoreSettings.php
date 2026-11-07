@@ -16,6 +16,10 @@ final readonly class StoreSettings
 {
     public const int MAX_SIGN_LENGTH = 8;
     public const int DEFAULT_LOW_STOCK_THRESHOLD = 2;
+    /** A year of history by default; never less than the 30 days the EU's Omnibus directive looks back, with room. */
+    public const int DEFAULT_HISTORY_DAYS = 365;
+    public const int LEAST_HISTORY_DAYS = 90;
+    public const int MOST_HISTORY_DAYS = 3650;
 
     /** The decimals amounts are priced, charged and shown in: the currency's, or fewer when the shop chose so. */
     public int $priceDecimals;
@@ -61,6 +65,8 @@ final readonly class StoreSettings
         public ReportDay $reportDay = ReportDay::Paid,
         /** What a deal that gave free items refunds when some of its items go back. */
         public FreeItemsOnReturn $freeItemsOnReturn = FreeItemsOnReturn::Spread,
+        /** How many days the shop keeps its history: stock movements, past prices and the record of carts left at checkout. */
+        public int $historyDays = self::DEFAULT_HISTORY_DAYS,
     ) {
         if ($minimumOrder !== null && ($minimumOrder->isNegative() || $minimumOrder->isZero())) {
             throw new RuleViolation('A minimum order is more than nothing; leave it empty for none.', 'orillacart_invalid_minimum_order');
@@ -73,6 +79,9 @@ final readonly class StoreSettings
         }
         if ($lowStockThreshold < 0) {
             throw new RuleViolation('A low stock threshold is 0 or more.', 'orillacart_invalid_low_stock_threshold');
+        }
+        if ($historyDays < self::LEAST_HISTORY_DAYS || $historyDays > self::MOST_HISTORY_DAYS) {
+            throw new RuleViolation('The history is kept for %1$d to %2$d days.', 'orillacart_invalid_history_days', values: [self::LEAST_HISTORY_DAYS, self::MOST_HISTORY_DAYS]);
         }
         $most = $currency->decimals();
         if ($decimals !== null && ($decimals < 0 || $decimals > $most)) {
@@ -135,6 +144,7 @@ final readonly class StoreSettings
             && $this->returnDays === $other->returnDays
             && $this->minimumOrder?->toFixed() === $other->minimumOrder?->toFixed()
             && $this->reportDay === $other->reportDay
-            && $this->freeItemsOnReturn === $other->freeItemsOnReturn;
+            && $this->freeItemsOnReturn === $other->freeItemsOnReturn
+            && $this->historyDays === $other->historyDays;
     }
 }

@@ -37,4 +37,7 @@ interface PriceHistoryRepository
      * @param list<string> $items "product:12", "variation:5"
      */
     public function forget(array $items): void;
+
+    /** Deletes the points recorded before then, except each item's latest, which is its price now; how many went. */
+    public function forgetBefore(\DateTimeImmutable $before): int;
 }

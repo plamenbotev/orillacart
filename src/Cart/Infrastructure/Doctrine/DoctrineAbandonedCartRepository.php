@@ -165,6 +165,11 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
         return self::int($carts) + self::int($left);
     }
 
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        return self::int($this->entityManager->createQuery('DELETE FROM ' . AbandonedCart::class . ' a WHERE a.abandonedAt < :before')->setParameter('before', $before)->execute());
+    }
+
     public function forgetEmailsBefore(\DateTimeImmutable $before): int
     {
         return self::int($this->entityManager->createQueryBuilder()

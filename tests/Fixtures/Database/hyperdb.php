@@ -19,7 +19,7 @@ class hyperdb extends \wpdb
     // The drop-in's own signature, not core's.
     public function db_connect($query = ''): mixed // @phpstan-ignore parameter.defaultValue
     {
-        $this->asked[] = \is_string($query) ? $query : '';
+        $this->asked[] = is_string($query) ? $query : '';
 
         return $this->answer; // @phpstan-ignore return.type
     }

@@ -20,6 +20,7 @@ export const stored = {
 	hide_prices: false,
 	show_lowest_price: false,
 	sell_to: [ 'BG' ],
+	history_days: 365,
 	weight_units: [ 'kg', 'g', 'lb', 'oz' ],
 	dimension_units: [ 'cm', 'm', 'mm', 'in' ],
 	currency_positions: [ 'before', 'before_space', 'after', 'after_space' ],

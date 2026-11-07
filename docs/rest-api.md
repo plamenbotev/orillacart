@@ -2208,6 +2208,7 @@ Replaces all the shop's settings in one go, so every field must be sent. It can 
   - `minimum_order` (string|null): matches `/^(\d{1,11}(\.\d{1,4})?)?$/`
   - `report_day` (string): one of paid, placed; default 'paid'
   - `free_items_on_return` (string): one of spread, charged, come_back, stay_free; default 'spread'
+  - `history_days` (int): 90 to 3650; default 365
 
 ## /settings-archive
 

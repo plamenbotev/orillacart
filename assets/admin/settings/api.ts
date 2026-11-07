@@ -35,6 +35,8 @@ export interface Settings {
 	return_days: number | null;
 	/** The least the items may come to, after discounts, to order; null for no least. */
 	minimum_order: string | null;
+	/** How many days the shop keeps its history: stock movements, past prices, carts left at checkout. */
+	history_days: number;
 	/** The day the reports count an order on: paid or placed; a change counts every order again. */
 	report_day: 'paid' | 'placed';
 	report_days: ( 'paid' | 'placed' )[];
@@ -65,6 +67,7 @@ export type SettingsInput = Pick<
 	| 'low_stock_threshold'
 	| 'unpaid_hold_days'
 	| 'return_days'
+	| 'history_days'
 	| 'minimum_order'
 	| 'report_day'
 	| 'free_items_on_return'
@@ -93,6 +96,7 @@ export function settingsInput( settings: Settings ): SettingsInput {
 		low_stock_threshold: settings.low_stock_threshold,
 		unpaid_hold_days: settings.unpaid_hold_days,
 		return_days: settings.return_days,
+		history_days: settings.history_days,
 		minimum_order: settings.minimum_order,
 		report_day: settings.report_day,
 		free_items_on_return: settings.free_items_on_return,

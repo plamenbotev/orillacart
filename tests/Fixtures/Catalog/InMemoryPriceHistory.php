@@ -49,6 +49,19 @@ final class InMemoryPriceHistory implements PriceHistoryRepository
         array_push($this->points, ...$points);
     }
 
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        $latest = [];
+        foreach ($this->points as $point) {
+            $latest[$point->item()] = max($latest[$point->item()] ?? $point->recordedAt(), $point->recordedAt());
+        }
+        $kept = array_values(array_filter($this->points, static fn(PricePoint $point): bool => $point->recordedAt() >= $before || $point->recordedAt() >= $latest[$point->item()]));
+        $gone = \count($this->points) - \count($kept);
+        $this->points = $kept;
+
+        return $gone;
+    }
+
     public function forget(array $items): void
     {
         $this->points = array_values(array_filter($this->points, static fn(PricePoint $point): bool => !\in_array($point->item(), $items, true)));

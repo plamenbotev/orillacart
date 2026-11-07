@@ -88,6 +88,7 @@ describe( 'SettingsScreen', () => {
 				hide_prices: false,
 				show_lowest_price: false,
 				sell_to: [ 'BG' ],
+				history_days: 365,
 			},
 		} );
 	} );

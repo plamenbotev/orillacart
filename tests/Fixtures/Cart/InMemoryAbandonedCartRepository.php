@@ -131,6 +131,19 @@ final class InMemoryAbandonedCartRepository implements AbandonedCartRepository
         return $forgotten;
     }
 
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        $gone = 0;
+        foreach ($this->abandoned as $id => $left) {
+            if ($left->abandonedAt() < $before) {
+                unset($this->abandoned[$id]);
+                ++$gone;
+            }
+        }
+
+        return $gone;
+    }
+
     public function forgetEmailsBefore(\DateTimeImmutable $before): int
     {
         $forgotten = 0;

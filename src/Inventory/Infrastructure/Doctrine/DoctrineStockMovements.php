@@ -40,6 +40,13 @@ final readonly class DoctrineStockMovements implements StockMovementRepository
         return [$movements, $total];
     }
 
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        $gone = $this->entityManager->createQuery('DELETE FROM ' . StockMovement::class . ' m WHERE m.at < :before')->setParameter('before', $before)->execute();
+
+        return is_numeric($gone) ? (int) $gone : 0;
+    }
+
     public function totals(MovementSearch $search): array
     {
         $rows = $this->matching($search)

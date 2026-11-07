@@ -144,6 +144,12 @@ final readonly class AbandonedCarts
         $this->abandoned->forgetCustomer($customerId);
     }
 
+    /** Deletes the records of carts left before the shop's history begins (a setting); how many went. */
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        return $this->abandoned->forgetBefore($before);
+    }
+
     /** Forgets the emails of carts left longer ago than carts are kept, daily. */
     public function forgetOld(): int
     {

@@ -44,6 +44,12 @@ final readonly class StockService
         private ?ClockInterface $clock = null,
     ) {}
 
+    /** Deletes the movements older than the shop keeps its history (a setting); how many went. */
+    public function forgetMovementsBefore(\DateTimeImmutable $before): int
+    {
+        return $this->movements?->forgetBefore($before) ?? 0;
+    }
+
     public function stock(StockItemRef $ref): StockView
     {
         return StockView::fromStock($this->levels->stockOf([$ref->toItem()])[0]);

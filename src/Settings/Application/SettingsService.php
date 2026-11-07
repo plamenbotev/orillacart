@@ -72,6 +72,7 @@ final readonly class SettingsService
             $command->minimumOrder === null || $command->minimumOrder === '' ? null : Money::of($command->minimumOrder),
             ReportDay::from($command->reportDay),
             FreeItemsOnReturn::from($command->freeItemsOnReturn),
+            $command->historyDays,
         );
 
         if (!$current->equals($previous)) {
@@ -113,6 +114,7 @@ final readonly class SettingsService
             $current->minimumOrder,
             $current->reportDay,
             $current->freeItemsOnReturn,
+            $current->historyDays,
         ));
     }
 
@@ -148,6 +150,7 @@ final readonly class SettingsService
             $current->minimumOrder,
             $current->reportDay,
             $current->freeItemsOnReturn,
+            $current->historyDays,
         ));
     }
 
@@ -182,6 +185,7 @@ final readonly class SettingsService
             $current->minimumOrder,
             $current->reportDay,
             $current->freeItemsOnReturn,
+            $current->historyDays,
         ));
     }
 }

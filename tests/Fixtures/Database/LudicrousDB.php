@@ -19,7 +19,7 @@ class LudicrousDB extends \wpdb
     // The drop-in's own signature, not core's.
     public function db_connect($allow_bail = true, $query = ''): mixed // @phpstan-ignore missingType.parameter
     {
-        $this->asked[] = [(bool) $allow_bail, \is_string($query) ? $query : ''];
+        $this->asked[] = [(bool) $allow_bail, is_string($query) ? $query : ''];
 
         return $this->answer; // @phpstan-ignore return.type
     }

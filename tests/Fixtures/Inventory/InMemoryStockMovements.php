@@ -24,6 +24,15 @@ final class InMemoryStockMovements implements StockMovementRepository
         }
     }
 
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        $kept = array_values(array_filter($this->movements, static fn(StockMovement $movement): bool => $movement->at() >= $before));
+        $gone = \count($this->movements) - \count($kept);
+        $this->movements = $kept;
+
+        return $gone;
+    }
+
     public function search(MovementSearch $search, int $offset, int $limit): array
     {
         $found = array_reverse($this->matching($search));

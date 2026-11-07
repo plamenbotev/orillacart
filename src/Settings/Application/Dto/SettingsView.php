@@ -55,6 +55,8 @@ final readonly class SettingsView
         public array $reportDays = [],
         /** What a deal that gave free items refunds when some of its items go back. */
         public string $freeItemsOnReturn = 'spread',
+        /** How many days the shop keeps its history: stock movements, past prices, carts left at checkout. */
+        public int $historyDays = StoreSettings::DEFAULT_HISTORY_DAYS,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -86,6 +88,7 @@ final readonly class SettingsView
             $settings->reportDay->value,
             ReportDay::values(),
             $settings->freeItemsOnReturn->value,
+            $settings->historyDays,
         );
     }
 }

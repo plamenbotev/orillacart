@@ -66,5 +66,8 @@ final readonly class UpdateSettings
          */
         #[Assert\Choice(callback: [FreeItemsOnReturn::class, 'values'])]
         public string $freeItemsOnReturn = 'spread',
+        /** How many days the shop keeps its history: stock movements, past prices, carts left at checkout. */
+        #[Assert\Range(min: StoreSettings::LEAST_HISTORY_DAYS, max: StoreSettings::MOST_HISTORY_DAYS)]
+        public int $historyDays = StoreSettings::DEFAULT_HISTORY_DAYS,
     ) {}
 }

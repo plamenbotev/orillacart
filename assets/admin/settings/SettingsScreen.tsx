@@ -580,6 +580,29 @@ export function SettingsScreen() {
 									}
 								/>
 							</Field>
+							<Field size="xs">
+								<TextControl
+									__next40pxDefaultSize
+									type="number"
+									min={ 90 }
+									max={ 3650 }
+									label={ __(
+										'Keep history for (days)',
+										'orillacart'
+									) }
+									help={ __(
+										'Stock movements, past prices and the record of carts left at checkout older than this are deleted daily. Orders are kept.',
+										'orillacart'
+									) }
+									value={ String( form.history_days ) }
+									onChange={ ( value ) =>
+										update(
+											'history_days',
+											Math.max( 90, Number( value ) || 90 )
+										)
+									}
+								/>
+							</Field>
 						</Row>
 						<Row>
 							<Field size="m">

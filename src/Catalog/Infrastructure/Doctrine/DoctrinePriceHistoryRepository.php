@@ -52,6 +52,19 @@ final readonly class DoctrinePriceHistoryRepository implements PriceHistoryRepos
         $this->entityManager->flush();
     }
 
+    public function forgetBefore(\DateTimeImmutable $before): int
+    {
+        // Each item's latest point stays whatever its age: it is the price in effect, which the 30 days before a
+        // later price are measured against. A derived table, as MySQL takes no subquery on the table it deletes from.
+        $table = $this->entityManager->getClassMetadata(PricePoint::class)->getTableName();
+        $gone = $this->entityManager->getConnection()->executeStatement(
+            "DELETE p FROM {$table} p JOIN (SELECT item, MAX(recorded_at) AS latest FROM {$table} GROUP BY item) l ON l.item = p.item WHERE p.recorded_at < ? AND p.recorded_at < l.latest",
+            [$before->format('Y-m-d H:i:s')],
+        );
+
+        return (int) $gone;
+    }
+
     public function forget(array $items): void
     {
         if ($items !== []) {
