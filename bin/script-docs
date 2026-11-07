@@ -1,0 +1,26 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Writes docs/extension-scripts.md from the script language's reference. Run after adding or changing a host function.
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+// The container holds services built on the database's settings; nothing here connects.
+foreach (['DB_NAME' => 'docs', 'DB_USER' => 'docs', 'DB_PASSWORD' => '', 'DB_HOST' => 'localhost'] as $constant => $value) {
+    defined($constant) || define($constant, $value);
+}
+if (!class_exists(wpdb::class, false)) {
+    require dirname(__DIR__) . '/tests/Fixtures/Database/wpdb.php';
+}
+$GLOBALS['wpdb'] = new wpdb();
+
+$builder = OrillaCart\Platform\Kernel::buildContainer(dirname(__DIR__));
+$builder->getDefinition(OrillaCart\Scripting\Application\ScriptDocumentation::class)->setPublic(true);
+$builder->compile();
+$builder->set(OrillaCart\Platform\PluginContext::class, new OrillaCart\Platform\PluginContext(dirname(__DIR__) . '/orillacart.php', 'docs'));
+$docs = $builder->get(OrillaCart\Scripting\Application\ScriptDocumentation::class);
+assert($docs instanceof OrillaCart\Scripting\Application\ScriptDocumentation);
+$markdown = $docs->markdown();
+file_put_contents(dirname(__DIR__) . '/docs/extension-scripts.md', $markdown);
+echo 'Wrote docs/extension-scripts.md: ', substr_count($markdown, "\n- "), " entries.\n";
