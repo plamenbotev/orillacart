@@ -70,15 +70,18 @@ final readonly class HttpFunctions implements HostNamespace
         }
         $timeout = isset($options['timeout']) ? min(self::MOST_SECONDS, max(1, (int) Ops::text($options['timeout']))) : self::MOST_SECONDS;
 
-        $response = wp_remote_request($url, [
+        $args = [
             'method' => $method,
             'headers' => $headers,
-            'body' => $body,
-            'timeout' => $timeout,
+            'timeout' => (float) $timeout,
             'redirection' => 2,
             'limit_response_size' => self::MOST_BYTES,
             'user-agent' => 'OrillaCart extension ' . $c->grant->extension,
-        ]);
+        ];
+        if ($body !== null) {
+            $args['body'] = $body;
+        }
+        $response = wp_remote_request($url, $args);
         if (is_wp_error($response)) {
             throw new ScriptFailure(ScriptFailure::UNAVAILABLE, \sprintf('%s did not answer: %s', $host, $response->get_error_message()));
         }
@@ -86,7 +89,7 @@ final readonly class HttpFunctions implements HostNamespace
         $json = json_decode($text, true);
         $answered = [];
         foreach (wp_remote_retrieve_headers($response) as $name => $value) {
-            $answered[strtolower((string) $name)] = \is_array($value) ? implode(', ', array_map(strval(...), $value)) : (string) $value;
+            $answered[strtolower((string) $name)] = \is_array($value) ? implode(', ', array_map(static fn(mixed $part): string => \is_scalar($part) ? (string) $part : '', $value)) : (\is_scalar($value) ? (string) $value : '');
         }
 
         return ['status' => (int) wp_remote_retrieve_response_code($response), 'headers' => $answered, 'body' => $text, 'json' => \is_array($json) || \is_scalar($json) ? $json : null];

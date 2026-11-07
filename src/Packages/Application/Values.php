@@ -4,10 +4,18 @@ declare(strict_types=1);
 
 namespace OrillaCart\Packages\Application;
 
+use OrillaCart\Extension\Cart\CheckedCart;
+use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Extension\Checkout\FeeQuery;
+use OrillaCart\Extension\Order\OrderAddress;
+use OrillaCart\Extension\Order\OrderLine;
+use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\Payment\PaymentSession;
 use OrillaCart\Extension\Payment\RefundRequest;
+use OrillaCart\Extension\Pricing\AdjustmentQuery;
+use OrillaCart\Extension\Pricing\PriceQuery;
 use OrillaCart\Extension\Settings;
 use OrillaCart\Extension\Shipping\PickupQuery;
 use OrillaCart\Extension\Shipping\Shipment;
@@ -132,6 +140,125 @@ final class Values
             'declared_value' => Money::of($request->declaredValue),
             'parcels' => $request->parcels,
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function order(OrderSummary $order): array
+    {
+        return [
+            'number' => $order->number,
+            'status' => $order->status,
+            'placed_at' => $order->placedAt->format(\DATE_ATOM),
+            'paid_at' => $order->paidAt?->format(\DATE_ATOM),
+            'email' => $order->email,
+            'customer_id' => $order->customerId,
+            'billing' => self::address($order->billing),
+            'shipping_address' => $order->shippingAddress === null ? null : self::address($order->shippingAddress),
+            'lines' => array_map(static fn(OrderLine $line): array => [
+                'product_id' => $line->productId,
+                'variation_id' => $line->variationId,
+                'sku' => $line->sku,
+                'name' => $line->name,
+                'quantity' => $line->quantity,
+                'unit_price' => Money::of($line->unitPrice),
+                'total' => Money::of($line->total),
+                'tax' => Money::of($line->tax),
+                'personalisation' => $line->personalisation,
+                'type' => $line->type,
+                'add_on_type' => $line->addOnType,
+            ], $order->lines),
+            'subtotal' => Money::of($order->subtotal),
+            'discount' => Money::of($order->discount),
+            'shipping_total' => Money::of($order->shippingTotal),
+            'tax' => Money::of($order->tax),
+            'total' => Money::of($order->total),
+            'refunded' => Money::of($order->refunded),
+            'currency' => $order->currency,
+            'payment' => $order->payment,
+            'transaction_id' => $order->transactionId,
+            'shipping' => $order->shipping,
+            'note' => $order->note,
+            'fields' => $order->fields,
+            'fees' => self::record($order->fees),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function address(OrderAddress $address): array
+    {
+        return ['first_name' => $address->firstName, 'last_name' => $address->lastName, 'street' => $address->street, 'city' => $address->city, 'postcode' => $address->postcode, 'country' => $address->country, 'state' => $address->state, 'phone' => $address->phone];
+    }
+
+    /** @return array<string, mixed> */
+    public static function cart(CheckedCart $cart): array
+    {
+        return [
+            'customer_id' => $cart->customerId,
+            'currency' => $cart->currency,
+            'lines' => array_map(static fn(CheckedLine $line): array => ['id' => $line->id, 'product_id' => $line->productId, 'variation_id' => $line->variationId, 'sku' => $line->sku, 'name' => $line->name, 'quantity' => $line->quantity, 'unit_price' => Money::of($line->unitPrice)], $cart->lines),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function feeQuery(FeeQuery $query): array
+    {
+        return [
+            'items' => self::record($query->items),
+            'subtotal' => Money::of($query->subtotal),
+            'shipping' => Money::of($query->shipping),
+            'shipping_option' => $query->shippingOption,
+            'payment_method' => $query->paymentMethod,
+            'country' => $query->country,
+            'customer_id' => $query->customerId,
+            'currency' => $query->currency,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function priceQuery(PriceQuery $query): array
+    {
+        return [
+            'product_id' => $query->productId,
+            'variation_id' => $query->variationId,
+            'quantity' => $query->quantity,
+            'customer_id' => $query->customerId,
+            'price' => Money::of($query->price),
+            'regular_price' => Money::of($query->regularPrice),
+            'currency' => $query->currency,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function adjustmentQuery(AdjustmentQuery $query): array
+    {
+        return ['lines' => self::record($query->lines), 'currency' => $query->currency, 'customer_id' => $query->customerId, 'email' => $query->email, 'order_number' => $query->orderNumber];
+    }
+
+    /**
+     * Any of the add-on API's records as a map: public properties as snake_case keys, moments as ISO 8601 text,
+     * records inside it the same way. For the records a script reads but the shop names no amounts in.
+     */
+    public static function record(mixed $value): mixed
+    {
+        if (\is_array($value)) {
+            return array_map(self::record(...), $value);
+        }
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format(\DATE_ATOM);
+        }
+        if ($value instanceof Money) {
+            return $value;
+        }
+        if (\is_object($value)) {
+            $map = [];
+            foreach (new \ReflectionObject($value)->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+                $map[strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $property->getName()))] = self::record($property->getValue($value));
+            }
+
+            return $map;
+        }
+
+        return $value;
     }
 
     /** A script's text or money as the add-on API's amount string. */

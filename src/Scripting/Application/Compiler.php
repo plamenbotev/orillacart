@@ -489,7 +489,9 @@ final class Compiler
             if ($root !== null && !$scope->has($root->name)) {
                 return $this->hostCall($this->dotted($callee), $expr, $args);
             }
-            $this->finding($expr, 'Values have no methods: use a filter, or a function of the host');
+            $this->finding($expr, $root !== null && $this->catalog->knows($root->name)
+                ? \sprintf('"%s" is a variable here, which hides the namespace of that name: rename the variable to call %s', $root->name, $this->dotted($callee))
+                : 'Values have no methods: use a filter, or a function of the host');
 
             return 'null';
         }

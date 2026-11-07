@@ -36,6 +36,12 @@ abstract class ScriptedProvider
         return $this->declaration['name'] ?? $this->loaded->package->slug();
     }
 
+    /** The declaration's kind: `payment_gateway`, `order_column`, … */
+    public function kind(): string
+    {
+        return $this->declaration['kind'];
+    }
+
     /** @return list<Setting> the `settings` block inside the declaration */
     public function settings(): array
     {
@@ -80,7 +86,11 @@ abstract class ScriptedProvider
         }
     }
 
-    /** What the function must have answered with. */
+    /**
+     * What the function must have answered with.
+     *
+     * @param class-string $class
+     */
     protected function expect(mixed $value, string $class, string $function): object
     {
         if (!$value instanceof $class) {

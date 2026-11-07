@@ -58,7 +58,11 @@ final readonly class ScriptRunner
         return $result;
     }
 
-    /** Whether a declaration has the function; adapters answer for what is not declared. */
+    /**
+     * Whether a declaration has the function; adapters answer for what is not declared.
+     *
+     * @param array{functions: array<string, string>, ...} $declaration
+     */
     public static function has(array $declaration, string $function): bool
     {
         return isset($declaration['functions'][$function]);

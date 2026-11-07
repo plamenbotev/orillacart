@@ -5,18 +5,17 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Extension\Payment\Notification;
-use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\Payment\PaymentSession;
 use OrillaCart\Extension\Payment\RefundRequest;
-use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
-use OrillaCart\Extension\Shipping\CreatesShipments;
 use OrillaCart\Extension\Shipping\PickupQuery;
 use OrillaCart\Extension\Shipping\Shipment;
 use OrillaCart\Extension\Shipping\ShipmentItem;
-use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Packages\Application\Adapters\ScriptedCourier;
+use OrillaCart\Packages\Application\Adapters\ScriptedPaymentGateway;
+use OrillaCart\Packages\Application\Adapters\ScriptedRefundingGateway;
 use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Packages\Application\ScriptedRegistrant;
 use OrillaCart\Packages\Domain\Package;
@@ -110,8 +109,7 @@ final class ScriptedProvidersTest extends RestTestCase
     public function testAScriptedGatewayAnswersThePaymentContract(): void
     {
         $gateway = $this->provider('scriptpay');
-        self::assertInstanceOf(PaymentGateway::class, $gateway);
-        self::assertInstanceOf(RefundsPayments::class, $gateway, 'it declares refund');
+        self::assertInstanceOf(ScriptedRefundingGateway::class, $gateway, 'it declares refund');
         self::assertSame('ScriptPay', $gateway->defaultName());
         self::assertSame(['api_key'], array_map(static fn($setting): string => $setting->key, $gateway->settings()));
         self::assertSame('Enter aPI key.', $gateway->notReady(new Settings([]), 'EUR', 2), 'a required setting left empty');
@@ -156,8 +154,7 @@ final class ScriptedProvidersTest extends RestTestCase
     public function testAScriptedShippingMethodQuotesBooksAndTracks(): void
     {
         $method = $this->provider('scriptship');
-        self::assertInstanceOf(ShippingMethod::class, $method);
-        self::assertInstanceOf(CreatesShipments::class, $method, 'it declares create_shipment');
+        self::assertInstanceOf(ScriptedCourier::class, $method, 'it declares create_shipment');
         self::assertFalse($method->isReady(new Settings([])));
         $settings = new Settings(['account' => 'A-1']);
         self::assertTrue($method->isReady($settings));
@@ -182,7 +179,7 @@ final class ScriptedProvidersTest extends RestTestCase
     public function testAnExtensionThatKeepsBreakingIsStoppedAndItsProvidersGo(): void
     {
         $broken = $this->provider('brokenpay');
-        self::assertInstanceOf(PaymentGateway::class, $broken);
+        self::assertInstanceOf(ScriptedPaymentGateway::class, $broken);
         // Each failure is logged, the stop as an error: the test site's logger prints them.
         $this->expectOutputRegex('/WARNING: The extension "scripted" failed: Division by zero.*ERROR: The extension "scripted" failed 10 times in a row and was stopped/s');
         $session = new PaymentSession(9, 102, '1.00', 'EUR', 'https://shop/back', 'https://shop/cancel');
@@ -203,7 +200,149 @@ final class ScriptedProvidersTest extends RestTestCase
         self::assertSame(['enabled', 0], [$enabled['state'], $enabled['failures']], 'a manager enables it again after reading the problem');
     }
 
-    private function provider(string $id): object
+    public function testTheOtherContractsAnswerThroughTheirAdapters(): void
+    {
+        $this->request('PUT', '/extensions/scripted/files/' . rawurlencode('more.ocs'), ['content' => <<<'OCS'
+            cart_rule "no_thirteen" {
+              fn check(basket) {
+                let refusals = []
+                for line in basket.lines {
+                  if line.quantity == 13 { refusals = refusals|merge([cart.refuse_line(line.id, "Not thirteen of " ~ line.name ~ ".")]) }
+                }
+                if basket.currency == "XXX" { return [cart.refuse("Not in that currency.")] }
+                return refusals
+              }
+            }
+            order_fee "handling" {
+              fn fee(query) { return query.subtotal < money("20") ? fee.of("Small order", "2.50") : null }
+            }
+            price_adjuster "bulk" {
+              fn adjust(query) { return query.quantity >= 10 ? query.price * 0.9 : null }
+            }
+            order_adjuster "loyalty" {
+              fn adjust(query) { return query.customer_id == 7 ? [price.adjustment("Loyalty", "-1.00", null, "a regular")] : [] }
+            }
+            checkout_field "vat_office" {
+              label: "VAT office", kind: choice, section: billing, required: false, choices: { sofia: "Sofia", varna: "Varna" }
+              fn check(answer, context) { return context.billing_country == "BG" or answer == "" ? null : "Only for Bulgaria." }
+            }
+            order_action "ping_warehouse" {
+              label: "Ping the warehouse"
+              fn available(order) { return order.status == "processing" }
+              fn run(order) { return "Pinged for #" ~ order.number ~ " (" ~ order.lines|length ~ " lines)" }
+            }
+            order_column "warehouse_ref" { label: "Warehouse", fn value(order) { return "W-" ~ order.number } }
+            product_column "shelf" { label: "Shelf", fn value(item) { return "S-" ~ item.product_id } }
+            order_filter "warehouse_sent" {
+              label: "Sent to the warehouse"
+              fn find(text) { return text starts with "W-" ? [num(text|slice(2))] : [] }
+            }
+            home "warehouse_home" {
+              fn tiles() { return [home.tile("Pallets", "12", "ready", "orders")] }
+              fn needs_you() { return [home.line("A pallet waits", "orders", "info")] }
+            }
+            assistant_tool "warehouse_lookup" {
+              title: "Look up a pallet", description: "Where a pallet is.", read_only: true
+              input: { type: "object", properties: { pallet: { type: "string" } }, required: ["pallet"] }
+              fn run(arguments, call) {
+                if arguments.pallet == "none" { fail refused("No such pallet.", { looked: arguments.pallet }) }
+                return { pallet: arguments.pallet, bay: 4, by: call.user_id }
+              }
+            }
+            product_block "shelf_note" {
+              title: "Shelf note", description: "Where to find it in the shop."
+              fn render(product, settings) { return "<p class='shelf'>" ~ html.escape(product.name) ~ " <script>alert(1)</script></p>" }
+            }
+            mailing_list "crm" {
+              name: "The CRM"
+              fn subscribe(subscriber) { if subscriber.email ends with "@bounce.example" { fail unavailable("CRM down") } }
+              fn unsubscribe(email) { return null }
+              fn forget(email) { return null }
+            }
+            OCS], nonce: true);
+        $enabled = $this->request('POST', '/extensions/scripted/enable', ['grant' => []], nonce: true);
+        self::assertSame(200, $enabled->get_status(), (string) wp_json_encode($enabled->get_data()));
+
+        $rule = $this->provider('no_thirteen');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedCartRule::class, $rule);
+        $refusals = $rule->check(new \OrillaCart\Extension\Cart\CheckedCart(null, [new \OrillaCart\Extension\Cart\CheckedLine(3, 10, null, null, 'Lamp', 13, '5.00')], 'EUR'));
+        self::assertSame([[3, 'Not thirteen of Lamp.']], array_map(static fn($r): array => [$r->lineId, $r->message], $refusals));
+
+        $fee = $this->provider('handling');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedOrderFee::class, $fee);
+        $query = new \OrillaCart\Extension\Checkout\FeeQuery([], '15.00', '0', null, null, 'BG', null, 'EUR');
+        self::assertSame(['Small order', '2.5000'], [$fee->fee($query)?->label, $fee->fee($query)?->amount]);
+        self::assertNull($fee->fee(new \OrillaCart\Extension\Checkout\FeeQuery([], '25.00', '0', null, null, 'BG', null, 'EUR')));
+
+        $bulk = $this->provider('bulk');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedPriceAdjuster::class, $bulk);
+        self::assertSame('9.0000', $bulk->adjust(new \OrillaCart\Extension\Pricing\PriceQuery(1, null, 10, null, '10.00', '10.00', 'EUR')));
+        self::assertNull($bulk->adjust(new \OrillaCart\Extension\Pricing\PriceQuery(1, null, 2, null, '10.00', '10.00', 'EUR')));
+
+        $loyalty = $this->provider('loyalty');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedOrderAdjuster::class, $loyalty);
+        self::assertSame([['Loyalty', '-1.0000', 'a regular']], array_map(static fn($a): array => [$a->label, $a->amount, $a->reason], $loyalty->adjust(new \OrillaCart\Extension\Pricing\AdjustmentQuery([], 'EUR', 7))));
+
+        $field = $this->provider('vat_office');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedFieldCheck::class, $field);
+        $declared = $field->field();
+        self::assertSame(['vat_office', 'VAT office', 'choice', 'billing', ['sofia' => 'Sofia', 'varna' => 'Varna']], [$declared->id, $declared->label, $declared->kind, $declared->section, $declared->choices]);
+        $check = $declared->check;
+        self::assertNotNull($check);
+        self::assertSame('Only for Bulgaria.', $check->check('sofia', new \OrillaCart\Extension\Checkout\FieldContext('a@example.com', 'DE', null, null)));
+        self::assertNull($check->check('sofia', new \OrillaCart\Extension\Checkout\FieldContext('a@example.com', 'BG', null, null)));
+
+        $order = new \OrillaCart\Extension\Order\OrderSummary(100, 'processing', new \DateTimeImmutable('2026-11-07'), null, 'ada@example.com', 7, new \OrillaCart\Extension\Order\OrderAddress('Ada', 'L', '1 St', 'Sofia', '1000', 'BG', null, ''), null, [new \OrillaCart\Extension\Order\OrderLine(10, null, null, 'Lamp', 1, '5.00', '5.00', '0.83')], '5.00', '0', '0', '0.83', '5.00', '0', 'EUR', null, null, null, '', []);
+        $action = $this->provider('ping_warehouse');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedOrderAction::class, $action);
+        self::assertSame(['Ping the warehouse', true, 'Pinged for #100 (1 lines)'], [$action->label(), $action->isAvailable($order), $action->run($order)]);
+
+        $column = $this->provider('warehouse_ref');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedColumn::class, $column);
+        self::assertSame(['Warehouse', 'W-100'], [$column->label(), $column->value($order)]);
+        $shelf = $this->provider('shelf');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedColumn::class, $shelf);
+        self::assertSame('S-10', $shelf->value(new \OrillaCart\Extension\Catalog\ProductItem(10, null, 'Lamp', null, '5.00')));
+
+        $filter = $this->provider('warehouse_sent');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedFilter::class, $filter);
+        self::assertSame(['Sent to the warehouse', true, [100], []], [$filter->label(), $filter->searches(), $filter->findOrders('W-100'), $filter->findOrders('nope')]);
+
+        $home = $this->provider('warehouse_home');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedHomeContributor::class, $home);
+        self::assertSame(['Pallets', '12'], [$home->tiles()[0]->label ?? null, $home->tiles()[0]->value ?? null]);
+        self::assertSame('info', $home->needsYou()[0]->tone ?? null);
+
+        $tool = $this->provider('warehouse_lookup');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedAssistantTool::class, $tool);
+        self::assertSame(['warehouse_lookup', 'scripted', 'Look up a pallet', true, null, ['pallet']], [$tool->name(), $tool->addOn(), $tool->title(), $tool->readOnly(), $tool->risk(), $tool->inputSchema()['required'] ?? null]);
+        self::assertSame(['pallet' => 'P1', 'bay' => 4, 'by' => 5], $tool->run(['pallet' => 'P1'], new \OrillaCart\Extension\Assistant\ToolCall(5, null)));
+        try {
+            $tool->run(['pallet' => 'none'], new \OrillaCart\Extension\Assistant\ToolCall(5, null));
+            self::fail('refused');
+        } catch (\OrillaCart\Extension\Assistant\ToolRefused $e) {
+            self::assertSame(['No such pallet.', ['looked' => 'none']], [$e->getMessage(), $e->details]);
+        }
+
+        $block = $this->provider('shelf_note');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedProductBlock::class, $block);
+        $html = $block->render(new \OrillaCart\Extension\Storefront\ShownProduct(10, 'Lamp <3', '/lamp', null, '5.00', null, true, 3, null, 0), []);
+        self::assertStringContainsString('Lamp &lt;3', $html);
+        self::assertStringNotContainsString('<script', $html, 'cleaned as a post is');
+
+        $list = $this->provider('crm');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedMailingList::class, $list);
+        $list->subscribe(new \OrillaCart\Extension\Marketing\Subscriber('ada@example.com', 'Ada', 'L', 'yes', new \DateTimeImmutable(), 'checkout'));
+        try {
+            $list->subscribe(new \OrillaCart\Extension\Marketing\Subscriber('x@bounce.example', 'X', 'Y', 'yes', new \DateTimeImmutable(), 'checkout'));
+            self::fail('unavailable');
+        } catch (ProviderUnavailable $e) {
+            self::assertStringContainsString('CRM down', $e->getMessage());
+        }
+        self::assertSame(0, $this->packages->package('scripted')->failures, 'none of these counted as a failure');
+    }
+
+    private function provider(string $id): \OrillaCart\Packages\Application\Adapters\ScriptedProvider
     {
         foreach ($this->packages->loaded() as $loaded) {
             foreach ($this->registrant->providers($loaded) as $provider) {

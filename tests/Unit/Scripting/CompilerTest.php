@@ -32,6 +32,7 @@ final class CompilerTest extends TestCase
         yield 'too many arguments' => ['fn f() { return money(1, "EUR", 3) }', '"money" takes 1 to 2 arguments, not 3'];
         yield 'a permission not declared' => ['fn f() { return shop.orders.find(1) }', '"shop.orders.find" needs the permission "orders:read": declare it in the extension\'s needs'];
         yield 'a method on a value' => ['fn f(a) { return a.b() }', 'Values have no methods: use a filter, or a function of the host'];
+        yield 'a variable hiding a namespace' => ['fn f(http) { return http.post(1, 2) }', '"http" is a variable here, which hides the namespace of that name: rename the variable to call http.post'];
         yield 'an unknown filter' => ['fn f(a) { return a|shout }', 'Unknown filter "shout"'];
         yield 'an unknown test' => ['fn f(a) { return a is loud }', 'Unknown test "loud"'];
         yield 'break outside a loop' => ['fn f() { break }', '"break" belongs in a loop'];
