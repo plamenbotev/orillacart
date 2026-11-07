@@ -1,6 +1,6 @@
 # 56. Extension scripts
 
-Status: being built (2026-11-07). PLAN items 317–331; 317–322 done.
+Status: built (2026-11-07). PLAN items 317–330 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
 
 Each tenant of a SaaS, or the owner of one shop, extends and edits their own shop without a PHP plugin: new
 payment and shipping providers, new endpoints and pages, new kinds of records and new fields on the shop's own,
@@ -246,6 +246,16 @@ hook the shop does not expose, or more than the budgets allow is still a plugin.
 stay the block theme's; an extension overrides a template's markup only where the theme did not. Not multi-tenant
 code sharing in phase one: an extension belongs to one site; a network-wide catalogue of extensions a super admin
 offers to tenants is a later design.
+
+## Built as it stands
+
+Everything above except: versions with rollback and the run log on the Extensions screen; scripted manager routes
+as assistant tools; an override's diff and stale mark; the fields' generic admin sections, REST views, export
+columns and search facets (PLAN 331, 332). Two things the build decided differently from the plan: a route answers
+JSON only (a rendered template travels as `{ html }`), since WordPress's REST server answers JSON; and a route
+cannot waive the REST nonce, since no unsafe route of the shop does. The proof ran on the `oc-ms` network: an
+extension installed on site 3 kept its package and records in the tenant database `wp_t3`, answered its routes
+there, rendered its page block, and did not exist on site 2.
 
 ## Open points
 
