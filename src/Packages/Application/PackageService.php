@@ -18,6 +18,7 @@ use OrillaCart\Packages\Domain\Package;
 use OrillaCart\Packages\Domain\PackageNotFound;
 use OrillaCart\Packages\Domain\PackageRepository;
 use OrillaCart\Packages\Domain\PackageRuleViolation;
+use OrillaCart\Packages\Domain\PackageState;
 use OrillaCart\Scripting\Application\CompiledScript;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Compiled;
@@ -217,15 +218,20 @@ final readonly class PackageService
     }
 
     /**
-     * The extensions that run, each with its compiled class; one that no longer compiles (a host function went)
-     * is counted as failed and left out.
+     * The extensions that run, each with its compiled class, and those in the state asked for besides (the stopped
+     * ones, for the routes that answer 503); one that no longer compiles (a host function went) is counted as
+     * failed and left out.
      *
      * @return list<LoadedPackage>
      */
-    public function loaded(): array
+    public function loaded(?PackageState $also = null): array
     {
         $loaded = [];
-        foreach ($this->packages->enabled() as $package) {
+        $packages = $this->packages->enabled();
+        if ($also !== null) {
+            $packages = [...$packages, ...array_values(array_filter($this->packages->all(), static fn(Package $package): bool => $package->state() === $also))];
+        }
+        foreach ($packages as $package) {
             try {
                 $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $this->grantOf($package));
             } catch (\InvalidArgumentException $e) {
@@ -266,7 +272,7 @@ final readonly class PackageService
     /** How many extensions the shop stopped: for the Home screen. */
     public function stopped(): int
     {
-        return \count(array_filter($this->packages->all(), static fn(Package $package): bool => $package->state() === \OrillaCart\Packages\Domain\PackageState::Stopped));
+        return \count(array_filter($this->packages->all(), static fn(Package $package): bool => $package->state() === PackageState::Stopped));
     }
 
     /** What a run of the extension is allowed: its granted permissions, the hosts it declared, its settings. */

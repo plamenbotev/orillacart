@@ -8,11 +8,13 @@ use OrillaCart\Integrations\Application\OAuthEndpoints;
 use OrillaCart\Platform\WordPress\Languages\RequestLanguage;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\Http\HttpException;
+use OrillaCart\Shared\Http\Routing\DynamicRoutes;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Http\Security\RouteAccess;
 use OrillaCart\Shared\Security\Capability;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
 /**
@@ -34,6 +36,9 @@ final readonly class RestRouteRegistrar implements Registrar
         private \Closure $bridge,
         private OAuthEndpoints $oauth,
         private RequestLanguage $language,
+        /** @var iterable<DynamicRoutes> */
+        #[AutowireIterator(DynamicRoutes::TAG)]
+        private iterable $dynamic = [],
     ) {}
 
     public function register(): void
@@ -65,6 +70,12 @@ final readonly class RestRouteRegistrar implements Registrar
         $byPattern = [];
         foreach ($this->routes->all() as $route) {
             $byPattern[$route->pattern()][] = $route;
+        }
+        // The routes known at run time (the scripted extensions') join the compiled ones.
+        foreach ($this->dynamic as $source) {
+            foreach ($source->routes() as $route) {
+                $byPattern[$route->pattern()][] = $route;
+            }
         }
 
         foreach ($byPattern as $routes) {

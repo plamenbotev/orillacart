@@ -7,6 +7,7 @@ import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import { registerBlockType } from '@wordpress/blocks';
 import {
 	PanelBody,
+	TextControl,
 	Placeholder,
 	RangeControl,
 	SelectControl,
@@ -372,5 +373,67 @@ registerBlockType< BrandsAttributes >( 'orillacart/product-brands', {
 } as never );
 registerBlockType< WishlistAttributes >( 'orillacart/wishlist', {
 	edit: WishlistEdit,
+	save: () => null,
+} as never );
+
+type ExtensionPageAttributes = {
+	extension: string;
+	path: string;
+};
+
+/** The Extension page block: which extension's page renders here, previewed as the storefront shows it. */
+function ExtensionPageEdit( {
+	attributes,
+	setAttributes,
+}: EditProps< ExtensionPageAttributes > ) {
+	return (
+		<div { ...useBlockProps() }>
+			<InspectorControls>
+				<PanelBody title={ __( 'Extension page', 'orillacart' ) }>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __( 'Extension id', 'orillacart' ) }
+						help={ __(
+							'As on Settings › Extensions.',
+							'orillacart'
+						) }
+						value={ attributes.extension }
+						onChange={ ( extension: string ) =>
+							setAttributes( { extension } )
+						}
+					/>
+					<TextControl
+						__next40pxDefaultSize
+						label={ __( 'Page', 'orillacart' ) }
+						help={ __(
+							'The path the extension declares, such as /support.',
+							'orillacart'
+						) }
+						value={ attributes.path }
+						onChange={ ( path: string ) =>
+							setAttributes( { path } )
+						}
+					/>
+				</PanelBody>
+			</InspectorControls>
+			{ attributes.extension === '' ? (
+				<p>
+					{ __(
+						'Choose an extension and a page in the sidebar.',
+						'orillacart'
+					) }
+				</p>
+			) : (
+				<ServerSideRender
+					block="orillacart/extension-page"
+					attributes={ { ...attributes } }
+				/>
+			) }
+		</div>
+	);
+}
+
+registerBlockType< ExtensionPageAttributes >( 'orillacart/extension-page', {
+	edit: ExtensionPageEdit,
 	save: () => null,
 } as never );

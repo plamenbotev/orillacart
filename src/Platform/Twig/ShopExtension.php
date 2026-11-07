@@ -31,6 +31,9 @@ use Twig\TwigFunction;
  */
 final class ShopExtension extends AbstractExtension
 {
+    /** A global the storefront's environment sets: its slots are open to every template, an email's only to email_. */
+    public const string STOREFRONT = '_orillacart_storefront';
+
     public function __construct(
         private readonly SettingsService $settings,
         private readonly GeographyService $geography,
@@ -191,7 +194,7 @@ final class ShopExtension extends AbstractExtension
      */
     public function slot(Environment $twig, string $name, array $arguments = []): string
     {
-        if ($twig->hasExtension(SandboxExtension::class) && $twig->getExtension(SandboxExtension::class)->isSandboxed() && !str_starts_with($name, 'email_')) {
+        if (($twig->getGlobals()[self::STOREFRONT] ?? false) !== true && $twig->hasExtension(SandboxExtension::class) && $twig->getExtension(SandboxExtension::class)->isSandboxed() && !str_starts_with($name, 'email_')) {
             throw new SecurityNotAllowedFunctionError(\sprintf('An email reaches only the email_ slots, not "%s".', $name), 'slot');
         }
         if (!\function_exists('do_action')) {

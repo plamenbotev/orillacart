@@ -1,0 +1,16 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "orillacart/extension-page",
+	"title": "Extension page",
+	"category": "widgets",
+	"icon": "admin-plugins",
+	"description": "A page one of the shop’s extensions declares, rendered here: choose the extension and the page.",
+	"keywords": [ "shop", "extension", "page" ],
+	"textdomain": "orillacart",
+	"attributes": {
+		"extension": { "type": "string", "default": "" },
+		"path": { "type": "string", "default": "/" }
+	},
+	"supports": { "html": false, "align": [ "wide", "full" ] }
+}

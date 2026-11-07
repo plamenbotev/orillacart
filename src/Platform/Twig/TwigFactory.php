@@ -7,6 +7,8 @@ namespace OrillaCart\Platform\Twig;
 use OrillaCart\Platform\CacheFolders;
 use OrillaCart\Platform\PluginContext;
 use Twig\Environment;
+use Twig\Extension\SandboxExtension;
+use Twig\Loader\ChainLoader;
 use Twig\Loader\FilesystemLoader;
 
 /**
@@ -21,13 +23,15 @@ final readonly class TwigFactory
     public function __construct(
         private PluginContext $context,
         private ?ShopExtension $extension = null,
+        private ?PackageTemplateLoader $packages = null,
     ) {}
 
     public function create(): Environment
     {
         $debug = \defined('WP_DEBUG') && WP_DEBUG;
 
-        $twig = new Environment(new FilesystemLoader($this->templatePaths()), [
+        $loader = $this->packages === null ? new FilesystemLoader($this->templatePaths()) : new ChainLoader([$this->packages, new FilesystemLoader($this->templatePaths())]);
+        $twig = new Environment($loader, [
             'autoescape' => 'html',
             // Strict everywhere: on a live site TwigRenderer logs what strictness finds and renders leniently.
             'strict_variables' => true,
@@ -38,6 +42,12 @@ final readonly class TwigFactory
         ]);
         if ($this->extension !== null) {
             $twig->addExtension($this->extension);
+        }
+        // The storefront's slots are open to every template here; the email environment keeps them to email_.
+        $twig->addGlobal(ShopExtension::STOREFRONT, true);
+        if ($this->packages !== null) {
+            // The sandbox is on for the extensions' templates only: the loader is the source policy that says which.
+            $twig->addExtension(new SandboxExtension(StorefrontSandbox::policy(), false, $this->packages));
         }
 
         return $twig;

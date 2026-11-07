@@ -1,0 +1,55 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Packages\Infrastructure\Doctrine;
+
+use OrillaCart\Packages\Application\PackageTemplates;
+use OrillaCart\Packages\Domain\Package;
+use OrillaCart\Packages\Domain\PackageFile;
+use OrillaCart\Packages\Domain\PackageRepository;
+use OrillaCart\Packages\Domain\PackageState;
+
+/** Reads the templates from the enabled packages' files, once per request. */
+final class DoctrinePackageTemplates implements PackageTemplates
+{
+    /** @var array<string, string|null> */
+    private array $found = [];
+
+    public function __construct(private readonly PackageRepository $packages) {}
+
+    public function source(string $name): ?string
+    {
+        if (\array_key_exists($name, $this->found)) {
+            return $this->found[$name];
+        }
+
+        return $this->found[$name] = $this->find($name);
+    }
+
+    private function find(string $name): ?string
+    {
+        if (str_starts_with($name, self::PREFIX)) {
+            $parts = explode('/', substr($name, \strlen(self::PREFIX)), 2);
+            if (\count($parts) !== 2) {
+                return null;
+            }
+            [$slug, $path] = $parts;
+            $package = $this->packages->find($slug);
+
+            return $package !== null && $package->state() === PackageState::Enabled ? $package->file('templates/' . $path)?->content() : null;
+        }
+        // An override of one of the shop's templates: the first enabled extension granted `templates` that has it.
+        foreach ($this->packages->enabled() as $package) {
+            if (!\in_array('templates', $package->granted(), true)) {
+                continue;
+            }
+            $file = $package->file('templates/' . $name);
+            if ($file instanceof PackageFile && $package instanceof Package) {
+                return $file->content();
+            }
+        }
+
+        return null;
+    }
+}

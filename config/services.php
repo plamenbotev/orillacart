@@ -221,6 +221,8 @@ use OrillaCart\Reviews\Infrastructure\WordPress\CommentReviewStore;
 use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
 use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Scripting\Application\HostCatalog;
+use OrillaCart\Packages\Http\ScriptedRouteAction;
+use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Search\Application\CatalogSearch;
 use OrillaCart\Search\Application\CategoryTranslations;
 use OrillaCart\Search\Application\ProductTexts;
@@ -372,6 +374,8 @@ return static function (ContainerConfigurator $container): void {
         ->public();
     // The host functions scripts may call: every tagged namespace, gathered once.
     $services->set(HostCatalog::class)->args(['$namespaces' => tagged_iterator(HostNamespace::TAG)])->public();
+    // The one action behind every scripted route (design 56): named by ScriptedRoutes, not by a #[Route].
+    $services->set(ScriptedRouteAction::class)->tag(ActionDispatcher::ROUTE_TAG);
     // Made per shopper by PriceResolver, not a service.
     $services->remove(ShopperPricing::class);
     // Made per batch by the JobRunner, not services.
@@ -593,7 +597,7 @@ return static function (ContainerConfigurator $container): void {
     $services->get(EmailWriter::class)->arg('$templates', service('orillacart.email_templates'));
     $services->get(EmailTemplateEditing::class)->arg('$twig', service('orillacart.email_twig'));
     $services->alias(TemplateEditing::class, EmailTemplateEditing::class);
-    $services->alias(TemplateRenderer::class, TwigRenderer::class);
+    $services->alias(TemplateRenderer::class, TwigRenderer::class)->public();
     $services->alias(Translations::class, GettextTranslations::class);
 
     // Entry points used by the WordPress bootstrap and WP-CLI
