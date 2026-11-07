@@ -15,14 +15,20 @@ OrillaScript (`.ocs`). The same files declare what the extension adds (settings,
 templates it uses, events it hears) and hold the functions that do it. There is no separate manifest format, so
 there is one parser, one static check, one editor and one thing an agent learns.
 
-**A language of its own, interpreted by the plugin.** Not PHP in any subset (its semantics leak: references,
+**A language of its own, compiled to PHP by the plugin.** Not PHP in any subset (its semantics leak: references,
 magic methods, `(string)` casts, resource limits), not Lua or JavaScript (no sound interpreter in PHP), not Twig for
 logic (no return values, no errors as values). A small imperative language with Twig's expression grammar, so a
 template and a script read the same way (`order.total|money`, `x ?? y`, `a..b`, `name is empty`), plus statements:
 `let`, assignment, `if`/`elif`/`else`, `for … in`, bounded `while`, `fn`, `return`, `break`, `continue`,
 `try`/`catch`, `fail`. Values are null, booleans, numbers, money (decimal, never float), strings, lists, maps, and
 the host's records, which are read-only. There are no classes, no references, no globals except the host's
-namespaces. A tree-walking interpreter in PHP, parsed once per version and kept as a cached syntax tree.
+namespaces. The compiler turns a package into one PHP class per tenant and checksum, whose methods are the
+handlers: every operation goes through the runtime's helpers (`Ops::add`, `Ops::get`, `$c->call('http.post', …)`),
+every loop iteration and call counts a step, and nothing in the generated code names a PHP class, function or
+global of its own, which the compiler and a test over the generated source guarantee. The class is a cache: written
+under the shop's cache folder per site, build and checksum, loaded by `require` when present, compiled again when
+missing, and evaluated in memory when the folder is not writable. Generated PHP runs at PHP's speed with OPcache,
+which an interpreter in PHP could not, and the shop's tooling (phpstan on a sample, Xdebug) reads it.
 
 **Everything already in the extension API comes for free.** Design 56 adds no second way to be a payment gateway.
 A scripted provider is an adapter class that implements the existing `OrillaCart\Extension` contracts and calls the
@@ -185,15 +191,28 @@ Three kinds, all stored in the site's database and all rendered in Twig's sandbo
 The admin's template editor shows the plugin's original beside the override with a diff, and an override marked
 stale when a release changes the original, as design 53's email templates do.
 
+## Storage, installing and the cache
+
+An extension is a row in `extensions` (id, name, version, state, permissions granted, budgets, failure count, the
+checksum of its files) with its files in `extension_files` (path, content, checksum), both per site, so a tenant's
+extensions travel with its database. Installing means putting the files there, from the editor, an uploaded zip or
+an agent's tool; enabling runs the static check and grants the permissions; disabling keeps everything and stops
+it; uninstalling removes the rows, the compiled class and, after the manager says so, the extension's objects and
+field values (exported first). The admin does all four, and so do the MCP tools.
+
+The compiled PHP is never stored in the database: it is derived from the files and the checksum and lives in
+`CacheFolders` (`scripts/<build>/<site>/<extension>-<checksum>.php`). A new save compiles anew; a new plugin build
+clears the folder as it clears Twig's; nothing has to be invalidated by hand. On a network each site compiles its
+own, under its own id, so two tenants with the same extension id never share a class.
+
 ## Where it runs
 
-An extension is a row in `extensions` (id, name, version, state, permissions granted, budgets, failure count) with
-its files in `extension_files` (path, content, checksum). Enabling parses every file, runs the static check (syntax,
-unknown functions, wrong arities, undeclared permissions, filters on unindexed fields, templates that do not
-compile, required handlers of each provider present) and compiles the declarations into the registrations the
-site's `Registry` and route table take. The compiled form is cached per site and build in the object cache or the
-`CacheFolders`, keyed by the files' checksum. The site's kernel loads enabled extensions on `orillacart_extensions`,
-as it fires for PHP add-ons: on a network each site has its own set, and design 54's sharding needs nothing more.
+Enabling parses every file, runs the static check (syntax, unknown functions, wrong arities, undeclared
+permissions, filters on unindexed fields, templates that do not compile, required handlers of each provider present)
+and compiles the package. The compiled class's manifest holds the declarations as data, from which the site's
+`Registry` registrations and route table are made. The site's kernel loads enabled extensions on
+`orillacart_extensions`, as it fires for PHP add-ons: PHP add-ons keep working unchanged beside them, and on a
+network each site has its own set, so design 54's sharding needs nothing more.
 
 Handlers run inside the request or job that needs them, through the interpreter, with these budgets a manager can
 tighten and not loosen beyond the shop's ceiling: 100 000 steps, 2 s of CPU, 16 MB of strings and lists, 5 HTTP
@@ -238,9 +257,9 @@ offers to tenants is a later design.
 
 ## Phases
 
-1. **The language** (317–319): lexer, parser, syntax tree cache, interpreter with budgets, values (money),
-   errors as values; the host function model with signatures, permissions and the static check; `wp orillacart
-   script check|run`; a conformance suite of scripts with expected outputs.
+1. **The language** (317–319): lexer, parser, the compiler to PHP with the runtime helpers and budgets, values
+   (money), errors as values; the host function model with signatures, permissions and the static check; the
+   compiled-class cache; `wp orillacart script check|run`; a conformance suite of scripts with expected outputs.
 2. **Packages and the admin** (320–322): the `extensions` tables, enabling with the static check, the compiled
    registrations on `orillacart_extensions`, settings with sealing, the circuit breaker and Home line, the
    Extensions screen with editor, console, versions, import and export, the MCP tools and the reference resource.

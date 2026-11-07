@@ -510,8 +510,8 @@ language stored in its database, written by a person in the admin or by an agent
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ⬜ | 317 | P1 | The language: lexer, parser with Twig's expression grammar plus statements, cached syntax tree, values (null, bool, number, money, string, list, map, read-only records), errors as values (`fail`, `try`) | |
-| ⬜ | 318 | P1 | The interpreter with budgets (steps, CPU time, memory, outbound calls, queries), the host function model (PHP methods with declared signatures and permissions), the static check (syntax, unknown functions, arities, undeclared permissions, missing handlers), a conformance suite | |
+| ⬜ | 317 | P1 | The language: lexer, parser with Twig's expression grammar plus statements, the compiler to one PHP class per package whose code only calls the runtime's helpers, values (null, bool, number, money, string, list, map, read-only records), errors as values (`fail`, `try`) | |
+| ⬜ | 318 | P1 | The runtime with budgets (steps, CPU time, memory, outbound calls, queries), the host function model (PHP methods with declared signatures and permissions), the static check (syntax, unknown functions, arities, undeclared permissions, missing handlers), the compiled-class cache per site, build and checksum (evaluated in memory when the folder is not writable), a conformance suite | |
 | ⬜ | 319 | P2 | `wp orillacart script check\|run` for a file against a site, with sample input | |
 | ⬜ | 320 | P1 | Packages: `extensions` and `extension_files` tables, enabling with the static check, the compiled declarations registered on `orillacart_extensions` per site, settings through `Setting`/`Settings` with sealing, permissions asked for and granted, the circuit breaker (ten failures → stopped, routes 503, a Home line) | |
 | ⬜ | 321 | P1 | Settings › Extensions: list, file editor with findings as you type, Check and Run console against a read-only view, settings, permissions, versions with rollback, import and export as a checksummed zip, run log with budgets | |
