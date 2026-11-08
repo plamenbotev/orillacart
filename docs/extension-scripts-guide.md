@@ -711,6 +711,8 @@ where the shop stays in charge.
 - **Console.** The Extensions screen runs any top-level function with arguments you type, under the granted
   permissions, and shows the result or the failure plus the budget used. Write small helpers (`api(...)`,
   `site_of(...)`) and try them there before wiring them into handlers.
+- **Tests.** An extension declares its own tests and runs them from the Console's *Run tests* button, from VS
+  Code, from `POST /extensions/<id>/test` or from `wp orillacart script test file.ocs`, enabled or not. See below.
 - **Enable.** A dialog lists the permissions the `needs` ask for; granting them enables the extension. Changing
   `needs` later asks again.
 - **Export and import.** An extension travels as one JSON file with its files; import it on another site or keep
@@ -724,6 +726,48 @@ function arg…` compile and run a file against a site without installing it; `w
   lists the host functions the site offers.
 - **Agents.** The assistant's `extension_*` tools install, write, check, run, enable and export extensions with
   the same rules, and the MCP resource `orillacart://extensions/reference` is the catalogue.
+
+### Tests
+
+```
+fn quote(weight) {
+  let answer = http.post("https://api.courier.test/quote", { json: { weight: weight, key: settings.get("api_key") } })
+  if answer.status != 200 { fail unavailable("Courier answered " ~ answer.status) }
+  return money(answer.json.price)
+}
+
+test "quotes a rate" {
+  http: { "POST https://api.courier.test/quote": { status: 200, json: { price: "5.00" } } }
+  settings: { api_key: "test-key" }
+  now: "2026-11-07 10:00:00"
+} fn() {
+  let rate = quote(2)
+  assert rate == money("5.00"), "the rate is " ~ rate
+}
+
+test "a provider that is down is unavailable" {
+  http: { "https://api.courier.test/*": { status: 503, body: "maintenance" } }
+} fn() {
+  try { quote(1) } catch e { assert e.kind == "unavailable" }
+}
+```
+
+A `test "name" { … } fn() { … }` runs its body with everything the `needs` ask for granted, whether or not the
+extension is enabled, and reports the first failure with its message, file and line. Inside a test:
+
+- `http.*` answer from the test's `http` map and nothing leaves the shop. A key is `"METHOD url"`, `"url"` for any
+  method, or a prefix ending in `*`. The answer is `{ status, json | body, headers }`, status 200 when absent. A
+  request the map does not answer fails the test and says what key to add.
+- `time.*` stand at `now` when given, so dates in the output are stable.
+- `settings.get` reads the test's `settings` over the extension's saved ones.
+- `jobs.push` records the job instead of queuing it; the result lists what was pushed.
+- `objects.*` and `fields.*` work on the shop's database inside a transaction rolled back after the test, so a test
+  may create records and read them back and leaves none behind.
+- Everything else, `shop.*` included, is the real shop, read-only by nature.
+
+`assert test, message?` is the check; `fail`, an error or a budget used up also fail the test. The result lists the
+requests made and the budget used. The editor runs the tests over the files as they are on screen, saved or not,
+and the VS Code command sends the folder's files the same way.
 
 ## 16. A complete example
 

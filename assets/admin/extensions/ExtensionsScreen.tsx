@@ -8,7 +8,7 @@ import {
 	ToggleControl,
 } from '@wordpress/components';
 import { useEffect, useMemo, useRef, useState } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
 import {
@@ -36,6 +36,7 @@ import {
 	importExtension,
 	installExtension,
 	runFunction,
+	runTests,
 	saveSettings,
 	uninstallExtension,
 	writeFile,
@@ -44,6 +45,7 @@ import {
 	type Finding,
 	type Reference,
 	type RunResult,
+	type TestResult,
 } from './api';
 import { CodeEditor } from './editor/CodeEditor';
 
@@ -367,6 +369,14 @@ function ExtensionEditor( {
 	const reference = useReference();
 	const current = files.find( ( file ) => file.path === path );
 	const dirty = current !== undefined && current.content !== content;
+	// The files as saved with this buffer in place of its file: what the check and the tests run over.
+	const edited = useMemo( () => {
+		const sources: Record< string, string > = {};
+		for ( const file of files ) {
+			sources[ file.path ] = file.path === path ? content : file.content;
+		}
+		return sources;
+	}, [ files, path, content ] );
 
 	// The static check as the manager types: the files as saved with this buffer in place of its file.
 	const checking = useRef( 0 );
@@ -377,12 +387,7 @@ function ExtensionEditor( {
 		}
 		const run = ++checking.current;
 		const timer = setTimeout( () => {
-			const sources: Record< string, string > = {};
-			for ( const file of files ) {
-				sources[ file.path ] =
-					file.path === path ? content : file.content;
-			}
-			checkFiles( sources, extension.id )
+			checkFiles( edited, extension.id )
 				.then( ( answer ) => {
 					if ( checking.current === run ) {
 						setLive( answer.findings );
@@ -391,7 +396,7 @@ function ExtensionEditor( {
 				.catch( () => undefined );
 		}, 400 );
 		return () => clearTimeout( timer );
-	}, [ content, path, dirty, files, extension.id ] );
+	}, [ path, dirty, edited, extension.id ] );
 
 	const act = ( work: Promise< Extension >, message?: string ) => {
 		setBusy( true );
@@ -630,7 +635,11 @@ function ExtensionEditor( {
 				/>
 			) }
 
-			<Console extension={ extension } onError={ setError } />
+			<Console
+				extension={ extension }
+				files={ edited }
+				onError={ setError }
+			/>
 
 			<Section
 				title={ __( 'Uninstall', 'orillacart' ) }
@@ -973,15 +982,27 @@ function initial(
 
 function Console( {
 	extension,
+	files,
 	onError,
 }: {
 	extension: Extension;
+	files: Record< string, string >;
 	onError: ( message: string ) => void;
 } ) {
 	const [ fn, setFn ] = useState( '' );
 	const [ args, setArgs ] = useState( '[]' );
 	const [ result, setResult ] = useState< RunResult | null >( null );
 	const [ busy, setBusy ] = useState( false );
+	const [ tests, setTests ] = useState< TestResult[] | null >( null );
+	const [ testing, setTesting ] = useState( false );
+
+	const test = () => {
+		setTesting( true );
+		runTests( extension.id, files )
+			.then( ( answer ) => setTests( answer.tests ) )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setTesting( false ) );
+	};
 
 	const run = () => {
 		let parsed: unknown;
@@ -1074,7 +1095,105 @@ function Console( {
 					</p>
 				</Notice>
 			) }
+			<Row>
+				<Field size="xs" className="oc-field--aligned">
+					<Button
+						variant="secondary"
+						onClick={ test }
+						isBusy={ testing }
+						disabled={ testing }
+					>
+						{ __( 'Run tests', 'orillacart' ) }
+					</Button>
+				</Field>
+				<Field size="l">
+					<p className="oc-muted">
+						{ __(
+							"Runs the test declarations of the files as edited, with HTTP answered from each test's map and what it writes rolled back.",
+							'orillacart'
+						) }
+					</p>
+				</Field>
+			</Row>
+			{ tests && <TestResults tests={ tests } /> }
 		</Section>
+	);
+}
+
+function TestResults( { tests }: { tests: TestResult[] } ) {
+	if ( tests.length === 0 ) {
+		return (
+			<Notice status="info" isDismissible={ false }>
+				{ __(
+					'The extension declares no tests. Add test "name" { } fn() { assert … } to a script.',
+					'orillacart'
+				) }
+			</Notice>
+		);
+	}
+	const failed = tests.filter( ( t ) => ! t.ok ).length;
+	return (
+		<Notice
+			status={ failed === 0 ? 'success' : 'warning' }
+			isDismissible={ false }
+		>
+			<p>
+				{ failed === 0
+					? sprintf(
+							/* translators: %d: how many tests */
+							_n(
+								'%d test passed.',
+								'%d tests passed.',
+								tests.length,
+								'orillacart'
+							),
+							tests.length
+						)
+					: sprintf(
+							/* translators: 1: how many failed, 2: how many tests */
+							__( '%1$d of %2$d tests failed.', 'orillacart' ),
+							failed,
+							tests.length
+						) }
+			</p>
+			<ul className="oc-tests">
+				{ tests.map( ( t ) => (
+					<li
+						key={ t.name }
+						className={ `oc-tests__line oc-tests__line--${ t.ok ? 'ok' : 'failed' }` }
+					>
+						<Badge tone={ t.ok ? 'success' : 'danger' }>
+							{ t.ok
+								? __( 'ok', 'orillacart' )
+								: __( 'failed', 'orillacart' ) }
+						</Badge>{ ' ' }
+						<strong>{ t.name }</strong>
+						{ t.message && (
+							<span>
+								{ ': ' + t.message }
+								{ t.line !== null &&
+									` (${ t.file ? t.file + ' ' : '' }${ sprintf(
+										/* translators: %d: a line number */
+										__( 'line %d', 'orillacart' ),
+										t.line
+									) })` }
+							</span>
+						) }
+						{ t.http.length > 0 && (
+							<span className="oc-muted">
+								{ ' · ' +
+									t.http
+										.map(
+											( h ) =>
+												`${ h.method } ${ h.url } → ${ h.status }`
+										)
+										.join( ', ' ) }
+							</span>
+						) }
+					</li>
+				) ) }
+			</ul>
+		</Notice>
 	);
 }
 

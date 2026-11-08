@@ -1,6 +1,6 @@
 # 56. Extension scripts
 
-Status: built (2026-11-07). PLAN items 317–330, 333–338 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
+Status: built (2026-11-07). PLAN items 317–330, 333–340 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
 
 Each tenant of a SaaS, or the owner of one shop, extends and edits their own shop without a PHP plugin: new
 payment and shipping providers, new endpoints and pages, new kinds of records and new fields on the shop's own,
@@ -229,6 +229,16 @@ and `Ops`. The namespace is a label that makes traces and OPcache listings read 
 check against a signing key shared across sites by misconfiguration. `CompiledScript::run` checks the number of
 arguments against the method's before calling, so a function called with too few or too many is a script failure
 ("hello expects 1 argument, 0 given") and not a PHP `ArgumentCountError` the error middleware logs as a 500.
+
+An extension carries its own tests: `test "name" { http, now, settings } fn() { … assert … }` declarations.
+`ScriptTests` runs each in a fresh instance whose catalogue is the shop's with fakes in place (`HostCatalog::with`):
+`http.*` answer from the test's map and refuse what is not in it, `time.*` stand at `now`, `settings.get` reads the
+test's settings over the saved ones, `jobs.push` records. `PackageTests` wraps each run in `ObjectStore::isolated`,
+a transaction rolled back afterwards, and takes the object declarations from the manifest under test, so a draft's
+tests run against the real objects and fields and leave nothing. Everything the `needs` ask for is granted during a
+test. `POST /extensions/{id}/test` runs the saved files or the `files` sent, for the editor's buffers and VS Code;
+`wp orillacart script test` runs a file. The language gained `assert test, message?` (kind `assertion`, the line in
+its data), `fail` as a value, and line ends as separators in lists and maps.
 
 ## Where it runs
 

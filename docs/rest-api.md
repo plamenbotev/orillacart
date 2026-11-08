@@ -1035,6 +1035,12 @@ Saves the values of the settings an extension declares; a secret sent empty keep
 - Body (JSON):
   - `settings` (array)
 
+### `POST /extensions/{id}/test`
+
+Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /form-uploads
 
 ### `POST /form-uploads`

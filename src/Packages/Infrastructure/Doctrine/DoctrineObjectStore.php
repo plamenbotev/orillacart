@@ -126,6 +126,18 @@ final readonly class DoctrineObjectStore implements ObjectStore
         $this->entityManager->flush();
     }
 
+    public function isolated(callable $work): mixed
+    {
+        $connection = $this->entityManager->getConnection();
+        $connection->beginTransaction();
+        try {
+            return $work();
+        } finally {
+            $connection->rollBack();
+            $this->entityManager->clear();
+        }
+    }
+
     public function forgetExtension(string $extension): void
     {
         $this->entityManager->createQuery('DELETE FROM ' . ExtensionValue::class . ' v WHERE v.extension = :e')->setParameter('e', $extension)->execute();

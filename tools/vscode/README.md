@@ -19,6 +19,8 @@ the site's `GET /script-reference` for completions, so what VS Code says is exac
   extension as a draft when the site has none of that id, else writes the files that changed. Enabling and
   granting permissions stay in the admin, since that is the manager's act.
 - **OrillaCart: Check the open scripts now**.
+- **OrillaCart: Run this extension's tests on the site**: sends the folder's files and runs their `test`
+  declarations on the site, saved nowhere; the outcomes go to the "OrillaCart tests" output channel.
 
 ## Building
 

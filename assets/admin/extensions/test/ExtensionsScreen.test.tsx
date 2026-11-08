@@ -194,6 +194,76 @@ describe( 'ExtensionsScreen', () => {
 		).toBeDisabled();
 	} );
 
+	it( 'runs the tests over the files as edited and lists each outcome', async () => {
+		let sent: unknown = null;
+		serve( ( { path, method, data } ) => {
+			if (
+				method === 'POST' &&
+				path === '/orillacart/v1/extensions/greeter/test'
+			) {
+				sent = data;
+				return Promise.resolve( {
+					tests: [
+						{
+							name: 'greets',
+							ok: true,
+							message: null,
+							file: null,
+							line: null,
+							http: [],
+							jobs: [],
+							used: {},
+						},
+						{
+							name: 'quotes',
+							ok: false,
+							message: 'the quote is 6',
+							file: 'main.ocs',
+							line: 9,
+							http: [
+								{
+									method: 'POST',
+									url: 'https://api.example/quote',
+									status: 200,
+								},
+							],
+							jobs: [],
+							used: {},
+						},
+					],
+				} );
+			}
+			return undefined;
+		} );
+		const user = userEvent.setup();
+		render( <ExtensionsScreen /> );
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Greeter' } )
+		);
+		const editor = await screen.findByLabelText( 'main.ocs' );
+		await user.click( editor );
+		await user.keyboard( ' y' );
+		await user.click( screen.getByRole( 'button', { name: 'Run tests' } ) );
+
+		expect(
+			await screen.findByText( '1 of 2 tests failed.', { selector: 'p' } )
+		).toBeVisible();
+		expect(
+			screen.getByText( ': the quote is 6', {
+				exact: false,
+				selector: 'span',
+			} )
+		).toBeVisible();
+		expect(
+			screen.getByText( 'main.ocs line 9', {
+				exact: false,
+				selector: 'span',
+			} )
+		).toBeVisible();
+		const files = ( sent as { files: Record< string, string > } ).files;
+		expect( files[ 'main.ocs' ] ).toMatch( / y$/ );
+	} );
+
 	it( 'asks the manager to grant what the extension needs before enabling it', async () => {
 		let granted: unknown = null;
 		serve( ( { path, method, data } ) => {

@@ -48,6 +48,18 @@ interface ObjectStore
 
     public function setField(string $extension, string $kind, int $ownerId, string $field, mixed $value): void;
 
+    /**
+     * Runs the work inside a transaction that is rolled back afterwards, whatever it did: a test's records and
+     * field values leave no trace.
+     *
+     * @template T
+     *
+     * @param callable(): T $work
+     *
+     * @return T
+     */
+    public function isolated(callable $work): mixed;
+
     /** Everything of the extension: on uninstalling. */
     public function forgetExtension(string $extension): void;
 

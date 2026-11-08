@@ -48,6 +48,17 @@ export interface RunResult {
 	used: Record< string, number >;
 }
 
+export interface TestResult {
+	name: string;
+	ok: boolean;
+	message: string | null;
+	file: string | null;
+	line: number | null;
+	http: { method: string; url: string; status: number }[];
+	jobs: { name: string; payload: unknown; at: string | null }[];
+	used: Record< string, number >;
+}
+
 export interface Reference {
 	language: string;
 	declarations: Record< string, string >;
@@ -155,6 +166,19 @@ export const runFunction = ( id: string, fn: string, args: unknown[] ) =>
 		path: `${ BASE }/extensions/${ id }/run`,
 		method: 'POST',
 		data: { function: fn, arguments: args },
+	} );
+
+/**
+ * Runs the extension's own tests, over the files given (the editor's buffers) or the saved ones.
+ *
+ * @param id    The extension's id.
+ * @param files The files by path, in place of the saved ones.
+ */
+export const runTests = ( id: string, files?: Record< string, string > ) =>
+	apiFetch< { tests: TestResult[] } >( {
+		path: `${ BASE }/extensions/${ id }/test`,
+		method: 'POST',
+		data: files ? { files } : {},
 	} );
 
 export const exportExtension = ( id: string ) =>

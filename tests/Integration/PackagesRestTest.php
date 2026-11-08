@@ -37,6 +37,47 @@ final class PackagesRestTest extends RestTestCase
         }
     }
 
+    public function testTheExtensionsOwnTestsRunOverSavedOrSentFilesAndLeaveNoRecords(): void
+    {
+        $script = <<<'OCS'
+            extension "tested" { name: "Tested", needs: { http: ["api.example"] } }
+            object "note" { fields: { text: text }, index: [text] }
+
+            fn keep(text) { return objects.note.create({ text: text }) }
+            fn quote() { return http.get("https://api.example/quote").json.price }
+
+            test "keeps a note" fn() {
+              keep("hello")
+              assert objects.note.count({}) == 1, "one note, got " ~ objects.note.count({})
+            }
+            test "quotes" { http: { "GET https://api.example/quote": { json: { price: 5 } } } } fn() {
+              assert quote() == 5
+            }
+            OCS;
+        $installed = $this->request('POST', '/extensions', ['id' => 'tested', 'name' => 'Tested', 'files' => ['main.ocs' => $script]], nonce: true);
+        self::assertSame(201, $installed->get_status(), (string) wp_json_encode($installed->get_data()));
+
+        // Saved files, the extension still a draft: the tests run with what the needs ask for, and the note is rolled back.
+        $answer = $this->request('POST', '/extensions/tested/test', [], nonce: true);
+        self::assertSame(200, $answer->get_status(), (string) wp_json_encode($answer->get_data()));
+        $tests = $this->rows($this->data($answer)['tests']);
+        self::assertSame([['keeps a note', true, null], ['quotes', true, null]], array_map(static fn(array $t): array => [$t['name'], $t['ok'], $t['message']], $tests));
+        self::assertSame([['method' => 'GET', 'url' => 'https://api.example/quote', 'status' => 200]], $tests[1]['http']);
+        $this->request('POST', '/extensions/tested/enable', ['grant' => ['http']], nonce: true);
+        self::assertCount(0, (array) $this->data($this->request('GET', '/extensions/tested/data'))['objects'], 'the test\'s note left no trace');
+        $second = $this->rows($this->data($this->request('POST', '/extensions/tested/test', [], nonce: true))['tests']);
+        self::assertTrue($second[0]['ok'], 'run again: still one note, since the first run was rolled back');
+
+        // Files sent with the request stand in for the saved ones: an editor tests what is on screen.
+        $edited = str_replace('assert quote() == 5', 'assert quote() == 6, "price " ~ quote()', $script);
+        $tests = $this->rows($this->data($this->request('POST', '/extensions/tested/test', ['files' => ['main.ocs' => $edited]], nonce: true))['tests']);
+        self::assertSame([false, 'price 5', 'main.ocs', 12], [$tests[1]['ok'], $tests[1]['message'], $tests[1]['file'], $tests[1]['line']]);
+
+        $broken = $this->request('POST', '/extensions/tested/test', ['files' => ['main.ocs' => "fn f() { return nothing() }\n"]], nonce: true);
+        self::assertSame(422, $broken->get_status(), 'what does not compile is not run');
+        $this->request('DELETE', '/extensions/tested', nonce: true);
+    }
+
     public function testAnExtensionIsInstalledCheckedEnabledRunAndUninstalled(): void
     {
         $installed = $this->request('POST', '/extensions', ['id' => 'greeter', 'name' => 'Greeter draft', 'files' => ['main.ocs' => self::SCRIPT]], nonce: true);

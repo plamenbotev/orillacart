@@ -400,7 +400,7 @@ final readonly class PackageService
      *
      * @return list<array{file: string, line: int, column: int, message: string}>
      */
-    private static function locate(array $scripts, array $findings): array
+    public static function locate(array $scripts, array $findings): array
     {
         $starts = [];
         $line = 1;

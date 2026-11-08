@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Scripting\Infrastructure\WordPress;
 
 use OrillaCart\Scripting\Application\Scripts;
+use OrillaCart\Scripting\Application\ScriptTests;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\Catchable;
 use OrillaCart\Scripting\Domain\Ops;
@@ -13,11 +14,12 @@ use OrillaCart\Shared\WordPress\CliCommand;
 /**
  * `wp orillacart script check <file>`: the static check's findings. `wp orillacart script run <file> <function>
  * [--input=<json>]`: compiles the file, runs one of its top-level functions with the JSON's items as arguments,
- * and prints what it returned and what the run used. `wp orillacart script functions`: the host's catalogue.
+ * and prints what it returned and what the run used. `wp orillacart script test <file> [--grant=<permissions>]`:
+ * runs the file's own `test` declarations. `wp orillacart script functions`: the host's catalogue.
  */
 final readonly class ScriptCommand implements CliCommand
 {
-    public function __construct(private Scripts $scripts) {}
+    public function __construct(private Scripts $scripts, private ScriptTests $tests) {}
 
     public static function name(): string
     {
@@ -78,6 +80,39 @@ final readonly class ScriptCommand implements CliCommand
         if ($used instanceof \OrillaCart\Scripting\Application\Context) {
             \WP_CLI::log('Used: ' . (string) json_encode($used->used()));
         }
+    }
+
+    /**
+     * @param list<string>          $args
+     * @param array<string, string> $options
+     */
+    public function test(array $args, array $options): void
+    {
+        $source = $this->read($args[0] ?? '');
+        $permissions = array_values(array_filter(explode(',', $options['grant'] ?? ''), static fn(string $permission): bool => $permission !== ''));
+        try {
+            $results = $this->tests->run($source, 'cli', new \OrillaCart\Scripting\Application\Dto\Grant('cli', $permissions));
+        } catch (\InvalidArgumentException $e) {
+            \WP_CLI::error($e->getMessage());
+        }
+        if ($results === []) {
+            \WP_CLI::warning('The script declares no tests: add `test "name" { } fn() { assert … }`.');
+
+            return;
+        }
+        $failed = 0;
+        foreach ($results as $result) {
+            if ($result->ok) {
+                \WP_CLI::log(\sprintf('  ok   %s', $result->name));
+            } else {
+                ++$failed;
+                \WP_CLI::log(\sprintf('  FAIL %s: %s%s', $result->name, $result->message ?? '', $result->line === null ? '' : \sprintf(' (line %d)', $result->line)));
+            }
+        }
+        if ($failed > 0) {
+            \WP_CLI::error(\sprintf('%d of %d tests failed.', $failed, \count($results)));
+        }
+        \WP_CLI::success(\sprintf('%d test%s passed.', \count($results), \count($results) === 1 ? '' : 's'));
     }
 
     /**

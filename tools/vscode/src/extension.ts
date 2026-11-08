@@ -20,7 +20,8 @@ import { Site, SiteError } from './site';
 /**
  * The client: starts the language server for `.ocs` files and adds three commands. Pull writes an extension's
  * files from the site into a folder named after it; push sends a folder's files back, installing the extension
- * when the site has none of that id; check asks the server to check the open scripts now.
+ * when the site has none of that id; check asks the server to check the open scripts now; run tests sends the
+ * folder's files and runs the extension's own tests on the site, the outcomes in an output channel.
  */
 
 let client: LanguageClient | undefined;
@@ -52,7 +53,8 @@ export function activate( context: vscode.ExtensionContext ): void {
 			client?.sendRequest( 'orillacart/checkNow' )
 		),
 		vscode.commands.registerCommand( 'orillacart.pullExtension', pull ),
-		vscode.commands.registerCommand( 'orillacart.pushExtension', push )
+		vscode.commands.registerCommand( 'orillacart.pushExtension', push ),
+		vscode.commands.registerCommand( 'orillacart.runTests', runTests )
 	);
 }
 
@@ -119,20 +121,19 @@ async function pull(): Promise< void > {
 	}
 }
 
-async function push(): Promise< void > {
-	const shop = site();
-	if ( ! shop ) {
-		return;
-	}
+/** The open script's folder as an extension: its id from the folder's name and its files; null with a message when there is none. */
+function current(
+	purpose: string
+): { id: string; folder: string; files: Record< string, string > } | null {
 	const active = vscode.window.activeTextEditor?.document.uri.fsPath;
 	const folder = active
 		? dirname( active )
 		: vscode.workspace.workspaceFolders?.[ 0 ]?.uri.fsPath;
 	if ( ! folder ) {
 		void vscode.window.showErrorMessage(
-			'Open a script of the extension to push.'
+			`Open a script of the extension to ${ purpose }.`
 		);
-		return;
+		return null;
 	}
 	const id = basename( folder )
 		.toLowerCase()
@@ -142,7 +143,7 @@ async function push(): Promise< void > {
 		void vscode.window.showErrorMessage(
 			"The folder's name is the extension's id: lower-case letters, digits and underscores."
 		);
-		return;
+		return null;
 	}
 	const files: Record< string, string > = {};
 	const walk = ( dir: string ) => {
@@ -167,8 +168,63 @@ async function push(): Promise< void > {
 		void vscode.window.showErrorMessage(
 			'No .ocs or template files here.'
 		);
+		return null;
+	}
+	return { id, folder, files };
+}
+
+let tests: vscode.OutputChannel | undefined;
+
+async function runTests(): Promise< void > {
+	const shop = site();
+	const here = shop ? current( 'test' ) : null;
+	if ( ! shop || ! here ) {
 		return;
 	}
+	await vscode.workspace.saveAll();
+	tests ??= vscode.window.createOutputChannel( 'OrillaCart tests' );
+	try {
+		const answer = await shop.test( here.id, here.files );
+		tests.clear();
+		for ( const t of answer.tests ) {
+			const where =
+				t.line === null ? '' : ` (${ t.file ?? '' } line ${ t.line })`;
+			tests.appendLine(
+				`${ t.ok ? '  ok  ' : ' FAIL ' } ${ t.name }${ t.message ? ': ' + t.message : '' }${ where }`
+			);
+			for ( const h of t.http ) {
+				tests.appendLine(
+					`        ${ h.method } ${ h.url } → ${ h.status }`
+				);
+			}
+		}
+		const failed = answer.tests.filter( ( t ) => ! t.ok ).length;
+		tests.show( true );
+		if ( answer.tests.length === 0 ) {
+			void vscode.window.showInformationMessage(
+				`"${ here.id }" declares no tests: add test "name" { } fn() { assert … }.`
+			);
+		} else if ( failed === 0 ) {
+			void vscode.window.showInformationMessage(
+				`${ answer.tests.length } test${ answer.tests.length === 1 ? '' : 's' } passed.`
+			);
+		} else {
+			void vscode.window.showWarningMessage(
+				`${ failed } of ${ answer.tests.length } tests failed; see the OrillaCart tests output.`
+			);
+		}
+	} catch ( e ) {
+		void vscode.window.showErrorMessage( failure( e ) );
+	}
+}
+
+async function push(): Promise< void > {
+	const shop = site();
+	const here = shop ? current( 'push' ) : null;
+	if ( ! shop || ! here ) {
+		return;
+	}
+	const { id, files } = here;
 	await vscode.workspace.saveAll();
 	try {
 		let extension;

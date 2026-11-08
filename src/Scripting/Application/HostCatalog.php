@@ -68,6 +68,21 @@ final class HostCatalog
         return null;
     }
 
+    /**
+     * The catalogue with these functions in place of the ones of the same names: a test's fakes.
+     *
+     * @param list<HostFunction> $functions
+     */
+    public function with(array $functions): self
+    {
+        $all = $this->all();
+        foreach ($functions as $function) {
+            $all[$function->name] = $function;
+        }
+
+        return self::of(array_values($all));
+    }
+
     /** Whether a dotted prefix names a namespace or a function: `http`, `shop.orders`. */
     public function knows(string $prefix): bool
     {

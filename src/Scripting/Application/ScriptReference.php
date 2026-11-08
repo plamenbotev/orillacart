@@ -42,6 +42,7 @@ final readonly class ScriptReference
         'job "name" fn(payload)' => 'a handler run in the background by jobs.push(name, payload)',
         'every "hourly|twicedaily|daily|weekly" fn()' => 'a handler run on a schedule',
         'fn name(args) { … }' => 'a function of the extension\'s own, callable from its other functions and the console',
+        'test "name" { http: { "POST https://…": { status, json } }, now: "2026-11-07 10:00", settings: { key: value } } fn() { … assert … }' => 'a test of the extension\'s own: run with http answered from the map, time standing at now, the settings given, jobs recorded, records rolled back',
     ];
 
     public function __construct(private HostCatalog $catalog) {}

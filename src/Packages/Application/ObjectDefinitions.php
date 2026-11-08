@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Packages\Application\Dto\ObjectQuery;
+use OrillaCart\Packages\Application\Dto\PackageManifest;
 use OrillaCart\Scripting\Domain\Ops;
 use OrillaCart\Scripting\Domain\ScriptError;
 
@@ -139,20 +140,40 @@ final class ObjectDefinitions
         }
         $this->read[$extension] = true;
         foreach ($this->packages->loaded() as $loaded) {
-            if ($loaded->package->slug() !== $extension) {
-                continue;
+            if ($loaded->package->slug() === $extension) {
+                $this->apply($extension, $loaded->manifest);
             }
-            foreach ($loaded->manifest->ofKind('object') as $declaration) {
-                $type = (string) $declaration['name'];
-                $this->objects[$extension][$type] = self::declaredFields($declaration['props']['fields'] ?? []);
-                $index = $declaration['props']['index'] ?? [];
-                $this->indexed[$extension][$type] = array_values(array_filter(array_map(self::word(...), \is_array($index) ? $index : []), static fn(string $f): bool => $f !== ''));
-            }
-            foreach ($loaded->manifest->ofKind('fields') as $declaration) {
-                $owner = $declaration['words'][1] ?? '';
-                if (($declaration['words'][0] ?? '') === 'on' && \in_array($owner, self::OWNERS, true)) {
-                    $this->fields[$extension][$owner] = self::declaredFields($declaration['props']);
-                }
+        }
+    }
+
+    /**
+     * Takes the declarations from this manifest for the extension, whatever is enabled: an extension's tests run
+     * over the files as edited, draft or not. forget() afterwards reads the enabled declarations again.
+     */
+    public function use(string $extension, PackageManifest $manifest): void
+    {
+        $this->forget($extension);
+        $this->read[$extension] = true;
+        $this->apply($extension, $manifest);
+    }
+
+    public function forget(string $extension): void
+    {
+        unset($this->read[$extension], $this->objects[$extension], $this->indexed[$extension], $this->fields[$extension]);
+    }
+
+    private function apply(string $extension, PackageManifest $manifest): void
+    {
+        foreach ($manifest->ofKind('object') as $declaration) {
+            $type = (string) $declaration['name'];
+            $this->objects[$extension][$type] = self::declaredFields($declaration['props']['fields'] ?? []);
+            $index = $declaration['props']['index'] ?? [];
+            $this->indexed[$extension][$type] = array_values(array_filter(array_map(self::word(...), \is_array($index) ? $index : []), static fn(string $f): bool => $f !== ''));
+        }
+        foreach ($manifest->ofKind('fields') as $declaration) {
+            $owner = $declaration['words'][1] ?? '';
+            if (($declaration['words'][0] ?? '') === 'on' && \in_array($owner, self::OWNERS, true)) {
+                $this->fields[$extension][$owner] = self::declaredFields($declaration['props']);
             }
         }
     }

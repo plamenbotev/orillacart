@@ -551,6 +551,20 @@ body.folded .oc-toasts {
 	text-decoration: none;
 }
 
+.oc-tests {
+	margin: var(--oc-space-2) 0 0;
+	list-style: none;
+}
+
+.oc-tests__line {
+	padding: var(--oc-space-2) 0;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.oc-tests__line:last-child {
+	border-bottom: 0;
+}
+
 .oc-needs__line a:hover {
 	text-decoration: underline;
 }

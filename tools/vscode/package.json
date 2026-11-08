@@ -66,6 +66,10 @@
 			{
 				"command": "orillacart.checkNow",
 				"title": "OrillaCart: Check the open scripts now"
+			},
+			{
+				"command": "orillacart.runTests",
+				"title": "OrillaCart: Run this extension's tests on the site"
 			}
 		]
 	},

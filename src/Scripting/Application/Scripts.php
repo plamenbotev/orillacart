@@ -50,9 +50,11 @@ final readonly class Scripts
     /**
      * The compiled class, loaded from the store or compiled and kept, as an instance with its own run context.
      *
+     * @param HostCatalog|null $catalog the host the instance calls; the shop's when null, a test's fakes otherwise
+     *
      * @throws \InvalidArgumentException when the source does not compile; the message lists the findings
      */
-    public function load(string $source, string $scope, Budget $budget = new Budget(), Grant $grant = new Grant()): CompiledScript
+    public function load(string $source, string $scope, Budget $budget = new Budget(), Grant $grant = new Grant(), ?HostCatalog $catalog = null): CompiledScript
     {
         $key = self::key($this->store->site(), $scope, $source);
         $className = $this->namespace() . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . self::checksum($source);
@@ -63,7 +65,7 @@ final readonly class Scripts
             }
             $this->store->put($key, $className, $compiled->source);
         }
-        $context = new Context($this->catalog, $budget, $grant);
+        $context = new Context($catalog ?? $this->catalog, $budget, $grant);
         $script = new $className($context);
         \assert($script instanceof CompiledScript);
 

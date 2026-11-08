@@ -28,6 +28,15 @@ export interface Reference {
 	slots: string[];
 }
 
+export interface TestResult {
+	name: string;
+	ok: boolean;
+	message: string | null;
+	file: string | null;
+	line: number | null;
+	http: { method: string; url: string; status: number }[];
+}
+
 export interface ExtensionFile {
 	path: string;
 	content: string;
@@ -66,6 +75,13 @@ export class Site {
 		id?: string
 	): Promise< { findings: Finding[] } > {
 		return this.call( 'POST', '/script/check', { files, id } );
+	}
+
+	test(
+		id: string,
+		files: Record< string, string >
+	): Promise< { tests: TestResult[] } > {
+		return this.call( 'POST', `/extensions/${ id }/test`, { files } );
 	}
 
 	reference(): Promise< Reference > {
