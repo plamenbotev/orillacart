@@ -244,6 +244,15 @@ that calls one function with sample input against a read-only view of the shop; 
 `settings` block; permissions asked for and granted; versions kept on each save with rollback; import and export of
 a package as a zip with a checksum; the log of its runs with budgets used.
 
+**The editor** (PLAN 335, 336) is CodeMirror with a stream grammar for the language and Twig and HTML modes for
+templates. The compiler on the server stays the only parser: as the manager types, the buffer and the package's
+other files go to `POST /script/check`, a stateless route that answers each finding with its file, line and
+column, and the editor underlines them; completion and hover come from `GET /script-reference`, which lists every
+host function with arity, summary and permission, the filters, tests, keywords and slots, plus the names the
+buffer declares (`let`, parameters, top-level functions, the extension's object kinds for `objects.<kind>.…`).
+Nothing of the language is re-implemented in TypeScript beyond a tokenizer for colour. The same two routes are
+what an editor outside the admin uses (PLAN 337, the VS Code extension with a language server that proxies them).
+
 **MCP tools**, in a new area "extensions" a key may be given: `extension_list`, `extension_read`,
 `extension_write_file`, `extension_check`, `extension_run` (the console), `extension_enable` (risk: opening, since it
 grants permissions), `extension_disable`, `extension_export`. An agent writes an extension the way a person does,

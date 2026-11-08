@@ -2208,6 +2208,14 @@ The script language's reference for whoever writes an extension: every host func
 
 - Who: shop managers
 
+## /script
+
+### `POST /script/check`
+
+Runs the static check over script files sent in the request, saved nowhere: an editor's check as its user types. Answers each finding with its file, line and column.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /search-engine
 
 ### `GET /search-engine`

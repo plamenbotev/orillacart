@@ -84,6 +84,18 @@ final class PackagesRestTest extends RestTestCase
         self::assertSame(['greeter'], array_column($this->rows($this->data($this->request('GET', '/extensions'))['extensions']), 'id'));
     }
 
+    public function testFilesAreCheckedWithoutBeingSaved(): void
+    {
+        $answer = $this->data($this->request('POST', '/script/check', ['files' => ['a.ocs' => "fn ok() { return 1 }\n", 'b.ocs' => "fn bad() {\n  return nothing()\n}\n", 'templates/x.html.twig' => '{{ x }}'], 'id' => 'draft'], nonce: true));
+
+        self::assertSame([['file' => 'b.ocs', 'line' => 2, 'column' => 10, 'message' => 'Unknown name "nothing"']], $answer['findings']);
+        self::assertSame(['findings' => []], $this->data($this->request('POST', '/script/check', ['files' => ['main.ocs' => "fn ok() { return 1 }\n"]], nonce: true)));
+        self::assertSame(200, $this->request('POST', '/script/check', ['files' => []], nonce: true)->get_status(), 'nothing to check is fine');
+        $reference = $this->data($this->request('GET', '/script-reference'));
+        self::assertContains('let', self::assoc($reference['keywords']));
+        self::assertContains('product_after_details', self::assoc($reference['slots']));
+    }
+
     public function testAnExtensionMustDeclareWhatItNeedsAndTheManagerMustGrantIt(): void
     {
         $this->request('POST', '/extensions', ['id' => 'reader', 'name' => 'Reader', 'files' => ['main.ocs' => "extension \"reader\" { needs: { orders: read } }\nfn count() { return 1 }\n"]], nonce: true);

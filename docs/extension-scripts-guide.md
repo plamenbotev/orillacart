@@ -689,6 +689,10 @@ where the shop stays in charge.
 
 ## 15. Working on an extension
 
+- **The editor** highlights the language, completes host functions after a dot with their arity, summary and
+  permission, filters after `|`, tests after `is`, keywords, declaration kinds at the start of a line and the names
+  the file declares, and shows a function's summary on hover. As you type, the static check runs over the files
+  as edited and underlines each finding where it is; the notice says whether the scripts compile as edited.
 - **Check.** Saving a file runs the static check; the findings show beside the editor with line and column, and
   the extension cannot be enabled until they are gone. The check refuses unknown names and functions, wrong
   argument counts, unknown filters and tests, a host function the `needs` do not cover, a handler a contract

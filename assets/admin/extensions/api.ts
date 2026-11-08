@@ -49,6 +49,8 @@ export interface RunResult {
 }
 
 export interface Reference {
+	language: string;
+	declarations: Record< string, string >;
 	functions: {
 		name: string;
 		summary: string;
@@ -57,6 +59,8 @@ export interface Reference {
 	}[];
 	filters: string[];
 	tests: string[];
+	keywords: string[];
+	slots: string[];
 }
 
 export const fetchExtensions = () =>
@@ -89,6 +93,21 @@ export const deleteFile = ( id: string, path: string ) =>
 	apiFetch< Extension >( {
 		path: `${ BASE }/extensions/${ id }/files/${ encodeURIComponent( path ) }`,
 		method: 'DELETE',
+	} );
+
+export interface Finding {
+	file: string;
+	line: number;
+	column: number;
+	message: string;
+}
+
+/** The static check over files as they are in the editor, saved nowhere. */
+export const checkFiles = ( files: Record< string, string >, id?: string ) =>
+	apiFetch< { findings: Finding[] } >( {
+		path: `${ BASE }/script/check`,
+		method: 'POST',
+		data: { files, id },
 	} );
 
 export const checkExtension = ( id: string ) =>

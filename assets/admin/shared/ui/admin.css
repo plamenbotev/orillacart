@@ -759,7 +759,32 @@ body.folded .oc-toasts {
 	border: 0;
 }
 
-/* Code: scripts and templates in the Extensions editor, and a console's output. */
+/* The Extensions editor (CodeMirror) and its hover card. */
+.oc-editor .cm-editor {
+	line-height: 1.5;
+	tab-size: 2;
+}
+
+.oc-editor .cm-gutters {
+	background: #f6f7f7;
+	border-right: 1px solid #dcdcde;
+	color: #757575;
+}
+
+.oc-editor-hover {
+	max-width: 32rem;
+	padding: 6px 8px;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.oc-editor-hover strong {
+	display: block;
+	margin-bottom: 2px;
+	font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+
+/* Code: a console's output. */
 .oc-code,
 .oc-code textarea {
 	font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace;

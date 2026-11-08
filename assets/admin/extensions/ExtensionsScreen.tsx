@@ -5,10 +5,9 @@ import {
 	Notice,
 	SelectControl,
 	TextControl,
-	TextareaControl,
 	ToggleControl,
 } from '@wordpress/components';
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
@@ -26,12 +25,14 @@ import {
 } from '../shared/ui';
 import {
 	checkExtension,
+	checkFiles,
 	deleteFile,
 	disableExtension,
 	enableExtension,
 	exportExtension,
 	fetchExtension,
 	fetchExtensions,
+	fetchReference,
 	importExtension,
 	installExtension,
 	runFunction,
@@ -40,8 +41,11 @@ import {
 	writeFile,
 	type Extension,
 	type ExtensionSetting,
+	type Finding,
+	type Reference,
 	type RunResult,
 } from './api';
+import { CodeEditor } from './editor/CodeEditor';
 
 const STATES: Record< Extension[ 'state' ], { label: string; tone: Tone } > = {
 	draft: { label: __( 'Draft', 'orillacart' ), tone: 'neutral' },
@@ -358,8 +362,35 @@ function ExtensionEditor( {
 	const [ newPath, setNewPath ] = useState( '' );
 	const [ granting, setGranting ] = useState< string[] | null >( null );
 	const [ removing, setRemoving ] = useState( false );
+	const [ live, setLive ] = useState< Finding[] | null >( null );
+	const reference = useReference();
 	const current = files.find( ( file ) => file.path === path );
 	const dirty = current !== undefined && current.content !== content;
+
+	// The static check as the manager types: the files as saved with this buffer in place of its file.
+	const checking = useRef( 0 );
+	useEffect( () => {
+		if ( ! path.endsWith( '.ocs' ) || ! dirty ) {
+			setLive( null );
+			return undefined;
+		}
+		const run = ++checking.current;
+		const timer = setTimeout( () => {
+			const sources: Record< string, string > = {};
+			for ( const file of files ) {
+				sources[ file.path ] =
+					file.path === path ? content : file.content;
+			}
+			checkFiles( sources, extension.id )
+				.then( ( answer ) => {
+					if ( checking.current === run ) {
+						setLive( answer.findings );
+					}
+				} )
+				.catch( () => undefined );
+		}, 400 );
+		return () => clearTimeout( timer );
+	}, [ content, path, dirty, files, extension.id ] );
 
 	const act = ( work: Promise< Extension >, message?: string ) => {
 		setBusy( true );
@@ -530,13 +561,15 @@ function ExtensionEditor( {
 					</Field>
 				</Row>
 				<Field size="full">
-					<TextareaControl
-						__nextHasNoMarginBottom
+					<CodeEditor
 						label={ path || __( 'Contents', 'orillacart' ) }
 						value={ content }
 						onChange={ setContent }
-						rows={ 24 }
-						className="oc-code"
+						path={ path }
+						findings={ ( live ?? [] ).filter(
+							( finding ) => finding.file === path
+						) }
+						reference={ reference }
 						disabled={ current === undefined }
 					/>
 				</Field>
@@ -576,7 +609,14 @@ function ExtensionEditor( {
 						{ __( 'Delete file', 'orillacart' ) }
 					</Button>
 				</div>
-				<Findings findings={ extension.findings } />
+				<Findings
+					findings={
+						live === null
+							? extension.findings
+							: live.map( describeFinding )
+					}
+					unsaved={ live !== null }
+				/>
 			</Section>
 
 			{ extension.settings !== null && extension.settings.length > 0 && (
@@ -654,14 +694,44 @@ function ExtensionEditor( {
 	);
 }
 
-function Findings( { findings }: { findings: string[] | null } ) {
+/** A finding as the saved check writes it: file, message, line and column. */
+function describeFinding( finding: Finding ): string {
+	return `${ finding.file ? finding.file + ': ' : '' }${
+		finding.message
+	} (line ${ finding.line }, column ${ finding.column })`;
+}
+
+/** The site's script reference, fetched once per screen; null until it arrives or when it cannot. */
+function useReference(): Reference | null {
+	const [ reference, setReference ] = useState< Reference | null >( null );
+	useEffect( () => {
+		let live = true;
+		fetchReference()
+			.then( ( answer ) => live && setReference( answer ) )
+			.catch( () => undefined );
+		return () => {
+			live = false;
+		};
+	}, [] );
+	return reference;
+}
+
+function Findings( {
+	findings,
+	unsaved = false,
+}: {
+	findings: string[] | null;
+	unsaved?: boolean;
+} ) {
 	if ( findings === null ) {
 		return null;
 	}
 	if ( findings.length === 0 ) {
 		return (
 			<Notice status="success" isDismissible={ false }>
-				{ __( 'The scripts compile.', 'orillacart' ) }
+				{ unsaved
+					? __( 'The scripts compile as edited.', 'orillacart' )
+					: __( 'The scripts compile.', 'orillacart' ) }
 			</Notice>
 		);
 	}

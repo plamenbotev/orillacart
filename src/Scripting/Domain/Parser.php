@@ -42,7 +42,7 @@ use OrillaCart\Scripting\Domain\Ast\WhileStmt;
  */
 final class Parser
 {
-    private const array KEYWORDS = ['let', 'fn', 'if', 'elif', 'else', 'for', 'in', 'while', 'return', 'break', 'continue', 'try', 'catch', 'fail', 'true', 'false', 'null', 'and', 'or', 'not', 'is'];
+    public const array KEYWORDS = ['let', 'fn', 'if', 'elif', 'else', 'for', 'in', 'while', 'return', 'break', 'continue', 'try', 'catch', 'fail', 'true', 'false', 'null', 'and', 'or', 'not', 'is'];
 
     /** Binary operators by precedence, Twig's: higher binds tighter. */
     private const array BINARY = [

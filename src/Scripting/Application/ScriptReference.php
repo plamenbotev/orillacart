@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Scripting\Application;
 
 use OrillaCart\Scripting\Application\Dto\HostFunction;
+use OrillaCart\Scripting\Domain\Parser;
+use OrillaCart\Shared\WordPress\SlotContent;
 
 /**
  * The language as a reference for whoever writes a script, a person or an agent: how it reads, the declarations
@@ -45,7 +47,7 @@ final readonly class ScriptReference
     public function __construct(private HostCatalog $catalog) {}
 
     /**
-     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>}
+     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, slots: list<string>}
      */
     public function reference(): array
     {
@@ -59,6 +61,8 @@ final readonly class ScriptReference
                 'needs' => $function->needs,
             ], $this->catalog->all())),
             ...Scripts::vocabulary(),
+            'keywords' => Parser::KEYWORDS,
+            'slots' => SlotContent::SLOTS,
         ];
     }
 }

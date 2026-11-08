@@ -7,6 +7,27 @@ import { ExtensionsScreen } from '../ExtensionsScreen';
 import type { Extension } from '../api';
 
 jest.mock( '@wordpress/api-fetch' );
+// CodeMirror needs a layout engine jsdom has not; the screen's tests see a plain textarea in its place.
+jest.mock( '../editor/CodeEditor', () => ( {
+	CodeEditor: ( {
+		label,
+		value,
+		onChange,
+		disabled,
+	}: {
+		label: string;
+		value: string;
+		onChange: ( value: string ) => void;
+		disabled?: boolean;
+	} ) => (
+		<textarea
+			aria-label={ label }
+			value={ value }
+			onChange={ ( event ) => onChange( event.target.value ) }
+			disabled={ disabled }
+		/>
+	),
+} ) );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
 
 const TOAST = { selector: '.components-snackbar__content' };
@@ -74,6 +95,20 @@ function serve(
 				],
 			} );
 		}
+		if ( request.path === '/orillacart/v1/script-reference' ) {
+			return Promise.resolve( {
+				language: '',
+				declarations: {},
+				functions: [],
+				filters: [],
+				tests: [],
+				keywords: [],
+				slots: [],
+			} );
+		}
+		if ( request.path === '/orillacart/v1/script/check' ) {
+			return Promise.resolve( { findings: [] } );
+		}
 		if ( request.path === '/orillacart/v1/extensions/greeter' ) {
 			return Promise.resolve( greeter );
 		}
@@ -98,7 +133,7 @@ describe( 'ExtensionsScreen', () => {
 		await user.click( screen.getByRole( 'button', { name: 'Greeter' } ) );
 
 		expect(
-			await screen.findByRole( 'heading', { name: 'Greeter' } )
+			await screen.findByRole( 'heading', { name: 'Greeter', level: 1 } )
 		).toBeVisible();
 		expect( screen.getByLabelText( 'main.ocs' ) ).toHaveValue(
 			'fn greet(n) { return n }'

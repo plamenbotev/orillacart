@@ -354,20 +354,62 @@ final readonly class PackageService
     }
 
     /**
+     * The static check over files that are not saved anywhere: what an editor asks as its user types. The scripts
+     * (`.ocs`) are compiled as one source in the order given, as a package's are; each finding names its file.
+     *
+     * @param array<string, string> $files path → content
+     *
+     * @return list<array{file: string, line: int, column: int, message: string}>
+     */
+    public function checkFiles(array $files, string $scope = 'draft'): array
+    {
+        $scripts = [];
+        foreach ($files as $path => $content) {
+            if (str_ends_with($path, '.ocs')) {
+                $scripts[$path] = $content;
+            }
+        }
+        $compiled = $this->scripts->compile(implode("\n", $scripts), 'check/' . $scope);
+
+        return self::locate($scripts, $compiled->findings);
+    }
+
+    /**
      * The findings with the file each is in: the scripts are compiled as one source, in path order.
      *
      * @return list<string>
      */
     private function findings(Package $package, Compiled $compiled): array
     {
-        $starts = [];
-        $line = 1;
+        $scripts = [];
         foreach ($package->scripts() as $file) {
-            $starts[] = [$line, $file->path()];
-            $line += substr_count($file->content(), "\n") + 1;
+            $scripts[$file->path()] = $file->content();
         }
 
-        return array_map(static function (Finding $finding) use ($starts): string {
+        return array_map(
+            static fn(array $finding): string => \sprintf('%s%s (line %d, column %d)', $finding['file'] === '' ? '' : $finding['file'] . ': ', $finding['message'], $finding['line'], $finding['column']),
+            self::locate($scripts, $compiled->findings),
+        );
+    }
+
+    /**
+     * Each finding placed in the file it is in, with the line counted from that file's start.
+     *
+     * @param array<string, string> $scripts path → content, in the order they were compiled
+     * @param list<Finding>         $findings
+     *
+     * @return list<array{file: string, line: int, column: int, message: string}>
+     */
+    private static function locate(array $scripts, array $findings): array
+    {
+        $starts = [];
+        $line = 1;
+        foreach ($scripts as $path => $content) {
+            $starts[] = [$line, $path];
+            $line += substr_count($content, "\n") + 1;
+        }
+
+        return array_map(static function (Finding $finding) use ($starts): array {
             $file = '';
             $offset = 0;
             foreach ($starts as [$start, $path]) {
@@ -377,8 +419,8 @@ final readonly class PackageService
                 }
             }
 
-            return \sprintf('%s%s (line %d, column %d)', $file === '' ? '' : $file . ': ', $finding->message, $finding->line - $offset, $finding->column);
-        }, $compiled->findings);
+            return ['file' => $file, 'line' => $finding->line - $offset, 'column' => $finding->column, 'message' => $finding->message];
+        }, $findings);
     }
 
     /** @return array<string, int|float> */
