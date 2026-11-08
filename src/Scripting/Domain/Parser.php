@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Scripting\Domain;
 
+use OrillaCart\Scripting\Domain\Ast\AssertStmt;
 use OrillaCart\Scripting\Domain\Ast\AssignStmt;
 use OrillaCart\Scripting\Domain\Ast\Binary;
 use OrillaCart\Scripting\Domain\Ast\BreakStmt;
@@ -12,6 +13,7 @@ use OrillaCart\Scripting\Domain\Ast\ContinueStmt;
 use OrillaCart\Scripting\Domain\Ast\Declaration;
 use OrillaCart\Scripting\Domain\Ast\Expr;
 use OrillaCart\Scripting\Domain\Ast\ExprStmt;
+use OrillaCart\Scripting\Domain\Ast\FailExpr;
 use OrillaCart\Scripting\Domain\Ast\FailStmt;
 use OrillaCart\Scripting\Domain\Ast\Filter;
 use OrillaCart\Scripting\Domain\Ast\FnExpr;
@@ -42,7 +44,7 @@ use OrillaCart\Scripting\Domain\Ast\WhileStmt;
  */
 final class Parser
 {
-    public const array KEYWORDS = ['let', 'fn', 'if', 'elif', 'else', 'for', 'in', 'while', 'return', 'break', 'continue', 'try', 'catch', 'fail', 'true', 'false', 'null', 'and', 'or', 'not', 'is'];
+    public const array KEYWORDS = ['let', 'fn', 'if', 'elif', 'else', 'for', 'in', 'while', 'return', 'break', 'continue', 'try', 'catch', 'fail', 'assert', 'true', 'false', 'null', 'and', 'or', 'not', 'is'];
 
     /** Binary operators by precedence, Twig's: higher binds tighter. */
     private const array BINARY = [
@@ -261,6 +263,17 @@ final class Parser
                     $this->next();
 
                     return new FailStmt($this->expression(), $token->line, $token->column);
+                case 'assert':
+                    $this->next();
+                    $test = $this->expression();
+                    $message = null;
+                    if ($this->peek()->is(TokenKind::Punctuation, ',')) {
+                        $this->next();
+                        $this->skipNewlines();
+                        $message = $this->expression();
+                    }
+
+                    return new AssertStmt($test, $message, $token->line, $token->column);
                 case 'fn':
                 case 'elif':
                 case 'else':
@@ -487,6 +500,7 @@ final class Parser
                     'false' => new Literal(false, $token->line, $token->column),
                     'null' => new Literal(null, $token->line, $token->column),
                     'fn' => $this->fnRest($token),
+                    'fail' => new FailExpr($this->expression($declarative), $token->line, $token->column),
                     default => $this->word($token, $declarative),
                 };
             case TokenKind::Punctuation:
@@ -503,11 +517,7 @@ final class Parser
                     $this->skipNewlines();
                     while (!$this->peek()->is(TokenKind::Punctuation, ']')) {
                         $items[] = $this->expression($declarative);
-                        $this->skipNewlines();
-                        if (!$this->peek()->is(TokenKind::Punctuation, ']')) {
-                            $this->expect(TokenKind::Punctuation, ',');
-                            $this->skipNewlines();
-                        }
+                        $this->separator(']');
                     }
                     $this->next();
 
@@ -562,11 +572,7 @@ final class Parser
             $this->expect(TokenKind::Punctuation, ':');
             $this->skipNewlines();
             $pairs[] = [$key, $this->expression($declarative)];
-            $this->skipNewlines();
-            if (!$this->peek()->is(TokenKind::Punctuation, '}')) {
-                $this->expect(TokenKind::Punctuation, ',');
-                $this->skipNewlines();
-            }
+            $this->separator('}');
         }
         $this->next();
 
@@ -609,6 +615,22 @@ final class Parser
         }
 
         return $this->next();
+    }
+
+    /** After an entry of a list or map: a comma, or the end of the line, unless the closing bracket follows. */
+    private function separator(string $close): void
+    {
+        $newline = $this->peek()->is(TokenKind::Newline);
+        $this->skipNewlines();
+        if ($this->peek()->is(TokenKind::Punctuation, $close)) {
+            return;
+        }
+        if ($this->peek()->is(TokenKind::Punctuation, ',')) {
+            $this->next();
+            $this->skipNewlines();
+        } elseif (!$newline) {
+            $this->expect(TokenKind::Punctuation, ',');
+        }
     }
 
     private function skipNewlines(): void

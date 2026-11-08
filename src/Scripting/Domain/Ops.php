@@ -280,6 +280,14 @@ final class Ops
     }
 
     /** `fail x`: x an error value from unavailable(), refused() or error(), or a message. */
+    /** `assert test, message`: a failure of kind `assertion`, naming the line, when the test is false. */
+    public static function assert(mixed $test, mixed $message, int $line): void
+    {
+        if (!self::truthy($test)) {
+            throw new ScriptFailure(ScriptFailure::ASSERTION, $message === null ? \sprintf('Assertion failed at line %d', $line) : self::text($message), ['line' => $line]);
+        }
+    }
+
     public static function failure(mixed $value): ScriptFailure
     {
         if (\is_array($value) && \is_string($value['kind'] ?? null) && \is_string($value['message'] ?? null)) {

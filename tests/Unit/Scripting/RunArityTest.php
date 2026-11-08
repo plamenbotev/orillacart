@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Scripting;
 
-use OrillaCart\Scripting\Application\Host\Builtins;
 use OrillaCart\Scripting\Application\Compiler;
+use OrillaCart\Scripting\Application\Host\Builtins;
 use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Domain\ScriptError;

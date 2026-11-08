@@ -24,7 +24,7 @@ final class GeneratedCodeGate
         '\\' . Ops::class => T_DOUBLE_COLON,
         '\\' . Catchable::class => T_CATCH,
     ];
-    private const array OPS_METHODS = ['truthy', 'get', 'assign', 'eq', 'cmp', 'add', 'sub', 'mul', 'div', 'intdiv', 'mod', 'neg', 'concat', 'in', 'startsWith', 'endsWith', 'range', 'iterable', 'invoke', 'key', 'failure', 'filter', 'test'];
+    private const array OPS_METHODS = ['truthy', 'get', 'assign', 'eq', 'cmp', 'add', 'sub', 'mul', 'div', 'intdiv', 'mod', 'neg', 'concat', 'in', 'startsWith', 'endsWith', 'range', 'iterable', 'invoke', 'key', 'failure', 'assert', 'filter', 'test'];
     private const array CONTEXT_METHODS = ['step', 'bytes', 'call'];
     private const array WORDS = ['strict_types', 'NULL', 'null', 'true', 'false'];
     private const array PUNCTUATION = ['(', ')', '=', ';', '{', '}', ':', '[', ']', ',', '>', '<', '!', '?'];

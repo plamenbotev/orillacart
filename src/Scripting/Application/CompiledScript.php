@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Scripting\Application;
 
+use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\ScriptError;
+use OrillaCart\Scripting\Domain\ScriptFailure;
 
 /**
  * What a compiled package is: a class whose static manifest holds its declarations as data, and whose methods
@@ -25,8 +27,10 @@ abstract class CompiledScript
     /**
      * Calls one of the class's methods with the script's arguments.
      *
-     * @throws ScriptError when the arguments are too few or too many for the function: a failure of the script's,
-     *                     not of the host's, so a caller sees it as any other
+     * @throws ScriptError    when the arguments are too few or too many for the function: a failure of the script's,
+     *                        not of the host's, so a caller sees it as any other
+     * @throws ScriptFailure  when the script fails or an assertion does not hold
+     * @throws BudgetExceeded when the script runs past its budget
      */
     public function run(string $method, mixed ...$args): mixed
     {

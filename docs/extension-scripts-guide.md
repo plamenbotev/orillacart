@@ -50,9 +50,10 @@ Three kinds of thing stand at the top level:
 
 Inside a declaration's braces, values are **declarative**: a bare word is a kind or a choice, not a variable.
 `kind: text`, `needs: { orders: read }`, `state: choice { of: ["open", "closed"] }`, `who: public`. A
-declaration's own properties stand one per line without commas; a map written as a value (`fields: { … }`,
-`needs: { … }`) separates its entries with commas, even across lines. A `fn` inside a declaration is a handler
-the shop calls; its body is ordinary code.
+declaration's own properties stand one per line without commas. In a map or list written as a value (`fields: { … }`,
+`needs: { … }`, `of: [ … ]`) the end of a line separates entries as a comma does, so entries on their own lines
+need no commas and entries on one line do. A `fn` inside a declaration is a handler the shop calls; its body is
+ordinary code.
 
 Identifiers are letters, digits and underscores, starting with a letter or underscore. The keywords `let fn if
 elif else for in while return break continue try catch fail true false null and or not is` cannot name a
@@ -91,7 +92,10 @@ fn statements(items, limit) {
 - `x.y = …`, `x["k"] = …` and `x[0] = …` assign into a map or list a variable holds. Values are copied on
   assignment; a function that changes its parameter changes nothing outside.
 - `return` with no value returns null. A function that runs off its end returns null.
-- `break` and `continue` belong in a loop; `fail` is a statement, not a value (see §7).
+- `break` and `continue` belong in a loop. `fail` is a statement and also a value: `x ?? fail refused("none")`
+  (see §7).
+- `assert test` and `assert test, "message"` fail with kind `assertion` when the test is false, naming the line.
+  They are for an extension's own tests (§15) and for guarding what must hold.
 - `fn(x) { … }` as an expression is a closure. It sees the variables around it at the time it is made.
 
 ```
@@ -134,7 +138,7 @@ then `??` (which binds tighter than anything). So `"n=" ~ 1 + 2` is `"n=3"`, as 
 | number  | `3`, `2.5`                   | a string that looks like a number counts in arithmetic                    |
 | money   | `money("19.90")`, `money(5)` | exact to four decimals; shop currency unless the host says otherwise      |
 | string  | `"text"`, `'raw'`            | double quotes know `\n \t \r \" \\ \uXXXX`; single quotes know no escapes |
-| list    | `[1, 2, 3]`                  | a trailing comma is allowed                                               |
+| list    | `[1, 2, 3]`                  | a trailing comma is allowed; over several lines, line ends separate items |
 | map     | `{ a: 1, "b c": 2 }`         | keys are bare words or strings; order is kept                             |
 | closure | `fn(x) { return x }`         |                                                                           |
 
@@ -232,6 +236,13 @@ fn checked(answer) {
 | `refused(msg, data?)` | a plain answer to whoever asked          | shows the message: a 400 on a route, a refusal in the console; not counted |
 | `error(msg, data?)`   | a problem of the extension's             | logs it under the extension and counts it                                  |
 | `fail "text"`         | same as `error`                          |                                                                            |
+| `assert test, msg?`   | an `assertion`: the test did not hold    | a failed test in the editor; an error in a handler                          |
+
+`fail` is also a value, so a missing thing can fail where it is read:
+
+```
+fn rate_of(zone) { return settings.get("rates")[zone] ?? fail refused("No rate for " ~ zone) }
+```
 
 Anything else that goes wrong is also an error: dividing by zero, adding money to a list, calling an unknown
 member of `shop`, a budget used up. Ten errors in a row stop the extension: its providers disappear, its routes
@@ -239,7 +250,7 @@ answer 503, Home says so, and a manager enables it again after reading the probl
 One success resets the count.
 
 `try … catch e { … }` catches a failure or an error. `e` is a map `{ kind, message, data }`, with `kind` one of
-`unavailable`, `refused` or `error`. A budget used up cannot be caught.
+`unavailable`, `refused`, `error` or `assertion`. A budget used up cannot be caught.
 
 ```
 fn safely(number) {

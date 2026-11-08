@@ -52,7 +52,7 @@ final readonly class ScriptReference
     public function reference(): array
     {
         return [
-            'language' => 'Statements: let x = …, x = …, if … { } elif … { } else { }, for item in list { }, for key, value in map { }, while … { }, return, break, continue, try { } catch e { }, fail unavailable("…") | refused("…") | error("…"). Expressions as in Twig: a.b, a["b"], a|filter(args), a is test, a ~ b, a ?? b, a ? b : c, a..b, in, not in, starts with, ends with, and, or, not. Values: null, booleans, numbers, money(amount), strings, [lists], { maps }, fn(args) { }. A statement ends at the end of its line.',
+            'language' => 'Statements: let x = …, x = …, if … { } elif … { } else { }, for item in list { }, for key, value in map { }, while … { }, return, break, continue, try { } catch e { }, fail unavailable("…") | refused("…") | error("…") (also as a value: x ?? fail refused("…")), assert test, "message". Expressions as in Twig: a.b, a["b"], a|filter(args), a is test, a ~ b, a ?? b, a ? b : c, a..b, in, not in, starts with, ends with, and, or, not. Values: null, booleans, numbers, money(amount), strings, [lists], { maps }, fn(args) { }. A statement ends at the end of its line; in a list or map written over several lines, the end of a line separates entries as a comma does.',
             'declarations' => self::DECLARATIONS,
             'functions' => array_values(array_map(static fn(HostFunction $function): array => [
                 'name' => $function->name,

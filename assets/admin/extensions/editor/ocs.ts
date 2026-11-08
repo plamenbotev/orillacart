@@ -20,6 +20,7 @@ export const KEYWORDS = [
 	'try',
 	'catch',
 	'fail',
+	'assert',
 	'and',
 	'or',
 	'not',

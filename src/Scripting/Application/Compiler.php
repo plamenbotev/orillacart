@@ -6,6 +6,7 @@ namespace OrillaCart\Scripting\Application;
 
 use OrillaCart\Scripting\Application\Dto\Compiled;
 use OrillaCart\Scripting\Application\Dto\Finding;
+use OrillaCart\Scripting\Domain\Ast\AssertStmt;
 use OrillaCart\Scripting\Domain\Ast\AssignStmt;
 use OrillaCart\Scripting\Domain\Ast\Binary;
 use OrillaCart\Scripting\Domain\Ast\BreakStmt;
@@ -14,6 +15,7 @@ use OrillaCart\Scripting\Domain\Ast\ContinueStmt;
 use OrillaCart\Scripting\Domain\Ast\Declaration;
 use OrillaCart\Scripting\Domain\Ast\Expr;
 use OrillaCart\Scripting\Domain\Ast\ExprStmt;
+use OrillaCart\Scripting\Domain\Ast\FailExpr;
 use OrillaCart\Scripting\Domain\Ast\FailStmt;
 use OrillaCart\Scripting\Domain\Ast\Filter;
 use OrillaCart\Scripting\Domain\Ast\FnExpr;
@@ -311,6 +313,11 @@ final class Compiler
         if ($statement instanceof FailStmt) {
             return "{$pad}throw " . self::OPS . '::failure(' . $this->expr($statement->error, $scope) . ");\n";
         }
+        if ($statement instanceof AssertStmt) {
+            $message = $statement->message === null ? 'null' : $this->expr($statement->message, $scope);
+
+            return $pad . self::OPS . '::assert(' . $this->expr($statement->test, $scope) . ", {$message}, {$statement->line});\n";
+        }
         if ($statement instanceof ExprStmt) {
             return $pad . $this->expr($statement->expr, $scope) . ";\n";
         }
@@ -428,6 +435,9 @@ final class Compiler
         }
         if ($expr instanceof FnExpr) {
             return $this->lambda($expr, $scope);
+        }
+        if ($expr instanceof FailExpr) {
+            return '(throw ' . self::OPS . '::failure(' . $this->expr($expr->error, $scope) . '))';
         }
         if ($expr instanceof Spec) {
             $this->finding($expr, \sprintf('Unknown name "%s"', $expr->name));

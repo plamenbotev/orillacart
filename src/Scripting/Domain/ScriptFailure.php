@@ -14,6 +14,7 @@ final class ScriptFailure extends \RuntimeException implements Catchable
     public const string UNAVAILABLE = 'unavailable';
     public const string REFUSED = 'refused';
     public const string ERROR = 'error';
+    public const string ASSERTION = 'assertion';
 
     public function __construct(public readonly string $kind, string $message, public readonly mixed $data = null)
     {

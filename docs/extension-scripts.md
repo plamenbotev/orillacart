@@ -11,7 +11,7 @@ Editors: Settings › Extensions checks and completes as you type; VS Code does 
 `tools/vscode`, a language server that asks the site.
 
 ## How a script reads
-Statements: let x = …, x = …, if … { } elif … { } else { }, for item in list { }, for key, value in map { }, while … { }, return, break, continue, try { } catch e { }, fail unavailable("…") | refused("…") | error("…"). Expressions as in Twig: a.b, a["b"], a|filter(args), a is test, a ~ b, a ?? b, a ? b : c, a..b, in, not in, starts with, ends with, and, or, not. Values: null, booleans, numbers, money(amount), strings, [lists], { maps }, fn(args) { }. A statement ends at the end of its line.
+Statements: let x = …, x = …, if … { } elif … { } else { }, for item in list { }, for key, value in map { }, while … { }, return, break, continue, try { } catch e { }, fail unavailable("…") | refused("…") | error("…") (also as a value: x ?? fail refused("…")), assert test, "message". Expressions as in Twig: a.b, a["b"], a|filter(args), a is test, a ~ b, a ?? b, a ? b : c, a..b, in, not in, starts with, ends with, and, or, not. Values: null, booleans, numbers, money(amount), strings, [lists], { maps }, fn(args) { }. A statement ends at the end of its line; in a list or map written over several lines, the end of a line separates entries as a comma does.
 
 A package is one or more `.ocs` files, compiled together, plus templates under `templates/`. Declarations
 at the top level say what the extension adds; the functions inside them are what the shop calls. A top-level
