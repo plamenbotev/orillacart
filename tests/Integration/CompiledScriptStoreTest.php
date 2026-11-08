@@ -25,7 +25,11 @@ final class CompiledScriptStoreTest extends RestTestCase
         $store = new CompiledScriptStore($context, SiteSignatures::create());
         $source = "fn f() { return 'signed' }\n";
         $scope = 'store-test/' . bin2hex(random_bytes(4));
-        $key = preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '-' . Scripts::checksum($source);
+        $site = (string) get_current_blog_id();
+        $key = Scripts::key($site, $scope, $source);
+        self::assertStringStartsWith('s' . $site . '-store_test_', $key, 'the file is this site\'s');
+        $namespace = 'OrillaCart\\Generated\\Scripts\\Site' . $site;
+        self::assertSame($namespace, $scripts->namespace());
 
         self::assertSame('signed', $scripts->load($source, $scope)->run('fn_f'));
         $folder = CacheFolders::path('scripts', $context->build);
@@ -33,22 +37,22 @@ final class CompiledScriptStoreTest extends RestTestCase
         $path = $folder . '/' . $key . '.php';
         $file = (string) file_get_contents($path);
         self::assertMatchesRegularExpression('/\n\/\/ signed [0-9a-f]{32}\n$/', $file);
-        self::assertTrue($store->load($key, 'OrillaCart\\Generated\\Scripts\\Script_' . str_replace('-', '_', $key)));
+        self::assertTrue($store->load($key, $namespace . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . Scripts::checksum($source)));
 
         // Edited after signing: the signature no longer matches, the file goes, and the class is not defined by it.
         file_put_contents($path, str_replace("'signed'", "'edited'", $file));
-        self::assertFalse($store->load($key, 'OrillaCart\\Generated\\Scripts\\Script_not_this'));
+        self::assertFalse($store->load($key, $namespace . '\\Script_not_this'));
         self::assertFileDoesNotExist($path);
 
         // Planted: well-formed PHP with the right name but no signature.
-        file_put_contents($path, "<?php\nnamespace OrillaCart\\Generated\\Scripts;\nfile_put_contents('/tmp/pwned', '1');\n");
-        self::assertFalse($store->load($key, 'OrillaCart\\Generated\\Scripts\\Script_not_this'));
+        file_put_contents($path, "<?php\nnamespace {$namespace};\nfile_put_contents('/tmp/pwned', '1');\n");
+        self::assertFalse($store->load($key, $namespace . '\\Script_not_this'));
         self::assertFileDoesNotExist($path);
         self::assertFileDoesNotExist('/tmp/pwned');
 
         // Signed, but the code is outside the compiler's grammar: refused by the gate as well.
-        file_put_contents($path, $store->signed("<?php\nnamespace OrillaCart\\Generated\\Scripts;\nfile_put_contents('/tmp/pwned', '1');\n"));
-        self::assertFalse($store->load($key, 'OrillaCart\\Generated\\Scripts\\Script_not_this'));
+        file_put_contents($path, $store->signed("<?php\nnamespace {$namespace};\nfile_put_contents('/tmp/pwned', '1');\n"));
+        self::assertFalse($store->load($key, $namespace . '\\Script_not_this'));
         self::assertFileDoesNotExist($path);
         self::assertFileDoesNotExist('/tmp/pwned');
     }

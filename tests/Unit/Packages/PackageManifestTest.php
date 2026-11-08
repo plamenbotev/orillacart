@@ -31,7 +31,7 @@ final class PackageManifestTest extends TestCase
               odd: thing
             }
             OCS;
-        $compiled = new Compiler(HostCatalog::of(new Builtins()->functions()))->compile(Parser::parse($source), 'manifest_test');
+        $compiled = new Compiler(HostCatalog::of(new Builtins()->functions()))->compile(Parser::parse($source), 'manifest_test', Compiler::NAMESPACE . '\\Site1');
         self::assertSame([], $compiled->findings);
         self::assertNotNull($compiled->source);
         eval(substr($compiled->source, 5));

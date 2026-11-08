@@ -26,7 +26,8 @@ final readonly class Scripts
     /**
      * Parses and compiles; a syntax error is a finding like any other.
      *
-     * @param string $scope what the class is for: the site and the extension (`3/payfast`); the checksum is added
+     * @param string $scope what the class is for: the extension's slug, or `check/<id>`, `cli`; the store's site and
+     *                      the source's checksum are added, so a class is one site's and one source's
      */
     public function compile(string $source, string $scope): Compiled
     {
@@ -34,11 +35,11 @@ final readonly class Scripts
         try {
             $program = Parser::parse($source);
         } catch (SyntaxError $e) {
-            return new Compiled(Compiler::NAMESPACE . '\\Script_' . $suffix, null, [new Dto\Finding($e->sourceLine, $e->sourceColumn, preg_replace('/ \(line \d+, column \d+\)$/', '', $e->getMessage()) ?? $e->getMessage())]);
+            return new Compiled($this->namespace() . '\\Script_' . $suffix, null, [new Dto\Finding($e->sourceLine, $e->sourceColumn, preg_replace('/ \(line \d+, column \d+\)$/', '', $e->getMessage()) ?? $e->getMessage())]);
         }
 
-        $compiled = $this->compiler->compile($program, $suffix);
-        if ($compiled->source !== null && ($refused = GeneratedCodeGate::refuse($compiled->source)) !== null) {
+        $compiled = $this->compiler->compile($program, $suffix, $this->namespace());
+        if ($compiled->source !== null && ($refused = GeneratedCodeGate::refuse($compiled->source, $this->store->site())) !== null) {
             // The compiler made code outside its own grammar: a bug of the compiler's, never run.
             return new Compiled($compiled->className, null, [...$compiled->findings, new Dto\Finding(1, 1, 'The compiled code was refused (' . $refused . '); the script cannot be run until the compiler is fixed')]);
         }
@@ -53,8 +54,8 @@ final readonly class Scripts
      */
     public function load(string $source, string $scope, Budget $budget = new Budget(), Grant $grant = new Grant()): CompiledScript
     {
-        $key = preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '-' . self::checksum($source);
-        $className = Compiler::NAMESPACE . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . self::checksum($source);
+        $key = self::key($this->store->site(), $scope, $source);
+        $className = $this->namespace() . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . self::checksum($source);
         if (!class_exists($className, false) && !$this->store->load($key, $className)) {
             $compiled = $this->compile($source, $scope);
             if (!$compiled->ok() || $compiled->source === null) {
@@ -72,6 +73,18 @@ final readonly class Scripts
     public function catalog(): HostCatalog
     {
         return $this->catalog;
+    }
+
+    /** The namespace of this site's classes: `OrillaCart\Generated\Scripts\Site<id>`. */
+    public function namespace(): string
+    {
+        return Compiler::NAMESPACE . '\\Site' . preg_replace('/[^0-9]/', '', $this->store->site());
+    }
+
+    /** The store's key of one site's class for one source: `s<site>-<scope>-<checksum>`. */
+    public static function key(string $site, string $scope, string $source): string
+    {
+        return 's' . preg_replace('/[^0-9]/', '', $site) . '-' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '-' . self::checksum($source);
     }
 
     /**

@@ -68,7 +68,7 @@ final class Compiler
     /**
      * @param string $classSuffix what tells this class from every other: the package's id and checksum
      */
-    public function compile(Program $program, string $classSuffix): Compiled
+    public function compile(Program $program, string $classSuffix, string $namespace): Compiled
     {
         $this->findings = [];
         $this->methods = [];
@@ -98,17 +98,17 @@ final class Compiler
             $manifest[] = $this->declaration($declaration);
         }
         if ($this->findings !== []) {
-            return new Compiled(self::NAMESPACE . '\\' . $className, null, $this->findings);
+            return new Compiled($namespace . '\\' . $className, null, $this->findings);
         }
 
-        $source = "<?php\n\ndeclare(strict_types=1);\n\nnamespace " . self::NAMESPACE . ";\n\n"
+        $source = "<?php\n\ndeclare(strict_types=1);\n\nnamespace " . $namespace . ";\n\n"
             . "/** Generated from a script package: do not edit. */\n"
             . "final class {$className} extends \\" . CompiledScript::class . "\n{\n"
             . "    public static function manifest(): array\n    {\n        return " . $this->indent($this->phpArray($manifest), 2) . ";\n    }\n"
             . ($this->methods === [] ? '' : "\n" . implode("\n", $this->methods))
             . "}\n";
 
-        return new Compiled(self::NAMESPACE . '\\' . $className, $source, []);
+        return new Compiled($namespace . '\\' . $className, $source, []);
     }
 
     /**

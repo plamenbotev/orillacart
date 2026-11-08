@@ -43,7 +43,13 @@ final class GeneratedCodeGate
      * The tokens are PHP's own, so what passes is what PHP would run, not what a regular expression thinks it
      * sees. Only the first fault is reported; a refusal is a bug or an intrusion, not something to fix in place.
      */
-    public static function refuse(string $source): ?string
+    /** The namespace of a site's classes, the site's id captured. */
+    public const string NAMESPACES = '/^OrillaCart\\\\Generated\\\\Scripts\\\\Site(\d+)$/';
+
+    /**
+     * @param string|null $site the site whose class this must be; null to accept any site's
+     */
+    public static function refuse(string $source, ?string $site = null): ?string
     {
         if (!str_starts_with($source, "<?php\n")) {
             return 'the source does not start with the PHP open tag';
@@ -55,7 +61,7 @@ final class GeneratedCodeGate
             if ($token->is(T_WHITESPACE)) {
                 continue;
             }
-            $fault = self::fault($token, $previous, $index, $tokens);
+            $fault = self::fault($token, $previous, $index, $tokens, $site);
             if ($fault !== null) {
                 return \sprintf('%s at line %d', $fault, $token->line);
             }
@@ -74,7 +80,7 @@ final class GeneratedCodeGate
     /**
      * @param list<\PhpToken> $tokens
      */
-    private static function fault(\PhpToken $token, ?\PhpToken $previous, int $index, array $tokens): ?string
+    private static function fault(\PhpToken $token, ?\PhpToken $previous, int $index, array $tokens, ?string $site): ?string
     {
         $text = $token->text;
         if ($token->is(T_OPEN_TAG)) {
@@ -90,7 +96,11 @@ final class GeneratedCodeGate
             return preg_match('/^\$(this|v_[A-Za-z0-9_]+|t_\d+|e_\d+)$/', $text) === 1 ? null : \sprintf('the variable %s', $text);
         }
         if ($token->is(T_NAME_QUALIFIED)) {
-            return $text === Compiler::NAMESPACE && $previous?->is(T_NAMESPACE) === true ? null : \sprintf('the name %s', $text);
+            if ($previous?->is(T_NAMESPACE) !== true || preg_match(self::NAMESPACES, $text, $m) !== 1) {
+                return \sprintf('the name %s', $text);
+            }
+
+            return $site === null || $m[1] === $site ? null : \sprintf('the namespace of site %s, not site %s', $m[1], $site);
         }
         if ($token->is(T_NAME_FULLY_QUALIFIED)) {
             $where = self::CLASSES[$text] ?? null;

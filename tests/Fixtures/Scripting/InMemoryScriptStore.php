@@ -12,6 +12,11 @@ final class InMemoryScriptStore implements ScriptStore
     /** @var array<string, string> key → source */
     public array $kept = [];
 
+    public function site(): string
+    {
+        return '1';
+    }
+
     public function load(string $key, string $className): bool
     {
         if (!isset($this->kept[$key])) {

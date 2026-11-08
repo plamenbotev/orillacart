@@ -55,6 +55,10 @@ final class PackagesRestTest extends RestTestCase
         self::assertSame(['enabled', false, []], [$enabled['state'], $enabled['stale'], $enabled['granted']]);
 
         $run = $this->data($this->request('POST', '/extensions/greeter/run', ['function' => 'greet', 'arguments' => ['Ada']], nonce: true));
+        $short = $this->request('POST', '/extensions/greeter/run', ['function' => 'greet', 'arguments' => []], nonce: true);
+        self::assertSame(200, $short->get_status(), 'too few arguments is the script\'s failure, not the host\'s');
+        $failure = $this->data($short)['failure'];
+        self::assertSame('greet expects 1 argument, 0 given', \is_array($failure) ? $failure['message'] : null);
         self::assertTrue($run['ok'], (string) wp_json_encode($run));
         self::assertSame('Hi, Ada at ' . wp_date('Y-m-d'), $run['result']);
         self::assertGreaterThan(0, self::assoc($run['used'])['steps'] ?? 0);

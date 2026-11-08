@@ -16,7 +16,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class CompiledScriptStoreTest extends TestCase
 {
-    private const string SOURCE = "<?php\n\ndeclare(strict_types=1);\n\nnamespace OrillaCart\\Generated\\Scripts;\n\n/** Generated from a script package: do not edit. */\nfinal class Script_store_unit extends \\OrillaCart\\Scripting\\Application\\CompiledScript\n{\n    public static function manifest(): array\n    {\n        return [];\n    }\n}\n";
+    private const string SOURCE = "<?php\n\ndeclare(strict_types=1);\n\nnamespace OrillaCart\\Generated\\Scripts\\Site1;\n\n/** Generated from a script package: do not edit. */\nfinal class Script_store_unit extends \\OrillaCart\\Scripting\\Application\\CompiledScript\n{\n    public static function manifest(): array\n    {\n        return [];\n    }\n}\n";
 
     public function testSignsWhatItKeepsAndReadsOnlyItsOwnSignatureBack(): void
     {
@@ -37,11 +37,18 @@ final class CompiledScriptStoreTest extends TestCase
         self::store('secret-a')->put('k', 'X', "<?php\nsystem('id');\n");
     }
 
+    public function testRefusesAnotherSitesClassEvenWhenItIsWellFormed(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('the namespace of site 7, not site 1');
+        self::store('secret-a')->put('k', 'X', str_replace('Site1', 'Site7', self::SOURCE));
+    }
+
     public function testEvaluatesInMemoryWithoutAFolder(): void
     {
-        self::store('secret-a')->put('store-unit', 'OrillaCart\\Generated\\Scripts\\Script_store_unit', self::SOURCE);
+        self::store('secret-a')->put('store-unit', 'OrillaCart\\Generated\\Scripts\\Site1\\Script_store_unit', self::SOURCE);
 
-        self::assertTrue(class_exists('OrillaCart\\Generated\\Scripts\\Script_store_unit', false));
+        self::assertTrue(class_exists('OrillaCart\\Generated\\Scripts\\Site1\\Script_store_unit', false));
     }
 
     private static function store(string $secret): CompiledScriptStore

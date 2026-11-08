@@ -15,6 +15,8 @@ use OrillaCart\Shared\Security\Signatures;
  * in memory; a new build gets a new folder and the old one is cleared, as Twig's is. Without a writable folder
  * the source is evaluated in memory, once per request.
  *
+ * Each site's classes live in their own namespace (`…\Scripts\Site<id>`) and under their own keys, so two sites
+ * of a network with the same extension never share a file or a class.
  * Nothing is included or evaluated unchecked: a file carries the site's signature of its source on its last
  * line, and the source has to pass the GeneratedCodeGate; a file that fails either (planted, edited, from
  * another site, or made by a compiler with a bug) is deleted and the class compiled again.
@@ -26,6 +28,11 @@ final readonly class CompiledScriptStore implements ScriptStore
 
     public function __construct(private PluginContext $context, private Signatures $signatures) {}
 
+    public function site(): string
+    {
+        return \function_exists('get_current_blog_id') ? (string) get_current_blog_id() : '1';
+    }
+
     public function load(string $key, string $className): bool
     {
         $path = $this->path($key);
@@ -34,7 +41,7 @@ final readonly class CompiledScriptStore implements ScriptStore
         }
         $file = file_get_contents($path);
         $source = $file === false ? null : $this->unsigned($file);
-        if ($source === null || GeneratedCodeGate::refuse($source) !== null) {
+        if ($source === null || GeneratedCodeGate::refuse($source, $this->site()) !== null) {
             @unlink($path);
 
             return false;
@@ -46,7 +53,7 @@ final readonly class CompiledScriptStore implements ScriptStore
 
     public function put(string $key, string $className, string $source): void
     {
-        $refused = GeneratedCodeGate::refuse($source);
+        $refused = GeneratedCodeGate::refuse($source, $this->site());
         if ($refused !== null) {
             throw new \InvalidArgumentException('The compiled code was refused: ' . $refused);
         }

@@ -136,6 +136,6 @@ final class CompilerTest extends TestCase
             return new \OrillaCart\Scripting\Application\Dto\Compiled('', null, [new \OrillaCart\Scripting\Application\Dto\Finding($e->sourceLine, $e->sourceColumn, $e->getMessage())]);
         }
 
-        return new Compiler(HostCatalog::of($functions))->compile($program, 'test_' . substr(md5($source), 0, 8));
+        return new Compiler(HostCatalog::of($functions))->compile($program, 'test_' . substr(md5($source), 0, 8), Compiler::NAMESPACE . '\\Site1');
     }
 }

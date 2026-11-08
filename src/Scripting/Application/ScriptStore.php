@@ -10,6 +10,9 @@ namespace OrillaCart\Scripting\Application;
  */
 interface ScriptStore
 {
+    /** The site whose classes the store keeps: its id, part of every class's namespace and key. */
+    public function site(): string;
+
     /** Loads the class if the store has it; whether it is defined now. */
     public function load(string $key, string $className): bool;
 

@@ -1,6 +1,6 @@
 # 56. Extension scripts
 
-Status: built (2026-11-07). PLAN items 317–330 and 333 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
+Status: built (2026-11-07). PLAN items 317–330, 333–338 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
 
 Each tenant of a SaaS, or the owner of one shop, extends and edits their own shop without a PHP plugin: new
 payment and shipping providers, new endpoints and pages, new kinds of records and new fields on the shop's own,
@@ -219,6 +219,16 @@ again. The compiler quotes strings itself (single quotes, only `\` and `'` escap
 NUL byte as a double-quoted `"\0"`, which the gate found and refused. `GeneratedCodeGateTest` feeds the compiler
 hostile strings, every byte included, in every place a string reaches the source, and checks the gate passes and
 the value comes back unchanged.
+
+Each site's classes live in their own namespace, `OrillaCart\Generated\Scripts\Site<id>`, and under their own
+cache keys (`s<id>-<scope>-<checksum>`), so two sites of a network with the same extension never share a file or a
+class (before, they shared both and each site's load deleted the other's file for carrying the wrong signature).
+The gate is told the site it loads for and refuses a class of any other site before the signature is even
+checked. A PHP namespace isolates nothing by itself, since any code may name any class; the isolation is the gate
+and `Ops`. The namespace is a label that makes traces and OPcache listings read by tenant, and one more cheap
+check against a signing key shared across sites by misconfiguration. `CompiledScript::run` checks the number of
+arguments against the method's before calling, so a function called with too few or too many is a script failure
+("hello expects 1 argument, 0 given") and not a PHP `ArgumentCountError` the error middleware logs as a 500.
 
 ## Where it runs
 

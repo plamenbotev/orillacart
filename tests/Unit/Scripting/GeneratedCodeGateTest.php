@@ -22,7 +22,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class GeneratedCodeGateTest extends TestCase
 {
-    private const string HEAD = "<?php\n\ndeclare(strict_types=1);\n\nnamespace OrillaCart\\Generated\\Scripts;\n\n/** Generated from a script package: do not edit. */\nfinal class Script_t extends \\OrillaCart\\Scripting\\Application\\CompiledScript\n{\n    public static function manifest(): array\n    {\n        return [];\n    }\n\n    public function fn_f()\n    {\n        \$this->c->step();\n";
+    private const string HEAD = "<?php\n\ndeclare(strict_types=1);\n\nnamespace OrillaCart\\Generated\\Scripts\\Site1;\n\n/** Generated from a script package: do not edit. */\nfinal class Script_t extends \\OrillaCart\\Scripting\\Application\\CompiledScript\n{\n    public static function manifest(): array\n    {\n        return [];\n    }\n\n    public function fn_f()\n    {\n        \$this->c->step();\n";
     private const string TAIL = "        return null;\n    }\n}\n";
 
     public function testTheConformanceScriptPasses(): void
@@ -86,7 +86,10 @@ final class GeneratedCodeGateTest extends TestCase
     {
         self::assertSame('the source does not start with the PHP open tag', GeneratedCodeGate::refuse("<?php declare(strict_types=1);\n"));
         self::assertStringContainsString('a comment the compiler does not write', (string) GeneratedCodeGate::refuse(str_replace('do not edit', 'edited', self::HEAD . self::TAIL)));
-        self::assertStringContainsString('the name Other\\Place', (string) GeneratedCodeGate::refuse(str_replace('OrillaCart\\Generated\\Scripts', 'Other\\Place', self::HEAD . self::TAIL)));
+        self::assertStringContainsString('the name Other\\Place', (string) GeneratedCodeGate::refuse(str_replace('OrillaCart\\Generated\\Scripts\\Site1', 'Other\\Place', self::HEAD . self::TAIL)));
+        self::assertStringContainsString('the name OrillaCart\\Generated\\Scripts', (string) GeneratedCodeGate::refuse(str_replace('Scripts\\Site1', 'Scripts', self::HEAD . self::TAIL)), 'no site: the namespace every site shared before');
+        self::assertNull(GeneratedCodeGate::refuse(self::HEAD . self::TAIL, '1'), 'this site\'s class');
+        self::assertStringContainsString('the namespace of site 1, not site 3', (string) GeneratedCodeGate::refuse(self::HEAD . self::TAIL, '3'), 'another site\'s class, however well signed');
         self::assertStringContainsString('the class name Evil', (string) GeneratedCodeGate::refuse(str_replace('Script_t', 'Evil', self::HEAD . self::TAIL)));
         self::assertStringContainsString('the method name run', (string) GeneratedCodeGate::refuse(str_replace('fn_f', 'run', self::HEAD . self::TAIL)));
         self::assertStringContainsString('2 classes', (string) GeneratedCodeGate::refuse(self::HEAD . self::TAIL . "final class Script_u extends \\OrillaCart\\Scripting\\Application\\CompiledScript { public static function manifest(): array { return []; } }\n"));
@@ -135,6 +138,6 @@ final class GeneratedCodeGateTest extends TestCase
         $functions[] = new HostFunction('objects.*.query', $stub, 1, 1, '');
         $functions[] = new HostFunction('log.info', $stub, 1, 2, '');
 
-        return new Compiler(HostCatalog::of($functions))->compile(Parser::parse($source . "\n"), 'gate');
+        return new Compiler(HostCatalog::of($functions))->compile(Parser::parse($source . "\n"), 'gate', Compiler::NAMESPACE . '\\Site1');
     }
 }
