@@ -26,6 +26,10 @@ class PackageFile
     #[ORM\Column]
     private \DateTimeImmutable $updatedAt;
 
+    /** For a template that overrides one of the shop's: the hash of the original when this was saved. */
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $originalHash = null;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Package::class, inversedBy: 'files')]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -34,14 +38,27 @@ class PackageFile
         private string $path,
         string $content,
         \DateTimeImmutable $at,
+        ?string $originalHash = null,
     ) {
-        $this->write($content, $at);
+        $this->write($content, $at, $originalHash);
     }
 
-    public function write(string $content, \DateTimeImmutable $at): void
+    public function write(string $content, \DateTimeImmutable $at, ?string $originalHash = null): void
     {
         $this->content = $content;
         $this->updatedAt = $at;
+        $this->originalHash = $originalHash;
+    }
+
+    public function originalHash(): ?string
+    {
+        return $this->originalHash;
+    }
+
+    /** The shop's template this file overrides, when it is under templates/ and not the extension's own. */
+    public function overrides(): ?string
+    {
+        return $this->originalHash === null || !str_starts_with($this->path, 'templates/') ? null : substr($this->path, \strlen('templates/'));
     }
 
     public function path(): string

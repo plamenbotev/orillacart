@@ -135,6 +135,7 @@ final class RouteToolsTest extends TestCase
         'rename_shipping_class' => 'a name',
         'restart_workers' => 'background workers restarted',
         'restock_order' => 'refunded items back in stock',
+        'restore_package_version' => 'an extension\'s files put back as a kept version had them; an enabled one runs its old files until enabled again, which asks',
         'retry_failed_jobs' => 'jobs that failed run as they would have',
         'run_order_action' => 'an add-on\'s own order action, which the add-on answers for',
         'run_package_function' => 'the console: one function of the extension run with the permissions a manager granted when enabling it, which asked',

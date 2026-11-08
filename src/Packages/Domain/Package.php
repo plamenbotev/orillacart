@@ -173,7 +173,10 @@ class Package
         return null;
     }
 
-    public function write(string $path, string $content, \DateTimeImmutable $at): PackageFile
+    /**
+     * @param string|null $originalHash the hash of the shop's template this file overrides, when it does
+     */
+    public function write(string $path, string $content, \DateTimeImmutable $at, ?string $originalHash = null): PackageFile
     {
         self::checkPath($path);
         if (\strlen($content) > PackageFile::MAX_CONTENT_LENGTH) {
@@ -184,10 +187,10 @@ class Package
             if ($this->files->count() >= self::MAX_FILES) {
                 throw new PackageRuleViolation('An extension has at most %d files.', 'orillacart_extension_too_many_files', values: [self::MAX_FILES]);
             }
-            $file = new PackageFile($this, $path, $content, $at);
+            $file = new PackageFile($this, $path, $content, $at, $originalHash);
             $this->files->add($file);
         } else {
-            $file->write($content, $at);
+            $file->write($content, $at, $originalHash);
         }
         $this->updatedAt = $at;
 

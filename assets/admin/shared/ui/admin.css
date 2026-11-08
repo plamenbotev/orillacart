@@ -565,6 +565,20 @@ body.folded .oc-toasts {
 	border-bottom: 0;
 }
 
+.oc-diff__lines {
+	max-height: 24rem;
+	overflow: auto;
+}
+
+.oc-diff__line--added {
+	background: #e6f6e6;
+}
+
+.oc-diff__line--removed {
+	background: #fbe9e7;
+	text-decoration: line-through;
+}
+
 .oc-needs__line a:hover {
 	text-decoration: underline;
 }

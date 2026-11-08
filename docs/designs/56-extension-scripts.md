@@ -1,6 +1,6 @@
 # 56. Extension scripts
 
-Status: built (2026-11-07). PLAN items 317–330, 333–340 done; 331 and 332 (versions, run log, tool exposure of scripted routes, override diffs; the fields' admin sections, views, columns and facets) are later.
+Status: built (2026-11-07). PLAN items 317–331, 333–340 done; 332 (the fields' admin sections, views, columns and facets) is later.
 
 Each tenant of a SaaS, or the owner of one shop, extends and edits their own shop without a PHP plugin: new
 payment and shipping providers, new endpoints and pages, new kinds of records and new fields on the shop's own,
@@ -240,6 +240,17 @@ test. `POST /extensions/{id}/test` runs the saved files or the `files` sent, for
 `wp orillacart script test` runs a file. The language gained `assert test, message?` (kind `assertion`, the line in
 its data), `fail` as a value, and line ends as separators in lists and maps.
 
+PLAN 331 as built: `PackageVersion` rows keep the files after every save, delete, import and restore (the last
+thirty), with a note and whether they are what the files are now; restoring writes a version's files back and is
+itself the newest version. `ExtensionRun` rows log every handler call (`ScriptRunner`) and console run with the
+declaration in the script's words, the outcome and the budget used, trimmed to the latest 500 per extension now
+and then and to the shop's history retention daily. A manager route of an enabled extension is a `ToolSource`
+tool (`ScriptedRouteToolSource`), `x_<slug>_<method>_<path>` unless `tool: false`, described by the route's
+`title`, `description`, `input` and `risk`, run through the same handler as a REST call with the caller as the
+manager. A `templates/<name>` file that overrides one of the shop's templates records the original's hash when
+saved (`PluginTemplates`), the file view says what it overrides and whether it is stale, and
+`GET /extensions/{id}/files/{path}/original` gives the shop's source for the diff the editor draws.
+
 ## Where it runs
 
 Enabling parses every file, runs the static check (syntax, unknown functions, wrong arities, undeclared
@@ -296,9 +307,9 @@ offers to tenants is a later design.
 
 ## Built as it stands
 
-Everything above except: versions with rollback and the run log on the Extensions screen; scripted manager routes
-as assistant tools; an override's diff and stale mark; the fields' generic admin sections, REST views, export
-columns and search facets (PLAN 331, 332). Two things the build decided differently from the plan: a route answers
+Everything above except the fields' generic admin sections, REST views, export columns and search facets (PLAN
+332); versions with rollback, the run log, scripted manager routes as tools and an override's diff and stale mark
+came with PLAN 331. Two things the build decided differently from the plan: a route answers
 JSON only (a rendered template travels as `{ html }`), since WordPress's REST server answers JSON; and a route
 cannot waive the REST nonce, since no unsafe route of the shop does. The proof ran on the `oc-ms` network: an
 extension installed on site 3 kept its package and records in the tenant database `wp_t3`, answered its routes

@@ -37,6 +37,42 @@ final class PackagesRestTest extends RestTestCase
         }
     }
 
+    public function testVersionsAreKeptOnEverySaveAndRestoredRunsAreLoggedAndOverridesKnowTheirOriginal(): void
+    {
+        $this->request('POST', '/extensions', ['id' => 'kept', 'name' => 'Kept', 'files' => ['main.ocs' => "extension \"kept\" { name: \"Kept\" }\nfn one() { return 1 }\n"]], nonce: true);
+        $this->request('PUT', '/extensions/kept/files/main.ocs', ['content' => "extension \"kept\" { name: \"Kept\" }\nfn one() { return 2 }\n"], nonce: true);
+        $this->request('PUT', '/extensions/kept/files/main.ocs', ['content' => "extension \"kept\" { name: \"Kept\" }\nfn one() { return 2 }\n"], nonce: true);
+        $this->request('PUT', '/extensions/kept/files/' . rawurlencode('templates/storefront/_free_shipping.html.twig'), ['content' => '<b>mine</b>'], nonce: true);
+
+        $versions = $this->rows($this->data($this->request('GET', '/extensions/kept/versions'))['versions']);
+        self::assertSame([[3, 'Added templates/storefront/_free_shipping.html.twig', true], [2, 'Saved main.ocs', false], [1, 'Installed', false]], array_map(static fn(array $v): array => [$v['number'], $v['note'], $v['current']], $versions), 'saving the same content again keeps no version');
+
+        // The override knows the shop\'s template it replaces, is not stale, and the original is there for the diff.
+        $files = $this->rows($this->data($this->request('GET', '/extensions/kept'))['files']);
+        $override = array_values(array_filter($files, static fn(array $f): bool => $f['path'] === 'templates/storefront/_free_shipping.html.twig'))[0];
+        self::assertSame(['storefront/_free_shipping.html.twig', false], [$override['overrides'], $override['stale']]);
+        self::assertNull($files[0]['overrides'], 'a script overrides nothing');
+        $original = $this->data($this->request('GET', '/extensions/kept/files/' . rawurlencode('templates/storefront/_free_shipping.html.twig') . '/original'))['original'];
+        self::assertIsString($original);
+        self::assertStringContainsString('{%', $original, 'the plugin\'s own template');
+        self::assertNull($this->data($this->request('GET', '/extensions/kept/files/main.ocs/original'))['original']);
+
+        // Restoring version 1 puts the files back and is the newest version; the console run is logged.
+        $restored = $this->data($this->request('POST', '/extensions/kept/versions/1/restore', [], nonce: true));
+        self::assertSame(['main.ocs'], array_column($this->rows($restored['files']), 'path'));
+        $this->request('POST', '/extensions/kept/enable', ['grant' => []], nonce: true);
+        self::assertSame(1, $this->data($this->request('POST', '/extensions/kept/run', ['function' => 'one'], nonce: true))['result']);
+        $this->request('POST', '/extensions/kept/run', ['function' => 'one', 'arguments' => [1]], nonce: true);
+        $versions = $this->rows($this->data($this->request('GET', '/extensions/kept/versions'))['versions']);
+        self::assertSame([4, 'Restored version 1', true], [$versions[0]['number'], $versions[0]['note'], $versions[0]['current']]);
+        self::assertSame(422, $this->request('POST', '/extensions/kept/versions/9/restore', [], nonce: true)->get_status());
+
+        $runs = $this->rows($this->data($this->request('GET', '/extensions/kept/runs'))['runs']);
+        self::assertSame([['console: one', 'error', 'one expects 0 arguments, 1 given'], ['console: one', 'ok', null]], array_map(static fn(array $r): array => [$r['what'], $r['outcome'], $r['message']], $runs));
+        self::assertArrayHasKey('steps', self::assoc($runs[1]['used']));
+        $this->request('DELETE', '/extensions/kept', nonce: true);
+    }
+
     public function testTheExtensionsOwnTestsRunOverSavedOrSentFilesAndLeaveNoRecords(): void
     {
         $script = <<<'OCS'

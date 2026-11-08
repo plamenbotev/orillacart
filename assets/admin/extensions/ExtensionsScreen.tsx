@@ -32,22 +32,30 @@ import {
 	exportExtension,
 	fetchExtension,
 	fetchExtensions,
+	fetchOriginal,
 	fetchReference,
+	fetchRuns,
+	fetchVersions,
 	importExtension,
 	installExtension,
+	restoreVersion,
 	runFunction,
 	runTests,
 	saveSettings,
 	uninstallExtension,
 	writeFile,
 	type Extension,
+	type ExtensionFile,
+	type ExtensionRun,
 	type ExtensionSetting,
+	type ExtensionVersion,
 	type Finding,
 	type Reference,
 	type RunResult,
 	type TestResult,
 } from './api';
 import { CodeEditor } from './editor/CodeEditor';
+import { Diff } from './editor/Diff';
 
 const STATES: Record< Extension[ 'state' ], { label: string; tone: Tone } > = {
 	draft: { label: __( 'Draft', 'orillacart' ), tone: 'neutral' },
@@ -537,7 +545,16 @@ function ExtensionEditor( {
 							value={ path }
 							options={ files.map( ( file ) => ( {
 								value: file.path,
-								label: file.path,
+								label: file.stale
+									? sprintf(
+											/* translators: %s: a file's path */
+											__(
+												'%s (stale override)',
+												'orillacart'
+											),
+											file.path
+										)
+									: file.path,
 							} ) ) }
 							onChange={ openFile }
 						/>
@@ -625,7 +642,22 @@ function ExtensionEditor( {
 					}
 					unsaved={ live !== null }
 				/>
+				{ current?.overrides && (
+					<Override
+						extension={ extension }
+						file={ current }
+						edited={ content }
+					/>
+				) }
 			</Section>
+
+			<Versions
+				extension={ extension }
+				onChange={ onChange }
+				onError={ setError }
+			/>
+
+			<Runs extension={ extension } />
 
 			{ extension.settings !== null && extension.settings.length > 0 && (
 				<SettingsSection
@@ -1194,6 +1226,283 @@ function TestResults( { tests }: { tests: TestResult[] } ) {
 				) ) }
 			</ul>
 		</Notice>
+	);
+}
+
+/**
+ * What a template file overrides: the shop's template it replaces, a stale mark when a release changed that
+ * template since, and the diff against it on request.
+ *
+ * @param props
+ * @param props.extension The extension.
+ * @param props.file      The file as saved.
+ * @param props.edited    The buffer, so the diff is of what is on screen.
+ */
+function Override( {
+	extension,
+	file,
+	edited,
+}: {
+	extension: Extension;
+	file: ExtensionFile;
+	edited: string;
+} ) {
+	const [ original, setOriginal ] = useState< string | null | undefined >(
+		undefined
+	);
+	useEffect( () => setOriginal( undefined ), [ extension.id, file.path ] );
+	const compare = () =>
+		fetchOriginal( extension.id, file.path )
+			.then( ( answer ) => setOriginal( answer.original ) )
+			.catch( () => setOriginal( null ) );
+	let compared;
+	if ( original === undefined ) {
+		compared = (
+			<Button variant="secondary" onClick={ compare }>
+				{ __( "Compare with the shop's template", 'orillacart' ) }
+			</Button>
+		);
+	} else if ( original === null ) {
+		compared = (
+			<p className="oc-muted">
+				{ __(
+					'The shop has no such template any more.',
+					'orillacart'
+				) }
+			</p>
+		);
+	} else {
+		compared = <Diff original={ original } edited={ edited } />;
+	}
+	return (
+		<Notice
+			status={ file.stale ? 'warning' : 'info' }
+			isDismissible={ false }
+		>
+			<p>
+				{ sprintf(
+					/* translators: %s: a template's name */
+					__(
+						"This file overrides the shop's template %s.",
+						'orillacart'
+					),
+					file.overrides ?? ''
+				) }{ ' ' }
+				{ file.stale &&
+					__(
+						'A release changed that template since this override was saved: compare them and bring the change over.',
+						'orillacart'
+					) }
+			</p>
+			{ compared }
+		</Notice>
+	);
+}
+
+/**
+ * The versions kept of the extension's files, with a restore for each.
+ *
+ * @param props
+ * @param props.extension The extension.
+ * @param props.onChange  Takes the extension as a restore answers it.
+ * @param props.onError   Takes a message when a request fails.
+ */
+function Versions( {
+	extension,
+	onChange,
+	onError,
+}: {
+	extension: Extension;
+	onChange: ( extension: Extension ) => void;
+	onError: ( message: string ) => void;
+} ) {
+	const [ versions, setVersions ] = useState< ExtensionVersion[] | null >(
+		null
+	);
+	const [ busy, setBusy ] = useState( false );
+	useEffect( () => {
+		setVersions( null );
+		fetchVersions( extension.id )
+			.then( ( answer ) => setVersions( answer.versions ) )
+			.catch( ( e ) => onError( errorMessage( e ) ) );
+	}, [ extension.id, extension.updated_at, onError ] );
+	const restore = ( number: number ) => {
+		setBusy( true );
+		restoreVersion( extension.id, number )
+			.then( ( restored ) => {
+				onChange( restored );
+				notify(
+					sprintf(
+						/* translators: %d: a version's number */
+						__( 'Version %d restored.', 'orillacart' ),
+						number
+					)
+				);
+			} )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setBusy( false ) );
+	};
+	return (
+		<Section
+			title={ __( 'Versions', 'orillacart' ) }
+			description={ __(
+				'The files as they stood after each save, delete, import and restore; the last thirty are kept. Restoring makes a version the newest; an enabled extension runs what it was enabled with until enabled again.',
+				'orillacart'
+			) }
+		>
+			<DataTable
+				columns={ [
+					{
+						id: 'number',
+						label: __( 'Version', 'orillacart' ),
+						width: '6rem',
+						render: ( v: ExtensionVersion ) => (
+							<>
+								{ v.number }
+								{ v.current && (
+									<>
+										{ ' ' }
+										<Badge tone="success">
+											{ __( 'current', 'orillacart' ) }
+										</Badge>
+									</>
+								) }
+							</>
+						),
+					},
+					{
+						id: 'note',
+						label: __( 'Change', 'orillacart' ),
+						render: ( v: ExtensionVersion ) => v.note,
+					},
+					{
+						id: 'files',
+						label: __( 'Files', 'orillacart' ),
+						render: ( v: ExtensionVersion ) => v.files.length,
+						align: 'end',
+					},
+					{
+						id: 'at',
+						label: __( 'When', 'orillacart' ),
+						nowrap: true,
+						render: ( v: ExtensionVersion ) =>
+							new Date( v.created_at ).toLocaleString(),
+					},
+					{
+						id: 'restore',
+						label: '',
+						align: 'end',
+						render: ( v: ExtensionVersion ) =>
+							v.current ? null : (
+								<Button
+									variant="tertiary"
+									disabled={ busy }
+									onClick={ () => restore( v.number ) }
+								>
+									{ __( 'Restore', 'orillacart' ) }
+								</Button>
+							),
+					},
+				] }
+				rows={ versions ?? [] }
+				rowKey={ ( v ) => v.number }
+				loading={ versions === null }
+				empty={ __( 'No versions kept yet.', 'orillacart' ) }
+			/>
+		</Section>
+	);
+}
+
+const OUTCOME_TONES: Record< ExtensionRun[ 'outcome' ], Tone > = {
+	ok: 'success',
+	refused: 'info',
+	unavailable: 'warning',
+	error: 'danger',
+	stopped: 'danger',
+};
+
+/**
+ * The latest runs of the extension's handlers and console functions.
+ *
+ * @param props
+ * @param props.extension The extension.
+ */
+function Runs( { extension }: { extension: Extension } ) {
+	const [ runs, setRuns ] = useState< ExtensionRun[] | null >( null );
+	const load = () => {
+		setRuns( null );
+		fetchRuns( extension.id )
+			.then( ( answer ) => setRuns( answer.runs ) )
+			.catch( () => setRuns( [] ) );
+	};
+	useEffect( load, [ extension.id ] );
+	return (
+		<Section
+			title={ __( 'Recent runs', 'orillacart' ) }
+			description={ __(
+				'What the extension ran lately, how each run ended and the budget it used. Kept for as long as the shop keeps its history.',
+				'orillacart'
+			) }
+			action={
+				<Button variant="tertiary" onClick={ load }>
+					{ __( 'Refresh', 'orillacart' ) }
+				</Button>
+			}
+		>
+			<DataTable
+				columns={ [
+					{
+						id: 'at',
+						label: __( 'When', 'orillacart' ),
+						nowrap: true,
+						render: ( r: ExtensionRun ) =>
+							new Date( r.at ).toLocaleString(),
+					},
+					{
+						id: 'what',
+						label: __( 'What ran', 'orillacart' ),
+						render: ( r: ExtensionRun ) => <code>{ r.what }</code>,
+					},
+					{
+						id: 'outcome',
+						label: __( 'Outcome', 'orillacart' ),
+						render: ( r: ExtensionRun ) => (
+							<>
+								<Badge tone={ OUTCOME_TONES[ r.outcome ] }>
+									{ r.outcome }
+								</Badge>
+								{ r.message && (
+									<span className="oc-muted">
+										{ ' ' + r.message }
+									</span>
+								) }
+							</>
+						),
+					},
+					{
+						id: 'used',
+						label: __( 'Used', 'orillacart' ),
+						nowrap: true,
+						align: 'end',
+						render: ( r: ExtensionRun ) =>
+							sprintf(
+								/* translators: 1: steps, 2: calls, 3: seconds */
+								__(
+									'%1$d steps, %2$d calls, %3$s s',
+									'orillacart'
+								),
+								r.used.steps ?? 0,
+								r.used.calls ?? 0,
+								String( r.used.seconds ?? 0 )
+							),
+					},
+				] }
+				rows={ runs ?? [] }
+				rowKey={ ( r ) => r.at + r.what }
+				loading={ runs === null }
+				empty={ __( 'Nothing has run yet.', 'orillacart' ) }
+			/>
+		</Section>
 	);
 }
 

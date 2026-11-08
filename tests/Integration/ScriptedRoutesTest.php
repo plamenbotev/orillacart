@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Assistant\Application\AssistantTools;
+use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Packages\Domain\Package;
 use OrillaCart\Shared\View\TemplateRenderer;
@@ -58,6 +60,26 @@ final class ScriptedRoutesTest extends RestTestCase
         self::assertSame(200, $enabled->get_status(), (string) wp_json_encode($enabled->get_data()));
         // The REST routes register once per server: a new server reads the extension's routes.
         $GLOBALS['wp_rest_server'] = null;
+    }
+
+    public function testManagerRoutesAreTheAssistantsTools(): void
+    {
+        $tools = self::kernel()->container()->get(AssistantTools::class);
+        \assert($tools instanceof AssistantTools);
+        $caller = new Caller(get_current_user_id(), null, false);
+        $offered = [];
+        foreach ($tools->offered($caller) as $tool) {
+            $offered[$tool->name] = $tool;
+        }
+        self::assertArrayHasKey('x_pages_post_echo', $offered, 'the manager route; public and account routes make no tool');
+        self::assertArrayNotHasKey('x_pages_get_hello_name', $offered);
+        self::assertSame(['Extensions', false, true, 'POST /echo of the extension "Pages".'], [$offered['x_pages_post_echo']->area, $offered['x_pages_post_echo']->readOnly, $offered['x_pages_post_echo']->addOn, $offered['x_pages_post_echo']->description]);
+
+        $outcome = $tools->call('x_pages_post_echo', ['body' => ['a' => 1]], $caller);
+        self::assertNotNull($outcome);
+        self::assertSame(['got' => ['a' => 1], 'manager' => true], $outcome->data);
+        $readOnly = $tools->call('x_pages_post_echo', ['body' => []], new Caller(get_current_user_id(), null, true));
+        self::assertTrue($readOnly === null || $readOnly->isError(), 'a read-only key cannot change the shop through an extension');
     }
 
     public function testRoutesAnswerThroughTheShopsPipeline(): void

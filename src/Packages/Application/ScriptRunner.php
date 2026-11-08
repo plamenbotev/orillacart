@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Packages\Application\Dto\LoadedPackage;
+use OrillaCart\Packages\Domain\ExtensionRun;
 use OrillaCart\Packages\Domain\HandlerFailed;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Grant;
@@ -12,6 +13,7 @@ use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\ScriptError;
 use OrillaCart\Scripting\Domain\ScriptFailure;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -25,6 +27,8 @@ final readonly class ScriptRunner
         private Scripts $scripts,
         private PackageService $packages,
         private LoggerInterface $logger,
+        private ?RunLog $log = null,
+        private ?ClockInterface $clock = null,
     ) {}
 
     /**
@@ -36,6 +40,7 @@ final readonly class ScriptRunner
     {
         $package = $loaded->package;
         $grant = new Grant($package->slug(), $package->granted(), $loaded->manifest->hosts(), $package->settings());
+        $script = null;
         try {
             $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $grant);
             $result = $script->run($method, ...$args);
@@ -44,18 +49,57 @@ final readonly class ScriptRunner
             if ($e->kind === ScriptFailure::ERROR) {
                 $this->packages->failed($package->slug(), $e->getMessage());
             }
+            $this->record($loaded, $method, \in_array($e->kind, [ExtensionRun::REFUSED, ExtensionRun::UNAVAILABLE], true) ? $e->kind : ExtensionRun::ERROR, $e->getMessage(), $script);
             throw new HandlerFailed($e->kind, $e->getMessage(), $e->data);
-        } catch (ScriptError|BudgetExceeded $e) {
+        } catch (BudgetExceeded $e) {
             $this->packages->failed($package->slug(), $e->getMessage());
+            $this->record($loaded, $method, ExtensionRun::STOPPED, $e->getMessage(), $script);
+            throw new HandlerFailed(HandlerFailed::ERROR, $e->getMessage());
+        } catch (ScriptError $e) {
+            $this->packages->failed($package->slug(), $e->getMessage());
+            $this->record($loaded, $method, ExtensionRun::ERROR, $e->getMessage(), $script);
             throw new HandlerFailed(HandlerFailed::ERROR, $e->getMessage());
         } catch (\Throwable $e) {
             $this->logger->error('The extension "{extension}" broke the host in {method}: {message}', ['extension' => $package->slug(), 'method' => $method, 'message' => $e->getMessage(), 'exception' => $e]);
             $this->packages->failed($package->slug(), $e->getMessage());
+            $this->record($loaded, $method, ExtensionRun::ERROR, $e->getMessage(), $script);
             throw new HandlerFailed(HandlerFailed::ERROR, $e->getMessage());
         }
         $this->packages->succeeded($package->slug());
+        $this->record($loaded, $method, ExtensionRun::OK, null, $script);
 
         return $result;
+    }
+
+    private function record(LoadedPackage $loaded, string $method, string $outcome, ?string $message, ?\OrillaCart\Scripting\Application\CompiledScript $script): void
+    {
+        if ($this->log === null) {
+            return;
+        }
+        $used = [];
+        if ($script !== null) {
+            $context = new \ReflectionProperty(\OrillaCart\Scripting\Application\CompiledScript::class, 'c')->getValue($script);
+            $used = $context instanceof \OrillaCart\Scripting\Application\Context ? $context->used() : [];
+        }
+        $this->log->record($loaded->package->slug(), self::what($loaded, $method), $outcome, $message, $used, $this->clock?->now() ?? new \DateTimeImmutable());
+    }
+
+    /** What the method is in the script's own words: `shipping_method dpd: rates`, `on order_placed`, `job remind`, or the method. */
+    public static function what(LoadedPackage $loaded, string $method): string
+    {
+        foreach ($loaded->manifest->all() as $declaration) {
+            $head = trim($declaration['kind'] . ' ' . implode(' ', $declaration['words']) . ($declaration['name'] === null ? '' : ' ' . $declaration['name']));
+            if ($declaration['handler'] === $method) {
+                return $head;
+            }
+            foreach ($declaration['functions'] as $name => $candidate) {
+                if ($candidate === $method) {
+                    return $head . ': ' . $name;
+                }
+            }
+        }
+
+        return str_starts_with($method, 'fn_') ? 'fn ' . substr($method, 3) : $method;
     }
 
     /**

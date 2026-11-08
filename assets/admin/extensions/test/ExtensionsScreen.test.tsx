@@ -113,6 +113,41 @@ function serve(
 		if ( request.path === '/orillacart/v1/script/check' ) {
 			return Promise.resolve( { findings: [] } );
 		}
+		if ( request.path === '/orillacart/v1/extensions/greeter/versions' ) {
+			return Promise.resolve( {
+				versions: [
+					{
+						number: 2,
+						note: 'Saved main.ocs',
+						created_at: '2026-11-08T10:00:00+00:00',
+						checksum: 'b',
+						files: [ 'main.ocs' ],
+						current: true,
+					},
+					{
+						number: 1,
+						note: 'Installed',
+						created_at: '2026-11-08T09:00:00+00:00',
+						checksum: 'a',
+						files: [ 'main.ocs' ],
+						current: false,
+					},
+				],
+			} );
+		}
+		if ( request.path === '/orillacart/v1/extensions/greeter/runs' ) {
+			return Promise.resolve( {
+				runs: [
+					{
+						at: '2026-11-08T10:01:00+00:00',
+						what: 'console: greet',
+						outcome: 'error',
+						message: 'greet expects 1 argument, 0 given',
+						used: { steps: 1, calls: 0, seconds: 0.001 },
+					},
+				],
+			} );
+		}
 		if ( request.path === '/orillacart/v1/extensions/greeter' ) {
 			return Promise.resolve( greeter );
 		}
@@ -262,6 +297,45 @@ describe( 'ExtensionsScreen', () => {
 		).toBeVisible();
 		const files = ( sent as { files: Record< string, string > } ).files;
 		expect( files[ 'main.ocs' ] ).toMatch( / y$/ );
+	} );
+
+	it( 'lists the versions with a restore and the recent runs', async () => {
+		let restored: string | null = null;
+		serve( ( { path, method } ) => {
+			if (
+				method === 'POST' &&
+				path === '/orillacart/v1/extensions/greeter/versions/1/restore'
+			) {
+				restored = path;
+				return Promise.resolve( greeter );
+			}
+			return undefined;
+		} );
+		const user = userEvent.setup();
+		render( <ExtensionsScreen /> );
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Greeter' } )
+		);
+
+		expect( await screen.findByText( 'Installed' ) ).toBeVisible();
+		expect( screen.getByText( 'current' ) ).toBeVisible();
+		expect(
+			screen.getAllByRole( 'button', { name: 'Restore' } )
+		).toHaveLength( 1 );
+		await user.click( screen.getByRole( 'button', { name: 'Restore' } ) );
+		expect(
+			await screen.findByText( 'Version 1 restored.', TOAST )
+		).toBeVisible();
+		expect( restored ).toBe(
+			'/orillacart/v1/extensions/greeter/versions/1/restore'
+		);
+
+		expect( screen.getByText( 'console: greet' ) ).toBeVisible();
+		expect(
+			screen.getByText( 'greet expects 1 argument, 0 given', {
+				exact: false,
+			} )
+		).toBeVisible();
 	} );
 
 	it( 'asks the manager to grant what the extension needs before enabling it', async () => {

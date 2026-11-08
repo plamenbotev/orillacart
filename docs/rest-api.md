@@ -1018,6 +1018,12 @@ Removes one file of an extension.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+### `GET /extensions/{id}/files/{path}/original`
+
+The shop's own source of the template an extension's file overrides, for the diff beside the editor; `original` is null for a file that overrides nothing.
+
+- Who: shop managers
+
 ### `POST /extensions/{id}/run`
 
 The console: runs one top-level function of an extension with the given arguments and its granted permissions; answers what it returned or how it failed, and what the run used.
@@ -1026,6 +1032,12 @@ The console: runs one top-level function of an extension with the given argument
 - Body (JSON):
   - `function` (string): required; matches `/^[A-Za-z_][A-Za-z0-9_]*$/`
   - `arguments` (list<mixed>)
+
+### `GET /extensions/{id}/runs`
+
+The latest runs of an extension's handlers and console functions, newest first: what ran, how it ended, its message and the budget it used.
+
+- Who: shop managers
 
 ### `PUT /extensions/{id}/settings`
 
@@ -1038,6 +1050,18 @@ Saves the values of the settings an extension declares; a secret sent empty keep
 ### `POST /extensions/{id}/test`
 
 Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `GET /extensions/{id}/versions`
+
+The versions kept of an extension's files, newest first: one for every save, delete, import and restore, with a note of what changed and whether it is what the files are now.
+
+- Who: shop managers
+
+### `POST /extensions/{id}/versions/{number}/restore`
+
+Puts an extension's files back as a kept version had them; that becomes the newest version. An enabled extension keeps running what it was enabled with until enabled again.
 
 - Who: shop managers; needs a nonce (not with an API key)
 

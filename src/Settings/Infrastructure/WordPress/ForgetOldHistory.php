@@ -7,6 +7,7 @@ namespace OrillaCart\Settings\Infrastructure\WordPress;
 use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Catalog\Application\PriceHistory;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Packages\Application\RunLog;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\WordPress\ScheduledTask;
 use Psr\Clock\ClockInterface;
@@ -24,6 +25,7 @@ final readonly class ForgetOldHistory implements ScheduledTask
         private PriceHistory $prices,
         private AbandonedCarts $abandoned,
         private ClockInterface $clock,
+        private ?RunLog $runs = null,
     ) {}
 
     public static function hook(): string
@@ -42,5 +44,6 @@ final readonly class ForgetOldHistory implements ScheduledTask
         $this->stock->forgetMovementsBefore($before);
         $this->prices->forgetBefore($before);
         $this->abandoned->forgetBefore($before);
+        $this->runs?->forgetBefore($before);
     }
 }

@@ -8,6 +8,27 @@ export interface ExtensionFile {
 	path: string;
 	content: string;
 	updated_at: string;
+	/** The shop's template this file overrides, when it does. */
+	overrides?: string | null;
+	/** Whether a release changed that template since the override was saved. */
+	stale?: boolean;
+}
+
+export interface ExtensionVersion {
+	number: number;
+	note: string;
+	created_at: string;
+	checksum: string;
+	files: string[];
+	current: boolean;
+}
+
+export interface ExtensionRun {
+	at: string;
+	what: string;
+	outcome: 'ok' | 'refused' | 'unavailable' | 'error' | 'stopped';
+	message: string | null;
+	used: Record< string, number >;
 }
 
 /** A declared setting with its shown value: secrets come as whether one is set. */
@@ -179,6 +200,33 @@ export const runTests = ( id: string, files?: Record< string, string > ) =>
 		path: `${ BASE }/extensions/${ id }/test`,
 		method: 'POST',
 		data: files ? { files } : {},
+	} );
+
+export const fetchVersions = ( id: string ) =>
+	apiFetch< { versions: ExtensionVersion[] } >( {
+		path: `${ BASE }/extensions/${ id }/versions`,
+	} );
+
+export const restoreVersion = ( id: string, number: number ) =>
+	apiFetch< Extension >( {
+		path: `${ BASE }/extensions/${ id }/versions/${ number }/restore`,
+		method: 'POST',
+	} );
+
+export const fetchRuns = ( id: string ) =>
+	apiFetch< { runs: ExtensionRun[] } >( {
+		path: `${ BASE }/extensions/${ id }/runs`,
+	} );
+
+/**
+ * The shop's own source of the template a file overrides; null for a file that overrides nothing.
+ *
+ * @param id   The extension's id.
+ * @param path The file's path.
+ */
+export const fetchOriginal = ( id: string, path: string ) =>
+	apiFetch< { original: string | null } >( {
+		path: `${ BASE }/extensions/${ id }/files/${ encodeURIComponent( path ) }/original`,
 	} );
 
 export const exportExtension = ( id: string ) =>

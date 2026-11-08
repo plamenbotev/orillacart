@@ -14,11 +14,15 @@ use OrillaCart\Packages\Application\Dto\PackageView;
 use OrillaCart\Packages\Application\Dto\RunFunction;
 use OrillaCart\Packages\Application\Dto\RunResult;
 use OrillaCart\Packages\Application\Dto\SavePackageSettings;
+use OrillaCart\Packages\Domain\ExtensionRun;
 use OrillaCart\Packages\Domain\Package;
+use OrillaCart\Packages\Domain\PackageFile;
 use OrillaCart\Packages\Domain\PackageNotFound;
 use OrillaCart\Packages\Domain\PackageRepository;
 use OrillaCart\Packages\Domain\PackageRuleViolation;
 use OrillaCart\Packages\Domain\PackageState;
+use OrillaCart\Packages\Domain\PackageVersion;
+use OrillaCart\Packages\Domain\PackageVersions;
 use OrillaCart\Scripting\Application\CompiledScript;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Compiled;
@@ -44,6 +48,9 @@ final readonly class PackageService
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private ?ObjectStore $objects = null,
+        private ?PackageVersions $versions = null,
+        private ?RunLog $runs = null,
+        private ?PluginTemplates $templates = null,
     ) {}
 
     /** @return list<PackageView> */
@@ -66,10 +73,11 @@ final readonly class PackageService
         }
         $package = new Package($command->id, $command->name, $this->clock->now());
         foreach ($command->files as $path => $content) {
-            $package->write($path, $content, $this->clock->now());
+            $package->write($path, $content, $this->clock->now(), $this->originalHash($path));
         }
         $this->describeFrom($package, $this->compile($package));
         $this->packages->save($package);
+        $this->versions?->keep($package, 'Installed', $this->clock->now());
 
         return $this->view($package, $this->compile($package));
     }
@@ -77,10 +85,14 @@ final readonly class PackageService
     public function writeFile(string $slug, string $path, string $content): PackageView
     {
         $package = $this->get($slug);
-        $package->write($path, $content, $this->clock->now());
+        $before = $package->file($path)?->content();
+        $package->write($path, $content, $this->clock->now(), $this->originalHash($path));
         $compiled = $this->compile($package);
         $this->describeFrom($package, $compiled);
         $this->packages->save($package);
+        if ($before !== $content) {
+            $this->versions?->keep($package, ($before === null ? 'Added ' : 'Saved ') . $path, $this->clock->now());
+        }
 
         return $this->view($package, $compiled);
     }
@@ -90,6 +102,7 @@ final readonly class PackageService
         $package = $this->get($slug);
         $package->removeFile($path, $this->clock->now());
         $this->packages->save($package);
+        $this->versions?->keep($package, 'Deleted ' . $path, $this->clock->now());
 
         return $this->view($package, $this->compile($package));
     }
@@ -136,6 +149,8 @@ final readonly class PackageService
     {
         $package = $this->get($slug);
         $this->objects?->forgetExtension($slug);
+        $this->runs?->forgetExtension($slug);
+        $this->versions?->forget($package);
         $this->packages->remove($package);
         $this->logger->info('The extension "{extension}" was uninstalled.', ['extension' => $slug]);
     }
@@ -174,13 +189,20 @@ final readonly class PackageService
         if (!method_exists($script, $method)) {
             throw new PackageRuleViolation('The extension has no top-level function "%s".', 'orillacart_extension_no_function', values: [$command->function]);
         }
+        $what = 'console: ' . $command->function;
         try {
             $result = $script->run($method, ...array_values($command->arguments));
+            $this->runs?->record($slug, $what, ExtensionRun::OK, null, $this->used($script), $this->clock->now());
 
             return new RunResult(true, Ops::plain($result), null, null, $this->used($script));
         } catch (Catchable $e) {
-            return new RunResult(false, null, $e->value(), null, $this->used($script));
+            $value = $e->value();
+            $this->runs?->record($slug, $what, \is_string($value['kind'] ?? null) && \in_array($value['kind'], [ExtensionRun::REFUSED, ExtensionRun::UNAVAILABLE], true) ? $value['kind'] : ExtensionRun::ERROR, $e->getMessage(), $this->used($script), $this->clock->now());
+
+            return new RunResult(false, null, $value, null, $this->used($script));
         } catch (BudgetExceeded $e) {
+            $this->runs?->record($slug, $what, ExtensionRun::STOPPED, $e->getMessage(), $this->used($script), $this->clock->now());
+
             return new RunResult(false, null, null, $e->getMessage(), $this->used($script));
         }
     }
@@ -210,11 +232,12 @@ final readonly class PackageService
             }
         }
         foreach ($export->files as $path => $content) {
-            $package->write($path, $content, $now);
+            $package->write($path, $content, $now, $this->originalHash($path));
         }
         $compiled = $this->compile($package);
         $this->describeFrom($package, $compiled);
         $this->packages->save($package);
+        $this->versions?->keep($package, 'Imported', $now);
 
         return $this->view($package, $compiled);
     }
@@ -350,7 +373,101 @@ final readonly class PackageService
             ], $manifest->settings());
         }
 
-        return PackageView::fromPackage($package, $needs, true, $settings, $this->findings($package, $compiled));
+        return PackageView::fromPackage($package, $needs, true, $settings, $this->findings($package, $compiled), $this->currentHashes($package));
+    }
+
+    /**
+     * The versions kept of an extension, newest first.
+     *
+     * @return list<array{number: int, note: string, created_at: string, checksum: string, files: list<string>, current: bool}>
+     */
+    public function versions(string $slug): array
+    {
+        $package = $this->get($slug);
+
+        return array_map(static fn(PackageVersion $version): array => [
+            'number' => $version->number(),
+            'note' => $version->note(),
+            'created_at' => $version->createdAt()->format(\DATE_ATOM),
+            'checksum' => $version->checksum(),
+            'files' => array_keys($version->files()),
+            'current' => $version->checksum() === $package->checksum() && array_keys($version->files()) === array_map(static fn(PackageFile $f): string => $f->path(), $package->files()) && !array_any($package->files(), static fn(PackageFile $f): bool => ($version->files()[$f->path()] ?? null) !== $f->content()),
+        ], $this->versions?->of($package) ?? []);
+    }
+
+    /** Puts the files back as a version had them, and keeps that as the newest version. */
+    public function restore(string $slug, int $number): PackageView
+    {
+        $package = $this->get($slug);
+        $version = $this->versions?->find($package, $number) ?? throw new PackageRuleViolation('The extension has no version %d.', 'orillacart_extension_version_not_found', values: [$number]);
+        $now = $this->clock->now();
+        foreach ($package->files() as $file) {
+            if (!isset($version->files()[$file->path()])) {
+                $package->removeFile($file->path(), $now);
+            }
+        }
+        foreach ($version->files() as $path => $content) {
+            $package->write($path, $content, $now, $this->originalHash($path));
+        }
+        $compiled = $this->compile($package);
+        $this->describeFrom($package, $compiled);
+        $this->packages->save($package);
+        $this->versions->keep($package, \sprintf('Restored version %d', $number), $now);
+
+        return $this->view($package, $compiled);
+    }
+
+    /**
+     * The latest runs of an extension, newest first.
+     *
+     * @return list<array{at: string, what: string, outcome: string, message: ?string, used: array<string, int|float>}>
+     */
+    public function runs(string $slug, int $limit = 50): array
+    {
+        $this->get($slug);
+
+        return array_map(static fn(ExtensionRun $run): array => [
+            'at' => $run->ranAt()->format(\DATE_ATOM),
+            'what' => $run->what(),
+            'outcome' => $run->outcome(),
+            'message' => $run->message(),
+            'used' => $run->used(),
+        ], $this->runs?->recent($slug, $limit) ?? []);
+    }
+
+    /** The shop's own source of the template a file overrides, for the diff; null for a file that overrides nothing. */
+    public function original(string $slug, string $path): ?string
+    {
+        $file = $this->get($slug)->file($path);
+        $name = $file?->overrides();
+
+        return $name === null ? null : $this->templates?->source($name);
+    }
+
+    /** The hash of the shop's template a path under templates/ would override, or null when the shop has none. */
+    private function originalHash(string $path): ?string
+    {
+        if ($this->templates === null || !str_starts_with($path, 'templates/')) {
+            return null;
+        }
+        $source = $this->templates->source(substr($path, \strlen('templates/')));
+
+        return $source === null ? null : $this->templates::hash($source);
+    }
+
+    /** @return array<string, string> */
+    private function currentHashes(Package $package): array
+    {
+        $hashes = [];
+        foreach ($package->files() as $file) {
+            $name = $file->overrides();
+            $source = $name === null ? null : $this->templates?->source($name);
+            if ($source !== null && $this->templates !== null) {
+                $hashes[$file->path()] = $this->templates::hash($source);
+            }
+        }
+
+        return $hashes;
     }
 
     /**

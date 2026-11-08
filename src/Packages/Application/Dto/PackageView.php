@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Application\Dto;
 
 use OrillaCart\Packages\Domain\Package;
+use OrillaCart\Packages\Domain\PackageFile;
 
 /**
  * An extension as the admin and the tools see it. The files come with one extension, not with the list; the
@@ -40,8 +41,9 @@ final readonly class PackageView
      * @param list<string>                    $needs
      * @param list<array<string, mixed>>|null $settings
      * @param list<string>|null               $findings
+     * @param array<string, string>|null      $currentHashes by path, the hash of the shop's template an override replaces as it is now
      */
-    public static function fromPackage(Package $package, array $needs, bool $withFiles = false, ?array $settings = null, ?array $findings = null): self
+    public static function fromPackage(Package $package, array $needs, bool $withFiles = false, ?array $settings = null, ?array $findings = null, ?array $currentHashes = null): self
     {
         return new self(
             $package->slug(),
@@ -55,7 +57,7 @@ final readonly class PackageView
             $package->lastProblem(),
             $package->createdAt()->format(\DATE_ATOM),
             $package->updatedAt()->format(\DATE_ATOM),
-            $withFiles ? array_map(PackageFileView::fromFile(...), $package->files()) : null,
+            $withFiles ? array_map(static fn(PackageFile $file): PackageFileView => PackageFileView::fromFile($file, $currentHashes[$file->path()] ?? null), $package->files()) : null,
             $settings,
             $findings,
         );

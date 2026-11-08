@@ -77,6 +77,32 @@ final class ScriptedRoutes implements DynamicRoutes
     }
 
     /**
+     * The routes for managers of the extensions that run, for the assistant's tools: each with its method and its
+     * path within the extension (`/refunds/{id}`).
+     *
+     * @return list<array{LoadedPackage, Declaration, string, string}>
+     */
+    public function manager(): array
+    {
+        $routes = [];
+        foreach ($this->handlers() as $key => [$loaded, $declaration]) {
+            if ($loaded->package->state() !== PackageState::Enabled) {
+                continue;
+            }
+            $who = $declaration['props']['who'] ?? null;
+            $who = \is_array($who) ? ($who['$spec'] ?? 'manager') : ($who ?? 'manager');
+            if ($who !== 'manager') {
+                continue;
+            }
+            [$method, $full] = explode(' ', $key, 2);
+            $within = substr($full, \strlen(self::PREFIX . $loaded->package->slug()));
+            $routes[] = [$loaded, $declaration, $method, $within === '' ? '/' : $within];
+        }
+
+        return $routes;
+    }
+
+    /**
      * @return array<string, array{LoadedPackage, Declaration}>
      */
     private function handlers(): array

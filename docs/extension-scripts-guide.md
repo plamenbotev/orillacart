@@ -530,7 +530,11 @@ page "/support" { template: "support.html.twig" } fn(request) {
 
 A route lives at `/wp-json/orillacart/v1/x/<extension>/<path>` and runs through the shop's own REST pipeline:
 authorization, the REST nonce for browsers, API keys and OAuth for agents, a rate limit of 120 requests a minute,
-and the change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). Path
+and the change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). A manager route is also one of the
+assistant's tools, `x_<extension>_<method>_<path>` (`x_payfast_post_refunds`), unless it says `tool: false`; `tool:
+"name"` names it, `title`, `description`, `input` (a JSON schema of the body) and `risk` describe it, and without
+`input` the tool takes `params`, `query` and `body` maps. The handler gets the request map a REST call would give
+it, as the manager who holds the key. Path
 parameters are `{name}`.
 
 The handler receives one map: `method`, `path`, `params` (from the path), `query`, `body` (the JSON body as a
@@ -711,6 +715,14 @@ where the shop stays in charge.
 - **Console.** The Extensions screen runs any top-level function with arguments you type, under the granted
   permissions, and shows the result or the failure plus the budget used. Write small helpers (`api(...)`,
   `site_of(...)`) and try them there before wiring them into handlers.
+- **Versions.** Every save, delete, import and restore keeps the files as they stood; the last thirty show on the
+  screen with what changed, and any can be restored. An enabled extension keeps running what it was enabled with
+  until it is enabled again, so a restore is safe to try.
+- **Recent runs.** Each handler call and console run is logged with how it ended and the budget it used, kept
+  as long as the shop keeps its history; the screen shows the latest.
+- **Overrides.** A `templates/<name>` file that replaces one of the shop's templates says so, compares against
+  the shop's own on request, and is marked stale once a release changes the original, so the change can be
+  brought over.
 - **Tests.** An extension declares its own tests and runs them from the Console's *Run tests* button, from VS
   Code, from `POST /extensions/<id>/test` or from `wp orillacart script test file.ocs`, enabled or not. See below.
 - **Enable.** A dialog lists the permissions the `needs` ask for; granting them enables the extension. Changing
