@@ -598,7 +598,10 @@ export function SettingsScreen() {
 									onChange={ ( value ) =>
 										update(
 											'history_days',
-											Math.max( 90, Number( value ) || 90 )
+											Math.max(
+												90,
+												Number( value ) || 90
+											)
 										)
 									}
 								/>

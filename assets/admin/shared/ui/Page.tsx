@@ -62,6 +62,20 @@ export interface PageProps {
  *
  * A screen that is one tab of its menu group (Catalog, Settings…) shows the group's name as its title and the
  * tabs under it, unless it brought tabs of its own or a back link: a detail view keeps its own title.
+ *
+ * @param props
+ * @param props.title          The screen's title.
+ * @param props.description    One line about the screen.
+ * @param props.titleAside     Something to the right of the title.
+ * @param props.actions        The actions, the primary one first.
+ * @param props.back           A link back to the list this came from.
+ * @param props.tabs           The tabs of a grouped screen.
+ * @param props.selectedTab    The id of the selected tab.
+ * @param props.onSelectTab    Called with a tab's id.
+ * @param props.sticky         Whether the header stays at the top while the view scrolls.
+ * @param props.error          A problem the screen met, or null.
+ * @param props.onDismissError Dismisses the problem.
+ * @param props.children       The screen's content.
  */
 export function Page( {
 	title,

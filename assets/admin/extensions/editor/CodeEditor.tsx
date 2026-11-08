@@ -41,6 +41,15 @@ import { ocs } from './ocs';
  * hover from the site's reference, and the static check's findings underlined where they are. Templates get
  * Twig-style or HTML highlighting by their extension. The value is controlled: a change outside (opening another
  * file, a save's answer) replaces the document, a keystroke calls onChange.
+ *
+ * @param props
+ * @param props.value     The document.
+ * @param props.onChange  Called with the document after a keystroke.
+ * @param props.path      The file's path: its extension picks the language.
+ * @param props.label     The accessible name of the editor.
+ * @param props.findings  The check's findings, underlined where they are.
+ * @param props.reference The site's reference, for completion and hover; null before it is loaded.
+ * @param props.disabled  Read-only while a request is in flight.
  */
 export function CodeEditor( {
 	value,

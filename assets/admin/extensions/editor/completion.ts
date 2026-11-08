@@ -67,7 +67,11 @@ export function ocsCompletion( reference: Reference ) {
 	};
 }
 
-/** The summary, arity and permission of the host function under the pointer. */
+/**
+ * The summary, arity and permission of the host function under the pointer.
+ *
+ * @param reference The site's reference.
+ */
 export function ocsHover( reference: Reference ) {
 	return hoverTooltip( ( view: EditorView, pos: number ) => {
 		const line = view.state.doc.lineAt( pos );

@@ -7,7 +7,7 @@ import {
 	TextControl,
 	ToggleControl,
 } from '@wordpress/components';
-import { useEffect, useRef, useState } from '@wordpress/element';
+import { useEffect, useMemo, useRef, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
@@ -83,7 +83,7 @@ export function ExtensionsScreen() {
 
 	useEffect( () => {
 		reload();
-	}, [] );
+	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
 	const show = ( extension: Extension ) => {
 		setOpen( extension );
@@ -330,6 +330,7 @@ function ImportButton( {
 						.then( ( extension ) => {
 							notify(
 								sprintf(
+									/* translators: %s: the extension's name */
 									__( 'Imported %s.', 'orillacart' ),
 									extension.name
 								)
@@ -354,7 +355,7 @@ function ExtensionEditor( {
 	onBack: () => void;
 	onRemoved: () => void;
 } ) {
-	const files = extension.files ?? [];
+	const files = useMemo( () => extension.files ?? [], [ extension.files ] );
 	const [ path, setPath ] = useState( files[ 0 ]?.path ?? '' );
 	const [ content, setContent ] = useState( files[ 0 ]?.content ?? '' );
 	const [ error, setError ] = useState< string | null >( null );
@@ -500,14 +501,16 @@ function ExtensionEditor( {
 				>
 					{ extension.state === 'stopped'
 						? sprintf(
+								/* translators: 1: how many times, 2: the problem */
 								__(
-									'Stopped after failing %d times in a row: %s',
+									'Stopped after failing %1$d times in a row: %2$s',
 									'orillacart'
 								),
 								extension.failures,
 								extension.last_problem
 							)
 						: sprintf(
+								/* translators: %s: the problem */
 								__( 'Last problem: %s', 'orillacart' ),
 								extension.last_problem
 							) }
@@ -694,7 +697,11 @@ function ExtensionEditor( {
 	);
 }
 
-/** A finding as the saved check writes it: file, message, line and column. */
+/**
+ * A finding as the saved check writes it: file, message, line and column.
+ *
+ * @param finding The finding as the site answered it.
+ */
 function describeFinding( finding: Finding ): string {
 	return `${ finding.file ? finding.file + ': ' : '' }${
 		finding.message
@@ -826,8 +833,9 @@ function SettingsSection( {
 	const [ busy, setBusy ] = useState( false );
 	useEffect(
 		() => setValues( initial( declared ) ),
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[ extension.id, extension.updated_at ]
-	); // eslint-disable-line react-hooks/exhaustive-deps
+	);
 
 	const save = () => {
 		setBusy( true );
@@ -915,17 +923,12 @@ function SettingField( {
 		<Field size="m">
 			<TextControl
 				__next40pxDefaultSize
-				type={
-					setting.type === 'secret'
-						? 'password'
-						: setting.type === 'number'
-							? 'number'
-							: 'text'
-				}
+				type={ INPUT_TYPES[ setting.type ] ?? 'text' }
 				label={ setting.label }
 				help={
 					setting.type === 'secret' && setting.set
 						? sprintf(
+								/* translators: %s: the setting's help text */
 								__(
 									'%s Set; leave empty to keep it.',
 									'orillacart'
@@ -946,17 +949,24 @@ function SettingField( {
 	);
 }
 
+/** The input type of each setting type; text for the rest. */
+const INPUT_TYPES: Record< string, 'password' | 'number' > = {
+	secret: 'password',
+	number: 'number',
+};
+
 function initial(
 	declared: ExtensionSetting[]
 ): Record< string, string | boolean > {
 	const values: Record< string, string | boolean > = {};
 	for ( const setting of declared ) {
-		values[ setting.key ] =
-			setting.type === 'boolean'
-				? setting.value === true
-				: setting.type === 'secret'
-					? ''
-					: String( setting.value ?? '' );
+		if ( setting.type === 'boolean' ) {
+			values[ setting.key ] = setting.value === true;
+		} else if ( setting.type === 'secret' ) {
+			values[ setting.key ] = '';
+		} else {
+			values[ setting.key ] = String( setting.value ?? '' );
+		}
 	}
 	return values;
 }
@@ -1052,8 +1062,9 @@ function Console( {
 					</pre>
 					<p className="oc-muted">
 						{ sprintf(
+							/* translators: 1: steps, 2: calls, 3: seconds */
 							__(
-								'Used %d steps, %d calls, %s s.',
+								'Used %1$d steps, %2$d calls, %3$s s.',
 								'orillacart'
 							),
 							result.used.steps ?? 0,

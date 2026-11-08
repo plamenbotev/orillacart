@@ -49,7 +49,11 @@ export function arity( fn: ReferenceFunction ): string {
 		: `${ least }–${ most } args`;
 }
 
-/** The names the buffer itself declares, by a scan good enough for completion. */
+/**
+ * The names the buffer itself declares, by a scan good enough for completion.
+ *
+ * @param text The whole buffer.
+ */
 export function localNames( text: string ): {
 	variables: string[];
 	functions: string[];
@@ -97,7 +101,12 @@ export function localNames( text: string ): {
 	};
 }
 
-/** The functions of the reference with `*` replaced by each object kind the buffer declares. */
+/**
+ * The functions of the reference with `*` replaced by each object kind the buffer declares.
+ *
+ * @param functions The reference's functions.
+ * @param objects   The object kinds the buffer declares.
+ */
 export function expand(
 	functions: ReferenceFunction[],
 	objects: string[]
@@ -129,9 +138,6 @@ export function suggest(
 	text: string,
 	explicit = false
 ): Suggestions | null {
-	const locals = localNames( text );
-	const functions = expand( reference.functions, locals.objects );
-
 	const filter = /\|\s*([A-Za-z_][A-Za-z0-9_]*)?$/.exec( before );
 	if ( filter ) {
 		return {
@@ -159,6 +165,8 @@ export function suggest(
 	if ( typed === '' && ! explicit ) {
 		return null;
 	}
+	const locals = localNames( text );
+	const functions = expand( reference.functions, locals.objects );
 
 	if ( typed.includes( '.' ) ) {
 		const prefix = typed.slice( 0, typed.lastIndexOf( '.' ) + 1 );
@@ -234,7 +242,12 @@ export function suggest(
 	return { replace: typed.length, items };
 }
 
-/** The dotted name around an offset in a line, with where it starts and ends. */
+/**
+ * The dotted name around an offset in a line, with where it starts and ends.
+ *
+ * @param line   The line's text.
+ * @param offset Where in the line.
+ */
 export function nameAt(
 	line: string,
 	offset: number
@@ -251,7 +264,13 @@ export function nameAt(
 	return name === '' ? null : { name, start, end };
 }
 
-/** The host function of that name, with the buffer's object kinds filled in, or null. */
+/**
+ * The host function of that name, with the buffer's object kinds filled in, or null.
+ *
+ * @param reference The site's reference.
+ * @param text      The whole buffer.
+ * @param name      The dotted name.
+ */
 export function describe(
 	reference: Reference,
 	text: string,

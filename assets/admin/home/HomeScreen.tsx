@@ -26,8 +26,8 @@ export function lineText( line: NeedsYouLine ): string {
 	const n = line.count;
 	switch ( line.kind ) {
 		case 'attention':
-			/* translators: %d: how many orders */
 			return sprintf(
+				/* translators: %d: how many orders */
 				_n(
 					'%d order needs attention',
 					'%d orders need attention',
@@ -37,8 +37,8 @@ export function lineText( line: NeedsYouLine ): string {
 				n
 			);
 		case 'on_hold':
-			/* translators: %d: how many orders */
 			return sprintf(
+				/* translators: %d: how many orders */
 				_n(
 					'%d order on hold since before yesterday',
 					'%d orders on hold since before yesterday',
@@ -48,14 +48,14 @@ export function lineText( line: NeedsYouLine ): string {
 				n
 			);
 		case 'ship':
-			/* translators: %d: how many orders */
 			return sprintf(
+				/* translators: %d: how many orders */
 				_n( '%d order to ship', '%d orders to ship', n, 'orillacart' ),
 				n
 			);
 		case 'low_stock':
-			/* translators: %d: how many items */
 			return sprintf(
+				/* translators: %d: how many items */
 				_n(
 					'%d item low in stock',
 					'%d items low in stock',
@@ -65,8 +65,8 @@ export function lineText( line: NeedsYouLine ): string {
 				n
 			);
 		case 'failed_jobs':
-			/* translators: %d: how many jobs */
 			return sprintf(
+				/* translators: %d: how many jobs */
 				_n(
 					'%d background job failed',
 					'%d background jobs failed',
@@ -76,8 +76,8 @@ export function lineText( line: NeedsYouLine ): string {
 				n
 			);
 		case 'status':
-			/* translators: %d: how many checks */
 			return sprintf(
+				/* translators: %d: how many checks */
 				_n(
 					'%d status check worth a look',
 					'%d status checks worth a look',
@@ -91,7 +91,27 @@ export function lineText( line: NeedsYouLine ): string {
 	}
 }
 
-/** A few days' net sales as a line, in the tile: the shape of the week, not the figures. */
+/**
+ * The badge's text for a line's tone.
+ *
+ * @param tone The line's tone.
+ */
+function toneLabel( tone: 'attention' | 'warning' | 'info' ): string {
+	if ( tone === 'attention' ) {
+		return __( 'Attention', 'orillacart' );
+	}
+	if ( tone === 'info' ) {
+		return __( 'To do', 'orillacart' );
+	}
+	return __( 'Worth a look', 'orillacart' );
+}
+
+/**
+ * A few days' net sales as a line, in the tile: the shape of the week, not the figures.
+ *
+ * @param props
+ * @param props.points The days' figures, oldest first.
+ */
 function Sparkline( { points }: { points: number[] } ) {
 	if ( points.length < 2 ) {
 		return null;
@@ -351,20 +371,7 @@ export function HomeScreen() {
 													: line.tone
 											}
 										>
-											{ line.tone === 'attention'
-												? __(
-														'Attention',
-														'orillacart'
-													)
-												: line.tone === 'info'
-													? __(
-															'To do',
-															'orillacart'
-														)
-													: __(
-															'Worth a look',
-															'orillacart'
-														) }
+											{ toneLabel( line.tone ) }
 										</Badge>
 										{ line.url ? (
 											<a href={ adminUrl( line.url ) }>

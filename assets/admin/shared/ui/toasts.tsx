@@ -25,7 +25,7 @@ const emit = () => listeners.forEach( ( listener ) => listener() );
 /**
  * Shows a toast.
  *
- * @param content        What it says.
+ * @param content         What it says.
  * @param explicitDismiss Stays until dismissed; otherwise it goes by itself.
  */
 export function notify( content: string, explicitDismiss = false ) {

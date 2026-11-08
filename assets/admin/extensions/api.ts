@@ -102,7 +102,12 @@ export interface Finding {
 	message: string;
 }
 
-/** The static check over files as they are in the editor, saved nowhere. */
+/**
+ * The static check over files as they are in the editor, saved nowhere.
+ *
+ * @param files The files by path.
+ * @param id    The extension's id, for the scope of the check.
+ */
 export const checkFiles = ( files: Record< string, string >, id?: string ) =>
 	apiFetch< { findings: Finding[] } >( {
 		path: `${ BASE }/script/check`,

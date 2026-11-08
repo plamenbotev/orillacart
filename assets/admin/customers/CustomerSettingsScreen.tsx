@@ -4,7 +4,6 @@ import {
 	CardBody,
 	CardHeader,
 	CheckboxControl,
-	Notice,
 	RadioControl,
 	TextControl,
 } from '@wordpress/components';

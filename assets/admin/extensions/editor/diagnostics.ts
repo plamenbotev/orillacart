@@ -3,7 +3,12 @@ import type { EditorState } from '@codemirror/state';
 
 import type { Finding } from '../api';
 
-/** The findings as CodeMirror diagnostics, each on its line from the column to the end of the word there. */
+/**
+ * The findings as CodeMirror diagnostics, each on its line from the column to the end of the word there.
+ *
+ * @param state    The editor's state, for the line positions.
+ * @param findings The check's findings.
+ */
 export function toDiagnostics(
 	state: EditorState,
 	findings: Finding[]

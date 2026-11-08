@@ -47,7 +47,6 @@ interface CustomerCardProps {
  * @param props
  * @param props.groups
  * @param props.customer
- * @param props.onClose
  * @param props.onSaved
  * @param props.onError
  */

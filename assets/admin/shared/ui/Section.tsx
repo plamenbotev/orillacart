@@ -18,6 +18,15 @@ export interface SectionProps {
 /**
  * A section of a screen (design 52): a card with a title, one line about it, an action in its header and its
  * buttons in its footer. A form inside it keeps its fields in rows.
+ *
+ * @param props
+ * @param props.title       The section's title.
+ * @param props.titleAside  Something beside the title.
+ * @param props.description One line about what the section holds.
+ * @param props.action      Its action, in the header.
+ * @param props.footer      Its buttons.
+ * @param props.className   Extra classes on the card.
+ * @param props.children    The section's content.
  */
 export function Section( {
 	title,

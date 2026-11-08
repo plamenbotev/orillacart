@@ -381,7 +381,13 @@ type ExtensionPageAttributes = {
 	path: string;
 };
 
-/** The Extension page block: which extension's page renders here, previewed as the storefront shows it. */
+/**
+ * The Extension page block: which extension's page renders here, previewed as the storefront shows it.
+ *
+ * @param props
+ * @param props.attributes    The extension and the path of the page.
+ * @param props.setAttributes Changes them.
+ */
 function ExtensionPageEdit( {
 	attributes,
 	setAttributes,

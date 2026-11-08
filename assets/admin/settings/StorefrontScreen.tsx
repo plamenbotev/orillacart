@@ -69,7 +69,11 @@ interface Form {
 
 const FORM_ID = 'orillacart-storefront';
 
-/** PHP sends an empty list for no translations; the form holds a map. */
+/**
+ * PHP sends an empty list for no translations; the form holds a map.
+ *
+ * @param settings The settings as read.
+ */
 const loadedStorefront = (
 	settings: StorefrontSettings
 ): StorefrontSettings => ( {

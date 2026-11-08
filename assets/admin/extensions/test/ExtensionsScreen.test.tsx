@@ -67,7 +67,11 @@ const greeter: Extension = {
 	findings: [],
 };
 
-/** Answers the screen's requests; a write answers with the extension as given. */
+/**
+ * Answers the screen's requests; a write answers with the extension as given.
+ *
+ * @param override Answers a request first, or returns undefined to let the default answer.
+ */
 function serve(
 	override?: ( request: {
 		path: string;

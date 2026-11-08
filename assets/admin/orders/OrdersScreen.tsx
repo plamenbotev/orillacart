@@ -315,7 +315,11 @@ const QUICK_VIEWS: { id: string; label: string; filters: () => Filters }[] = [
 	},
 ];
 
-/** Which quick view the filters are, or null for a view of one's own. */
+/**
+ * Which quick view the filters are, or null for a view of one's own.
+ *
+ * @param filters The filters as set.
+ */
 function quickViewOf( filters: Filters | undefined ): string | null {
 	const current = JSON.stringify( filters ?? [] );
 	return (
