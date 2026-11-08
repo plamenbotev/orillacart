@@ -26,6 +26,8 @@ final readonly class ScriptDocumentation
             assistant's `extension_*` tools; the same reference is the MCP resource `orillacart://extensions/reference`.
             This is the catalogue: every declaration, function, filter and test in a line. The guide to writing one,
             with what each handler receives and answers and how a script fails, is `docs/extension-scripts-guide.md`.
+            Editors: Settings › Extensions checks and completes as you type; VS Code does the same through
+            `tools/vscode`, a language server that asks the site.
 
             ## How a script reads
 

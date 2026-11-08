@@ -704,6 +704,10 @@ where the shop stays in charge.
   `needs` later asks again.
 - **Export and import.** An extension travels as one JSON file with its files; import it on another site or keep
   it in version control. Records and field values are exported separately from `/extensions/<id>/data`.
+- **In VS Code.** The extension under `tools/vscode` (see its README) highlights `.ocs` files and runs a
+  language server that proxies the site: the same check as you type, the same completion and hover, through an
+  API key. Its pull and push commands move an extension's files between a folder named after the id and the
+  site; enabling stays in the admin.
 - **From the command line.** `wp orillacart script check file.ocs` and `wp orillacart script run file.ocs
 function arg…` compile and run a file against a site without installing it; `wp orillacart script functions`
   lists the host functions the site offers.

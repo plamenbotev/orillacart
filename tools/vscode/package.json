@@ -1,0 +1,89 @@
+{
+	"name": "orillacart-scripts",
+	"displayName": "OrillaCart extension scripts",
+	"description": "Highlighting, checks as you type, completion and hover for OrillaCart extension scripts (.ocs), against the shop they will run on.",
+	"version": "0.1.0",
+	"publisher": "orillacart",
+	"private": true,
+	"license": "GPL-2.0-or-later",
+	"engines": {
+		"vscode": "^1.90.0"
+	},
+	"categories": [
+		"Programming Languages",
+		"Linters"
+	],
+	"main": "./dist/extension.js",
+	"activationEvents": [
+		"onLanguage:ocs",
+		"workspaceContains:**/*.ocs"
+	],
+	"contributes": {
+		"languages": [
+			{
+				"id": "ocs",
+				"aliases": [
+					"OrillaCart script",
+					"ocs"
+				],
+				"extensions": [
+					".ocs"
+				],
+				"configuration": "./language-configuration.json"
+			}
+		],
+		"grammars": [
+			{
+				"language": "ocs",
+				"scopeName": "source.ocs",
+				"path": "./syntaxes/ocs.tmLanguage.json"
+			}
+		],
+		"configuration": {
+			"title": "OrillaCart scripts",
+			"properties": {
+				"orillacart.siteUrl": {
+					"type": "string",
+					"default": "",
+					"description": "The shop's address, such as https://shop.example. Scripts are checked against this site's functions."
+				},
+				"orillacart.apiKey": {
+					"type": "string",
+					"default": "",
+					"description": "An API key from Shop › Integrations (oc_…), acting as the manager who made it. Sent as Authorization: Bearer."
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "orillacart.pullExtension",
+				"title": "OrillaCart: Pull an extension's files from the site"
+			},
+			{
+				"command": "orillacart.pushExtension",
+				"title": "OrillaCart: Push this folder to the site as an extension"
+			},
+			{
+				"command": "orillacart.checkNow",
+				"title": "OrillaCart: Check the open scripts now"
+			}
+		]
+	},
+	"scripts": {
+		"build": "node build.mjs",
+		"watch": "node build.mjs --watch",
+		"typecheck": "tsc --noEmit -p .",
+		"package": "npm run build && npx @vscode/vsce package --no-dependencies"
+	},
+	"dependencies": {
+		"vscode-languageclient": "^9.0.1",
+		"vscode-languageserver": "^9.0.1",
+		"vscode-languageserver-textdocument": "^1.0.12"
+	},
+	"devDependencies": {
+		"@types/node": "^20.14.0",
+		"@types/vscode": "^1.90.0",
+		"esbuild": "^0.24.0",
+		"typescript": "^5.5.0"
+	}
+}

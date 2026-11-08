@@ -24,3 +24,7 @@
 # Code graph
 /graphify-out/
 /artifacts/
+
+# The VS Code extension builds in its own folder.
+/tools/vscode/node_modules/
+/tools/vscode/dist/
