@@ -24,6 +24,8 @@ final readonly class ScriptDocumentation
             script language, lives in the site's database, and runs in a sandbox with a budget and the permissions a
             manager granted it (design 56). Write one on Settings › Extensions, or let an agent write it through the
             assistant's `extension_*` tools; the same reference is the MCP resource `orillacart://extensions/reference`.
+            This is the catalogue: every declaration, function, filter and test in a line. The guide to writing one,
+            with what each handler receives and answers and how a script fails, is `docs/extension-scripts-guide.md`.
 
             ## How a script reads
 

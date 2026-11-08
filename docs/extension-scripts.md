@@ -5,6 +5,8 @@ records and fields, templates, handlers that run after the shop's events. It is 
 script language, lives in the site's database, and runs in a sandbox with a budget and the permissions a
 manager granted it (design 56). Write one on Settings › Extensions, or let an agent write it through the
 assistant's `extension_*` tools; the same reference is the MCP resource `orillacart://extensions/reference`.
+This is the catalogue: every declaration, function, filter and test in a line. The guide to writing one,
+with what each handler receives and answers and how a script fails, is `docs/extension-scripts-guide.md`.
 
 ## How a script reads
 Statements: let x = …, x = …, if … { } elif … { } else { }, for item in list { }, for key, value in map { }, while … { }, return, break, continue, try { } catch e { }, fail unavailable("…") | refused("…") | error("…"). Expressions as in Twig: a.b, a["b"], a|filter(args), a is test, a ~ b, a ?? b, a ? b : c, a..b, in, not in, starts with, ends with, and, or, not. Values: null, booleans, numbers, money(amount), strings, [lists], { maps }, fn(args) { }. A statement ends at the end of its line.

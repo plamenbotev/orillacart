@@ -252,7 +252,10 @@ resource (`orillacart://extensions/reference`) so the agent reads them from the 
 version it runs.
 
 **Docs:** `docs/extension-scripts.md`, the language reference and the catalogue, generated from the host functions'
-signatures by a `bin/script-docs` as the REST docs are, with a test that they are current.
+signatures by a `bin/script-docs` as the REST docs are, with a test that they are current; and
+`docs/extension-scripts-guide.md`, the hand-written guide (statements, expressions, values, filters, failures, what
+each handler receives and answers, routes, templates, objects, background work), whose every example a test compiles
+against the site's host functions (PLAN 334).
 
 ## What this is not
 
