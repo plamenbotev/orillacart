@@ -98,7 +98,7 @@ final class WordPressConnectionTest extends TestCase
         $wpdb->answer = $tenant;
         $GLOBALS['wpdb'] = $wpdb;
 
-        self::assertSame($tenant, (new WordPressConnection())->getNativeConnection());
+        self::assertSame($tenant, new WordPressConnection()->getNativeConnection());
         self::assertSame([[true, 'UPDATE wp_3_orillacart_orders SET id = id WHERE 0']], $wpdb->asked);
     }
 
@@ -110,7 +110,7 @@ final class WordPressConnectionTest extends TestCase
 
         $this->expectException(\LogicException::class);
         $this->expectExceptionMessage('named no server for the tables wp_3_orillacart_*');
-        (new WordPressConnection())->getNativeConnection();
+        new WordPressConnection()->getNativeConnection();
     }
 
     /** A mysqli handle that is connected to nothing: enough to tell one from another. */
@@ -124,6 +124,6 @@ final class WordPressConnectionTest extends TestCase
     /** wpdb's protected handle, as wpdb sets it when it connects. */
     private function handle(\wpdb $wpdb, \mysqli $mysqli): void
     {
-        (new \ReflectionProperty(\wpdb::class, 'dbh'))->setValue($wpdb, $mysqli);
+        new \ReflectionProperty(\wpdb::class, 'dbh')->setValue($wpdb, $mysqli);
     }
 }
