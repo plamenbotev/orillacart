@@ -106,6 +106,16 @@ final readonly class DoctrineObjectStore implements ObjectStore
         return $fields;
     }
 
+    public function fieldsOfMany(string $extension, string $kind, array $ownerIds): array
+    {
+        $fields = [];
+        foreach ($this->entityManager->getRepository(ExtensionValue::class)->findBy(['extension' => $extension, 'kind' => $kind, 'ownerId' => $ownerIds]) as $value) {
+            $fields[$value->ownerId()][$value->field()] = $value->value();
+        }
+
+        return $fields;
+    }
+
     public function setField(string $extension, string $kind, int $ownerId, string $field, mixed $value): void
     {
         $row = $this->entityManager->getRepository(ExtensionValue::class)->findOneBy(['extension' => $extension, 'kind' => $kind, 'ownerId' => $ownerId, 'field' => $field]);

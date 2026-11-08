@@ -46,6 +46,15 @@ interface ObjectStore
     /** @return array<string, mixed> every field of the extension's on the record */
     public function fieldsOf(string $extension, string $kind, int $ownerId): array;
 
+    /**
+     * The extension's fields on many records at once, for a list or an export.
+     *
+     * @param list<int> $ownerIds
+     *
+     * @return array<int, array<string, mixed>> by record, the fields set on it
+     */
+    public function fieldsOfMany(string $extension, string $kind, array $ownerIds): array;
+
     public function setField(string $extension, string $kind, int $ownerId, string $field, mixed $value): void;
 
     /**

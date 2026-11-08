@@ -234,7 +234,10 @@ use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Search\Application\CatalogSearch;
 use OrillaCart\Search\Application\CategoryTranslations;
+use OrillaCart\Search\Application\DocumentBuilder;
+use OrillaCart\Search\Application\FacetSource;
 use OrillaCart\Search\Application\ProductTexts;
+use OrillaCart\Search\Application\SearchFilters;
 use OrillaCart\Search\Application\SearchIndex;
 use OrillaCart\Search\Application\SearchServer;
 use OrillaCart\Search\Domain\CategoryFiltersRepository;
@@ -384,6 +387,8 @@ return static function (ContainerConfigurator $container): void {
         ->public();
     // The host functions scripts may call: every tagged namespace, gathered once.
     $services->set(HostCatalog::class)->args(['$namespaces' => tagged_iterator(HostNamespace::TAG)])->public();
+    $services->set(DocumentBuilder::class)->args(['$sources' => tagged_iterator(FacetSource::TAG)])->public();
+    $services->set(SearchFilters::class)->args(['$sources' => tagged_iterator(FacetSource::TAG)]);
     // The one action behind every scripted route (design 56): named by ScriptedRoutes, not by a #[Route].
     $services->set(ScriptedRouteAction::class)->tag(ActionDispatcher::ROUTE_TAG);
     // Made per shopper by PriceResolver, not a service.

@@ -60,7 +60,19 @@ final readonly class ProductView
         public ?string $taxCode = null,
         /** When its details were last saved, to send back with the next save; null while they never were. */
         public ?string $updatedAt = null,
+        /** @var array<string, array<string, mixed>>|null the enabled extensions' fields on it, by extension (design 56); only in one record's view */
+        public ?array $extensions = null,
     ) {}
+
+    /**
+     * The same with the extensions' fields on it.
+     *
+     * @param array<string, array<string, mixed>> $extensions
+     */
+    public function withExtensions(array $extensions): self
+    {
+        return clone($this, ['extensions' => $extensions]);
+    }
 
     /**
      * @param (\Closure(int, ?int): string)|null $itemName     names a bundle's products, and their variations by their options

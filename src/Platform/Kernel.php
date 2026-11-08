@@ -13,6 +13,7 @@ use OrillaCart\Ordering\Application\OrderMark;
 use OrillaCart\Platform\DependencyInjection\HookPass;
 use OrillaCart\Platform\DependencyInjection\RoutePass;
 use OrillaCart\Scripting\Application\Host\HostNamespace;
+use OrillaCart\Search\Application\FacetSource;
 use OrillaCart\Setup\Application\ReadinessCheck;
 use OrillaCart\Setup\Application\SetupStep;
 use OrillaCart\Shared\Extension\Registrant;
@@ -103,6 +104,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(Registrant::class)->addTag(Registrant::TAG);
         $builder->registerForAutoconfiguration(DynamicRoutes::class)->addTag(DynamicRoutes::TAG);
         $builder->registerForAutoconfiguration(TemplateContextSource::class)->addTag(TemplateContextSource::TAG);
+        $builder->registerForAutoconfiguration(FacetSource::class)->addTag(FacetSource::TAG);
         $builder->registerForAutoconfiguration(OrderLookup::class)->addTag(OrderLookup::LOOKUP_TAG);
         $builder->registerForAutoconfiguration(OrderMark::class)->addTag(OrderMark::MARK_TAG);
         $builder->registerForAutoconfiguration(TaxGroupUse::class)->addTag(TaxGroupUse::TAG);

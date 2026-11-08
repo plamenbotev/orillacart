@@ -115,7 +115,19 @@ final readonly class OrderView
         public ?string $exchangeRate = null,
         /** The business customer's own reference for the order. */
         public ?string $buyerReference = null,
+        /** @var array<string, array<string, mixed>>|null the enabled extensions' fields on it, by extension (design 56); only in one record's view */
+        public ?array $extensions = null,
     ) {}
+
+    /**
+     * The same with the extensions' fields on it.
+     *
+     * @param array<string, array<string, mixed>> $extensions
+     */
+    public function withExtensions(array $extensions): self
+    {
+        return clone($this, ['extensions' => $extensions]);
+    }
 
     /**
      * @param (\Closure(string): string)|null $downloadUrl the link of a download token; without it, no downloads are listed

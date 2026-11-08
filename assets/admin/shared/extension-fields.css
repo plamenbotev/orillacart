@@ -1,0 +1,16 @@
+/* The extensions' fields on a product, an order or a customer (design 56): one block per extension. */
+.oc-extension-fields__block + .oc-extension-fields__block {
+	margin-top: 20px;
+	padding-top: 16px;
+	border-top: 1px solid #e0e0e0;
+}
+
+.oc-extension-fields__title {
+	margin: 0 0 8px;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.oc-extension-fields__field {
+	margin-bottom: 12px;
+}

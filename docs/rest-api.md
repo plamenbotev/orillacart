@@ -2035,6 +2035,14 @@ The customer holding the order's receipt asks to send some of its items back.
   - `reason` (string): required; one of damaged, wrong_item, not_as_described, no_longer_needed, other
   - `comment` (string): at most 1000 characters
 
+## /record-fields
+
+### `GET /record-fields/{kind}`
+
+The fields the enabled extensions declare on products, orders or customers: one section per extension, with each field's kind, label, help, choices and whether it is required or read-only. The admin builds the "Extensions" section of the record's screen from it; a record's values are in its own view under extensions.<id>. Nothing changes.
+
+- Who: shop managers
+
 ## /refunds
 
 ### `POST /refunds/{id}/give-up`
@@ -2913,6 +2921,16 @@ The withdrawal function's first step: the order by its number and email, and wha
 - Body (JSON):
   - `number` (int): required; more than 0
   - `email` (string): required; not empty; an email
+
+## /{kind}
+
+### `PUT /{kind}/{id}/extensions/{extension}`
+
+Saves an extension's fields on a product, an order or a customer: the fields sent change, the others stay, null clears one. Each value is checked as the extension's own `fields.set` would be; a field the extension declared read-only is refused. Answers the extension's fields on the record afterwards.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `fields` (array)
 
 ## Shapes
 

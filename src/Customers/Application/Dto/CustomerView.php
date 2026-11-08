@@ -30,7 +30,19 @@ final readonly class CustomerView
         public bool $cartReminders = true,
         /** Their sign-up for the newsletter, if they ever signed up. */
         public ?SubscriptionView $newsletter = null,
+        /** @var array<string, array<string, mixed>>|null the enabled extensions' fields on it, by extension (design 56); only in one record's view */
+        public ?array $extensions = null,
     ) {}
+
+    /**
+     * The same with the extensions' fields on it.
+     *
+     * @param array<string, array<string, mixed>> $extensions
+     */
+    public function withExtensions(array $extensions): self
+    {
+        return clone($this, ['extensions' => $extensions]);
+    }
 
     /**
      * @param list<int> $groupIds

@@ -79,7 +79,7 @@ the problem on the Extensions screen.
 - `slot "product_after_details" { template } fn(context)`: a template printed in a storefront slot
 - `template_data "storefront/product.html.twig" fn(context)`: what the extension adds to a template's context, under ext.<extension>
 - `object "type" { fields: { name: kind { options } }, index: [field, …] }`: a kind of record of the extension's: objects.<type>.create/find/update/delete/query/count
-- `fields on product|order|customer { name: kind }`: fields the extension adds to the shop's records: fields.get/set/of
+- `fields on product|order|customer { name: kind { label, help, required, default, of, readonly, filter, column } }`: fields the extension adds to the shop's records: fields.get/set/of; edited in the "Extensions" section of the record's screen and shown in its REST view under extensions.<id>, in templates under ext.<id>.product|order|customer; a column of the export unless column: false; a product field with filter: true a facet of the search index, named by its label
 - `on order_placed fn(event)`: a handler run in the background after one of the shop's events
 - `job "name" fn(payload)`: a handler run in the background by jobs.push(name, payload)
 - `every "hourly|twicedaily|daily|weekly" fn()`: a handler run on a schedule

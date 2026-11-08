@@ -96,6 +96,8 @@ export interface Variation {
 export type VariationInput = Omit< Variation, 'id' | 'label' >;
 
 export interface Product {
+	/** The enabled extensions' fields on it, by extension (design 56); only in one record's view. */
+	extensions?: Record< string, Record< string, unknown > > | null;
 	id: number;
 	name: string;
 	/** False until the commerce details are first saved. */

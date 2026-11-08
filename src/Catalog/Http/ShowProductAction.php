@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Catalog\Http;
 
 use OrillaCart\Catalog\Application\ProductService;
+use OrillaCart\Packages\Application\ExtensionFields;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
@@ -19,11 +20,14 @@ final readonly class ShowProductAction implements RequestHandlerInterface
 {
     public function __construct(
         private ProductService $products,
+        private ExtensionFields $fields,
         private JsonResponder $responder,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->products->product(PathParameter::id($request)));
+        $id = PathParameter::id($request);
+
+        return $this->responder->ok($this->products->product($id)->withExtensions($this->fields->of('product', $id)));
     }
 }

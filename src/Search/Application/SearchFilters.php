@@ -32,6 +32,8 @@ final readonly class SearchFilters
         private Transactions $transactions,
         private TranslationPackages $packages,
         private CategoryTranslations $categoryTranslations = new UntranslatedCategories(),
+        /** @var iterable<FacetSource> */
+        private iterable $sources = [],
     ) {}
 
     /**
@@ -52,7 +54,12 @@ final readonly class SearchFilters
      */
     public function attributeNames(): array
     {
-        return $this->products->attributeNames();
+        $names = $this->products->attributeNames();
+        foreach ($this->sources as $source) {
+            $names = [...$names, ...$source->attributeNames()];
+        }
+
+        return array_values(array_unique($names));
     }
 
     /**

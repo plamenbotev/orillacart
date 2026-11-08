@@ -628,6 +628,28 @@ record whose `customer` is erased under a personal data request goes with the cu
 `"product"`, `"order"` or `"customer"` and `id` the product's id, the order's number or the customer's id. On
 the order they are also in `order.fields` for templates and columns.
 
+The shop shows and uses the fields without a line of script for it:
+
+- **The screens.** The product editor, the order and the customer screen have an "Extensions" section with one
+  block per extension, built from the declaration: a `text` is an input, a `choice` a select, a `boolean` a
+  checkbox, a `date` a date picker, a `list` one item per line, a `map` JSON. A field's options name it:
+  `lead_time: number { label: "Lead time", help: "Days to make it", required: true }`. One saying `readonly:
+  true` is shown but written by the scripts only. Each block has its own Save; what is saved is checked as
+  `fields.set` checks it.
+- **The REST views.** `GET /products/{id}`, `/orders/{id}` and `/customers/{id}` carry the fields under
+  `extensions.<extension>`, every declared field with its default where nothing is set. `GET
+  /record-fields/products|orders|customers` lists what is declared; `PUT /products/{id}/extensions/<extension>`
+  (and the same under orders and customers) saves `{ fields: { lead_time: 3 } }`. The assistant has the latter
+  as the tool `save_record_fields`.
+- **Templates.** Under `ext.<extension>.product` on the product page (`ext.lead_times.product.lead_time`),
+  `ext.<extension>.order` in an order's emails and invoice, `ext.<extension>.customer` where a customer is shown.
+- **Exports and imports.** A field on a product or an order is a column of the export, `x_<extension>_<field>`,
+  named by its label, chosen on the export screen as any other; a product's column imports too, an empty cell
+  clearing the field and `yes`/`no` for a boolean. `column: false` leaves a field out of the files.
+- **Search facets.** A product field saying `filter: true` goes into the search index as if it were an attribute
+  named by its label: a search filter picks "Material" as it picks "Size", on either engine, and shoppers filter
+  the catalogue by it. A `list` gives one value per item, a `boolean` yes or no.
+
 The records and field values are the extension's: uninstalling asks for an export first and then deletes them.
 `GET /extensions/<id>/data` exports them at any time.
 

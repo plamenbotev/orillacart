@@ -33,6 +33,7 @@ import {
 import { TaxExemptions } from './TaxExemptions';
 import { shopDateTime, shopDate } from '../shared/dates';
 import { Columns, Section } from '../shared/ui';
+import { ExtensionFieldsSection } from '../shared/ExtensionFields';
 
 interface CustomerCardProps {
 	groups: CustomerGroup[];
@@ -121,6 +122,12 @@ export function CustomerCard( {
 			<Section>
 				<StoreCredit customer={ customer } onError={ onError } />
 			</Section>
+			<ExtensionFieldsSection
+				kind="customers"
+				id={ customer.id }
+				values={ customer.extensions }
+				onError={ onError }
+			/>
 		</Columns>
 	);
 }

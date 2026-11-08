@@ -4,6 +4,8 @@ import { addQueryArgs } from '@wordpress/url';
 import type { Address } from '../shared/address';
 
 export interface Customer {
+	/** The enabled extensions' fields on it, by extension (design 56); only in one record's view. */
+	extensions?: Record< string, Record< string, unknown > > | null;
 	id: number;
 	email: string;
 	first_name: string;

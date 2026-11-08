@@ -143,6 +143,8 @@ export interface OrderNote {
 }
 
 export interface Order {
+	/** The enabled extensions' fields on it, by extension (design 56); only in one record's view. */
+	extensions?: Record< string, Record< string, unknown > > | null;
 	number: number;
 	key: string;
 	status: Status;

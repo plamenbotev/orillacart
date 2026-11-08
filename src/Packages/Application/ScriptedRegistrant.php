@@ -10,6 +10,7 @@ use OrillaCart\Packages\Application\Adapters\ScriptedCartRule;
 use OrillaCart\Packages\Application\Adapters\ScriptedColumn;
 use OrillaCart\Packages\Application\Adapters\ScriptedCourier;
 use OrillaCart\Packages\Application\Adapters\ScriptedFieldCheck;
+use OrillaCart\Packages\Application\Adapters\ScriptedFieldColumn;
 use OrillaCart\Packages\Application\Adapters\ScriptedFilter;
 use OrillaCart\Packages\Application\Adapters\ScriptedHomeContributor;
 use OrillaCart\Packages\Application\Adapters\ScriptedMailingList;
@@ -30,7 +31,8 @@ use Psr\Log\LoggerInterface;
  * Registers what the enabled extensions declare on the add-on registry, as a PHP add-on would, through adapters
  * that run the scripts: payment gateways, shipping methods, cart rules, order fees, price and order adjusters,
  * checkout fields, order actions, columns, filters and searches, Home contributors, assistant tools, product
- * blocks and mailing lists. One extension that cannot be read does not keep the others out.
+ * blocks and mailing lists; and the fields it declares on products and orders as columns of the exports. One
+ * extension that cannot be read does not keep the others out.
  */
 final readonly class ScriptedRegistrant implements Registrant
 {
@@ -42,6 +44,8 @@ final readonly class ScriptedRegistrant implements Registrant
         private ScriptRunner $runner,
         private HtmlCleaner $cleaner,
         private LoggerInterface $logger,
+        private ?ExtensionFields $fields = null,
+        private ?ObjectStore $store = null,
     ) {}
 
     public function register(Registry $registry): void
@@ -50,6 +54,9 @@ final readonly class ScriptedRegistrant implements Registrant
             try {
                 foreach ($this->providers($loaded) as $provider) {
                     $this->put($registry, $provider);
+                }
+                foreach ($this->columns($loaded) as [$owner, $column]) {
+                    $owner === 'order' ? $registry->orderColumn($column) : $registry->productColumn($column);
                 }
             } catch (\Throwable $e) {
                 $this->logger->error('The extension "{extension}" could not register: {message}', ['extension' => $loaded->package->slug(), 'message' => $e->getMessage(), 'exception' => $e]);
@@ -91,6 +98,32 @@ final readonly class ScriptedRegistrant implements Registrant
         }
 
         return $providers;
+    }
+
+    /**
+     * The extension's fields on products and orders as columns of the exports, but for those saying `column: false`.
+     *
+     * @return list<array{string, ScriptedFieldColumn}> the owner kind and the column
+     */
+    public function columns(LoadedPackage $loaded): array
+    {
+        if ($this->fields === null || $this->store === null) {
+            return [];
+        }
+        $columns = [];
+        foreach (['product', 'order'] as $owner) {
+            $section = $this->fields->section($owner, $loaded->package->slug());
+            if ($section === null) {
+                continue;
+            }
+            foreach ($section->fields as $field) {
+                if ($field->column) {
+                    $columns[] = [$owner, new ScriptedFieldColumn($owner, $section, $field, $this->store)];
+                }
+            }
+        }
+
+        return $columns;
     }
 
     private function put(Registry $registry, ScriptedProvider $provider): void

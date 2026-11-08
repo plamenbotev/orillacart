@@ -21,6 +21,8 @@ use OrillaCart\Translations\Application\Dto\ContentLanguageView;
  * Flattens a product into its search document: the catalog's offer as shoppers see it today, with the
  * site's content. A product that is not published, or has no commerce details, has none. On a site in several
  * languages the document has its translations' words too, and its options' names in each language (design 51).
+ * What else shoppers filter by, an extension's fields on the product (design 56), comes from the facet sources
+ * as options too.
  */
 final readonly class DocumentBuilder
 {
@@ -29,6 +31,8 @@ final readonly class DocumentBuilder
         private ProductTexts $texts,
         private PriceHistory $history,
         private ContentTranslations $translations,
+        /** @var iterable<FacetSource> */
+        private iterable $sources = [],
     ) {}
 
     public function build(int $productId): ?SearchDocument
@@ -51,9 +55,10 @@ final readonly class DocumentBuilder
         // The index sees every change of a price, sales starting and ending too: the history keeps them.
         $this->history->record(array_values($offers));
         $labels = $this->optionLabels(array_values($offers));
+        $extra = $this->contributed(array_keys($offers));
         $documents = [];
         foreach ($productIds as $productId) {
-            $documents[$productId] = isset($texts[$productId], $offers[$productId]) ? $this->document($offers[$productId], $texts[$productId], $labels) : null;
+            $documents[$productId] = isset($texts[$productId], $offers[$productId]) ? $this->document($offers[$productId], $texts[$productId], $labels, $extra[$productId] ?? []) : null;
         }
 
         return $documents;
@@ -91,16 +96,36 @@ final readonly class DocumentBuilder
     }
 
     /**
-     * @param array<int, array<string, string>> $labels the options' names in other languages
+     * The facet sources' options, by product.
+     *
+     * @param list<int> $productIds
+     *
+     * @return array<int, list<DocumentOption>>
      */
-    private function document(ProductOffer $offer, ProductText $text, array $labels): SearchDocument
+    private function contributed(array $productIds): array
+    {
+        $options = [];
+        foreach ($this->sources as $source) {
+            foreach ($source->options($productIds) as $productId => $contributed) {
+                $options[$productId] = [...$options[$productId] ?? [], ...$contributed];
+            }
+        }
+
+        return $options;
+    }
+
+    /**
+     * @param array<int, array<string, string>> $labels the options' names in other languages
+     * @param list<DocumentOption>              $extra  the facet sources' options of the product
+     */
+    private function document(ProductOffer $offer, ProductText $text, array $labels, array $extra = []): SearchDocument
     {
         $productId = $offer->id;
 
         $price = static fn(string $price): ?string => $offer->priceHidden ? null : $price;
         if ($offer->variations === []) {
             $variants = [new DocumentVariant($offer->id, $price($offer->price), $offer->available !== 0)];
-            $options = self::options($offer->attributes, null, $labels);
+            $options = [...self::options($offer->attributes, null, $labels), ...$extra];
         } else {
             $variants = array_map(static fn(OfferedVariation $variation): DocumentVariant => new DocumentVariant(
                 $variation->id,
@@ -108,7 +133,7 @@ final readonly class DocumentBuilder
                 $variation->available !== 0,
                 self::options($offer->attributes, $variation->optionIds, $labels),
             ), $offer->variations);
-            $options = [];
+            $options = $extra;
         }
 
         return new SearchDocument(

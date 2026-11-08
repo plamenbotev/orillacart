@@ -42,6 +42,10 @@ import { VariationsPanel } from './VariationsPanel';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 import { MoneyControl } from '../shared/MoneyControl';
 import { useEditorHost } from './host';
+import {
+	ExtensionFieldBlocks,
+	useRecordFields,
+} from '../shared/ExtensionFields';
 import { ProductSections, Section } from './ProductSections';
 
 /**
@@ -65,6 +69,7 @@ export function ProductPanels() {
 	const [ saving, setSaving ] = useState( false );
 	// The product as another save left it, when ours was refused for it (409): shown until reloaded or saved over.
 	const [ meanwhile, setMeanwhile ] = useState< Product | null >( null );
+	const extensionSections = useRecordFields( 'products' );
 	const [ dialog, confirm ] = useConfirm();
 	const edited =
 		product !== null && draft !== null && changedFrom( draft, product );
@@ -714,6 +719,21 @@ export function ProductPanels() {
 						</p>
 					) }
 				</Section>
+
+				{ extensionSections.length > 0 && (
+					<Section
+						name="orillacart-extensions"
+						title={ __( 'Extensions', 'orillacart' ) }
+					>
+						<ExtensionFieldBlocks
+							kind="products"
+							id={ productId }
+							sections={ extensionSections }
+							values={ product.extensions }
+							onError={ fail }
+						/>
+					</Section>
+				) }
 			</ProductSections>
 		</>
 	);

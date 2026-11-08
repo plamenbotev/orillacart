@@ -179,7 +179,7 @@ final class ObjectDefinitions
     }
 
     /** A declared word (`state`, `read`) or text as a string. */
-    private static function word(mixed $value): string
+    public static function word(mixed $value): string
     {
         if (\is_array($value)) {
             $spec = $value['$spec'] ?? '';
@@ -193,7 +193,7 @@ final class ObjectDefinitions
     /**
      * @return array<string, array{string, array<string, mixed>}>
      */
-    private static function declaredFields(mixed $props): array
+    public static function declaredFields(mixed $props): array
     {
         $fields = [];
         foreach (\is_array($props) ? $props : [] as $name => $spec) {

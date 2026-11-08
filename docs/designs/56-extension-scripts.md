@@ -1,6 +1,6 @@
 # 56. Extension scripts
 
-Status: built (2026-11-07). PLAN items 317–331, 333–340 done; 332 (the fields' admin sections, views, columns and facets) is later.
+Status: built (2026-11-08). PLAN items 317–340 all done.
 
 Each tenant of a SaaS, or the owner of one shop, extends and edits their own shop without a PHP plugin: new
 payment and shipping providers, new endpoints and pages, new kinds of records and new fields on the shop's own,
@@ -162,11 +162,18 @@ product, order and customer ids as columns, so a deleted order or an erased cust
 for the fields the declaration indexes. `query` takes `where` on indexed fields and references, `order_by`, `limit`
 and a cursor; a filter on a field that is not indexed is refused by the static check, not slow at runtime.
 
-A field declaration (`fields on product { lead_time: number }`) adds to the shop's own records. The values live in
-`extension_object_values` keyed by the kind and id, shown and edited in a generic "Extensions" section of the
-product, order and customer screens (one block per extension, built from the declaration), returned by the REST
-views under `extensions.<id>`, reachable in templates as `product.ext.<id>.lead_time`, exported and imported by the
-existing column contracts, and copied into the search index as a facet when the declaration says `filter: true`.
+A field declaration (`fields on product { lead_time: number { label, help, required, default, of, readonly, filter,
+column } }`) adds to the shop's own records. The values live in `extension_values` keyed by the kind and id, shown
+and edited in a generic "Extensions" section of the product, order and customer screens (one block per extension,
+built from the declaration by `ExtensionFields::declared()`, served by `GET /record-fields/{kind}` and saved by
+`PUT /{kind}/{id}/extensions/{extension}`, checked as `fields.set` is), returned by the REST views of one record
+under `extensions.<id>` (the views gain `withExtensions()`, attached in the show actions), reachable in templates
+as `ext.<id>.product|order|customer.<field>` (a `TemplateContextSource` that looks for the offer, the order or the
+customer in the context), exported and imported by the existing column contracts (`ScriptedFieldColumn`, one per
+field unless `column: false`, registered by the `ScriptedRegistrant`), and copied into the search index as options
+of an attribute named by the field's label when the declaration says `filter: true` (a `FacetSource` the
+`DocumentBuilder` and the filters' attribute names ask, so both engines and the existing filter admin work
+unchanged).
 Personal data: an object with a `customer` reference or a field on a customer is included in exports and erasure
 through the `PersonalDataSource` contract, automatically.
 
@@ -307,8 +314,8 @@ offers to tenants is a later design.
 
 ## Built as it stands
 
-Everything above except the fields' generic admin sections, REST views, export columns and search facets (PLAN
-332); versions with rollback, the run log, scripted manager routes as tools and an override's diff and stale mark
+Everything above, the fields' generic admin sections, REST views, templates, export columns and search facets
+included (PLAN 332, 2026-11-08); versions with rollback, the run log, scripted manager routes as tools and an override's diff and stale mark
 came with PLAN 331. Two things the build decided differently from the plan: a route answers
 JSON only (a rendered template travels as `{ html }`), since WordPress's REST server answers JSON; and a route
 cannot waive the REST nonce, since no unsafe route of the shop does. The proof ran on the `oc-ms` network: an

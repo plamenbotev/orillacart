@@ -66,6 +66,7 @@ import { RefundsCard } from './RefundsCard';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import { useOtherLanguages } from '../shared/Translations';
 import { Columns, Page, Skeleton } from '../shared/ui';
+import { ExtensionFieldsSection } from '../shared/ExtensionFields';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
 
@@ -366,6 +367,12 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 						onSaved={ done(
 							__( 'The note was added.', 'orillacart' )
 						) }
+						onError={ fail }
+					/>
+					<ExtensionFieldsSection
+						kind="orders"
+						id={ order.number }
+						values={ order.extensions }
 						onError={ fail }
 					/>
 				</Columns>

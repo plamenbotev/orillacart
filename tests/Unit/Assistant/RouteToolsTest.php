@@ -142,6 +142,7 @@ final class RouteToolsTest extends TestCase
         'save_email_template' => 'a template saved; nothing is sent',
         'save_package_settings' => 'the values of an extension\'s own settings',
         'save_product' => 'catalog',
+        'save_record_fields' => 'an extension\'s fields on a product, an order or a customer, as the record\'s screen saves them; nobody is told',
         'send_test_email' => 'goes to the manager who asks, not to customers',
         'set_customer_groups' => 'customer setup',
         'start_product_import' => 'an import the manager uploaded',

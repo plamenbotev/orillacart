@@ -4,9 +4,22 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Catalog\Application\ShopCatalog;
+use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Exchange\Application\CsvFile;
+use OrillaCart\Exchange\Application\Dto\ChooseColumns;
+use OrillaCart\Exchange\Application\ProductsExport;
+use OrillaCart\Extension\Catalog\ProductItem;
 use OrillaCart\Jobs\Application\JobRunner;
+use OrillaCart\Packages\Application\Adapters\ScriptedFieldColumn;
+use OrillaCart\Packages\Application\ExtensionFields;
+use OrillaCart\Packages\Application\ExtensionFieldsContext;
 use OrillaCart\Packages\Application\ExtensionJobHandler;
+use OrillaCart\Packages\Application\PackageService;
+use OrillaCart\Packages\Application\ScriptedRegistrant;
 use OrillaCart\Packages\Infrastructure\WordPress\RunExtensionSchedules;
+use OrillaCart\Search\Application\DocumentBuilder;
+use OrillaCart\Search\Application\Dto\DocumentOption;
 
 /**
  * Design 56: an extension's own records and its fields on the shop's, queried on indexed fields; its handlers
@@ -21,7 +34,13 @@ final class ScriptedObjectsTest extends RestTestCase
           fields: { subject: text { longest: 50, required: true }, body: text, priority: number, state: choice { of: ["open", "closed"] }, due: date, tags: list }
           index: [state, priority, due]
         }
-        fields on product { lead_time: number, note: text }
+        fields on product {
+          lead_time: number { label: "Lead time", help: "Days to make it" }
+          note: text { column: false }
+          material: choice { of: ["wool", "cotton"], label: "Material", filter: true }
+          score: number { readonly: true }
+        }
+        fields on order { courier_ref: text }
 
         fn open(subject, priority) {
           return objects.ticket.create({ subject: subject, priority: priority, state: "open", due: "2026-12-01", tags: ["a"] })
@@ -115,6 +134,125 @@ final class ScriptedObjectsTest extends RestTestCase
 
         self::assertSame(['Follow up Ada', 'Order 4242'], array_map(static fn(array $t): string => self::text($t['subject']), $this->rows($this->call('urgent_all'))), 'the job and the event');
         self::assertSame(1, $this->call('hourly_count'), 'the schedule ran once in the hour');
+    }
+
+    /**
+     * PLAN 332: the fields an extension declares on the shop's records are declared for the screens, shown in the
+     * record's view, saved from the admin as the declaration takes them, exported and imported as columns, indexed
+     * as facets when they say so, and in the templates' context.
+     */
+    public function testFieldsAreDeclaredShownSavedExportedIndexedAndInTemplates(): void
+    {
+        $declared = $this->request('GET', '/record-fields/products');
+        $sections = $this->rows($this->data($declared)['sections'] ?? null);
+        self::assertCount(1, $sections, (string) wp_json_encode($declared->get_data()));
+        self::assertSame(['tickets', 'Tickets'], [$sections[0]['extension'], $sections[0]['name']]);
+        $fields = [];
+        foreach ($this->rows($sections[0]['fields']) as $field) {
+            $fields[self::text($field['name'])] = $field;
+        }
+        self::assertSame(['lead_time', 'note', 'material', 'score'], array_keys($fields));
+        self::assertSame(['number', 'Lead time', 'Days to make it', false, true], [$fields['lead_time']['kind'], $fields['lead_time']['label'], $fields['lead_time']['help'], $fields['lead_time']['readonly'], $fields['lead_time']['column']]);
+        self::assertSame(['Note', false], [$fields['note']['label'], $fields['note']['column']], 'a label from the name; no column when it says so');
+        self::assertSame([['wool', 'cotton'], true], [$fields['material']['of'], $fields['material']['filter']]);
+        self::assertTrue($fields['score']['readonly']);
+        self::assertSame(['courier_ref'], array_column($this->rows($this->rows($this->data($this->request('GET', '/record-fields/orders'))['sections'])[0]['fields']), 'name'));
+        self::assertSame([], $this->data($this->request('GET', '/record-fields/customers'))['sections']);
+
+        $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => 'Scarf', 'post_status' => 'publish']);
+        self::assertIsInt($id);
+        try {
+            $saved = $this->request('PUT', "/products/{$id}", ['price' => '30', 'type' => 'virtual'], nonce: true);
+            self::assertSame(200, $saved->get_status(), (string) wp_json_encode($saved->get_data()));
+            self::assertSame(['tickets' => ['lead_time' => null, 'note' => null, 'material' => null, 'score' => null]], $this->data($this->request('GET', "/products/{$id}"))['extensions'], 'every declared field, unset');
+
+            $written = $this->request('PUT', "/products/{$id}/extensions/tickets", ['fields' => ['lead_time' => 3, 'material' => 'wool']], nonce: true);
+            self::assertSame(200, $written->get_status(), (string) wp_json_encode($written->get_data()));
+            self::assertSame(['lead_time' => 3, 'note' => null, 'material' => 'wool', 'score' => null], $this->data($written)['fields']);
+            self::assertSame(422, $this->request('PUT', "/products/{$id}/extensions/tickets", ['fields' => ['material' => 'silk']], nonce: true)->get_status(), 'not one of the choices');
+            self::assertSame(422, $this->request('PUT', "/products/{$id}/extensions/tickets", ['fields' => ['score' => 1]], nonce: true)->get_status(), 'readonly: the scripts write it');
+            self::assertSame(422, $this->request('PUT', "/products/{$id}/extensions/tickets", ['fields' => ['colour' => 'red']], nonce: true)->get_status(), 'not declared');
+            self::assertSame(422, $this->request('PUT', "/products/{$id}/extensions/other", ['fields' => []], nonce: true)->get_status(), 'no such extension');
+            $before = $this->shown($id);
+            self::assertSame(['lead_time' => 3, 'note' => null, 'material' => 'wool', 'score' => null], $before);
+            $this->call('lead', [$id, 5]);
+            $after = $this->shown($id);
+            self::assertSame(5, $after['lead_time'] ?? null, 'what a script writes is what the view shows');
+
+            // A fresh container: the registry of the one that booted collected its providers before the extension was enabled.
+            $export = self::kernel()->container()->get(ProductsExport::class);
+            self::assertInstanceOf(ProductsExport::class, $export);
+            $export->choose(new ChooseColumns(['id', 'x_tickets_lead_time', 'x_tickets_material']));
+            $columns = (string) wp_json_encode($export->columns());
+            self::assertStringContainsString('"x_tickets_lead_time"', $columns);
+            self::assertStringContainsString('"Lead time"', $columns);
+            self::assertStringContainsString('"x_tickets_material"', $columns);
+            self::assertStringNotContainsString('x_tickets_note', $columns, 'column: false');
+            $stream = fopen('php://memory', 'w+b');
+            self::assertIsResource($stream);
+            $export->export(new CsvFile($stream, headerIds: true));
+            rewind($stream);
+            $lines = explode("\n", trim(substr((string) stream_get_contents($stream), 3)));
+            self::assertSame('id,x_tickets_lead_time,x_tickets_material', $lines[0]);
+            self::assertContains("{$id},5,wool", $lines, 'the fields as cells of the file');
+
+            $container = self::kernel()->container();
+            $packages = $container->get(PackageService::class);
+            $registrant = $container->get(ScriptedRegistrant::class);
+            $fields = $container->get(ExtensionFields::class);
+            self::assertInstanceOf(PackageService::class, $packages);
+            self::assertInstanceOf(ScriptedRegistrant::class, $registrant);
+            self::assertInstanceOf(ExtensionFields::class, $fields);
+            $column = null;
+            foreach ($packages->loaded() as $loaded) {
+                foreach ($registrant->columns($loaded) as [$owner, $candidate]) {
+                    if ($owner === 'product' && $candidate->id() === 'x_tickets_lead_time') {
+                        $column = $candidate;
+                    }
+                }
+            }
+            self::assertInstanceOf(ScriptedFieldColumn::class, $column);
+            self::assertSame(['x_tickets_lead_time', 'Lead time'], [$column->id(), $column->label()]);
+            self::assertSame('', $column->value(new ProductItem($id, 77, 'Scarf – M', null, '30')), 'the product\'s, not its variations\'');
+            $column->import(new ProductItem($id, null, 'Scarf', null, '30'), '8');
+            // Read through the same container: the one that answers requests holds the value as it loaded it.
+            self::assertSame(8.0, $fields->of('product', $id)['tickets']['lead_time'] ?? null, 'an imported cell');
+            try {
+                $column->import(new ProductItem($id, null, 'Scarf', null, '30'), 'soon');
+                self::fail('a cell the field does not take is refused');
+            } catch (\InvalidArgumentException $e) {
+                self::assertStringContainsString('not a number', $e->getMessage());
+            }
+
+            $builder = self::kernel()->container()->get(DocumentBuilder::class);
+            self::assertInstanceOf(DocumentBuilder::class, $builder);
+            $document = $builder->build($id);
+            self::assertNotNull($document);
+            self::assertContains(['Material', 'wool'], array_map(static fn(DocumentOption $option): array => [$option->attribute, $option->name], $document->options), 'filter: true indexes the field as an attribute named by its label');
+            self::assertNotContains('Lead time', array_column(array_map(static fn(DocumentOption $option): array => ['attribute' => $option->attribute], $document->options), 'attribute'));
+            self::assertContains('Material', $this->data($this->request('GET', '/search-filters/attributes')), 'a search filter picks it as it picks an attribute');
+
+            $catalog = self::kernel()->container()->get(ShopCatalog::class);
+            $context = self::kernel()->container()->get(ExtensionFieldsContext::class);
+            self::assertInstanceOf(ShopCatalog::class, $catalog);
+            self::assertInstanceOf(ExtensionFieldsContext::class, $context);
+            $offer = $catalog->offers([$id])[$id] ?? null;
+            self::assertNotNull($offer);
+            self::assertSame(['tickets' => ['product' => ['lead_time' => 8.0, 'note' => null, 'material' => 'wool', 'score' => null]]], $context->add('storefront/product.html.twig', ['offer' => $offer]));
+            self::assertSame([], $context->add('storefront/cart.html.twig', ['lines' => []]), 'a template without one of the shop\'s records gets nothing');
+        } finally {
+            wp_delete_post($id, true);
+        }
+    }
+
+    /**
+     * The extension's fields on the product, as its view shows them.
+     *
+     * @return array<string, mixed>
+     */
+    private function shown(int $product): array
+    {
+        return $this->assoc($this->assoc($this->data($this->request('GET', "/products/{$product}"))['extensions'] ?? null)['tickets'] ?? null);
     }
 
     /** @return array<mixed> */
