@@ -230,6 +230,9 @@ final class McpServerTest extends TestCase
         self::assertIsArray($decoded['slots']);
         self::assertIsString($decoded['slots']['account_after']);
         self::assertStringContainsString('first_name', $decoded['slots']['account_after']);
+        self::assertIsArray($decoded['handlers']);
+        self::assertIsString($decoded['handlers']['order_adjuster.adjust(query)']);
+        self::assertStringContainsString('fields', $decoded['handlers']['order_adjuster.adjust(query)']);
     }
 
     public function testTheKeysAreasLimitWhatItIsOffered(): void

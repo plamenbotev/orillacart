@@ -731,7 +731,8 @@ every "daily" fn() {
   | `settings_changed`                                               | `[settings_now, settings_before]`                                                                                    |
 
   The reference (`GET /script-reference`, the assistant's `extensions_reference` resource) carries the same under
-  `events` and `slots`; this guide is `GET /script-guide` and the `extensions_guide` resource.
+  `events` and `slots`, and what each handler receives and answers under `handlers`; this guide is `GET
+  /script-guide` and the `extensions_guide` resource.
 - `job "<name>" fn(payload)` runs when the extension calls `jobs.push("<name>", payload, at?)`, with `at` a
   moment or `"30 minutes"` from now. A job that fails `unavailable` is retried; an error counts.
 - `every "hourly|twicedaily|daily|weekly" fn()` runs on the shop's schedule, once per period, by whichever

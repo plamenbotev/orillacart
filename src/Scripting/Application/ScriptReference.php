@@ -86,10 +86,34 @@ final readonly class ScriptReference
         'email_after_order' => '[order number, for_shop (boolean: the shop\'s copy of the email, not the customer\'s)]',
     ];
 
+    /**
+     * What each handler receives and answers, and the maps those arguments are made of: the written guide
+     * explains them, this is the list a model can look up.
+     */
+    public const array HANDLERS = [
+        'order_adjuster.adjust(query)' => 'query: { lines[{index, product_id, variation_id, name, quantity, net}], currency, customer_id, email, order_number, fields }; fields are the answers so far to checkout\'s questions by field id as text (a ticked box "1", an unticked one absent; the checkout prices again when a box or choice changes; an edited order brings its own). Answers a list of price.adjustment(label, amount, line?, reason?), amount below zero to take off. The order keeps each as an adjustment with this adjuster\'s id as source.',
+        'price_adjuster.adjust(query)' => 'query: { product_id, variation_id, quantity, customer_id, price, regular_price, currency }. Answers the new price (money or text) or null.',
+        'order_fee.fee(query)' => 'query: { items[{product_id, variation_id, name, quantity, unit_price, total}], subtotal, shipping, shipping_option, payment_method, country, customer_id, currency }. Answers fee.of(label, amount, taxable?, tax_group_id?, as_line?) or null.',
+        'cart_rule.check(cart)' => 'cart: { customer_id, currency, lines[{id, product_id, variation_id, sku, name, quantity, unit_price}] }. Answers a list of cart.refuse(message) and cart.refuse_line(line_id, message), empty or null for none.',
+        'checkout_field.check(answer, context)' => 'answer: the text given (a ticked box "1"); context: { email, billing_country, shipping_country (null when nothing ships), customer_id }. Answers null or true to accept, or the message to show.',
+        'order_action.available(order) / run(order)' => 'order: the order map. available answers a boolean; run does the work and answers the message to show.',
+        'order_column.value(order) / product_column.value(item)' => 'order: the order map; item: { product_id, variation_id, sku, name, … }. Answers the text of the cell.',
+        'order_filter.find(text) / product_filter.find(text)' => 'text: what was searched. Answers a list of ids under the filter, [] for none.',
+        'route … fn(request)' => 'request: { method, path, params, query, body (the JSON body as a map, or null), headers (lower-case names), user: { id, logged_in, manager } }. Answers a map or list sent as JSON, or respond.json(data, status?), respond.error(status, message), respond.redirect(url, status?), respond.html(template, data?, status?). A template calls one with window.orillacart.api(method, "/x/<extension>/<path>", body), which carries the REST nonce; api_url(path) and api_nonce() give the URL and the token in a template.',
+        'page … fn(request)' => 'request: as a route\'s, with the page\'s query string. Answers the template\'s data.',
+        'slot … fn(context)' => 'context: { slot, arguments }; see slots for what each passes. Answers a map added to the template\'s context.',
+        'template_data … fn(context)' => 'context: the shop template\'s own context. Answers a map, under ext.<extension> in the template.',
+        'on <event> fn(event)' => 'event: { event, arguments, order | product | cart }; see events for the arguments.',
+        'job … fn(payload)' => 'payload: what jobs.push gave.',
+        'assistant_tool.run(arguments, call)' => 'arguments: as the tool\'s input schema; call: { user_id, key_name }. Answers the tool\'s result (a map or text).',
+        'payment_gateway.start(session) / handle(notification) / …' => 'session: { payment_id, order_number, amount, currency, return_url, cancel_url, notification_url, items[{name, sku, quantity, unit_amount}], breakdown, email, … }; notification: { headers, body, json, query }; see the guide\'s §8 for each gateway and courier handler.',
+        'the order map' => '{ number, status, placed_at, paid_at, email, customer_id, billing{first_name, last_name, street, city, postcode, country, state, phone}, shipping_address, lines[{product_id, variation_id, sku, name, quantity, unit_price, total, tax, personalisation, type, add_on_type, adjustments[{kind, source, label, amount, scope, reason}]}], subtotal, discount, shipping_total, tax, total, refunded, currency, payment, transaction_id, shipping, note, fields, fees }: as shop.orders.find, order_action, order_column and the events\' lookups give it. A line\'s adjustments are the changes to its price as the order keeps them: kind coupon | automatic | manual | add_on | adjuster, source the coupon\'s code or the extension\'s or adjuster\'s id, amount money (below zero for a discount), scope line or order (a share of a change to the whole order).',
+    ];
+
     public function __construct(private HostCatalog $catalog) {}
 
     /**
-     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, events: array<string, string>, slots: array<string, string>}
+     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, events: array<string, string>, slots: array<string, string>, handlers: array<string, string>}
      */
     public function reference(): array
     {
@@ -105,6 +129,7 @@ final readonly class ScriptReference
             ...Scripts::vocabulary(),
             'keywords' => Parser::KEYWORDS,
             'events' => self::EVENTS,
+            'handlers' => self::HANDLERS,
             'slots' => self::SLOTS,
         ];
     }
