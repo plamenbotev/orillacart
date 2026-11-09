@@ -250,6 +250,8 @@ final class PackagesRestTest extends RestTestCase
         self::assertContains('let', self::assoc($reference['keywords']));
         self::assertArrayHasKey('product_after_details', self::assoc($reference['slots']));
         self::assertArrayHasKey('order_refunded', self::assoc($reference['events']));
+        self::assertStringContainsString('section: orders', self::string(self::assoc($reference['templates'])['storefront/account.html.twig']));
+        self::assertContains('api_url', self::assoc(self::assoc($reference['template_sandbox'])['functions']));
         self::assertStringStartsWith('# Writing extension scripts', self::string($this->data($this->request('GET', '/script-guide'))['markdown']));
     }
 

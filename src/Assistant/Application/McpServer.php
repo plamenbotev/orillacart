@@ -80,6 +80,15 @@ final readonly class McpServer
         'mimeType' => 'text/markdown',
     ];
 
+    /** The shop's REST API, for an extension's template or page script that calls the shop (the cart, the account). */
+    private const array REST_API = [
+        'uri' => 'orillacart://rest-api',
+        'name' => 'rest_api',
+        'title' => 'The shop\'s REST API',
+        'description' => 'Every route of the shop\'s REST API with its inputs and who may call it: for an extension\'s template or page script that calls the shop from the browser (window.orillacart.api), and for anything the tools do not cover.',
+        'mimeType' => 'text/markdown',
+    ];
+
     /** Ways to start, for the owner to pick in their client. */
     private const array PROMPTS = [
         'set_up_shop' => [
@@ -193,7 +202,7 @@ final readonly class McpServer
             'tools/call' => $this->callTool($params, $caller, $modern, $meta),
             'prompts/list' => self::list('prompts', array_map(static fn(array $prompt): array => array_diff_key($prompt, ['text' => true]), array_values(self::PROMPTS)), $modern),
             'prompts/get' => $this->prompt($params),
-            'resources/list' => self::list('resources', [self::OVERVIEW, self::REFERENCE, self::GUIDE], $modern),
+            'resources/list' => self::list('resources', [self::OVERVIEW, self::REFERENCE, self::GUIDE, self::REST_API], $modern),
             'resources/read' => $this->resource($params),
             'resources/templates/list' => self::list('resourceTemplates', [], $modern),
             default => null,
@@ -367,6 +376,9 @@ final readonly class McpServer
         }
         if ($uri === self::GUIDE['uri']) {
             return ['contents' => [['uri' => self::GUIDE['uri'], 'mimeType' => 'text/markdown', 'text' => $this->guide->markdown()]]];
+        }
+        if ($uri === self::REST_API['uri']) {
+            return ['contents' => [['uri' => self::REST_API['uri'], 'mimeType' => 'text/markdown', 'text' => $this->guide->restApi()]]];
         }
         if ($uri !== self::OVERVIEW['uri']) {
             return self::error(200, null, self::INVALID_PARAMS, 'No such resource; resources/list names them.');

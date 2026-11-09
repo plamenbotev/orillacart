@@ -36,7 +36,7 @@ mkdir -p "$STAGE/build" && cp -R "$ROOT/build/admin" "$ROOT/build/storefront" "$
 [ -d "$ROOT/templates" ] && cp -R "$ROOT/templates" "$STAGE/"
 cp -R "$ROOT/languages" "$STAGE/"
 # The guide to extension scripts travels with the plugin: the assistant hands it out (orillacart://extensions/guide).
-mkdir -p "$STAGE/docs" && cp "$ROOT/docs/extension-scripts-guide.md" "$STAGE/docs/"
+mkdir -p "$STAGE/docs" && cp "$ROOT/docs/extension-scripts-guide.md" "$ROOT/docs/rest-api.md" "$STAGE/docs/"
 $COMPOSER_BIN install --working-dir="$STAGE" --no-dev --no-scripts --no-plugins --prefer-dist --no-interaction --no-progress --quiet
 
 step "Compiling the service container"

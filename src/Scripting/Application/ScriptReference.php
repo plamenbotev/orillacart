@@ -107,13 +107,45 @@ final readonly class ScriptReference
         'job … fn(payload)' => 'payload: what jobs.push gave.',
         'assistant_tool.run(arguments, call)' => 'arguments: as the tool\'s input schema; call: { user_id, key_name }. Answers the tool\'s result (a map or text).',
         'payment_gateway.start(session) / handle(notification) / …' => 'session: { payment_id, order_number, amount, currency, return_url, cancel_url, notification_url, items[{name, sku, quantity, unit_amount}], breakdown, email, … }; notification: { headers, body, json, query }; see the guide\'s §8 for each gateway and courier handler.',
+        'the product map' => 'product_block.render(product, settings): product is { id, name, url, sku, price, regular_price, for_sale, available, rating, reviews, … }, the product shown; product_column.value(item) and product_filter rows: { product_id, variation_id, name, sku, price }. A product field of the extension\'s is read with fields.get("product", id, name).',
         'the order map' => '{ number, status, placed_at, paid_at, email, customer_id, billing{first_name, last_name, street, city, postcode, country, state, phone}, shipping_address, lines[{product_id, variation_id, sku, name, quantity, unit_price, total, tax, personalisation, type, add_on_type, adjustments[{kind, source, label, amount, scope, reason}]}], subtotal, discount, shipping_total, tax, total, refunded, currency, payment, transaction_id, shipping, note, fields, fees }: as shop.orders.find, order_action, order_column and the events\' lookups give it. A line\'s adjustments are the changes to its price as the order keeps them: kind coupon | automatic | manual | add_on | adjuster, source the coupon\'s code or the extension\'s or adjuster\'s id, amount money (below zero for a discount), scope line or order (a share of a change to the whole order).',
     ];
 
-    public function __construct(private HostCatalog $catalog) {}
+    /** What an extension may ask for under `needs`, and what each grants. */
+    public const array PERMISSIONS = [
+        'orders: read' => 'shop.orders.find, is_marked; the order map in handlers',
+        'orders: write' => 'shop.orders.mark and unmark',
+        'products: read' => 'shop.products.is_marked',
+        'products: write' => 'shop.products.mark and unmark',
+        'http: ["host.example", …]' => 'http.* calls to those hosts over HTTPS; the manager grants each host',
+        'templates: override' => 'a file under templates/storefront/ or templates/emails/ in the package replaces the shop\'s template of that name',
+    ];
+
+    /** The kinds a declaration may use for its settings and fields. */
+    public const array KINDS = [
+        'settings' => 'text, secret, boolean, number, choice { of: list or value → label map }; each takes label, required, help',
+        'object fields' => 'text { longest }, number, money, boolean, date, datetime, choice { of }, list, map, product, order, customer, object; each takes required and default; index: [fields] names what query and order_by may use',
+        'fields on product|order|customer' => 'the same kinds plus the options label, help, required, default, readonly, filter (a product field as a search facet), column (false to leave it out of exports)',
+        'checkout_field' => 'kind text | textarea | checkbox | choice { choices }; section billing | shipping | order; label, required, help, longest',
+    ];
+
+    /** The budgets one handler call has. */
+    public const array LIMITS = [
+        'steps' => 100000,
+        'seconds' => 2,
+        'memory_bytes' => 16777216,
+        'calls' => 200,
+        'http_calls' => 5,
+        'object_queries' => 20,
+        'query_records' => 200,
+        'errors_in_a_row_before_stopped' => 10,
+        'route_requests_per_minute' => 120,
+    ];
+
+    public function __construct(private HostCatalog $catalog, private ?ScriptGuide $guide = null) {}
 
     /**
-     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, events: array<string, string>, slots: array<string, string>, handlers: array<string, string>}
+     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, events: array<string, string>, slots: array<string, string>, handlers: array<string, string>, permissions: array<string, string>, kinds: array<string, string>, limits: array<string, int>, template_sandbox: array<string, list<string>>, templates: array<string, string>}
      */
     public function reference(): array
     {
@@ -130,6 +162,13 @@ final readonly class ScriptReference
             'keywords' => Parser::KEYWORDS,
             'events' => self::EVENTS,
             'handlers' => self::HANDLERS,
+            'permissions' => self::PERMISSIONS,
+            'kinds' => self::KINDS,
+            'limits' => self::LIMITS,
+            // What an extension's templates (slots, pages, overrides) may use.
+            'template_sandbox' => $this->guide?->templateSandbox() ?? [],
+            // The shop's storefront templates with what each gets, for template_data and overrides.
+            'templates' => $this->guide?->templateNotes() ?? [],
             'slots' => self::SLOTS,
         ];
     }

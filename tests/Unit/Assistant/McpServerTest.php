@@ -217,7 +217,8 @@ final class McpServerTest extends TestCase
         self::assertSame('orillacart://shop', self::at($this->modern('resources/list')->body, 'result', 'resources', 0, 'uri'));
         $read = $this->modern('resources/read', ['uri' => 'orillacart://shop'], ['mcp-name' => 'orillacart://shop']);
         self::assertSame(['name' => 'Mugs & Co', 'currency' => 'EUR'], json_decode(self::textAt($read->body, 'result', 'contents', 0, 'text'), true));
-        self::assertSame(['shop', 'extensions_reference', 'extensions_guide'], self::names(self::at($this->modern('resources/list')->body, 'result', 'resources')));
+        self::assertSame(['shop', 'extensions_reference', 'extensions_guide', 'rest_api'], self::names(self::at($this->modern('resources/list')->body, 'result', 'resources')));
+        self::assertStringStartsWith('# REST API', self::textAt($this->modern('resources/read', ['uri' => 'orillacart://rest-api'], ['mcp-name' => 'orillacart://rest-api'])->body, 'result', 'contents', 0, 'text'));
         $guide = $this->modern('resources/read', ['uri' => 'orillacart://extensions/guide'], ['mcp-name' => 'orillacart://extensions/guide']);
         self::assertSame('text/markdown', self::at($guide->body, 'result', 'contents', 0, 'mimeType'));
         self::assertStringStartsWith('# Writing extension scripts', self::textAt($guide->body, 'result', 'contents', 0, 'text'));
@@ -233,6 +234,9 @@ final class McpServerTest extends TestCase
         self::assertIsArray($decoded['handlers']);
         self::assertIsString($decoded['handlers']['order_adjuster.adjust(query)']);
         self::assertStringContainsString('fields', $decoded['handlers']['order_adjuster.adjust(query)']);
+        self::assertSame(['orders: read', 'orders: write', 'products: read', 'products: write', 'http: ["host.example", …]', 'templates: override'], array_keys((array) $decoded['permissions']));
+        self::assertSame(100000, (array) $decoded['limits'] === [] ? null : ((array) $decoded['limits'])['steps']);
+        self::assertSame(['functions' => ['api_url']], array_intersect_key((array) $decoded['template_sandbox'], ['functions' => 1]));
     }
 
     public function testTheKeysAreasLimitWhatItIsOffered(): void
@@ -485,12 +489,29 @@ final class McpServerTest extends TestCase
             }
         };
 
-        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals, new \OrillaCart\Scripting\Application\ScriptReference(\OrillaCart\Scripting\Application\HostCatalog::of([])), new class implements \OrillaCart\Scripting\Application\ScriptGuide {
+        $guide = new class implements \OrillaCart\Scripting\Application\ScriptGuide {
             public function markdown(): string
             {
                 return "# Writing extension scripts\n";
             }
-        })->handle($message, $headers, $caller ?? new Caller(1, 7, false));
+
+            public function restApi(): string
+            {
+                return "# REST API\n";
+            }
+
+            public function templateNotes(): array
+            {
+                return ['storefront/account.html.twig' => 'The customer\'s account.'];
+            }
+
+            public function templateSandbox(): array
+            {
+                return ['tags' => ['if'], 'filters' => ['money'], 'functions' => ['api_url'], 'tests' => ['empty']];
+            }
+        };
+
+        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals, new \OrillaCart\Scripting\Application\ScriptReference(\OrillaCart\Scripting\Application\HostCatalog::of([]), $guide), $guide)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
     }
 
     /**
