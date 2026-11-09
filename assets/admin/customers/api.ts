@@ -94,6 +94,14 @@ export interface CustomerSettings {
 
 const BASE = '/orillacart/v1';
 
+/**
+ * One customer, whole: the list's rows leave out what only the record's screen shows (the extensions' fields).
+ * @param id The customer.
+ */
+export function fetchCustomer( id: number ): Promise< Customer > {
+	return apiFetch< Customer >( { path: `${ BASE }/customers/${ id }` } );
+}
+
 export function fetchCustomers( query: {
 	search?: string | undefined;
 	page: number;

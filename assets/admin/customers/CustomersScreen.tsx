@@ -8,6 +8,7 @@ import {
 	type Customer,
 	type CustomerGroup,
 	type CustomerPage,
+	fetchCustomer,
 	fetchCustomers,
 	fetchGroups,
 } from './api';
@@ -87,6 +88,24 @@ export function CustomersScreen() {
 			.catch( fail );
 	}, [ view, latest ] );
 	useEffect( load, [ load ] );
+	// The row opened is the list's: it has no extensions' fields, which only the record's own view carries. The
+	// whole customer is read when one is opened, and again after a save answered without them.
+	useEffect( () => {
+		if ( selected === null || selected.extensions ) {
+			return;
+		}
+		let current = true;
+		latest( fetchCustomer( selected.id ) )
+			.then( ( whole ) => {
+				if ( current ) {
+					setSelectedNow( whole );
+				}
+			} )
+			.catch( fail );
+		return () => {
+			current = false;
+		};
+	}, [ selected, latest ] );
 
 	if ( selected !== null ) {
 		return (

@@ -15,6 +15,18 @@ describe( 'CustomersScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
 
 	it( 'lists customers and opens one as its own view', async () => {
+		const ada = {
+			id: 3,
+			email: 'ada@example.com',
+			first_name: 'Ada',
+			last_name: 'Lovelace',
+			registered_at: '2026-10-17T12:00:00+00:00',
+			billing: null,
+			shipping_address: null,
+			orders: 2,
+			lifetime_value: null,
+			group_ids: [],
+		};
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
 			if ( request.path.startsWith( '/orillacart/v1/customer-groups' ) ) {
@@ -26,24 +38,42 @@ describe( 'CustomersScreen', () => {
 					entries: [],
 				} );
 			}
+			if ( request.path === '/orillacart/v1/record-fields/customers' ) {
+				return Promise.resolve( {
+					sections: [
+						{
+							extension: 'loyalty',
+							name: 'Loyalty',
+							fields: [
+								{
+									name: 'points',
+									kind: 'number',
+									label: 'Points',
+									help: null,
+									required: false,
+									default: 0,
+									of: [],
+									readonly: false,
+									filter: false,
+									column: true,
+								},
+							],
+						},
+					],
+				} );
+			}
+			if ( request.path === '/orillacart/v1/customers/3' ) {
+				// The record's own view: the one with the extensions' fields.
+				return Promise.resolve( {
+					...ada,
+					extensions: { loyalty: { points: 100 } },
+				} );
+			}
 			if ( request.path.startsWith( '/orillacart/v1/customers/' ) ) {
 				return Promise.resolve( [] );
 			}
 			return Promise.resolve( {
-				customers: [
-					{
-						id: 3,
-						email: 'ada@example.com',
-						first_name: 'Ada',
-						last_name: 'Lovelace',
-						registered_at: '2026-10-17T12:00:00+00:00',
-						billing: null,
-						shipping_address: null,
-						orders: 2,
-						lifetime_value: null,
-						group_ids: [],
-					},
-				],
+				customers: [ ada ],
 				total: 1,
 				page: 1,
 				pages: 1,
@@ -63,6 +93,10 @@ describe( 'CustomersScreen', () => {
 				name: 'Ada Lovelace',
 			} )
 		).toBeVisible();
+		// The list's row has no extensions' fields: the whole customer is read for the screen (PLAN 359).
+		expect(
+			await screen.findByRole( 'spinbutton', { name: 'Points' } )
+		).toHaveValue( 100 );
 		await user.click(
 			screen.getByRole( 'button', { name: '← All customers' } )
 		);
