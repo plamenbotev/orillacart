@@ -12,6 +12,7 @@ use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\Dto\ConfirmAccount;
+use OrillaCart\Customers\Application\Dto\CreateCustomer;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Customers\Application\Dto\SaveAddress;
@@ -279,4 +280,24 @@ final class CustomerAccountsTest extends TestCase
     {
         return $this->shop->checkout->placeOrder($this->cart($owner), new PlaceOrder($email, $this->address, payment: 'bank_transfer', createAccount: $createAccount, rememberAddresses: $rememberAddresses));
     }
+
+    /** PLAN 361: the shop (and the assistant's create_customer) makes an account itself, without the sign-up emails. */
+    public function testTheShopMakesACustomersAccountItself(): void
+    {
+        $made = $this->shop->customers->create(new CreateCustomer('grace@example.com', 'Grace', 'Hopper'));
+        self::assertSame(['grace@example.com', 'Grace', 'Hopper'], [$made->email, $made->firstName, $made->lastName]);
+        self::assertSame([], array_filter($this->shop->accountMail->sent, static fn(array $mail): bool => $mail['kind'] === 'welcome'), 'no welcome unless asked');
+
+        $welcomed = $this->shop->customers->create(new CreateCustomer('Alan@Example.com', 'Alan', 'Turing', 'enigma1234', emailCustomer: true));
+        self::assertSame('alan@example.com', $welcomed->email);
+        self::assertSame(['alan@example.com'], array_column(array_values(array_filter($this->shop->accountMail->sent, static fn(array $mail): bool => $mail['kind'] === 'welcome')), 'to'));
+
+        try {
+            $this->shop->customers->create(new CreateCustomer('grace@example.com'));
+            self::fail('an email with an account');
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_account_exists', $e->errorCode);
+        }
+    }
+
 }

@@ -685,6 +685,19 @@ A page of the shop's customers, found by a search; nothing changes.
   - `page` (int): more than 0; default 1
   - `per_page` (int): 1 to 100; default 20
 
+### `POST /customers`
+
+The shop makes a customer's account itself: an email that has none, a name, a password or none (the customer sets theirs through the lost-password link), the groups it joins, and whether the welcome email goes.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `email` (string): required; not empty; an email; at most 200 characters
+  - `first_name` (string): at most 200 characters
+  - `last_name` (string): at most 200 characters
+  - `password` (string|null): 8 to 200 characters
+  - `group_ids` (list<int>): each more than 0
+  - `email_customer` (bool): default false
+
 ### `GET /customers/{id}`
 
 One customer: their details, addresses, groups, orders and what they have spent; nothing changes.

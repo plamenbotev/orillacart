@@ -111,6 +111,7 @@ final class RouteToolsTest extends TestCase
         'create_attribute_set' => 'catalog setup',
         'create_carrier' => 'shipping setup',
         'create_coupon' => 'a coupon nobody has yet',
+        'create_customer' => 'an account the shop makes; the customer is emailed only when email_customer asks it',
         'create_customer_group' => 'customer setup',
         'create_form' => 'a checkout form',
         'create_price_rule' => 'catalog pricing, as the admin sets it',

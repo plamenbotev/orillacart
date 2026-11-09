@@ -6,6 +6,7 @@ namespace OrillaCart\Customers\Application;
 
 use OrillaCart\Customers\Application\Dto\ChooseEmails;
 use OrillaCart\Customers\Application\Dto\ConfirmAccount;
+use OrillaCart\Customers\Application\Dto\CreateCustomer;
 use OrillaCart\Customers\Application\Dto\CustomerPageView;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\CustomerSettingsView;
@@ -268,6 +269,32 @@ final readonly class CustomerService
      * @throws RuleViolation for a link that does not work (any more), a password that is too short, or an email
      *                       that has an account since
      */
+    /**
+     * The shop makes a customer's account itself, without the sign-up emails: on a network, a customer of another
+     * of its shops joins this one as they are.
+     *
+     * @throws RuleViolation for an email that has an account here
+     */
+    public function create(CreateCustomer $command): CustomerView
+    {
+        $email = mb_strtolower(trim($command->email));
+        if ($this->accounts->isRegistered($email)) {
+            throw new RuleViolation('This email has an account already.', 'orillacart_account_exists');
+        }
+        $id = $this->accounts->elsewhere($email);
+        if ($id !== null) {
+            $this->accounts->join($id);
+        } else {
+            // No password given: one nobody knows, until the customer sets theirs through the lost-password link.
+            $id = $this->accounts->register($email, $command->password ?? bin2hex(random_bytes(24)), trim($command->firstName), trim($command->lastName));
+        }
+        if ($command->emailCustomer) {
+            $this->accountMail->welcome($email, trim($command->firstName), $this->links->accountUrl());
+        }
+
+        return $this->customer($id);
+    }
+
     public function confirmAccount(ConfirmAccount $command): CustomerView
     {
         $account = $this->pending->findByToken($command->token);

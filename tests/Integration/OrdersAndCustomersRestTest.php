@@ -185,7 +185,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     public function testOnlyShopManagersWorkOrdersAndOnlyCustomersSeeTheirAccount(): void
     {
         $shop = [['GET', '/orders'], ['GET', '/orders/1'], ['PUT', '/orders/1/status'], ['PUT', '/orders/1/contact'], ['POST', '/orders/1/notes'],
-            ['PUT', '/orders/1/items'], ['POST', '/orders/1/adjustments'], ['DELETE', '/orders/1/adjustments/0123456789abcdef'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['GET', '/customers/1'],
+            ['PUT', '/orders/1/items'], ['POST', '/orders/1/adjustments'], ['DELETE', '/orders/1/adjustments/0123456789abcdef'], ['POST', '/orders/1/emails'], ['DELETE', '/orders/1'], ['GET', '/customers'], ['POST', '/customers'], ['GET', '/customers/1'],
             ['POST', '/customers/1/addresses'], ['PUT', '/customers/1/addresses/ab12cd34'], ['DELETE', '/customers/1/addresses/ab12cd34'], ['GET', '/customers/1/notes'], ['POST', '/customers/1/notes'], ['DELETE', '/customers/1/notes/1'], ['GET', '/customer-settings'], ['PUT', '/customer-settings'], ['GET', '/newsletter-settings'], ['PUT', '/newsletter-settings'], ['GET', '/email-settings'],
             ['PUT', '/email-settings'], ['POST', '/products/1/downloads'], ['DELETE', '/products/1/downloads/1'], ['GET', '/download-storage'],
             ['PUT', '/orders/1/customer'], ['GET', '/orders/1/shipping-options'], ['PUT', '/orders/1/downloads/1'], ['POST', '/orders'], ['POST', '/orders/quote'],
