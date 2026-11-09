@@ -588,6 +588,7 @@ Design 59 (`docs/designs/59-extension-assets.md`): files under `assets/` printed
 | ✅ | 363 | P2 | `asset()` in an extension's template, bound to the extension by the visitor, the name a string; a deferred script tag, a stylesheet link, or an SVG's URL; printed once per page | 800fb6c6 |
 | ✅ | 364 | P2 | Served from `uploads/orillacart/extensions/<id>/<name>-<hash>.<ext>`, older names removed, the folder removed on uninstall; nothing served unless enabled and granted | 800fb6c6 |
 | ✅ | 365 | P3 | The check names an `asset()` file the package lacks; the guide, the reference's permissions, the editor's help | 800fb6c6 |
+| ✅ | 368 | P3 | The editor highlights `.js`, `.css` and `.svg` and completes them: the languages' own completions, and snippets for `window.orillacart.api`, `wp.apiFetch` and the cart-changed event | |
 
 ## An extension's screens in the Shop menu (2026-11-09)
 

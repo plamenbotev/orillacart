@@ -10,7 +10,9 @@ import {
 	historyKeymap,
 	indentWithTab,
 } from '@codemirror/commands';
+import { css } from '@codemirror/lang-css';
 import { html } from '@codemirror/lang-html';
+import { javascript } from '@codemirror/lang-javascript';
 import {
 	bracketMatching,
 	defaultHighlightStyle,
@@ -32,6 +34,7 @@ import {
 import { useEffect, useRef } from '@wordpress/element';
 
 import type { Finding, Reference } from '../api';
+import { browserCompletion } from './browser';
 import { ocsCompletion, ocsHover } from './completion';
 import { toDiagnostics } from './diagnostics';
 import { ocs } from './ocs';
@@ -182,6 +185,17 @@ export function CodeEditor( {
 				} ),
 				ocsHover( reference )
 			);
+		} else if ( path.endsWith( '.js' ) ) {
+			// The language's own completions (names in the buffer, snippets), and the shop's client for the
+			// extension's routes (design 59).
+			extensions.push(
+				autocompletion( { activateOnTyping: true } ),
+				javascript().language.data.of( {
+					autocomplete: browserCompletion,
+				} )
+			);
+		} else if ( path.endsWith( '.css' ) || path.endsWith( '.twig' ) ) {
+			extensions.push( autocompletion( { activateOnTyping: true } ) );
 		}
 		editor.dispatch( {
 			effects: assist.current.reconfigure( extensions ),
@@ -218,6 +232,16 @@ function languageFor( path: string ): Extension {
 		return StreamLanguage.define( jinja2 );
 	}
 	if ( path.endsWith( '.html' ) || path.endsWith( '.htm' ) ) {
+		return html();
+	}
+	// The files for the browser (design 59): assets/*.js, *.css, *.svg.
+	if ( path.endsWith( '.js' ) ) {
+		return javascript();
+	}
+	if ( path.endsWith( '.css' ) ) {
+		return css();
+	}
+	if ( path.endsWith( '.svg' ) ) {
 		return html();
 	}
 	return [];
