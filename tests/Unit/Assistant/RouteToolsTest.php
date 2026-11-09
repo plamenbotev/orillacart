@@ -128,6 +128,7 @@ final class RouteToolsTest extends TestCase
         'import_tax_rates' => 'tax setup',
         'install_package' => 'a new extension as a draft; nothing runs until enabled, which asks',
         'mark_order_handled' => 'only takes an order off the attention list (Tool::NONE)',
+        'preview_package' => 'one of an extension\'s views rendered, as a manager opening it would; the handler is the extension\'s own',
         'rebuild_reports' => 'reports worked out again',
         'rebuild_search_index' => 'the search index built again',
         'receive_return' => 'notes that returned items came back; the customer is not told',

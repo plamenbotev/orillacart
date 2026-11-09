@@ -1056,6 +1056,18 @@ The shop's own source of the template an extension's file overrides, for the dif
 
 - Who: shop managers
 
+### `POST /extensions/{id}/preview`
+
+Renders one of an enabled extension's views as the shop would show it (a page, an admin page, a slot, or a route answering HTML) and answers the HTML with the handler's data: for seeing a screen without a browser. The handler runs as a manager opening it would.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `kind` (string): required; one of page, admin_page, slot, route
+  - `name` (string): required; not empty; at most 200 characters
+  - `query` (array)
+  - `body` (array)
+  - `arguments` (list<mixed>)
+
 ### `POST /extensions/{id}/run`
 
 The console: runs one top-level function of an extension with the given arguments and its granted permissions; answers what it returned or how it failed, and what the run used.

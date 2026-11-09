@@ -38,6 +38,7 @@ final class ScriptedRoutesTest extends RestTestCase
           return { tickets: ["one", "two"], from: request.query.from ?? "nowhere" }
         }
         slot "product_after_details" { template: "note.html.twig" } fn(context) { return { label: "Shelf A" } }
+        slot "cart_after" { template: "plain.html.twig" }
         admin_page "/tickets" { title: "Tickets", template: "admin.html.twig" } fn(request) {
           return { open: 3, manager: request.user.manager, state: request.query.state ?? "all" }
         }
@@ -59,6 +60,7 @@ final class ScriptedRoutesTest extends RestTestCase
             'templates/note.html.twig' => '<span class="note">{{ label }} in {{ slot }}</span>{{ asset("note.css") }}{{ asset("note.js") }}',
             'templates/admin.html.twig' => '<p class="tickets">{{ open }} open, {{ state }}, manager {{ manager ? "yes" : "no" }}</p>{{ asset("admin.js") }}',
             'assets/admin.js' => 'console.log("admin")',
+            'templates/plain.html.twig' => '<i>{{ slot }}</i>',
             'assets/note.css' => '.note { color: red }',
             'assets/note.js' => 'console.log("note")',
             'templates/bad.html.twig' => "{{ constant('PHP_VERSION') }}",
@@ -184,6 +186,30 @@ final class ScriptedRoutesTest extends RestTestCase
         self::assertStringContainsString('<div class="notice notice-warning inline"><p>Not for you.</p></div>', (string) ob_get_clean());
     }
 
+    /** PLAN 373: a view rendered over REST, for whoever writes the extension without a browser. */
+    public function testAViewIsPreviewedAsTheShopWouldShowIt(): void
+    {
+        $page = $this->data($this->request('POST', '/extensions/pages/preview', ['kind' => 'page', 'name' => '/support', 'query' => ['from' => 'the console']], nonce: true));
+        self::assertSame('<ul><li>one</li><li>two</li></ul><em>the console</em>', $page['html']);
+        self::assertSame(['tickets' => ['one', 'two'], 'from' => 'the console'], $page['data']);
+
+        $admin = $this->data($this->request('POST', '/extensions/pages/preview', ['kind' => 'admin_page', 'name' => '/tickets', 'query' => ['state' => 'open']], nonce: true));
+        self::assertStringStartsWith('<p class="tickets">3 open, open, manager yes</p>', self::text($admin['html']));
+
+        $route = $this->data($this->request('POST', '/extensions/pages/preview', ['kind' => 'route', 'name' => 'GET /page'], nonce: true));
+        self::assertSame('<p>Hello Ada added 12.5000 3.0000</p>', $route['html'], 'a route answering HTML, rendered');
+        $json = $this->data($this->request('POST', '/extensions/pages/preview', ['kind' => 'route', 'name' => 'POST /echo', 'body' => ['a' => 1]], nonce: true));
+        self::assertSame(['html' => '', 'data' => ['got' => ['a' => 1], 'manager' => true]], $json);
+
+        $slot = $this->data($this->request('POST', '/extensions/pages/preview', ['kind' => 'slot', 'name' => 'cart_after'], nonce: true));
+        self::assertSame(['html' => '<i>cart_after</i>', 'data' => null], $slot);
+
+        $refused = $this->request('POST', '/extensions/pages/preview', ['kind' => 'admin_page', 'name' => '/broken'], nonce: true);
+        self::assertSame([422, 'The handler refused: Not for you.'], [$refused->get_status(), $this->data($refused)['message']]);
+        $missing = $this->request('POST', '/extensions/pages/preview', ['kind' => 'page', 'name' => '/nowhere'], nonce: true);
+        self::assertSame(422, $missing->get_status());
+    }
+
     public function testASlotTemplatePrintsInTheStorefrontsSlot(): void
     {
         ob_start();
@@ -233,4 +259,10 @@ final class ScriptedRoutesTest extends RestTestCase
 
         return $rows;
     }
+
+    private static function text(mixed $value): string
+    {
+        return \is_string($value) ? $value : '';
+    }
+
 }

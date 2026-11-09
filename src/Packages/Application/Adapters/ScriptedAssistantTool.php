@@ -40,6 +40,10 @@ final class ScriptedAssistantTool extends ScriptedProvider implements AssistantT
         return \is_string($description) ? $description : '';
     }
 
+    /**
+     * `input` is a JSON schema (`{ type: "object", properties: { … }, required: [ … ] }`), or the short form of the
+     * object fields (`{ company_id: number, items: text { required: true } }`), which becomes one.
+     */
     public function inputSchema(): array
     {
         $input = $this->declaration['props']['input'] ?? null;
@@ -47,8 +51,37 @@ final class ScriptedAssistantTool extends ScriptedProvider implements AssistantT
         foreach (\is_array($input) ? $input : [] as $key => $value) {
             $schema[(string) $key] = $value;
         }
+        if ($schema === []) {
+            return ['type' => 'object', 'properties' => new \stdClass()];
+        }
+        if (isset($schema['type']) || isset($schema['properties'])) {
+            return $schema;
+        }
+        $properties = [];
+        $required = [];
+        foreach ($schema as $name => $spec) {
+            $kind = \is_array($spec) ? ($spec['$spec'] ?? 'text') : $spec;
+            $options = \is_array($spec) ? $spec : [];
+            $property = match (\is_string($kind) ? $kind : 'text') {
+                'number', 'money' => ['type' => 'number'],
+                'boolean' => ['type' => 'boolean'],
+                'list' => ['type' => 'array'],
+                'map' => ['type' => 'object'],
+                'choice' => ['type' => 'string', 'enum' => array_values(array_map(static fn(mixed $choice): string => \is_array($choice) ? (\is_scalar($choice['$spec'] ?? null) ? (string) $choice['$spec'] : '') : (\is_scalar($choice) ? (string) $choice : ''), \is_array($options['of'] ?? null) ? $options['of'] : []))],
+                default => ['type' => 'string'],
+            };
+            if (\is_string($options['help'] ?? null)) {
+                $property['description'] = $options['help'];
+            } elseif (\is_string($options['label'] ?? null)) {
+                $property['description'] = $options['label'];
+            }
+            $properties[$name] = $property;
+            if (($options['required'] ?? false) === true) {
+                $required[] = $name;
+            }
+        }
 
-        return $schema === [] ? ['type' => 'object', 'properties' => new \stdClass()] : $schema;
+        return ['type' => 'object', 'properties' => $properties] + ($required === [] ? [] : ['required' => $required]);
     }
 
     public function capability(): string

@@ -252,6 +252,11 @@ final class ScriptedProvidersTest extends RestTestCase
                 return { pallet: arguments.pallet, bay: 4, by: call.user_id }
               }
             }
+            assistant_tool "warehouse_count" {
+              title: "Count pallets", description: "How many pallets a bay holds.", read_only: true
+              input: { bay: text { required: true, help: "The bay's letter" }, limit: number, kinds: choice { of: ["euro", "half"] } }
+              fn run(arguments, call) { return { bay: arguments.bay } }
+            }
             product_block "shelf_note" {
               title: "Shelf note", description: "Where to find it in the shop."
               fn render(product, settings) { return "<p class='shelf'>" ~ html.escape(product.name) ~ " <script>alert(1)</script></p>" }
@@ -320,6 +325,9 @@ final class ScriptedProvidersTest extends RestTestCase
         $tool = $this->provider('warehouse_lookup');
         self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedAssistantTool::class, $tool);
         self::assertSame(['warehouse_lookup', 'scripted', 'Look up a pallet', true, null, ['pallet']], [$tool->name(), $tool->addOn(), $tool->title(), $tool->readOnly(), $tool->risk(), $tool->inputSchema()['required'] ?? null]);
+        $short = $this->provider('warehouse_count');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedAssistantTool::class, $short);
+        self::assertSame(['type' => 'object', 'properties' => ['bay' => ['type' => 'string', 'description' => 'The bay\'s letter'], 'limit' => ['type' => 'number'], 'kinds' => ['type' => 'string', 'enum' => ['euro', 'half']]], 'required' => ['bay']], $short->inputSchema(), 'the short form of the object fields is a JSON schema (PLAN 372)');
         self::assertSame(['pallet' => 'P1', 'bay' => 4, 'by' => 5], $tool->run(['pallet' => 'P1'], new \OrillaCart\Extension\Assistant\ToolCall(5, null)));
         try {
             $tool->run(['pallet' => 'none'], new \OrillaCart\Extension\Assistant\ToolCall(5, null));

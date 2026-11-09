@@ -512,9 +512,11 @@ mailing_list "newsletter" {
 
 - `home.tiles()` answers `home.tile(label, value, detail?, url?)` items; `needs_you()` answers
   `home.line(text, url?, tone?)` items with tone `attention`, `warning` or `info`.
-- An `assistant_tool` becomes a tool of the shop's assistant and MCP server. `input` names the arguments and
-  their kinds; `read_only` and `risk` (`reading`, `writing`, `deleting`, `opening`) tell the assistant how
-  careful to be. `run(arguments, call)` gets the arguments and `call: { user_id, key_name }`; a `fail refused`
+- An `assistant_tool` becomes a tool of the shop's assistant and MCP server. `input` is a JSON schema of the
+  arguments (`{ type: "object", properties: { … }, required: [ … ] }`), or the short form the object fields use
+  (`{ company_id: number, items: text { required: true, help: "…" } }`), which becomes one; a client refuses a
+  tool whose schema is not one, so write one or the other. `read_only` and `risk` (`money`, `deleting`,
+  `customers`, `opening`, `publishing`; anything else is no risk) tell the assistant how careful to be. `run(arguments, call)` gets the arguments and `call: { user_id, key_name }`; a `fail refused`
   is shown to the assistant as the tool's refusal.
 - A `product_block` is a block the editor can place on product pages. `render(product, settings)` answers HTML,
   which the shop cleans (tags and attributes a post may hold) before printing. Escape text with `html.escape`.
@@ -952,6 +954,12 @@ extension is enabled, and reports the first failure with its message, file and l
 `assert test, message?` is the check; `fail`, an error or a budget used up also fail the test. The result lists the
 requests made and the budget used. The editor runs the tests over the files as they are on screen, saved or not,
 and the VS Code command sends the folder's files the same way.
+
+**Seeing a screen without a browser.** `POST /extensions/<id>/preview` (the assistant's `preview_package`)
+renders one of the extension's views as the shop would show it and answers the HTML with the handler's data:
+`{ kind: "page" | "admin_page" | "slot" | "route", name, query, body, arguments }`, with `name` the page's or
+route's path (`"GET /page"` for a route; a path written as declared), or the slot's name, and `arguments` what the
+storefront would pass the slot. The handler runs as a manager opening the screen would; a refusal is the answer.
 
 ## 17. A complete example
 
