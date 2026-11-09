@@ -5,6 +5,8 @@ import {
 	type CompletionResult,
 } from '@codemirror/autocomplete';
 
+import type { ExtensionRoute } from '../api';
+
 /**
  * What an extension's script for the browser reaches (design 59): the shop's client on the storefront, WordPress's
  * on an admin screen, and the events the storefront sends. Offered as snippets beside the language's own
@@ -42,15 +44,40 @@ const SNIPPETS: Completion[] = [
 ];
 
 /**
- * The snippets, for a word being typed (or on demand), as a completion source of the JavaScript language.
- * @param context Where the cursor is.
+ * The snippets, for a word being typed (or on demand), as a completion source of the JavaScript language: the
+ * general ones, and one call per route the extension declares, with its method and path filled in.
+ * @param routes The extension's routes, as the shop read them from its scripts.
  */
 export function browserCompletion(
-	context: CompletionContext
-): CompletionResult | null {
-	const word = context.matchBefore( /[\w.:-]*/ );
-	if ( ! word || ( word.from === word.to && ! context.explicit ) ) {
-		return null;
-	}
-	return { from: word.from, options: SNIPPETS, validFor: /^[\w.:-]*$/ };
+	routes: ExtensionRoute[]
+): ( context: CompletionContext ) => CompletionResult | null {
+	const options = [
+		...routes.map( ( route ) =>
+			snippetCompletion(
+				route.who === 'manager'
+					? `wp.apiFetch({ path: '/orillacart/v1/x/${ '${extension}' }${ route.path }', method: '${ route.method }'${
+							route.method === 'GET' ? '' : ', data: ${body}'
+						} })`
+					: `window.orillacart.api('${ route.method }', '/x/${ '${extension}' }${ route.path }'${
+							route.method === 'GET' ? '' : ', ${body}'
+						})`,
+				{
+					label: `${ route.method } ${ route.path }`,
+					detail:
+						route.who === 'manager'
+							? 'a manager route: from an admin screen'
+							: `a ${ route.who } route: from the storefront`,
+					type: 'function',
+				}
+			)
+		),
+		...SNIPPETS,
+	];
+	return ( context ) => {
+		const word = context.matchBefore( /[\w.:/-]*/ );
+		if ( ! word || ( word.from === word.to && ! context.explicit ) ) {
+			return null;
+		}
+		return { from: word.from, options, validFor: /^[\w.:/-]*$/ };
+	};
 }

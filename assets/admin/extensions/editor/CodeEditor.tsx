@@ -33,7 +33,7 @@ import {
 } from '@codemirror/view';
 import { useEffect, useRef } from '@wordpress/element';
 
-import type { Finding, Reference } from '../api';
+import type { ExtensionRoute, Finding, Reference } from '../api';
 import { browserCompletion } from './browser';
 import { ocsCompletion, ocsHover } from './completion';
 import { toDiagnostics } from './diagnostics';
@@ -52,6 +52,7 @@ import { ocs } from './ocs';
  * @param props.label     The accessible name of the editor.
  * @param props.findings  The check's findings, underlined where they are.
  * @param props.reference The site's reference, for completion and hover; null before it is loaded.
+ * @param props.routes    The extension's routes, for a script's completion of their paths.
  * @param props.disabled  Read-only while a request is in flight.
  */
 export function CodeEditor( {
@@ -61,6 +62,7 @@ export function CodeEditor( {
 	label,
 	findings,
 	reference,
+	routes = null,
 	disabled,
 }: {
 	value: string;
@@ -69,6 +71,7 @@ export function CodeEditor( {
 	label: string;
 	findings: Finding[];
 	reference: Reference | null;
+	routes?: ExtensionRoute[] | null;
 	disabled?: boolean;
 } ) {
 	const host = useRef< HTMLDivElement >( null );
@@ -191,7 +194,7 @@ export function CodeEditor( {
 			extensions.push(
 				autocompletion( { activateOnTyping: true } ),
 				javascript().language.data.of( {
-					autocomplete: browserCompletion,
+					autocomplete: browserCompletion( routes ?? [] ),
 				} )
 			);
 		} else if ( path.endsWith( '.css' ) || path.endsWith( '.twig' ) ) {
@@ -200,7 +203,7 @@ export function CodeEditor( {
 		editor.dispatch( {
 			effects: assist.current.reconfigure( extensions ),
 		} );
-	}, [ reference, path ] );
+	}, [ reference, path, routes ] );
 
 	useEffect( () => {
 		const editor = view.current;

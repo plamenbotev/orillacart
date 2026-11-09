@@ -35,6 +35,12 @@ final readonly class PackageView
         public ?array $files = null,
         public ?array $settings = null,
         public ?array $findings = null,
+        /**
+         * The routes the scripts declare, when they compile (design 59's editor completes their paths).
+         *
+         * @var list<array{method: string, path: string, who: string}>|null
+         */
+        public ?array $routes = null,
     ) {}
 
     /**
@@ -42,8 +48,9 @@ final readonly class PackageView
      * @param list<array<string, mixed>>|null $settings
      * @param list<string>|null               $findings
      * @param array<string, string>|null      $currentHashes by path, the hash of the shop's template an override replaces as it is now
+     * @param list<array{method: string, path: string, who: string}>|null $routes
      */
-    public static function fromPackage(Package $package, array $needs, bool $withFiles = false, ?array $settings = null, ?array $findings = null, ?array $currentHashes = null): self
+    public static function fromPackage(Package $package, array $needs, bool $withFiles = false, ?array $settings = null, ?array $findings = null, ?array $currentHashes = null, ?array $routes = null): self
     {
         return new self(
             $package->slug(),
@@ -60,6 +67,7 @@ final readonly class PackageView
             $withFiles ? array_map(static fn(PackageFile $file): PackageFileView => PackageFileView::fromFile($file, $currentHashes[$file->path()] ?? null), $package->files()) : null,
             $settings,
             $findings,
+            $routes,
         );
     }
 }

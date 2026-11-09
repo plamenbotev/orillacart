@@ -51,7 +51,7 @@ runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordP
 
 ## Budgets and failures
 
-A run has 100 000 steps, 2 seconds, 16 MB of values, 200 calls, 5 HTTP calls and 20 queries. A run that
+A run has 100 000 steps, 2 seconds, 16 MB of values, 5 000 calls (every builtin, filter and shop function; the extension's own functions are steps), 5 HTTP calls and 20 queries. A run that
 exceeds them is stopped; the script cannot catch that. `fail unavailable("…")` says a provider cannot be
 reached (the shop tries later), `fail refused("…")` is an answer to show whoever asked, any other failure is
 a problem the shop logs. Ten failures in a row stop the extension; a manager enables it again after reading

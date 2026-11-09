@@ -625,6 +625,7 @@ function ExtensionEditor( {
 							( finding ) => finding.file === path
 						) }
 						reference={ reference }
+						routes={ extension.routes ?? null }
 						disabled={ current === undefined }
 					/>
 				</Field>

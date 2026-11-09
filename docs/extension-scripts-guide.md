@@ -263,8 +263,11 @@ fn safely(number) {
 ```
 
 **Budgets.** One run has 100 000 steps (every loop iteration and call is a step), 2 seconds, 16 MB of strings and
-lists, 200 calls, 5 HTTP calls and 20 object queries. These are per handler call, not per request, and they are
-ample for anything an extension should do inline. Work that needs more belongs in a job (§12).
+lists, 5 000 calls, 5 HTTP calls and 20 object queries. A call is every builtin, filter and `shop.*` function
+(`money()`, `|format`, `str()`, `shop.orders.find()`); the extension's own functions are steps, not calls. A
+screen that formats fifty rows with a few filters each spends a few hundred. These are per handler call, not per
+request, and they are ample for anything an extension should do inline. Work that needs more belongs in a job
+(§12).
 
 ## 8. Providers
 

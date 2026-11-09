@@ -31,7 +31,7 @@ final class ScriptedRoutesTest extends RestTestCase
         route GET "/away" { who: public } fn(request) { return respond.redirect("https://example.com/") }
         route GET "/nope" { who: public } fn(request) { return respond.error(418, "No tea.") }
         route GET "/mine" { who: account } fn(request) { return { id: request.user.id } }
-        route GET "/page" { who: public } fn(request) { return respond.html("hello.html.twig", { who: "Ada" }) }
+        route GET "/page" { who: public } fn(request) { return respond.html("hello.html.twig", { who: "Ada", total: money("12.5"), lines: [{ price: money("3") }] }) }
         route GET "/boom" { who: public } fn(request) { fail refused("Not today.") }
         route GET "/broken" { who: public } fn(request) { let x = 1 / 0 }
         page "/support" { template: "support.html.twig" } fn(request) {
@@ -54,7 +54,7 @@ final class ScriptedRoutesTest extends RestTestCase
         }
         $this->request('POST', '/extensions', ['id' => 'pages', 'name' => 'Pages', 'files' => [
             'main.ocs' => self::SCRIPT,
-            'templates/hello.html.twig' => '<p>Hello {{ who }} {{ ext.pages.extra }}</p>',
+            'templates/hello.html.twig' => '<p>Hello {{ who }} {{ ext.pages.extra }} {{ total }} {{ lines[0].price }}</p>',
             'templates/support.html.twig' => '<ul>{% for t in tickets %}<li>{{ t }}</li>{% endfor %}</ul><em>{{ from }}</em>',
             'templates/note.html.twig' => '<span class="note">{{ label }} in {{ slot }}</span>{{ asset("note.css") }}{{ asset("note.js") }}',
             'templates/admin.html.twig' => '<p class="tickets">{{ open }} open, {{ state }}, manager {{ manager ? "yes" : "no" }}</p>{{ asset("admin.js") }}',
@@ -111,7 +111,7 @@ final class ScriptedRoutesTest extends RestTestCase
 
         $page = $this->request('GET', '/x/pages/page');
         self::assertSame(200, $page->get_status());
-        self::assertSame(['html' => '<p>Hello Ada added</p>'], $this->data($page), 'the template, with what template_data added, as JSON');
+        self::assertSame(['html' => '<p>Hello Ada added 12.5000 3.0000</p>'], $this->data($page), 'the template, with what template_data added, as JSON; money as amounts, nested too');
 
         $this->actAs('administrator');
         $echo = $this->request('POST', '/x/pages/echo', ['a' => 1], nonce: true);
@@ -213,7 +213,7 @@ final class ScriptedRoutesTest extends RestTestCase
         \assert($renderer instanceof TemplateRenderer);
 
         self::assertSame('<b>overridden</b>', $renderer->render('storefront/_free_shipping.html.twig', []), 'the extension granted templates wins over the plugin\'s');
-        self::assertSame('<p>Hello Ada added</p>', $renderer->render('x/pages/hello.html.twig', ['who' => 'Ada']));
+        self::assertSame('<p>Hello Ada added 1 2</p>', $renderer->render('x/pages/hello.html.twig', ['who' => 'Ada', 'total' => '1', 'lines' => [['price' => '2']]]));
 
         $this->expectException(SecurityError::class);
         $renderer->render('x/pages/bad.html.twig', ['who' => 'Ada']);

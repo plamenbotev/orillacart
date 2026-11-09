@@ -59,6 +59,14 @@ export interface Extension {
 	files: ExtensionFile[] | null;
 	settings: ExtensionSetting[] | null;
 	findings: string[] | null;
+	/** The routes the scripts declare, when they compile; the editor completes their paths. */
+	routes?: ExtensionRoute[] | null;
+}
+
+export interface ExtensionRoute {
+	method: string;
+	path: string;
+	who: string;
 }
 
 export interface RunResult {

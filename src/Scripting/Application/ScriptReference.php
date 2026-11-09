@@ -137,7 +137,7 @@ final readonly class ScriptReference
         'steps' => 100000,
         'seconds' => 2,
         'memory_bytes' => 16777216,
-        'calls' => 200,
+        'calls' => 5000,
         'http_calls' => 5,
         'object_queries' => 20,
         'query_records' => 200,

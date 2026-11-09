@@ -589,6 +589,9 @@ Design 59 (`docs/designs/59-extension-assets.md`): files under `assets/` printed
 | ✅ | 364 | P2 | Served from `uploads/orillacart/extensions/<id>/<name>-<hash>.<ext>`, older names removed, the folder removed on uninstall; nothing served unless enabled and granted | 800fb6c6 |
 | ✅ | 365 | P3 | The check names an `asset()` file the package lacks; the guide, the reference's permissions, the editor's help | 800fb6c6 |
 | ✅ | 368 | P3 | The editor highlights `.js`, `.css` and `.svg` and completes them: the languages' own completions, and snippets for `window.orillacart.api`, `wp.apiFetch` and the cart-changed event | 6adeacaf |
+| ✅ | 369 | P3 | The editor completes the extension's own routes in a script: one snippet per route with its method, path and the right client; `PackageView::$routes` | |
+| ✅ | 370 | P1 | Bug: `respond.html` handed its data to the template unconverted, so a `money()` value reached Twig as an object; converted as `respond.json` does | |
+| ✅ | 371 | P2 | The call budget is 5 000 (was 200: every builtin and filter counts, and a screen of a dozen rows ran out); the guide says what a call is | |
 
 ## An extension's screens in the Shop menu (2026-11-09)
 

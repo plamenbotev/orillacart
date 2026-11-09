@@ -475,9 +475,14 @@ final readonly class PackageService
     {
         $settings = null;
         $needs = [];
+        $routes = null;
         if ($compiled->ok()) {
             $manifest = $this->manifest($package);
             $needs = $manifest->needs();
+            $routes = [];
+            foreach ($manifest->ofKind('route') as $declaration) {
+                $routes[] = ['method' => strtoupper($declaration['words'][0] ?? 'GET'), 'path' => '/' . trim((string) $declaration['name'], '/'), 'who' => \is_string($declaration['props']['who'] ?? null) ? $declaration['props']['who'] : 'manager'];
+            }
             [$values, $secretsSet] = SettingValues::shown($manifest->settings(), $package->settings());
             $shown = $this->words?->settings($package->slug(), ...$manifest->settings()) ?? $manifest->settings();
             $settings = array_map(static fn(Setting $setting): array => [
@@ -492,7 +497,7 @@ final readonly class PackageService
             ], $shown);
         }
 
-        return PackageView::fromPackage($package, $needs, true, $settings, $this->findings($package, $compiled), $this->currentHashes($package));
+        return PackageView::fromPackage($package, $needs, true, $settings, $this->findings($package, $compiled), $this->currentHashes($package), $routes);
     }
 
     /**
