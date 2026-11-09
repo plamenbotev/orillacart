@@ -19,6 +19,7 @@ use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Assistant\ToolCall;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Integrations\Application\OAuthServer;
+use OrillaCart\Packages\Application\ScriptedRouteToolSource;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
@@ -458,6 +459,10 @@ final class AssistantMcpTest extends RestTestCase
         $byId = [];
         foreach ($tools->offered($caller) as $tool) {
             $required = $tool->inputSchema['required'] ?? [];
+            if ($tool->area === ScriptedRouteToolSource::AREA) {
+                // An add-on's own tools (an installed extension's routes): what they need is the add-on's to say.
+                continue;
+            }
             if ($tool->readOnly && $required === []) {
                 $byArea[$tool->area][] = $tool->name;
             } elseif ($tool->readOnly && $required === ['id']) {
@@ -480,7 +485,7 @@ final class AssistantMcpTest extends RestTestCase
             self::assertStringContainsStringIgnoringCase('no ', (string) $outcome->refusal, "{$area}: {$names[0]}");
             $answered[] = $area;
         }
-        $areas = array_values(array_unique(array_map(static fn($tool): string => $tool->area, $tools->offered($caller))));
+        $areas = array_values(array_unique(array_filter(array_map(static fn($tool): string => $tool->area, $tools->offered($caller)), static fn(string $area): bool => $area !== ScriptedRouteToolSource::AREA)));
         self::assertSame([], array_values(array_diff($areas, $answered)), 'every area has a reading tool that needs nothing, and it answers');
     }
 

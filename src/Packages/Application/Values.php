@@ -166,6 +166,7 @@ final class Values
                 'personalisation' => $line->personalisation,
                 'type' => $line->type,
                 'add_on_type' => $line->addOnType,
+                'adjustments' => array_map(static fn(array $adjustment): array => ['amount' => Money::of($adjustment['amount'])] + $adjustment, $line->adjustments),
             ], $order->lines),
             'subtotal' => Money::of($order->subtotal),
             'discount' => Money::of($order->discount),
@@ -231,7 +232,7 @@ final class Values
     /** @return array<string, mixed> */
     public static function adjustmentQuery(AdjustmentQuery $query): array
     {
-        return ['lines' => self::record($query->lines), 'currency' => $query->currency, 'customer_id' => $query->customerId, 'email' => $query->email, 'order_number' => $query->orderNumber];
+        return ['lines' => self::record($query->lines), 'currency' => $query->currency, 'customer_id' => $query->customerId, 'email' => $query->email, 'order_number' => $query->orderNumber, 'fields' => $query->fields];
     }
 
     /**

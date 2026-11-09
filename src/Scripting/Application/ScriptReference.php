@@ -6,7 +6,6 @@ namespace OrillaCart\Scripting\Application;
 
 use OrillaCart\Scripting\Application\Dto\HostFunction;
 use OrillaCart\Scripting\Domain\Parser;
-use OrillaCart\Shared\WordPress\SlotContent;
 
 /**
  * The language as a reference for whoever writes a script, a person or an agent: how it reads, the declarations
@@ -45,10 +44,52 @@ final readonly class ScriptReference
         'test "name" { http: { "POST https://…": { status, json } }, now: "2026-11-07 10:00", settings: { key: value } } fn() { … assert … }' => 'a test of the extension\'s own: run with http answered from the map, time standing at now, the settings given, jobs recorded, records rolled back',
     ];
 
+    /**
+     * What each of the shop's events hands `on <event> fn(event)`: `event.arguments` in this order, and the first
+     * under its own name (`event.order`, `event.product`, `event.cart`).
+     */
+    public const array EVENTS = [
+        'order_placed' => 'arguments: [order number]; event.order is the number. A customer placed an order.',
+        'order_paid' => 'arguments: [order number]; event.order. The money came, however it came.',
+        'order_changed' => 'arguments: [order number]; event.order. The shop changed its items, its customer\'s details or whose order it is.',
+        'order_status_changed' => 'arguments: [order number, new status, previous status]; event.order.',
+        'order_refunded' => 'arguments: [order number, amount (decimal text), whether the order is now refunded in full (boolean)]; event.order.',
+        'order_note_added' => 'arguments: [order number, the note, whether it is for the customer (boolean)]; event.order.',
+        'order_needs_attention' => 'arguments: [order number, the reason]; event.order.',
+        'order_deleted' => 'arguments: [order number]; event.order. A cancelled or failed order, never paid, was deleted.',
+        'product_changed' => 'arguments: [product id]; event.product. Its price, options, variations or other commerce details changed.',
+        'stock_changed' => 'arguments: [item such as "product:12" or "variation:34", how many could be sold before, how many after (null: stock did not limit it)]; event.product is the item.',
+        'cart_item_added' => 'arguments: [product id, variation id or null, how many were added, customer id or null for a guest]; event.cart is the product id.',
+        'cart_item_changed' => 'arguments: [product id, variation id or null, new quantity, previous quantity, customer id or null]; event.cart is the product id.',
+        'cart_item_removed' => 'arguments: [product id, variation id or null, the quantity it had, customer id or null]; event.cart is the product id.',
+        'catalog_items_removed' => 'arguments: [product ids, variation ids, attribute option ids] (lists).',
+        'price_rules_changed' => 'arguments: [the scopes before and after the change: list of {groups, products, categories, brands}, each a list of ids, empty for all].',
+        'tax_rates_changed' => 'arguments: [tax group id].',
+        'settings_changed' => 'arguments: [the settings now, the settings before] (maps of the shop\'s settings).',
+    ];
+
+    /** What the storefront passes each slot, as `context.arguments` of `slot "<name>" fn(context)`. */
+    public const array SLOTS = [
+        'product_before_form' => '[product id]: the product shown',
+        'product_after_form' => '[product id]',
+        'product_after_details' => '[product id]',
+        'cart_before' => '[] (read the cart through its page)',
+        'cart_after_totals' => '[]',
+        'cart_after' => '[]',
+        'checkout_before_details' => '[]',
+        'checkout_after_details' => '[]',
+        'checkout_after_billing' => '[]',
+        'checkout_after_shipping' => '[]',
+        'checkout_before_place_order' => '[]',
+        'account_after' => '[section ("orders", "order", "downloads", "addresses", "emails", "wishlist", "tax-exemptions"), customer {id, email, first_name, last_name}]: the customer viewing their account; a who: account route of the extension can serve them',
+        'receipt_after' => '[order number]: the order the customer is looking at',
+        'email_after_order' => '[order number, for_shop (boolean: the shop\'s copy of the email, not the customer\'s)]',
+    ];
+
     public function __construct(private HostCatalog $catalog) {}
 
     /**
-     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, slots: list<string>}
+     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, events: array<string, string>, slots: array<string, string>}
      */
     public function reference(): array
     {
@@ -63,7 +104,8 @@ final readonly class ScriptReference
             ], $this->catalog->all())),
             ...Scripts::vocabulary(),
             'keywords' => Parser::KEYWORDS,
-            'slots' => SlotContent::SLOTS,
+            'events' => self::EVENTS,
+            'slots' => self::SLOTS,
         ];
     }
 }

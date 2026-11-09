@@ -16,6 +16,7 @@ import {
 	bindRegister,
 } from './account';
 import { startAnalytics } from './analytics';
+import { api } from './api';
 import { bindBackInStock } from './backinstock';
 import { bindCart } from './cart';
 import { bindCheckout } from './checkout';
@@ -35,7 +36,17 @@ import {
 import { startWishlist } from './wishlist';
 import { bindWithdrawal } from './withdrawal';
 
+declare global {
+	interface Window {
+		/** For extensions' templates: window.orillacart.api('POST', '/x/loyalty/points/use', { points: 100 }). */
+		orillacart?: { api: typeof api };
+	}
+}
+
 function start(): void {
+	// An extension's template calls its routes through the shop's own client, which carries the nonce and
+	// asks for a fresh one when the page's has expired.
+	window.orillacart = { api };
 	// Products that cannot be bought here still have pictures to look through.
 	new Set(
 		Array.from( document.querySelectorAll( '[data-orillacart-for]' ) ).map(

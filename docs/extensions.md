@@ -223,7 +223,10 @@ A price adjuster prices one product. `OrillaCart\Extension\Pricing\OrderAdjuster
 `$registry->orderAdjuster()`) prices the order as a whole: a loyalty discount on the basket, a price agreed with
 a business customer, a handling surcharge. `adjust(AdjustmentQuery $query)` gets the order's items
 (`AdjustedLine`: product, variation, name, quantity and what the line costs after its coupons, before tax), the
-currency, the customer and, when the shop edits an order, its number. Return `Adjustment`s: a label the
+currency, the customer, when the shop edits an order its number, and from API 21 `fields`: the answers given so
+far to checkout's questions, by field id (a ticked box is "1", an unticked one absent), so a "use my points" box
+of your own `CheckoutField` can switch a discount on; the checkout prices the order again when a box or choice changes.
+Return `Adjustment`s: a label the
 customer and the invoice show, an amount below zero to lower the price, the line's index or null for the whole
 order (spread over its items, rounded so the shares add up), and a reason for the shop's records. The order
 keeps each one with your adjuster's id (kind `adjuster`), and its tax is worked out on what is left, so it is
@@ -360,7 +363,9 @@ shop manager sees the message and nothing is recorded.
 `$registry->orders()->find($number)` gives an `OrderSummary`: number, status, dates, email, customer,
 addresses, lines, totals, refunds, currency, payment, shipping, the customer's note and the field answers. Each
 `OrderLine` has, from API 7, `personalisation`: the answers to the shop's product forms (an engraving, a file by
-its name), each with its label and what it added to an item. Use it
+its name), each with its label and what it added to an item, and from API 21 `adjustments`: the changes to its
+price after its unit price as the order keeps them (kind, source, label, amount, scope, reason), so an adjuster
+can read back what it took off a placed order. Use it
 from the `orillacart_order_…` actions listed below, which pass only the number; keep the registry the
 `orillacart_extensions` action gave you.
 

@@ -29,7 +29,7 @@ final class Version
      * (Assistant\AssistantTool). 16: blocks for product pages, cards and landing pages (Storefront\ProductBlock). 17: products translated by Polylang or
      * WPML (Catalog\ProductLanguages). 18: lines an add-on keeps in the cart, sold as order lines of their type
      * (Cart\CartLineType), and each OrderLine's type. 19: the customer's email in a PaymentSession. 20: figures and "Needs you" lines on the Home screen
-     * (Home\HomeContributor).
+     * (Home\HomeContributor). 21: the checkout answers in an AdjustmentQuery, and each OrderLine's adjustments.
      */
-    public const int CURRENT = 20;
+    public const int CURRENT = 21;
 }

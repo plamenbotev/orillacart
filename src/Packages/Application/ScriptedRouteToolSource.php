@@ -20,7 +20,8 @@ use OrillaCart\Shared\Security\Capability;
  */
 final readonly class ScriptedRouteToolSource implements ToolSource
 {
-    private const string AREA = 'Extensions';
+    /** The area of the add-ons' own tools: what they offer is theirs, read-only or not. */
+    public const string AREA = 'Extensions';
 
     public function __construct(private ScriptedRoutes $routes, private ScriptedRouteHandler $handler) {}
 

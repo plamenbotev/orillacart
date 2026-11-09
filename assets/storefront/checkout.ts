@@ -72,9 +72,11 @@ export function bindCheckout( form: HTMLFormElement ): void {
 			form.dataset[ CHOSEN[ target.name as keyof typeof CHOSEN ] ] =
 				target.value;
 		}
+		// A box ticked or a choice made among the checkout's questions re-prices the order too (an add-on's
+		// adjuster may go by it); a text answer does not, so long forms do not redraw the totals at every field.
 		if (
 			target.matches(
-				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [name$=".city"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [data-orillacart-payment], [data-orillacart-delivery], [name="vat_number"]'
+				'[data-orillacart-country], [data-orillacart-state], [name$=".postcode"], [name$=".city"], [data-orillacart-ship-elsewhere], [data-orillacart-rate], [data-orillacart-payment], [data-orillacart-delivery], [name="vat_number"], input[type="checkbox"][name^="fields."], input[type="radio"][name^="fields."], select[name^="fields."]'
 			)
 		) {
 			// After this change's other listeners: the state list follows a new country first.
@@ -395,6 +397,30 @@ async function refreshSummary( form: HTMLFormElement ): Promise< void > {
 			url.searchParams.delete( name );
 		}
 	}
+	// The answers so far to the checkout's questions: an add-on's order adjuster may price by them (a box
+	// that says "use my points"). A box left unchecked, or an answer not given, is not sent.
+	Array.from( url.searchParams.keys() )
+		.filter( ( name ) => name.startsWith( 'fields[' ) )
+		.forEach( ( name ) => url.searchParams.delete( name ) );
+	form.querySelectorAll<
+		HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+	>( '[name^="fields."]' ).forEach( ( field ) => {
+		const unchecked =
+			field instanceof HTMLInputElement &&
+			( field.type === 'checkbox' || field.type === 'radio' ) &&
+			! field.checked;
+		if (
+			! field.disabled &&
+			! unchecked &&
+			field.value !== '' &&
+			field.type !== 'file'
+		) {
+			url.searchParams.set(
+				`fields[${ field.name.slice( 'fields.'.length ) }]`,
+				field.value
+			);
+		}
+	} );
 	const summary = form.querySelector(
 		'[data-orillacart-region="checkout-summary"]'
 	);

@@ -92,9 +92,12 @@ final readonly class AccountBlock implements BlockDefinition
         // Customers who sent certificates still see them when the shop no longer takes new ones.
         $taxExemptions = $this->certificates->accepts() || $exemptions !== [];
         $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses', 'emails', ...($wishlist === WishlistPolicy::Off ? [] : ['wishlist']), ...($taxExemptions ? ['tax-exemptions'] : [])], true) ? $section : 'orders';
+        $me = $this->customers->customer($customerId);
         $context = [
             'logged_in' => true,
             'section' => $section,
+            // Who is viewing, for the add-ons' account_after slot.
+            'me' => ['id' => $me->id, 'email' => $me->email, 'first_name' => $me->firstName, 'last_name' => $me->lastName],
             'wishlist' => $wishlist !== WishlistPolicy::Off,
             'tax_exemptions' => $taxExemptions,
             'links' => $links,

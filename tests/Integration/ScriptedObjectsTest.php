@@ -31,8 +31,8 @@ final class ScriptedObjectsTest extends RestTestCase
         extension "tickets" { name: "Tickets", needs: { } }
 
         object "ticket" {
-          fields: { subject: text { longest: 50, required: true }, body: text, priority: number, state: choice { of: ["open", "closed"] }, due: date, tags: list }
-          index: [state, priority, due]
+          fields: { subject: text { longest: 50, required: true }, body: text, priority: number, state: choice { of: ["open", "closed"] }, due: date, tags: list, code: text, order: text }
+          index: [state, priority, due, code, order]
         }
         fields on product {
           lead_time: number { label: "Lead time", help: "Days to make it" }
@@ -56,6 +56,9 @@ final class ScriptedObjectsTest extends RestTestCase
           return [fields.get("product", product, "lead_time"), fields.of("product", product)]
         }
         fn remove(id) { return objects.ticket.delete(id) }
+        fn coded(code, order) { return objects.ticket.create({ subject: "Coded " ~ code, state: "open", code: code, order: order }) }
+        fn by_code(code) { return objects.ticket.query({ where: { code: code } })|map(fn(t) { return t.subject }) }
+        fn by_order_text(order) { return objects.ticket.query({ where: { order: order } })|map(fn(t) { return t.subject }) }
         fn urgent_all() { return objects.ticket.query({ where: { state: "open" }, order_by: "id" }) }
         fn hourly_count() { return objects.ticket.count({ where: { state: "closed" } }) }
 
@@ -100,13 +103,22 @@ final class ScriptedObjectsTest extends RestTestCase
         self::assertTrue($this->call('remove', [$first['id']]));
         self::assertFalse($this->call('remove', [$first['id']]));
 
+        // PLAN 355: a text field holding digits is found as text, and a text field named "order" is not the
+        // order reference.
+        $this->call('coded', ['2', '7']);
+        $this->call('coded', ['02', '7']);
+        self::assertSame(['Coded 2'], $this->call('by_code', ['2']));
+        self::assertSame(['Coded 02'], $this->call('by_code', ['02']));
+        self::assertSame(['Coded 2', 'Coded 02'], $this->call('by_order_text', ['7']));
+        self::assertSame([], $this->call('by_order_text', ['8']));
+
         $refused = $this->data($this->request('POST', '/extensions/tickets/run', ['function' => 'bad_filter'], nonce: true));
         self::assertStringContainsString('"body" is not indexed', self::text($this->assoc($refused['failure'])['message']));
         $refused = $this->data($this->request('POST', '/extensions/tickets/run', ['function' => 'bad_field'], nonce: true));
         self::assertStringContainsString('No field "colour" is declared', self::text($this->assoc($refused['failure'])['message']));
 
         $export = $this->data($this->request('GET', '/extensions/tickets/data'));
-        self::assertCount(2, (array) $export['objects']);
+        self::assertCount(4, (array) $export['objects']);
         $this->request('DELETE', '/extensions/tickets', nonce: true);
         self::assertSame(404, $this->request('GET', '/extensions/tickets/data')->get_status(), 'uninstalled, records and all');
     }

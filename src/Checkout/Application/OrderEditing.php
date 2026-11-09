@@ -14,6 +14,7 @@ use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
+use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\PriceChangeView;
@@ -65,7 +66,7 @@ final readonly class OrderEditing
      */
     private function priced(OrderView $order, array $items, TaxAddress $shipping, TaxAddress $billing, ?string $shippingOption, array $codes, array $automatic, array $changes = [], array $charges = []): array
     {
-        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, $changes, $automatic, $goods, charges: $charges);
+        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, $order->paymentGateway, $order->currency, $changes, $automatic, $goods, charges: $charges, fields: array_column(array_map(static fn(OrderFieldView $field): array => [$field->id, $field->answer], $order->fields), 1, 0));
         $priced = $price(null);
         $reverse = new ReverseCharge($order->reverseCharge, $order->vatNumber);
         $goods = $this->vatNumbers->forGoodsTo($reverse, $this->pricing->goodsTo($priced, $shipping));

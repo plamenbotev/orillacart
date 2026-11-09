@@ -12,6 +12,7 @@ use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Extension\Pricing\Adjustment;
 use OrillaCart\Extension\Pricing\AdjustmentQuery;
 use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Geography\Domain\PostcodeFormat;
@@ -21,6 +22,7 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
+use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
@@ -684,6 +686,46 @@ final class CheckoutServiceTest extends TestCase
             payment: $payment,
             expectedTotal: $expectedTotal,
         );
+    }
+
+    /**
+     * PLAN 351 and 352: an order adjuster prices by the answers to checkout's questions (a "use my points" box),
+     * and the order's summary for add-ons shows each line's adjustments, so the add-on can settle what it gave.
+     */
+    public function testAnOrderAdjusterSeesTheCheckoutAnswersAndTheSummaryShowsWhatItTookOff(): void
+    {
+        $seen = [];
+        $this->shop->extensions->orderAdjusters[] = new class (static function (array $fields) use (&$seen): void {
+            $seen[] = $fields;
+        }) implements OrderAdjuster {
+            public function __construct(private readonly \Closure $record) {}
+
+            public function id(): string
+            {
+                return 'points';
+            }
+
+            public function adjust(AdjustmentQuery $query): array
+            {
+                ($this->record)($query->fields);
+
+                return ($query->fields['use_points'] ?? null) === '1' ? [new Adjustment('Points', '-2.00', null, '200 points')] : [];
+            }
+        };
+        $owner = $this->cart([10, 1]);
+
+        $before = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', null, 'BG'));
+        $with = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', null, 'BG', fields: ['use_points' => '1']));
+        self::assertSame([[], ['use_points' => '1']], $seen, 'the summary carries the answers so far');
+        self::assertSame('2.4', (string) Money::of($before->total)->subtract(Money::of($with->total)), '2.00 off, and the 20% tax on it');
+
+        $order = $this->order('bank_transfer');
+        $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder($order->email, $order->billing, shippingOption: $order->shippingOption, payment: $order->payment, fields: ['use_points' => true, 'gift' => false]));
+        self::assertSame(['use_points' => '1'], $seen[\count($seen) - 1], 'a ticked box is "1", an unticked one absent');
+
+        $summary = OrderSummaries::summary($this->shop->orders->order($placed->number));
+        self::assertSame([['kind' => 'adjuster', 'source' => 'points', 'label' => 'Points', 'amount' => '-2', 'scope' => 'order', 'reason' => '200 points']], $summary->lines[0]->adjustments);
+        self::assertSame('2', $summary->discount);
     }
 
     public function testAResubmitThatPricedBeforeTheCartWasClearedPlacesNoSecondOrder(): void

@@ -217,6 +217,19 @@ final class McpServerTest extends TestCase
         self::assertSame('orillacart://shop', self::at($this->modern('resources/list')->body, 'result', 'resources', 0, 'uri'));
         $read = $this->modern('resources/read', ['uri' => 'orillacart://shop'], ['mcp-name' => 'orillacart://shop']);
         self::assertSame(['name' => 'Mugs & Co', 'currency' => 'EUR'], json_decode(self::textAt($read->body, 'result', 'contents', 0, 'text'), true));
+        self::assertSame(['shop', 'extensions_reference', 'extensions_guide'], self::names(self::at($this->modern('resources/list')->body, 'result', 'resources')));
+        $guide = $this->modern('resources/read', ['uri' => 'orillacart://extensions/guide'], ['mcp-name' => 'orillacart://extensions/guide']);
+        self::assertSame('text/markdown', self::at($guide->body, 'result', 'contents', 0, 'mimeType'));
+        self::assertStringStartsWith('# Writing extension scripts', self::textAt($guide->body, 'result', 'contents', 0, 'text'));
+        $reference = $this->modern('resources/read', ['uri' => 'orillacart://extensions/reference'], ['mcp-name' => 'orillacart://extensions/reference']);
+        $decoded = json_decode(self::textAt($reference->body, 'result', 'contents', 0, 'text'), true);
+        self::assertIsArray($decoded);
+        self::assertIsArray($decoded['events']);
+        self::assertIsString($decoded['events']['order_refunded']);
+        self::assertStringContainsString('refunded in full', $decoded['events']['order_refunded']);
+        self::assertIsArray($decoded['slots']);
+        self::assertIsString($decoded['slots']['account_after']);
+        self::assertStringContainsString('first_name', $decoded['slots']['account_after']);
     }
 
     public function testTheKeysAreasLimitWhatItIsOffered(): void
@@ -469,7 +482,12 @@ final class McpServerTest extends TestCase
             }
         };
 
-        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals, new \OrillaCart\Scripting\Application\ScriptReference(\OrillaCart\Scripting\Application\HostCatalog::of([])))->handle($message, $headers, $caller ?? new Caller(1, 7, false));
+        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals, new \OrillaCart\Scripting\Application\ScriptReference(\OrillaCart\Scripting\Application\HostCatalog::of([])), new class implements \OrillaCart\Scripting\Application\ScriptGuide {
+            public function markdown(): string
+            {
+                return "# Writing extension scripts\n";
+            }
+        })->handle($message, $headers, $caller ?? new Caller(1, 7, false));
     }
 
     /**

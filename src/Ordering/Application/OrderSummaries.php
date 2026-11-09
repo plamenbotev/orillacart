@@ -9,6 +9,7 @@ use OrillaCart\Extension\Order\OrderLine;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\Dto\AdjustmentView;
 use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
@@ -90,7 +91,7 @@ final readonly class OrderSummaries implements Orders
             $order->customerId,
             self::address($order->billing),
             $order->shippingAddress === null ? null : self::address($order->shippingAddress),
-            array_map(static fn(OrderLineView $line): OrderLine => new OrderLine($line->productId, $line->variationId, $line->sku, $line->name, $line->quantity, $line->unitPrice, $line->total, $line->tax, array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer'], 'price' => $answer['price']], $line->personalisation), $line->type, $line->addOn['type'] ?? null), $order->lines),
+            array_map(static fn(OrderLineView $line): OrderLine => new OrderLine($line->productId, $line->variationId, $line->sku, $line->name, $line->quantity, $line->unitPrice, $line->total, $line->tax, array_map(static fn(array $answer): array => ['label' => $answer['label'], 'answer' => $answer['answer'], 'price' => $answer['price']], $line->personalisation), $line->type, $line->addOn['type'] ?? null, array_map(static fn(AdjustmentView $adjustment): array => ['kind' => $adjustment->kind, 'source' => $adjustment->source, 'label' => $adjustment->label, 'amount' => $adjustment->amount, 'scope' => $adjustment->scope, 'reason' => $adjustment->reason], $line->adjustments)), $order->lines),
             $order->subtotal,
             $order->discountTotal,
             $order->shippingTotal,

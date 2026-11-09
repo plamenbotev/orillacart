@@ -398,12 +398,19 @@ order_adjuster "loyalty" {
 }
 ```
 
+`query.fields` are the answers given so far to checkout's questions (the extension's own `checkout_field`s and the
+shop's forms), by field id, as text: a ticked box is `"1"`, one left unticked is absent. The checkout prices the
+order again whenever a box is ticked or a choice made (not at every text answer: the totals would redraw at each
+field), so a `checkout_field "use_points" { kind: checkbox }` switches a discount on: `if (query.fields.use_points ?? "") == "1" { … }`. An order the shop edits brings its own answers.
+What the adjuster took off is on the placed order's lines, under `adjustments` (§8, "The order map"), with the
+adjuster's id as `source`: `on order_paid` can then settle what was spent.
+
 | Declaration             | Receives                                                                                                | Answers                                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `cart_rule.check`       | the cart: customer_id, currency, lines[{id, product_id, variation_id, sku, name, quantity, unit_price}] | a list of `cart.refuse(message)` and `cart.refuse_line(line_id, message)`; empty or null for none |
 | `order_fee.fee`         | `query`: items, subtotal, shipping, shipping_option, payment_method, country, customer_id, currency     | `fee.of(label, amount, taxable?, tax_group_id?, as_line?)` or null                                |
 | `price_adjuster.adjust` | `query`: product_id, variation_id, quantity, customer_id, price, regular_price, currency                | the new price (money or text), or null to leave it                                                |
-| `order_adjuster.adjust` | `query`: lines, currency, customer_id, email, order_number                                              | a list of `price.adjustment(label, amount, line?, reason?)`, negative to take off                 |
+| `order_adjuster.adjust` | `query`: lines, currency, customer_id, email, order_number, fields                                      | a list of `price.adjustment(label, amount, line?, reason?)`, negative to take off                 |
 
 ### Checkout fields, order actions, columns and filters
 
@@ -454,8 +461,12 @@ order_filter "needs_invoice" {
 **The order map**, as `order_action`, `order_column` and `shop.orders.find` give it: number, status, placed_at,
 paid_at, email, customer_id, billing{first_name, last_name, street, city, postcode, country, state, phone},
 shipping_address (the same or null), lines[{product_id, variation_id, sku, name, quantity, unit_price, total,
-tax, personalisation, type, add_on_type}], subtotal, discount, shipping_total, tax, total, refunded, currency,
-payment, transaction_id, shipping, note, fields, fees.
+tax, personalisation, type, add_on_type, adjustments[{kind, source, label, amount, scope, reason}]}], subtotal,
+discount, shipping_total, tax, total, refunded, currency, payment, transaction_id, shipping, note, fields, fees.
+A line's `adjustments` are the changes to its price after its unit price, as the order keeps them: `kind` is
+`coupon`, `automatic`, `manual`, `add_on` or `adjuster`; `source` the coupon's code, the extension's or
+adjuster's id, or the shop manager's user id; `amount` is money, below zero for a discount; `scope` is `line` for
+the line's own or `order` for its share of a change to the whole order.
 
 ### Home, assistant tools, product blocks and mailing lists
 
@@ -567,12 +578,37 @@ template_data "storefront/product.html.twig" fn(context) {
 ```
 
 - `slot "<name>" { template } fn(context)`: the template prints where the storefront's template calls
-  `slot('<name>')`. Slots: `product_before_form`, `product_after_form`, `product_after_details`, `cart_before`,
-  `cart_after`, `cart_after_totals`, `checkout_before_details`, `checkout_after_details`,
-  `checkout_after_billing`, `checkout_after_shipping`, `checkout_before_place_order`, `account_after`,
-  `receipt_after`, `email_after_order`. The handler gets `{ slot, arguments }`, where `arguments` is what the
-  storefront passed (a product, a cart, an order as maps), and whatever it answers is added to the template's
-  context. The handler may be left out.
+  `slot('<name>')`. The handler gets `{ slot, arguments }`, where `arguments` is what the storefront passed, and
+  whatever it answers is added to the template's context. The handler may be left out. The slots and what each
+  passes:
+
+  | Slot                                                                                                 | `context.arguments`                                                                                                      |
+  | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+  | `product_before_form`, `product_after_form`, `product_after_details`                                 | `[product_id]`                                                                                                           |
+  | `cart_before`, `cart_after_totals`, `cart_after`                                                     | `[]`                                                                                                                     |
+  | `checkout_before_details`, `checkout_after_details`, `checkout_after_billing`, `checkout_after_shipping`, `checkout_before_place_order` | `[]`                                                                                                                     |
+  | `account_after`                                                                                      | `[section, customer]`: the section shown (`orders`, `order`, `downloads`, `addresses`, `emails`, `wishlist`, `tax-exemptions`) and the customer viewing, `{ id, email, first_name, last_name }` |
+  | `receipt_after`                                                                                      | `[order_number]`                                                                                                         |
+  | `email_after_order`                                                                                  | `[order_number, for_shop]`: `for_shop` is true in the shop's own copy of the email                                       |
+
+- **Calling your routes from a template.** `api_url('x/<extension>/<path>')` is the full URL of one of the
+  extension's routes (§9), and the page's script offers `window.orillacart.api(method, path, body)`, the shop's
+  own client: it sends the REST nonce, asks for a fresh one when the page's has expired, and answers
+  `{ ok, status, data }` or `{ ok, status, code, message, violations }`. A customer's account page (the
+  `account_after` slot) is not cached, so a `who: account` route works from it:
+
+  ```twig
+  <button type="button" data-use-points>{{ __('Use my points') }}</button>
+  <script>
+  document.querySelector('[data-use-points]').addEventListener('click', async () => {
+    const result = await window.orillacart.api('POST', '/x/loyalty/points/use', { points: 100 });
+    alert(result.ok ? result.data.message : result.message);
+  });
+  </script>
+  ```
+
+  `api_nonce()` is the nonce itself, for a call made another way (null for a visitor, whose page may be
+  cached: let the client ask for one).
 - `template_data "<template>" fn(context)`: adds to the context of one of the shop's own templates, under
   `ext.<extension>`; in the template, `{{ ext.greeter.badge }}`.
 - With the permission `templates: override`, a file at `templates/storefront/product.html.twig` in the package
@@ -673,12 +709,29 @@ every "daily" fn() {
 ```
 
 - `on <event> fn(event)` runs after one of the shop's events, as a job in the `extensions` lane, never in the
-  request that caused it. Events: `order_placed`, `order_paid`, `order_changed`, `order_status_changed`,
-  `order_refunded`, `order_note_added`, `order_needs_attention`, `order_deleted`, `product_changed`,
-  `stock_changed`, `cart_item_added`, `cart_item_changed`, `cart_item_removed`, `catalog_items_removed`,
-  `price_rules_changed`, `tax_rates_changed`, `settings_changed`. `event` has `event` (the name), `arguments`
-  (the hook's arguments as plain values) and the first argument under a guessable name: `order` for `order_*`,
-  `product` for `product_*` and `stock_*`, `cart` for `cart_*`.
+  request that caused it. `event` has `event` (the name), `arguments` (the hook's arguments, in this order) and
+  the first argument under a guessable name: `order` for `order_*`, `product` for `product_*` and `stock_*`,
+  `cart` for `cart_*`. The events and their arguments:
+
+  | Event                                                            | `event.arguments`                                                                                                    |
+  | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+  | `order_placed`, `order_paid`, `order_changed`, `order_deleted`   | `[order_number]`                                                                                                     |
+  | `order_status_changed`                                           | `[order_number, new_status, previous_status]`                                                                        |
+  | `order_refunded`                                                 | `[order_number, amount, in_full]`: the amount as decimal text, and whether the order is now refunded in full         |
+  | `order_note_added`                                               | `[order_number, note, for_customer]`                                                                                 |
+  | `order_needs_attention`                                          | `[order_number, reason]`                                                                                             |
+  | `product_changed`                                                | `[product_id]`                                                                                                       |
+  | `stock_changed`                                                  | `[item, before, after]`: the item as `"product:12"` or `"variation:34"`, how many could be sold before and after (null: stock did not limit it) |
+  | `cart_item_added`                                                | `[product_id, variation_id, quantity_added, customer_id]` (null for no variation, or a guest)                         |
+  | `cart_item_changed`                                              | `[product_id, variation_id, new_quantity, previous_quantity, customer_id]`                                           |
+  | `cart_item_removed`                                              | `[product_id, variation_id, quantity, customer_id]`                                                                  |
+  | `catalog_items_removed`                                          | `[product_ids, variation_ids, option_ids]`                                                                           |
+  | `price_rules_changed`                                            | `[scopes]`: before and after the change, each `{ groups, products, categories, brands }` (empty lists for all)       |
+  | `tax_rates_changed`                                              | `[tax_group_id]`                                                                                                     |
+  | `settings_changed`                                               | `[settings_now, settings_before]`                                                                                    |
+
+  The reference (`GET /script-reference`, the assistant's `extensions_reference` resource) carries the same under
+  `events` and `slots`; this guide is `GET /script-guide` and the `extensions_guide` resource.
 - `job "<name>" fn(payload)` runs when the extension calls `jobs.push("<name>", payload, at?)`, with `at` a
   moment or `"30 minutes"` from now. A job that fails `unavailable` is retried; an error counts.
 - `every "hourly|twicedaily|daily|weekly" fn()` runs on the shop's schedule, once per period, by whichever

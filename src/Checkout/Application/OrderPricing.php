@@ -123,6 +123,7 @@ final readonly class OrderPricing
      * @param list<string>|null $automatic the automatic discounts that may apply, by code; null for the shop's now
      * @param bool $itemsOnly the items and what the coupons take off them only: no shipping, fees or tax service
      *                        asked, for what coupons give (GivenItems)
+     * @param array<string, string> $fields the answers to checkout's questions so far, by field id, for the add-ons' order adjusters
      * @param list<Charge> $charges prices of their own, with no product (an add-on's deposit, the shop's gift
      *                              wrapping): so much each in the shop's currency as its prices are, or, given, in the
      *                              order's as the customer pays it; no coupon takes anything off them
@@ -131,17 +132,17 @@ final readonly class OrderPricing
      *
      * @throws CheckoutRuleViolation for an item no longer sold, or not in that quantity
      */
-    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null, bool $itemsOnly = false, array $charges = []): array
+    public function price(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode = null, array $codes = [], ?int $customerId = null, ?string $email = null, ?int $orderId = null, bool $reverseCharge = false, ?string $payment = null, ?string $currency = null, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null, bool $itemsOnly = false, array $charges = [], array $fields = []): array
     {
         $currency ??= $this->settings->current()->currency;
-        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $reverseChargeGoods, itemsOnly: $itemsOnly, charges: $charges);
+        $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $reverseChargeGoods, itemsOnly: $itemsOnly, charges: $charges, fields: $fields);
         // Collected at one of the shop's places: the goods are handed over there, so they are taxed there, at
         // home (no reverse charge for goods, no import or export), whatever the shopper's address. A courier's
         // office or locker is still delivery to the customer: it changes nothing.
         $handedOver = $this->handedOverAt($priced);
         $goods = $handedOver === null ? $reverseChargeGoods : false;
         if ($handedOver !== null) {
-            $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $goods, $handedOver, charges: $charges);
+            $priced = $this->priceItems($items, $shipping, $billing, $shippingOption, $postcode, $codes, $customerId, $email, $orderId, $reverseCharge, $payment, $currency, $changes, $automatic, $goods, $handedOver, charges: $charges, fields: $fields);
         }
 
         return $priced;
@@ -267,10 +268,11 @@ final readonly class OrderPricing
      * @param list<string> $codes
      * @param list<string>|null $automatic
      * @param list<Charge> $charges
+     * @param array<string, string> $fields the answers to checkout's questions so far, for the order adjusters
      *
      * @return Priced
      */
-    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null, ?TaxAddress $handedOver = null, bool $itemsOnly = false, array $charges = []): array
+    private function priceItems(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?string $postcode, array $codes, ?int $customerId, ?string $email, ?int $orderId, bool $reverseCharge, ?string $payment, string $currency, array $changes = [], ?array $automatic = null, ?bool $reverseChargeGoods = null, ?TaxAddress $handedOver = null, bool $itemsOnly = false, array $charges = [], array $fields = []): array
     {
         // Where the goods are taxed: where they are handed over (the shop's place they are collected at), else
         // where they are shipped. Which ways to ship are offered still goes by the shipping address.
@@ -357,7 +359,7 @@ final readonly class OrderPricing
         foreach ($lines as $index => $line) {
             $lines[$index]['discount'] = array_reduce($couponLines, static fn(Money $sum, array $taken): Money => $sum->add($taken[$index]), Money::zero());
         }
-        $adjusted = $this->priceChanges($changes, $lines, $decimals, $currency, $customerId, $email, $orderId);
+        $adjusted = $this->priceChanges($changes, $lines, $decimals, $currency, $customerId, $email, $orderId, $fields);
         $places = [];
         foreach ($lines as $index => $line) {
             foreach ($adjusted[$index] ?? [] as $change) {
@@ -964,12 +966,13 @@ final readonly class OrderPricing
      *
      * @param list<array{kind: string, source: string, label: string, amount: string, line: ?int, reason: ?string, change: ?string}> $changes
      * @param list<PricedLine> $lines
+     * @param array<string, string> $fields
      *
      * @return array<int, list<AdjustmentView>>
      *
      * @throws CheckoutRuleViolation for a change to a line the order does not have, or an adjuster that failed closed
      */
-    private function priceChanges(array $changes, array $lines, int $decimals, string $currency, ?int $customerId, ?string $email, ?int $orderId): array
+    private function priceChanges(array $changes, array $lines, int $decimals, string $currency, ?int $customerId, ?string $email, ?int $orderId, array $fields = []): array
     {
         if ($lines === []) {
             return [];
@@ -982,6 +985,7 @@ final readonly class OrderPricing
                 $customerId,
                 $email,
                 $orderId,
+                $fields,
             );
             try {
                 $made = $adjuster->adjust($query);

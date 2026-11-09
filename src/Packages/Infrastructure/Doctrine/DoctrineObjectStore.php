@@ -10,6 +10,8 @@ use OrillaCart\Packages\Application\Dto\ObjectQuery;
 use OrillaCart\Packages\Application\ObjectStore;
 use OrillaCart\Packages\Domain\ExtensionObject;
 use OrillaCart\Packages\Domain\ExtensionValue;
+use OrillaCart\Scripting\Domain\Ops;
+use OrillaCart\Scripting\Domain\ScriptError;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -216,23 +218,31 @@ final readonly class DoctrineObjectStore implements ObjectStore
         $builder = $this->entityManager->createQueryBuilder()->select('o')->from(ExtensionObject::class, 'o')
             ->where('o.extension = :extension')->andWhere('o.type = :type')
             ->setParameter('extension', $extension)->setParameter('type', $type);
-        foreach ($query->where as $index => [$field, $operator, $value]) {
+        foreach ($query->where as $index => [$field, $operator, $value, $kind]) {
             $parameter = 'w' . $index;
-            if ($field === 'id' || \in_array($field, ['product', 'order', 'customer'], true)) {
-                $column = $field === 'id' ? 'o.id' : 'o.' . $field . 'Id';
-                $id = \is_array($value) ? ($value['id'] ?? 0) : $value;
+            if ($kind === 'id' || \in_array($kind, ['product', 'order', 'customer'], true)) {
+                $column = $kind === 'id' ? 'o.id' : 'o.' . $kind . 'Id';
+                $id = \is_array($value) ? ($value['id'] ?? ($value['number'] ?? 0)) : $value;
                 $builder->andWhere("{$column} {$operator} :{$parameter}")->setParameter($parameter, is_numeric($id) ? (int) $id : 0);
                 continue;
             }
             $alias = 'f' . $index;
             $builder->join(ExtensionValue::class, $alias, 'WITH', "{$alias}.extension = o.extension AND {$alias}.kind = :objectKind AND {$alias}.ownerId = o.id AND {$alias}.field = :{$parameter}f")
                 ->setParameter('objectKind', ExtensionValue::OBJECT)->setParameter($parameter . 'f', $field);
-            if (\is_bool($value) || \is_int($value) || \is_float($value) || (\is_string($value) && is_numeric($value))) {
-                $builder->andWhere("{$alias}.valueNumber {$operator} :{$parameter}")->setParameter($parameter, number_format(\is_bool($value) ? (int) $value : (float) $value, 4, '.', ''));
-            } elseif (\is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1) {
-                $builder->andWhere("{$alias}.valueDate {$operator} :{$parameter}")->setParameter($parameter, new \DateTimeImmutable($value));
+            // The column follows the field's declared kind, as the value was indexed: "2" in a text field is text.
+            if (\in_array($kind, ['number', 'money', 'boolean', 'object'], true)) {
+                $id = \is_array($value) ? ($value['id'] ?? 0) : $value;
+                $number = \is_bool($id) ? (int) $id : (is_numeric($id) ? (float) $id : (Ops::truthy($id) ? 1 : 0));
+                $builder->andWhere("{$alias}.valueNumber {$operator} :{$parameter}")->setParameter($parameter, number_format($number, 4, '.', ''));
+            } elseif (\in_array($kind, ['date', 'datetime'], true)) {
+                try {
+                    $moment = new \DateTimeImmutable(\is_string($value) ? $value : '@0');
+                } catch (\Exception) {
+                    throw new ScriptError(\sprintf('The field "%s" is compared with a date, not "%s".', $field, \is_scalar($value) ? (string) $value : Ops::kind($value)));
+                }
+                $builder->andWhere("{$alias}.valueDate {$operator} :{$parameter}")->setParameter($parameter, $moment);
             } else {
-                $builder->andWhere("{$alias}.valueText {$operator} :{$parameter}")->setParameter($parameter, mb_substr(\is_string($value) ? $value : self::json($value), 0, ExtensionValue::MAX_TEXT));
+                $builder->andWhere("{$alias}.valueText {$operator} :{$parameter}")->setParameter($parameter, mb_substr(\is_string($value) ? $value : (\is_scalar($value) || $value === null ? Ops::text($value) : self::json($value)), 0, ExtensionValue::MAX_TEXT));
             }
         }
 

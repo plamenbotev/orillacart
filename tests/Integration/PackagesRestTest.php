@@ -248,7 +248,9 @@ final class PackagesRestTest extends RestTestCase
         self::assertSame(200, $this->request('POST', '/script/check', ['files' => []], nonce: true)->get_status(), 'nothing to check is fine');
         $reference = $this->data($this->request('GET', '/script-reference'));
         self::assertContains('let', self::assoc($reference['keywords']));
-        self::assertContains('product_after_details', self::assoc($reference['slots']));
+        self::assertArrayHasKey('product_after_details', self::assoc($reference['slots']));
+        self::assertArrayHasKey('order_refunded', self::assoc($reference['events']));
+        self::assertStringStartsWith('# Writing extension scripts', self::string($this->data($this->request('GET', '/script-guide'))['markdown']));
     }
 
     public function testAnExtensionMustDeclareWhatItNeedsAndTheManagerMustGrantIt(): void

@@ -560,6 +560,19 @@ Design 58 (`docs/designs/58-extension-zips.md`): an extension installed from a z
 | ✅ | 349 | P3 | `wp orillacart extension install <zip>` and `export <id> [<zip>]` | f7493dde |
 | ✅ | 350 | P2 | The guide and the REST docs; without PHP's zip extension a zip is refused with that reason | f7493dde |
 
+## Loyalty-program test: the blind spots (2026-11-09)
+
+A loyalty program written as an extension over the MCP, to find what an extension cannot reach. Six gaps, all wanted.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 351 | P1 | `order_adjuster.adjust` sees the checkout answers: `AdjustmentQuery::$fields` (API 21), the summary priced again when a box or choice among the checkout fields changes, an edited order's own answers | |
+| ✅ | 352 | P1 | Each `OrderLine` of an `OrderSummary` carries its adjustments (kind, source, label, amount, scope, reason); `shop.orders.find` lines have `adjustments` | |
+| ✅ | 353 | P2 | Templates call routes: `api_url()` and `api_nonce()` in the storefront sandbox, `window.orillacart.api()` on the page, the guide says how | |
+| ✅ | 354 | P2 | `account_after` is told who is viewing: the section and the customer `{ id, email, first_name, last_name }` | |
+| ✅ | 355 | P1 | Bug: `objects.*.query` chose the column by the value's shape and took a field named `order`, `product` or `customer` for the reference; it now goes by the declared kind | |
+| ✅ | 356 | P2 | The guide as an MCP resource (`orillacart://extensions/guide`, shipped with the plugin) and `GET /script-guide`; the reference names what each event receives and what each slot passes | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

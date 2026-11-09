@@ -224,7 +224,27 @@ final readonly class CheckoutBlock implements BlockDefinition
             self::postcode('billing_postcode'),
             self::city($shippingCountry === null ? 'billing_city' : 'shipping_city'),
             self::city('billing_city'),
+            self::fields(),
         );
+    }
+
+    /**
+     * The answers the storefront script sent to the checkout's questions (fields[<id>]=…), for the add-ons' order
+     * adjusters: text only, a checked box as "1"; the order's own check comes when it is placed.
+     *
+     * @return array<string, string>
+     */
+    private static function fields(): array
+    {
+        $fields = [];
+        foreach (\is_array($_GET['fields'] ?? null) ? $_GET['fields'] : [] as $id => $answer) {
+            if (!\is_string($id) || preg_match('/^[A-Za-z0-9_-]{1,64}$/', $id) !== 1 || !\is_string($answer) || $answer === '' || \count($fields) >= 100) {
+                continue;
+            }
+            $fields[$id] = mb_substr(sanitize_text_field(wp_unslash($answer)), 0, 2000);
+        }
+
+        return $fields;
     }
 
     private static function city(string $name): ?string

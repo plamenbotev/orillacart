@@ -220,7 +220,10 @@ final class ScriptedProvidersTest extends RestTestCase
               fn adjust(query) { return query.quantity >= 10 ? query.price * 0.9 : null }
             }
             order_adjuster "loyalty" {
-              fn adjust(query) { return query.customer_id == 7 ? [price.adjustment("Loyalty", "-1.00", null, "a regular")] : [] }
+              fn adjust(query) {
+                if (query.fields.use_points ?? "") == "1" { return [price.adjustment("Points", "-2.00", null, "200 points")] }
+                return query.customer_id == 7 ? [price.adjustment("Loyalty", "-1.00", null, "a regular")] : []
+              }
             }
             checkout_field "vat_office" {
               label: "VAT office", kind: choice, section: billing, required: false, choices: { sofia: "Sofia", varna: "Varna" }
@@ -282,6 +285,7 @@ final class ScriptedProvidersTest extends RestTestCase
         $loyalty = $this->provider('loyalty');
         self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedOrderAdjuster::class, $loyalty);
         self::assertSame([['Loyalty', '-1.0000', 'a regular']], array_map(static fn($a): array => [$a->label, $a->amount, $a->reason], $loyalty->adjust(new \OrillaCart\Extension\Pricing\AdjustmentQuery([], 'EUR', 7))));
+        self::assertSame([['Points', '-2.0000', '200 points']], array_map(static fn($a): array => [$a->label, $a->amount, $a->reason], $loyalty->adjust(new \OrillaCart\Extension\Pricing\AdjustmentQuery([], 'EUR', null, fields: ['use_points' => '1']))), 'the checkout answers reach the adjuster (PLAN 351)');
 
         $field = $this->provider('vat_office');
         self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedFieldCheck::class, $field);

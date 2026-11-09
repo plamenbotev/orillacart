@@ -98,11 +98,14 @@ final class ObjectDefinitions
     }
 
     /**
-     * A script's query map as an ObjectQuery over indexed fields.
+     * A script's query map as an ObjectQuery over indexed fields. Each filter carries the field's declared kind,
+     * so that "2" in a text field is looked for as text and a text field named `order` is not taken for the
+     * order reference.
      *
-     * @param list<string> $indexed
+     * @param array<string, array{string, array<string, mixed>}> $declared the object's fields, as object() gives them
+     * @param list<string>                                        $indexed
      */
-    public static function query(mixed $map, array $indexed): ObjectQuery
+    public static function query(mixed $map, array $declared, array $indexed): ObjectQuery
     {
         $map = \is_array($map) ? $map : [];
         $where = [];
@@ -113,10 +116,16 @@ final class ObjectDefinitions
             if (!\in_array($operator, ['=', '!=', '<', '<=', '>', '>='], true)) {
                 throw new ScriptError(\sprintf('"%s" is not a comparison; use =, !=, <, <=, > or >=.', $operator));
             }
-            if ($field !== 'id' && !\in_array($field, $indexed, true) && !\in_array($field, self::OWNERS, true)) {
+            $kind = $declared[$field][0] ?? null;
+            if ($field === 'id') {
+                $kind = 'id';
+            } elseif (\in_array($kind, self::OWNERS, true) || ($kind === null && \in_array($field, self::OWNERS, true))) {
+                // A reference, by its declared kind or (undeclared) by the reference's own name.
+                $kind ??= $field;
+            } elseif ($kind === null || !\in_array($field, $indexed, true)) {
                 throw new ScriptError(\sprintf('"%s" is not indexed: a query filters on the fields the declaration indexes (%s), the references, or id.', $field, $indexed === [] ? 'none' : implode(', ', $indexed)));
             }
-            $where[] = [$field, $operator, Ops::plain($value)];
+            $where[] = [$field, $operator, Ops::plain($value), $kind];
         }
         $orderBy = Ops::text($map['order_by'] ?? 'id');
         $descending = str_starts_with($orderBy, '-');

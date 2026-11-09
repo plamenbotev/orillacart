@@ -10,6 +10,7 @@ use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Assistant\Application\Dto\McpReply;
 use OrillaCart\Assistant\Application\Dto\ToolDefinition;
 use OrillaCart\Assistant\Application\Dto\ToolOutcome;
+use OrillaCart\Scripting\Application\ScriptGuide;
 use OrillaCart\Scripting\Application\ScriptReference;
 
 /**
@@ -66,8 +67,17 @@ final readonly class McpServer
         'uri' => 'orillacart://extensions/reference',
         'name' => 'extensions_reference',
         'title' => 'How to write an extension',
-        'description' => 'The script language extensions are written in, the declarations the shop takes, and every host function with what it takes and needs.',
+        'description' => 'The script language extensions are written in, the declarations the shop takes, every host function with what it takes and needs, what each event hands its handler and what each template slot passes. The guide (extensions_guide) explains them.',
         'mimeType' => 'application/json',
+    ];
+
+    /** The written guide to extension scripts: what each declaration, event and slot is for, with examples. */
+    private const array GUIDE = [
+        'uri' => 'orillacart://extensions/guide',
+        'name' => 'extensions_guide',
+        'title' => 'The guide to writing an extension',
+        'description' => 'The written guide: what an extension is, each declaration with examples, what the handlers receive (events, slots, providers), objects and fields, routes and templates, tests. Read it with the reference.',
+        'mimeType' => 'text/markdown',
     ];
 
     /** Ways to start, for the owner to pick in their client. */
@@ -137,6 +147,7 @@ final readonly class McpServer
         private RequestStates $states,
         private CallApprovals $approvals,
         private ScriptReference $reference,
+        private ScriptGuide $guide,
     ) {}
 
     /**
@@ -182,7 +193,7 @@ final readonly class McpServer
             'tools/call' => $this->callTool($params, $caller, $modern, $meta),
             'prompts/list' => self::list('prompts', array_map(static fn(array $prompt): array => array_diff_key($prompt, ['text' => true]), array_values(self::PROMPTS)), $modern),
             'prompts/get' => $this->prompt($params),
-            'resources/list' => self::list('resources', [self::OVERVIEW, self::REFERENCE], $modern),
+            'resources/list' => self::list('resources', [self::OVERVIEW, self::REFERENCE, self::GUIDE], $modern),
             'resources/read' => $this->resource($params),
             'resources/templates/list' => self::list('resourceTemplates', [], $modern),
             default => null,
@@ -353,6 +364,9 @@ final readonly class McpServer
             $text = json_encode($this->reference->reference(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
             return ['contents' => [['uri' => self::REFERENCE['uri'], 'mimeType' => 'application/json', 'text' => $text === false ? '{}' : $text]]];
+        }
+        if ($uri === self::GUIDE['uri']) {
+            return ['contents' => [['uri' => self::GUIDE['uri'], 'mimeType' => 'text/markdown', 'text' => $this->guide->markdown()]]];
         }
         if ($uri !== self::OVERVIEW['uri']) {
             return self::error(200, null, self::INVALID_PARAMS, 'No such resource; resources/list names them.');

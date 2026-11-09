@@ -483,6 +483,7 @@ The totals for the addresses and shipping the customer has chosen so far. Change
   - `billing_postcode` (string|null): at most 20 characters
   - `shipping_city` (string|null): at most 100 characters
   - `billing_city` (string|null): at most 100 characters
+  - `fields` (array): at most 100 items; each at most 2000 characters
 
 ## /content-languages
 
@@ -2264,6 +2265,14 @@ Whether the sample products are in the shop (GET), adds them (POST), or takes th
 Whether the sample products are in the shop (GET), adds them (POST), or takes them away (DELETE).
 
 - Who: shop managers; needs a nonce (not with an API key)
+
+## /script-guide
+
+### `GET /script-guide`
+
+The written guide to extension scripts, as Markdown, for whoever writes an extension; /script-reference is the generated list beside it.
+
+- Who: shop managers
 
 ## /script-reference
 

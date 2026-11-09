@@ -14,7 +14,10 @@ final readonly class ObjectQuery
     public const int MOST = 200;
 
     /**
-     * @param list<array{string, string, mixed}> $where field, operator (=, !=, <, <=, >, >=), value
+     * @param list<array{string, string, mixed, string}> $where field, operator (=, !=, <, <=, >, >=), value, and the
+     *                                                           field's declared kind ("id" for the id; "product",
+     *                                                           "order" or "customer" for a reference), which
+     *                                                           decides what the value is compared with
      */
     public function __construct(
         public array $where = [],

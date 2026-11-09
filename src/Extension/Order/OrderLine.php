@@ -32,5 +32,14 @@ final readonly class OrderLine
          */
         public string $type = 'item',
         public ?string $addOnType = null,
+        /**
+         * The changes to its price after its unit price, as the order keeps them (API 21): kind ("coupon",
+         * "automatic", "manual", "add_on" or "adjuster"), source (the coupon's code, the add-on's or adjuster's id,
+         * the shop manager's user id), label, amount (decimal, below zero for a discount), scope ("line" for
+         * this line's own, "order" for its share of a change to the whole order) and reason.
+         *
+         * @var list<array{kind: string, source: string, label: string, amount: string, scope: string, reason: ?string}>
+         */
+        public array $adjustments = [],
     ) {}
 }

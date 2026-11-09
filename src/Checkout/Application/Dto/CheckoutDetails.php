@@ -48,5 +48,9 @@ final readonly class CheckoutDetails
         public ?string $shippingCity = null,
         #[Assert\Length(max: 100)]
         public ?string $billingCity = null,
+        /** @var array<string, string> the answers given so far to add-ons' checkout fields and the shop's forms, by field id, for the add-ons' order adjusters */
+        #[Assert\Count(max: 100)]
+        #[Assert\All([new Assert\Type('string'), new Assert\Length(max: 2000)])]
+        public array $fields = [],
     ) {}
 }

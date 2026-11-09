@@ -131,12 +131,12 @@ final readonly class CheckoutService
         $methods = $this->paymentOptions->available($billing?->country, $currency);
         $gateways = array_map(static fn(PaymentOptionView $method): string => $method->gateway, $methods);
         $payment = \in_array($details->payment, $gateways, true) ? $details->payment : ($gateways[0] ?? null);
-        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency, charges: $contents->charges);
+        $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency, charges: $contents->charges, fields: $details->fields);
         // Goods delivered at home, or out of the EU, are not sold under the reverse charge; services still are.
         // Collected at the shop's place, they are handed over at home: a sale there (OrderPricing::goodsTo()).
         $goods = $this->vatNumbers->forGoodsTo($reverse, $this->pricing->goodsTo($priced, $shipping));
         if ($goods !== $reverse) {
-            $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency, reverseChargeGoods: $goods->applies, charges: $contents->charges);
+            $priced = $this->pricing->price($contents->lines, $shipping, $billing, $details->shippingOption, $details->shippingPostcode, $contents->coupons, $owner->customerId, reverseCharge: $reverse->applies, payment: $payment, currency: $currency, reverseChargeGoods: $goods->applies, charges: $contents->charges, fields: $details->fields);
             $reverse = OrderPricing::underReverseCharge($reverse, $goods, $priced);
         }
         // A free item that does not come free at this address: the cart is given what its coupons give here.
@@ -455,7 +455,7 @@ final readonly class CheckoutService
         $reverse = $this->vatNumbers->reverseCharge($billingAddress->country, $command->vatNumber);
         $currency = $this->currencies->current();
         // Every automatic discount, or only those that hold whoever orders.
-        $price = fn(ReverseCharge $goods, bool $forAnyone = false): array => $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency, automatic: $forAnyone ? $this->discounts->automaticForAnyone() : null, reverseChargeGoods: $goods->applies, charges: $contents->charges);
+        $price = fn(ReverseCharge $goods, bool $forAnyone = false): array => $this->pricing->price($contents->lines, $shippingTax, $billingTax, $command->shippingOption, $shippingAddress->postcode, $contents->coupons, $owner->customerId, $command->email, reverseCharge: $reverse->applies, payment: $command->payment, currency: $currency, automatic: $forAnyone ? $this->discounts->automaticForAnyone() : null, reverseChargeGoods: $goods->applies, charges: $contents->charges, fields: self::fieldsAsText($command->fields));
         $priced = $price($reverse);
         // Goods delivered at home, or out of the EU, are not sold under the reverse charge; services still are.
         $goods = $this->vatNumbers->forGoodsTo($reverse, $this->pricing->goodsTo($priced, $shippingTax));
@@ -678,6 +678,26 @@ final readonly class CheckoutService
         }
 
         return $order;
+    }
+
+    /**
+     * The answers as the order adjusters read them: text by field id, a checked box "1", an unchecked one absent.
+     *
+     * @param array<string, string|bool|int> $fields
+     *
+     * @return array<string, string>
+     */
+    public static function fieldsAsText(array $fields): array
+    {
+        $text = [];
+        foreach ($fields as $id => $answer) {
+            if ($answer === false || $answer === '') {
+                continue;
+            }
+            $text[(string) $id] = $answer === true ? '1' : (string) $answer;
+        }
+
+        return $text;
     }
 
     private function placed(int $number, string $receiptUrl, ?string $redirectUrl): PlacedOrderView
