@@ -83,7 +83,8 @@ that checks the shop's host passes the `Authorization` header on.
 In Shop → Integrations, **Choose…** beside a key (each app you connected has one) sets, for the assistant that uses it:
 - **Ask me first when**: money moves, something is deleted, customers hear of it, the shop opens or closes, or
   a page customers read (the terms, shipping and payment) goes live, changes or comes down. All five are ticked to start. A client that can ask you (MCP elicitation, revision 2026-07-28) shows the
-  question in its own window, and the tool runs only on your yes. The question says what the call would do,
+  question in its own window, and the tool runs only on your yes: accepting the question is the yes, and
+  declining it, or unticking its box before accepting, stops the call. The question says what the call would do,
   with the shop's own names: a refund with its amount, the order and customer, how the money goes back and
   whether the items go back in stock; an email or note with whom it goes to; a gift card's or store credit's
   balance before and after; what a deletion deletes; each setting from what it is to what it becomes; the whole

@@ -546,7 +546,8 @@ final readonly class McpServer
             $asked = $this->states->redeem($state);
             if ($asked !== null && ($asked['user'] ?? null) === $caller->userId && ($asked['key'] ?? null) === $caller->keyId && ($asked['call'] ?? null) === $digest) {
                 $content = \is_array($answer['content'] ?? null) ? $answer['content'] : [];
-                if (($answer['action'] ?? null) === 'accept' && ($content[self::CONFIRM] ?? null) === true) {
+                // Accepting the question is the yes; the box (on by default) lets them accept it unticked as a no.
+                if (($answer['action'] ?? null) === 'accept' && ($content[self::CONFIRM] ?? true) !== false && ($content[self::CONFIRM] ?? true) !== 'false') {
                     return null;
                 }
 
@@ -568,11 +569,10 @@ final readonly class McpServer
                 'method' => 'elicitation/create',
                 'params' => [
                     'mode' => 'form',
-                    'message' => "The assistant wants to: {$tool->title}. {$risk}\n\n{$what}",
+                    'message' => "The assistant wants to: {$tool->title}. {$risk}\n\n{$what}\n\nAccept to let it; decline to stop it.",
                     'requestedSchema' => [
                         'type' => 'object',
-                        'properties' => [self::CONFIRM => ['type' => 'boolean', 'title' => 'Yes, do it', 'default' => false]],
-                        'required' => [self::CONFIRM],
+                        'properties' => [self::CONFIRM => ['type' => 'boolean', 'title' => 'Yes, do it', 'description' => 'Accept to do it; decline, or untick this, to do nothing.', 'default' => true]],
                     ],
                 ],
             ]],

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application;
 
+use OrillaCart\Catalog\Application\Dto\ItemQuote;
 use OrillaCart\Checkout\Application\Dto\CheckoutFeeView;
 use OrillaCart\Checkout\Application\Dto\CheckoutLineView;
 use OrillaCart\Checkout\Application\Dto\CheckoutTaxView;
@@ -15,6 +16,7 @@ use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\OrderView;
@@ -50,6 +52,7 @@ final readonly class ManualOrders
         private ExtensionFailures $failures,
         private Languages $languages,
         private VatNumbers $vatNumbers,
+        private CheckoutFields $fields,
     ) {}
 
     /**
@@ -57,13 +60,14 @@ final readonly class ManualOrders
      * where the business is, goods by where they go (VatNumbers::forGoodsTo()).
      *
      * @param list<array{product_id: int, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: ?string}> $items
+     * @param array<string, string|bool|int> $fields the answers to the checkout's questions, for the add-ons' order adjusters
      *
      * @return array{Priced, ReverseCharge}
      */
-    private function priced(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?int $customerId, ?string $email, ?string $payment, ?string $vatNumber): array
+    private function priced(array $items, ?TaxAddress $shipping, ?TaxAddress $billing, ?string $shippingOption, ?int $customerId, ?string $email, ?string $payment, ?string $vatNumber, array $fields = []): array
     {
         $reverse = $this->vatNumbers->reverseCharge($billing?->country, $vatNumber);
-        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping?->postcode, [], $customerId, $email, reverseCharge: $reverse->applies, payment: $payment, reverseChargeGoods: $goods);
+        $price = fn(?bool $goods): array => $this->pricing->price($items, $shipping, $billing, $shippingOption, $shipping?->postcode, [], $customerId, $email, reverseCharge: $reverse->applies, payment: $payment, reverseChargeGoods: $goods, fields: CheckoutService::fieldsAsText($fields));
         $priced = $price(null);
         $goods = $this->vatNumbers->forGoodsTo($reverse, $this->pricing->goodsTo($priced, $shipping));
         if ($goods !== $reverse) {
@@ -80,7 +84,7 @@ final readonly class ManualOrders
     {
         $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState, $query->shippingPostcode);
         $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState, $query->billingPostcode);
-        [$priced, $reverse] = $this->priced(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->customerId, $query->email, $query->payment, $query->vatNumber);
+        [$priced, $reverse] = $this->priced(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->customerId, $query->email, $query->payment, $query->vatNumber, $query->fields);
         $bill = $priced['bill'];
         $currency = $this->settings->current()->currency;
 
@@ -145,6 +149,7 @@ final readonly class ManualOrders
                 $command->email,
                 $command->payment,
                 $command->vatNumber,
+                $command->fields,
             );
             if ($this->failures->closedSince($failed)) {
                 throw new CheckoutRuleViolation('Some prices cannot be worked out right now: an add-on that sets them failed. Try again in a moment.', 'orillacart_prices_unavailable');
@@ -154,6 +159,8 @@ final readonly class ManualOrders
             }
             $bill = $priced['bill'];
             $pickupPoint = $this->pricing->pickupPoint($priced, $shippingAddress->country, $shippingAddress->postcode, $command->pickupPoint);
+            // The answers checked as at checkout: a required question unanswered refuses the order.
+            [$answers, $shopAnswers] = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $command->customerId), array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']);
 
             $order = $this->orders->place(new NewOrder(
                 $command->customerId,
@@ -168,7 +175,7 @@ final readonly class ManualOrders
                 $command->payment === null ? '' : $this->paymentOptions->name($command->payment),
                 $command->payment === null ? '' : $this->paymentOptions->receiptNote($command->payment),
                 $command->note,
-                [],
+                $answers,
                 $bill->includesTax(),
                 vatNumber: $reverse->number,
                 reverseCharge: $reverse->applies,
@@ -178,6 +185,7 @@ final readonly class ManualOrders
                 taxProvider: $this->pricing->taxProvider($priced),
                 importScheme: $priced['import']->scheme,
                 importNumber: $priced['import']->charges ? $priced['import']->number : null,
+                shopFields: $shopAnswers,
             ));
             // The shop's automatic discounts count their uses as at checkout; the shop enters no codes.
             $this->discounts->redeem($order->number, $priced['discounts']->coupons, $command->customerId, $command->email);

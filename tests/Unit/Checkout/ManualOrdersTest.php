@@ -11,6 +11,10 @@ use OrillaCart\Checkout\Application\Dto\QuoteOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Customers\Domain\CustomerNotFound;
+use OrillaCart\Extension\Checkout\CheckoutField;
+use OrillaCart\Extension\Pricing\Adjustment;
+use OrillaCart\Extension\Pricing\AdjustmentQuery;
+use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Geography\Domain\PostcodeFormat;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
@@ -23,6 +27,7 @@ use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
@@ -51,6 +56,33 @@ final class ManualOrdersTest extends TestCase
         $this->shop->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($room, 5)]));
         $this->rate = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Bulgaria', '5', regions: ['BG'])]))->rates[0]->id;
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+    }
+
+    /** PLAN 357: the shop's order (and the assistant's create_order) can answer the checkout's questions. */
+    public function testTheShopsOrderCarriesTheCheckoutAnswersAndAdjustersPriceByThem(): void
+    {
+        $this->shop->extensions->fields[] = new CheckoutField('use_points', 'Use my points', CheckoutField::CHECKBOX, CheckoutField::ORDER);
+        $this->shop->extensions->orderAdjusters[] = new class implements OrderAdjuster {
+            public function id(): string
+            {
+                return 'points';
+            }
+
+            public function adjust(AdjustmentQuery $query): array
+            {
+                return ($query->fields['use_points'] ?? null) === '1' ? [new Adjustment('Points', '-5.00', null, '500 points')] : [];
+            }
+        };
+        $sofia = new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
+
+        $plain = $this->shop->manualOrders->quote(new QuoteOrder([new EditedItem(10, 2, unitPrice: '25')], 'BG'));
+        $withPoints = $this->shop->manualOrders->quote(new QuoteOrder([new EditedItem(10, 2, unitPrice: '25')], 'BG', fields: ['use_points' => true]));
+        self::assertSame('6', (string) Money::of($plain->total)->subtract(Money::of($withPoints->total)), '5 off and its VAT');
+
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', $sofia, [new EditedItem(10, 2, unitPrice: '25')], shippingOption: 'rate:' . $this->rate, fields: ['use_points' => true]), 7);
+        self::assertSame([['use_points', 'Yes']], array_map(static fn($field): array => [$field->id, $field->answer], $order->fields));
+        self::assertSame('5', $order->discountTotal);
+        self::assertSame(['points'], array_map(static fn($a): string => $a->source, $order->lines[0]->adjustments));
     }
 
     public function testTheShopPricesAnOrderBeforeTakingIt(): void

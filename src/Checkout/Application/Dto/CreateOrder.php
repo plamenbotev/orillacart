@@ -52,5 +52,15 @@ final readonly class CreateOrder
         #[Assert\Length(max: 20)]
         #[Assert\Regex(pattern: '/^[A-Za-z0-9 .\-]*$/', message: 'A VAT number has letters, digits, spaces, dots and dashes.')]
         public ?string $vatNumber = null,
+        /**
+         * Answers to the checkout's questions (add-ons' checkout fields and the shop's forms), by field id, as a
+         * shopper would give them: a ticked box true, a choice by its value. Checked as at checkout; an add-on's
+         * order adjuster prices by them (a "use my points" box).
+         *
+         * @var array<string, string|bool|int>
+         */
+        #[Assert\Count(max: 100)]
+        #[Assert\All([new Assert\Type(['string', 'bool', 'int'])])]
+        public array $fields = [],
     ) {}
 }

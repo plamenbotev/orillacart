@@ -80,6 +80,12 @@ final class McpServerTest extends TestCase
         $again = $this->asking($call + ['inputResponses' => $yes, 'requestState' => $state]);
         self::assertSame('input_required', self::at($again->body, 'result', 'resultType'), 'a yes is good once');
         self::assertCount(1, $this->calls);
+
+        // Accepting the question is the yes, box or no box: a client that shows the form with its box left as
+        // it is (on), or none at all, must not read as a no.
+        $bare = $this->asking($call + ['inputResponses' => ['confirm' => ['action' => 'accept', 'content' => []]], 'requestState' => self::textAt($again->body, 'result', 'requestState')]);
+        self::assertSame('complete', self::at($bare->body, 'result', 'resultType'));
+        self::assertCount(2, $this->calls);
     }
 
     public function testTheOwnerIsAskedWithWhatTheCallWouldDoWhereADescriptionKnowsIt(): void
@@ -109,6 +115,8 @@ final class McpServerTest extends TestCase
     {
         $asked = $this->asking(['name' => 'refund_thing', 'arguments' => []]);
         $no = $this->asking(['name' => 'refund_thing', 'arguments' => [], 'inputResponses' => ['confirm' => ['action' => 'decline']], 'requestState' => self::textAt($asked->body, 'result', 'requestState')]);
+        $unticked = $this->asking(['name' => 'refund_thing', 'arguments' => [], 'inputResponses' => ['confirm' => ['action' => 'accept', 'content' => ['confirm' => false]]], 'requestState' => self::textAt($this->asking(['name' => 'refund_thing', 'arguments' => []])->body, 'result', 'requestState')]);
+        self::assertStringContainsString('The owner said no', self::textAt($unticked->body, 'result', 'content', 0, 'text'), 'accepted with the box unticked is a no');
 
         self::assertTrue(self::at($no->body, 'result', 'isError'));
         self::assertStringContainsString('said no', self::textAt($no->body, 'result', 'content', 0, 'text'));

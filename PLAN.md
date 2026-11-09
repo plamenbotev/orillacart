@@ -572,6 +572,8 @@ A loyalty program written as an extension over the MCP, to find what an extensio
 | ✅ | 354 | P2 | `account_after` is told who is viewing: the section and the customer `{ id, email, first_name, last_name }` | 2ccc1f75 |
 | ✅ | 355 | P1 | Bug: `objects.*.query` chose the column by the value's shape and took a field named `order`, `product` or `customer` for the reference; it now goes by the declared kind | 2ccc1f75 |
 | ✅ | 356 | P2 | The guide as an MCP resource (`orillacart://extensions/guide`, shipped with the plugin) and `GET /script-guide`; the reference names what each event receives and what each slot passes | 2ccc1f75 |
+| ✅ | 357 | P1 | `create_order` and `quote_order` (the shop's own order) take `fields`, the checkout answers: checked as at checkout, kept on the order, priced by the add-ons' order adjusters | |
+| ✅ | 358 | P1 | Bug: the assistant's yes/no question read an accepted form with its box left as it is as a no (the box defaulted to off); accepting is the yes, the box (on by default) lets the owner accept it unticked as a no | |
 
 ## Deliberately not carried over
 

@@ -579,7 +579,7 @@ final class TestShop
         $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms, new SofiaCalendar());
         $vatNumbers = new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts, $this->languages, $vatNumbers);
-        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers);
+        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers, new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers));
         $this->checkout = new CheckoutService(
             $this->carts,
             $this->pricing,

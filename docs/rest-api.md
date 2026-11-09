@@ -1487,6 +1487,7 @@ The shop takes an order itself, as on the phone or in person: it is priced and t
   - `email_customer` (bool): default false
   - `pickup_point` (string|null): at most 64 characters
   - `vat_number` (string|null): at most 20 characters; matches `/^[A-Za-z0-9 .\-]*$/`
+  - `fields` (array): at most 100 items
 
 ### `GET /orders/facets`
 
@@ -1512,6 +1513,7 @@ Prices an order the shop is taking, before it creates it. POST, since the items 
   - `email` (string|null): at most 100 characters
   - `payment` (string|null): matches `/^[a-z][a-z0-9_]{0,39}$/`
   - `vat_number` (string|null): at most 20 characters; matches `/^[A-Za-z0-9 .\-]*$/`
+  - `fields` (array): at most 100 items
 
 ### `GET /orders/{id}`
 
