@@ -566,12 +566,12 @@ A loyalty program written as an extension over the MCP, to find what an extensio
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 351 | P1 | `order_adjuster.adjust` sees the checkout answers: `AdjustmentQuery::$fields` (API 21), the summary priced again when a box or choice among the checkout fields changes, an edited order's own answers | |
-| ✅ | 352 | P1 | Each `OrderLine` of an `OrderSummary` carries its adjustments (kind, source, label, amount, scope, reason); `shop.orders.find` lines have `adjustments` | |
-| ✅ | 353 | P2 | Templates call routes: `api_url()` and `api_nonce()` in the storefront sandbox, `window.orillacart.api()` on the page, the guide says how | |
-| ✅ | 354 | P2 | `account_after` is told who is viewing: the section and the customer `{ id, email, first_name, last_name }` | |
-| ✅ | 355 | P1 | Bug: `objects.*.query` chose the column by the value's shape and took a field named `order`, `product` or `customer` for the reference; it now goes by the declared kind | |
-| ✅ | 356 | P2 | The guide as an MCP resource (`orillacart://extensions/guide`, shipped with the plugin) and `GET /script-guide`; the reference names what each event receives and what each slot passes | |
+| ✅ | 351 | P1 | `order_adjuster.adjust` sees the checkout answers: `AdjustmentQuery::$fields` (API 21), the summary priced again when a box or choice among the checkout fields changes, an edited order's own answers | 2ccc1f75 |
+| ✅ | 352 | P1 | Each `OrderLine` of an `OrderSummary` carries its adjustments (kind, source, label, amount, scope, reason); `shop.orders.find` lines have `adjustments` | 2ccc1f75 |
+| ✅ | 353 | P2 | Templates call routes: `api_url()` and `api_nonce()` in the storefront sandbox, `window.orillacart.api()` on the page, the guide says how | 2ccc1f75 |
+| ✅ | 354 | P2 | `account_after` is told who is viewing: the section and the customer `{ id, email, first_name, last_name }` | 2ccc1f75 |
+| ✅ | 355 | P1 | Bug: `objects.*.query` chose the column by the value's shape and took a field named `order`, `product` or `customer` for the reference; it now goes by the declared kind | 2ccc1f75 |
+| ✅ | 356 | P2 | The guide as an MCP resource (`orillacart://extensions/guide`, shipped with the plugin) and `GET /script-guide`; the reference names what each event receives and what each slot passes | 2ccc1f75 |
 
 ## Deliberately not carried over
 
