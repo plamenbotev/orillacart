@@ -60,6 +60,7 @@ final readonly class PackageService
         private ?ExtensionTranslations $words = null,
         private ?TemplateWords $templateWords = null,
         private ?PackageArchives $archives = null,
+        private ?ExtensionAssets $assets = null,
     ) {}
 
     /** @return list<PackageView> */
@@ -164,6 +165,7 @@ final readonly class PackageService
         $this->runs?->forgetExtension($slug);
         $this->versions?->forget($package);
         $this->translations?->forget($package);
+        $this->assets?->forget($slug);
         $this->packages->remove($package);
         $this->logger->info('The extension "{extension}" was uninstalled.', ['extension' => $slug]);
     }
@@ -620,9 +622,19 @@ final readonly class PackageService
     {
         $findings = [];
         foreach ($files as $path => $content) {
-            $problem = str_ends_with($path, '.html.twig') ? $this->templateWords?->problem($extension, $path, $content) : null;
+            if (!str_ends_with($path, '.html.twig')) {
+                continue;
+            }
+            $problem = $this->templateWords?->problem($extension, $path, $content);
             if ($problem !== null) {
                 $findings[] = ['file' => $path, 'line' => $problem['line'], 'column' => 1, 'message' => $problem['message']];
+                continue;
+            }
+            // asset("portal.js") names a file of the package (design 59): one it does not have prints nothing.
+            foreach ($this->templateWords?->assets($path, $content) ?? [] as $asset) {
+                if (!isset($files[ExtensionAssets::FOLDER . ltrim($asset['name'], '/')])) {
+                    $findings[] = ['file' => $path, 'line' => $asset['line'], 'column' => 1, 'message' => \sprintf('asset("%s") names a file the extension does not have: add %s%s.', $asset['name'], ExtensionAssets::FOLDER, ltrim($asset['name'], '/'))];
+                }
             }
         }
 

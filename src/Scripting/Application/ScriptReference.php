@@ -119,6 +119,7 @@ final readonly class ScriptReference
         'products: write' => 'shop.products.mark and unmark',
         'http: ["host.example", …]' => 'http.* calls to those hosts over HTTPS; the manager grants each host',
         'templates: override' => 'a file under templates/storefront/ or templates/emails/ in the package replaces the shop\'s template of that name',
+        'assets: serve' => 'the package\'s files under assets/ (.js, .css, .svg) served to browsers, printed by asset() in its templates',
     ];
 
     /** The kinds a declaration may use for its settings and fields. */

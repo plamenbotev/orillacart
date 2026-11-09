@@ -19,7 +19,9 @@ final class ScriptGuideTest extends TestCase
     public function testEveryExampleCompiles(): void
     {
         $guide = (string) file_get_contents(\dirname(__DIR__, 3) . '/docs/extension-scripts-guide.md');
-        preg_match_all('/^```\n(.*?)^```$/ms', $guide, $matches);
+        // Every fence, in order, so a block in another language (```twig, ```html) is paired with its own closing fence and left out.
+        preg_match_all('/^```(\w*)\n(.*?)^```$/ms', $guide, $fences, \PREG_SET_ORDER);
+        $matches = [1 => array_values(array_map(static fn(array $fence): string => $fence[2], array_filter($fences, static fn(array $fence): bool => $fence[1] === '')))];
         self::assertNotEmpty($matches[1]);
 
         foreach (['DB_NAME' => 'guide', 'DB_USER' => 'guide', 'DB_PASSWORD' => '', 'DB_HOST' => 'localhost'] as $constant => $value) {

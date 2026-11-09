@@ -20,7 +20,7 @@ final class ScriptedRoutesTest extends RestTestCase
     private const string SCRIPT = <<<'OCS'
         extension "pages" {
           name: "Pages"
-          needs: { templates: override }
+          needs: { templates: override, assets: serve }
         }
         route GET "/hello/{name}" { who: public } fn(request) {
           return { hello: request.params.name, q: request.query.x ?? null, path: request.path }
@@ -52,11 +52,13 @@ final class ScriptedRoutesTest extends RestTestCase
             'main.ocs' => self::SCRIPT,
             'templates/hello.html.twig' => '<p>Hello {{ who }} {{ ext.pages.extra }}</p>',
             'templates/support.html.twig' => '<ul>{% for t in tickets %}<li>{{ t }}</li>{% endfor %}</ul><em>{{ from }}</em>',
-            'templates/note.html.twig' => '<span class="note">{{ label }} in {{ slot }}</span>',
+            'templates/note.html.twig' => '<span class="note">{{ label }} in {{ slot }}</span>{{ asset("note.css") }}{{ asset("note.js") }}',
+            'assets/note.css' => '.note { color: red }',
+            'assets/note.js' => 'console.log("note")',
             'templates/bad.html.twig' => "{{ constant('PHP_VERSION') }}",
             'templates/storefront/_free_shipping.html.twig' => '<b>overridden</b>',
         ]], nonce: true);
-        $enabled = $this->request('POST', '/extensions/pages/enable', ['grant' => ['templates']], nonce: true);
+        $enabled = $this->request('POST', '/extensions/pages/enable', ['grant' => ['templates', 'assets']], nonce: true);
         self::assertSame(200, $enabled->get_status(), (string) wp_json_encode($enabled->get_data()));
         // The REST routes register once per server: a new server reads the extension's routes.
         $GLOBALS['wp_rest_server'] = null;
@@ -152,7 +154,21 @@ final class ScriptedRoutesTest extends RestTestCase
         do_action('orillacart_product_after_details', ['id' => 1]);
         $printed = (string) ob_get_clean();
 
-        self::assertSame('<span class="note">Shelf A in product_after_details</span>', $printed);
+        // Design 59: its stylesheet and script, served from the uploads folder under a name that carries the content's hash.
+        $uploads = wp_upload_dir(null, false);
+        self::assertMatchesRegularExpression('#^<span class="note">Shelf A in product_after_details</span><link rel="stylesheet" href="' . preg_quote($uploads['baseurl'], '#') . '/orillacart/extensions/pages/note-[0-9a-f]{12}\.css"><script src="' . preg_quote($uploads['baseurl'], '#') . '/orillacart/extensions/pages/note-[0-9a-f]{12}\.js" defer></script>$#', $printed);
+        preg_match('#href="[^"]*/(note-[0-9a-f]{12}\.css)"#', $printed, $match);
+        self::assertFileExists($uploads['basedir'] . '/orillacart/extensions/pages/' . ($match[1] ?? ''));
+        self::assertSame('.note { color: red }', file_get_contents($uploads['basedir'] . '/orillacart/extensions/pages/' . ($match[1] ?? '')));
+
+        ob_start();
+        do_action('orillacart_product_after_details', ['id' => 2]);
+        self::assertSame('<span class="note">Shelf A in product_after_details</span>', (string) ob_get_clean(), 'printed once per page');
+
+        $checked = $this->data($this->request('POST', '/script/check', ['files' => ['templates/x.html.twig' => '{{ asset("nope.js") }}', 'assets/here.js' => '1'], 'id' => 'draft'], nonce: true));
+        self::assertSame([['file' => 'templates/x.html.twig', 'line' => 1, 'column' => 1, 'message' => 'asset("nope.js") names a file the extension does not have: add assets/nope.js.']], $checked['findings']);
+        $this->request('DELETE', '/extensions/pages', nonce: true);
+        self::assertDirectoryDoesNotExist($uploads['basedir'] . '/orillacart/extensions/pages', 'uninstalled, files and all');
     }
 
     public function testAnExtensionOverridesAShopTemplateInTheSandbox(): void

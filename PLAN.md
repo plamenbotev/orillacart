@@ -578,6 +578,17 @@ A loyalty program written as an extension over the MCP, to find what an extensio
 | ✅ | 360 | P1 | Bug: a tool whose input has a list of anything (`run_package_function`'s `arguments`) was described with `items: []`, an invalid schema that Claude Code drops the tool for; the list now says nothing of its items | 86d7f4e5 |
 | ✅ | 361 | P2 | `POST /customers` (the assistant's `create_customer`): the shop makes an account itself, with or without a password, in groups, nobody emailed; `POST /customers/{id}/welcome` (`send_customer_welcome`, asks as customers hear of it) tells them; a network's customer elsewhere joins | 3d7a0368 |
 
+## An extension's scripts and styles (2026-11-09)
+
+Design 59 (`docs/designs/59-extension-assets.md`): files under `assets/` printed by `asset()` in templates, served from uploads.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 362 | P2 | Files under `assets/` (`.js`, `.css`, `.svg`) in a package: the path rule, the zip import keeping them (a script elsewhere skipped), the permission `assets: serve` | |
+| ✅ | 363 | P2 | `asset()` in an extension's template, bound to the extension by the visitor, the name a string; a deferred script tag, a stylesheet link, or an SVG's URL; printed once per page | |
+| ✅ | 364 | P2 | Served from `uploads/orillacart/extensions/<id>/<name>-<hash>.<ext>`, older names removed, the folder removed on uninstall; nothing served unless enabled and granted | |
+| ✅ | 365 | P3 | The check names an `asset()` file the package lacks; the guide, the reference's permissions, the editor's help | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

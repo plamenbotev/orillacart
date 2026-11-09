@@ -23,4 +23,12 @@ interface TemplateWords
      * @return array{line: int, message: string}|null
      */
     public function problem(string $extension, string $path, string $source): ?array;
+
+    /**
+     * The files the template's `asset()` calls name (design 59), with the line of each; none for a template that
+     * does not compile.
+     *
+     * @return list<array{name: string, line: int}>
+     */
+    public function assets(string $path, string $source): array;
 }

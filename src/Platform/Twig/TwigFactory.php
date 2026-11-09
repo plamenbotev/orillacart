@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Twig;
 
+use OrillaCart\Packages\Application\ExtensionAssets;
 use OrillaCart\Packages\Application\ExtensionTranslations;
 use OrillaCart\Platform\CacheFolders;
 use OrillaCart\Platform\PluginContext;
@@ -26,6 +27,7 @@ final readonly class TwigFactory
         private ?ShopExtension $extension = null,
         private ?PackageTemplateLoader $packages = null,
         private ?ExtensionTranslations $words = null,
+        private ?ExtensionAssets $assets = null,
     ) {}
 
     public function create(): Environment
@@ -53,6 +55,10 @@ final readonly class TwigFactory
             if ($this->words !== null) {
                 // Their __() calls read the extension's words first (design 57).
                 $twig->addExtension(new ExtensionWordsExtension($this->words));
+            }
+            if ($this->assets !== null) {
+                // Their asset() calls print the extension's scripts and stylesheets, served (design 59).
+                $twig->addExtension(new ExtensionAssetsExtension($this->assets));
             }
         }
 

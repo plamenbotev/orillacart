@@ -625,6 +625,23 @@ template_data "storefront/product.html.twig" fn(context) {
   `ext.<extension>`; in the template, `{{ ext.greeter.badge }}`.
 - With the permission `templates: override`, a file at `templates/storefront/product.html.twig` in the package
   replaces the shop's template of that name for the site. The theme's override still wins over the extension's.
+- **Scripts and styles of its own.** A file under `assets/` in the package (`.js`, `.css` or `.svg`) is served by
+  the web server, and a template prints it with `asset()`:
+
+  ```twig
+  {{ asset('portal.css') }}
+  <div data-portal></div>
+  <img src="{{ asset('icons/star.svg') }}" alt="">
+  {{ asset('portal.js') }}
+  ```
+
+  `asset('portal.js')` prints a deferred `<script>` tag, `asset('portal.css')` a stylesheet link, and for an SVG
+  the URL. A script or stylesheet is printed once per page, however many templates ask for it, and only on pages
+  where a template of the extension rendered, so a portal's script does not load on the catalogue. The file is
+  written under the site's uploads with a name that carries a hash of its content: browsers cache it for long
+  and a change is a new URL. The name is written as a string, so the check can see the file is in the package;
+  `asset()` needs `assets: serve` under `needs`, which the manager grants with the rest. The script may use
+  `window.orillacart.api()` to call the extension's routes. Plain JavaScript and CSS: no bundling, no build.
 
 ## 11. Objects and fields
 

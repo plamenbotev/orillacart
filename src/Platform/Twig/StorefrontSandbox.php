@@ -12,7 +12,7 @@ use Twig\Sandbox\SecurityPolicy;
  */
 final class StorefrontSandbox
 {
-    public const array FUNCTIONS = ['block', 'cycle', 'date', 'include', 'max', 'min', 'parent', 'range', '__', '_x', '_n', '_nx', 'prices_include_tax', 'price_suffix', 'slot', 'tax_number_label', 'shop_currencies', 'shopper_currency', 'api_url', 'api_nonce'];
+    public const array FUNCTIONS = ['block', 'cycle', 'date', 'include', 'max', 'min', 'parent', 'range', '__', '_x', '_n', '_nx', 'prices_include_tax', 'price_suffix', 'slot', 'tax_number_label', 'shop_currencies', 'shopper_currency', 'api_url', 'api_nonce', 'asset'];
 
     public static function policy(): SecurityPolicy
     {

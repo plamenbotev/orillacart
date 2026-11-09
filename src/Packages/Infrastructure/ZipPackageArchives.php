@@ -62,7 +62,9 @@ final readonly class ZipPackageArchives implements PackageArchives
             foreach ($entries as $index => $name) {
                 $inner = $folder === null ? $name : substr($name, \strlen($folder));
                 $isManifest = $inner === self::MANIFEST;
-                if (!$isManifest && preg_match('/\.(ocs|html\.twig|md)$/i', $inner) !== 1) {
+                // What a package holds: scripts, templates, notes; a script, a stylesheet or an SVG for the browser
+                // under assets/ (one elsewhere is a tool's, not the extension's). A kept name is checked as the editor checks it.
+                if (!$isManifest && preg_match('/\\.(ocs|html\\.twig|md)$/i', $inner) !== 1 && preg_match('#^(?:[^/]+/)?assets/.*\\.(js|css|svg)$#i', $inner) !== 1) {
                     $skipped[] = $name;
                     continue;
                 }

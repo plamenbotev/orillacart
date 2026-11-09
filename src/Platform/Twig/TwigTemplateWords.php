@@ -43,6 +43,37 @@ final readonly class TwigTemplateWords implements TemplateWords
         return null;
     }
 
+    public function assets(string $path, string $source): array
+    {
+        try {
+            $tree = $this->twig->parse($this->twig->tokenize(new Source($source, $path)));
+        } catch (Error) {
+            return [];
+        }
+        $assets = [];
+        self::walkAssets($tree, $assets);
+
+        return $assets;
+    }
+
+    /**
+     * @param list<array{name: string, line: int}> $assets
+     */
+    private static function walkAssets(Node $node, array &$assets): void
+    {
+        if ($node instanceof FunctionExpression && $node->getAttribute('name') === ExtensionWordsVisitor::ASSET) {
+            foreach ($node->getNode('arguments') as $arg) {
+                if ($arg instanceof ConstantExpression && \is_string($arg->getAttribute('value'))) {
+                    $assets[] = ['name' => $arg->getAttribute('value'), 'line' => $node->getTemplateLine()];
+                }
+                break;
+            }
+        }
+        foreach ($node as $child) {
+            self::walkAssets($child, $assets);
+        }
+    }
+
     /**
      * @param list<array{text: string, plural: ?string, context: string, line: int}> $words
      */

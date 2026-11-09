@@ -41,8 +41,8 @@ final readonly class PackageManifest
     }
 
     /**
-     * `needs: { orders: read, customers: [read, write], http: ["api.example"] }` → orders:read, customers:read,
-     * customers:write, http.
+     * `needs: { orders: read, customers: [read, write], http: ["api.example"], assets: serve }` → orders:read,
+     * customers:read, customers:write, http, assets.
      *
      * @return list<string>
      */
@@ -54,7 +54,7 @@ final readonly class PackageManifest
             if (!\is_string($area)) {
                 continue;
             }
-            if ($area === 'http' || $area === 'templates') {
+            if ($area === 'http' || $area === 'templates' || $area === 'assets') {
                 $needs[] = $area;
                 continue;
             }

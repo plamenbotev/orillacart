@@ -21,6 +21,8 @@ class Package
     public const string SLUG_PATTERN = '/^[a-z][a-z0-9_]{0,39}$/';
     public const int MAX_NAME_LENGTH = 100;
     public const int MAX_FILES = 50;
+    /** What a package's file may be named: scripts, templates and notes anywhere; scripts, stylesheets and SVGs for the browser under assets/ (design 59). */
+    public const string PATH = '#^(?:(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\\.(ocs|html\\.twig|md)|assets/(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\\.(js|css|svg))$#i';
     /** Failures in a row after which the shop stops the extension. */
     public const int FAILURES_TO_STOP = 10;
 
@@ -320,8 +322,8 @@ class Package
 
     public static function checkPath(string $path): void
     {
-        if (preg_match('#^(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\.(ocs|html\.twig|md)$#i', $path) !== 1 || str_contains($path, '..') || \strlen($path) > PackageFile::MAX_PATH_LENGTH) {
-            throw new PackageRuleViolation('A file is named like "main.ocs" or "templates/support.html.twig": letters, digits, dashes, underscores and dots, in folders, ending in .ocs, .html.twig or .md.', 'orillacart_invalid_extension_file');
+        if (preg_match(self::PATH, $path) !== 1 || str_contains($path, '..') || \strlen($path) > PackageFile::MAX_PATH_LENGTH) {
+            throw new PackageRuleViolation('A file is named like "main.ocs", "templates/support.html.twig" or "assets/portal.js": letters, digits, dashes, underscores and dots, in folders, ending in .ocs, .html.twig or .md; a script, a stylesheet or an SVG (.js, .css, .svg) under assets/.', 'orillacart_invalid_extension_file');
         }
     }
 }

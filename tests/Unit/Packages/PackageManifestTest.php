@@ -20,7 +20,7 @@ final class PackageManifestTest extends TestCase
             extension "shop_x" {
               name: "Shop X"
               version: "2.1"
-              needs: { orders: [read, write], customers: read, http: ["a.example", "b.example"] }
+              needs: { orders: [read, write], customers: read, http: ["a.example", "b.example"], assets: serve }
             }
             settings {
               key: secret { label: "API key", required: true, help: "From the dashboard" }
@@ -40,7 +40,7 @@ final class PackageManifestTest extends TestCase
         $manifest = PackageManifest::ofClass($class);
 
         self::assertSame(['Shop X', '2.1'], [$manifest->name(), $manifest->version()]);
-        self::assertSame(['orders:read', 'orders:write', 'customers:read', 'http'], $manifest->needs());
+        self::assertSame(['orders:read', 'orders:write', 'customers:read', 'http', 'assets'], $manifest->needs());
         self::assertSame(['a.example', 'b.example'], $manifest->hosts());
         $settings = $manifest->settings();
         self::assertSame(['key', 'mode', 'retries', 'loud', 'note'], array_map(static fn(Setting $s): string => $s->key, $settings), 'an unknown kind is left out');

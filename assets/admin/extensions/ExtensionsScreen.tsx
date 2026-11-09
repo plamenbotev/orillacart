@@ -563,7 +563,7 @@ function ExtensionEditor( {
 			<Section
 				title={ __( 'Files', 'orillacart' ) }
 				description={ __(
-					'Scripts end in .ocs and compile together; templates go under templates/. A change to an enabled extension runs once it is enabled again.',
+					'Scripts end in .ocs and compile together; templates go under templates/, and scripts, styles and SVGs for the browser under assets/. A change to an enabled extension runs once it is enabled again.',
 					'orillacart'
 				) }
 			>
