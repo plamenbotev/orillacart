@@ -549,6 +549,17 @@ translations table, as the shop's own are, marked with `__()` in code and implie
 | ✅ | 345 | P3 | Export and import carry the translations, uninstalling forgets them; each extension a WPML string package, registered on save, import and restore, removed on uninstall | 154a9f4f |
 | ✅ | 346 | P2 | The guide's "Words in other languages", the reference regenerated, design 56's `text` row corrected | 154a9f4f |
 
+## Extensions as zip files (2026-11-09)
+
+Design 58 (`docs/designs/58-extension-zips.md`): an extension installed from a zip of its files and exported as one.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ⬜ | 347 | P2 | Reading and writing zips: files at the root or in one folder, `extension.json` optional (else the `extension` block), other files skipped and named, limits read before and while reading, nothing written to disk | |
+| ⬜ | 348 | P2 | `POST /extensions/upload` and `GET /extensions/{id}/archive` (assistant tools), the Extensions screen's Import taking a zip and Export giving one | |
+| ⬜ | 349 | P3 | `wp orillacart extension install <zip>` and `export <id> [<zip>]` | |
+| ⬜ | 350 | P2 | The guide and the REST docs; without PHP's zip extension a zip is refused with that reason | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

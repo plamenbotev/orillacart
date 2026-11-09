@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Extension\Setting;
+use OrillaCart\Packages\Application\Dto\ArchiveFile;
+use OrillaCart\Packages\Application\Dto\ArchiveInstalled;
 use OrillaCart\Packages\Application\Dto\EnablePackage;
 use OrillaCart\Packages\Application\Dto\InstallPackage;
 use OrillaCart\Packages\Application\Dto\LoadedPackage;
@@ -29,9 +31,12 @@ use OrillaCart\Scripting\Application\Dto\Compiled;
 use OrillaCart\Scripting\Application\Dto\Finding;
 use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Application\Scripts;
+use OrillaCart\Scripting\Domain\Ast\Str;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\Catchable;
 use OrillaCart\Scripting\Domain\Ops;
+use OrillaCart\Scripting\Domain\Parser;
+use OrillaCart\Scripting\Domain\SyntaxError;
 use OrillaCart\Shared\Extension\SettingValues;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -54,6 +59,7 @@ final readonly class PackageService
         private ?PackageTranslations $translations = null,
         private ?ExtensionTranslations $words = null,
         private ?TemplateWords $templateWords = null,
+        private ?PackageArchives $archives = null,
     ) {}
 
     /** @return list<PackageView> */
@@ -255,6 +261,101 @@ final readonly class PackageService
         $this->translations?->changed($package);
 
         return $this->view($package, $compiled);
+    }
+
+    /**
+     * Installs an extension from a zip of its files (design 58), as import() does: a new one as a draft, the files
+     * of one with the same id replaced. Its id and name are extension.json's, else the `extension` block's.
+     *
+     * @throws PackageRuleViolation for a zip that is refused, or names no extension
+     */
+    public function installArchive(string $path): ArchiveInstalled
+    {
+        $archive = $this->archives()->read($path);
+        $manifest = $archive->manifest ?? [];
+        [$id, $name, $version] = [self::text($manifest['id'] ?? null), self::text($manifest['name'] ?? null), self::text($manifest['version'] ?? null)];
+        if ($id === '') {
+            [$id, $declaredName] = self::declared($archive->files);
+            $name = $name !== '' ? $name : $declaredName;
+        }
+        if ($id === '') {
+            throw new PackageRuleViolation('The zip names no extension: its scripts need an `extension "id" { name: "…" }` block, or the zip an extension.json with the id.', 'orillacart_extension_zip_unnamed');
+        }
+        $export = new PackageExport($id, $name !== '' ? $name : $id, $version, $archive->files, translations: self::translations($manifest['translations'] ?? []));
+
+        return new ArchiveInstalled($this->import($export), $archive->skipped);
+    }
+
+    /** The extension as a zip: its files and an extension.json with its id, name, version and translations. */
+    public function archive(string $slug): ArchiveFile
+    {
+        $export = $this->export($slug);
+        $version = preg_replace('/[^A-Za-z0-9._-]+/', '-', $export->version) ?? '';
+
+        return new ArchiveFile($export->id . ($version === '' ? '' : '-' . $version) . '.zip', base64_encode($this->archives()->write($export)));
+    }
+
+    private function archives(): PackageArchives
+    {
+        return $this->archives ?? throw new PackageRuleViolation('Extensions cannot be read from zips here.', 'orillacart_extension_zip_unsupported');
+    }
+
+    /**
+     * The id and the name the scripts' `extension` block gives; empty when they do not parse or have none.
+     *
+     * @param array<string, string> $files
+     *
+     * @return array{string, string}
+     */
+    private static function declared(array $files): array
+    {
+        $scripts = array_filter($files, static fn(string $path): bool => str_ends_with($path, '.ocs'), \ARRAY_FILTER_USE_KEY);
+        try {
+            $program = Parser::parse(implode("\n", $scripts) . "\n");
+        } catch (SyntaxError) {
+            return ['', ''];
+        }
+        foreach ($program->declarations as $declaration) {
+            if ($declaration->kind === 'extension' && $declaration->name !== null) {
+                $name = $declaration->props['name'] ?? null;
+
+                return [$declaration->name, $name instanceof Str ? $name->value : ''];
+            }
+        }
+
+        return ['', ''];
+    }
+
+    /**
+     * extension.json's translations as an import takes them: by word and locale, a string or a list of strings.
+     *
+     * @return array<string, array<string, list<string>|string>>
+     */
+    private static function translations(mixed $given): array
+    {
+        $translations = [];
+        foreach (\is_array($given) ? $given : [] as $key => $byLocale) {
+            if (!\is_string($key) || !\is_array($byLocale)) {
+                continue;
+            }
+            foreach ($byLocale as $locale => $forms) {
+                if (!\is_string($locale)) {
+                    continue;
+                }
+                if (\is_string($forms)) {
+                    $translations[$key][$locale] = $forms;
+                } elseif (\is_array($forms)) {
+                    $translations[$key][$locale] = array_values(array_map(static fn(mixed $form): string => \is_string($form) ? $form : '', $forms));
+                }
+            }
+        }
+
+        return $translations;
+    }
+
+    private static function text(mixed $value): string
+    {
+        return \is_string($value) ? trim($value) : '';
     }
 
     /**

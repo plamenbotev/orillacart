@@ -33,7 +33,7 @@ import {
 	deleteFile,
 	disableExtension,
 	enableExtension,
-	exportExtension,
+	fetchArchive,
 	fetchExtension,
 	fetchExtensions,
 	fetchOriginal,
@@ -43,6 +43,7 @@ import {
 	fetchVersions,
 	importExtension,
 	installExtension,
+	uploadExtension,
 	restoreVersion,
 	runFunction,
 	runTests,
@@ -331,7 +332,7 @@ function ImportButton( {
 			<input
 				id="orillacart-extension-import"
 				type="file"
-				accept="application/json,.json"
+				accept="application/zip,.zip,application/json,.json"
 				className="oc-visually-hidden"
 				aria-label={ __( 'Import an extension file', 'orillacart' ) }
 				onChange={ ( event ) => {
@@ -340,17 +341,35 @@ function ImportButton( {
 					if ( ! file ) {
 						return;
 					}
-					file.text()
-						.then( ( text ) =>
-							importExtension( JSON.parse( text ) )
-						)
-						.then( ( extension ) => {
-							notify(
-								sprintf(
-									/* translators: %s: the extension's name */
-									__( 'Imported %s.', 'orillacart' ),
-									extension.name
+					const imported = file.name.toLowerCase().endsWith( '.json' )
+						? file
+								.text()
+								.then( ( text ) =>
+									importExtension( JSON.parse( text ) )
 								)
+								.then( ( extension ) => ( {
+									extension,
+									skipped: [] as string[],
+								} ) )
+						: uploadExtension( file );
+					imported
+						.then( ( { extension, skipped } ) => {
+							notify(
+								skipped.length === 0
+									? sprintf(
+											/* translators: %s: the extension's name */
+											__( 'Imported %s.', 'orillacart' ),
+											extension.name
+										)
+									: sprintf(
+											/* translators: 1: the extension's name; 2: files of the zip, such as "LICENSE, package.json" */
+											__(
+												'Imported %1$s. Left out what is not an extension’s file: %2$s.',
+												'orillacart'
+											),
+											extension.name,
+											skipped.join( ', ' )
+										)
 							);
 							onImported( extension );
 						} )
@@ -447,11 +466,15 @@ function ExtensionEditor( {
 					<Button
 						variant="secondary"
 						onClick={ () =>
-							exportExtension( extension.id )
-								.then( ( payload ) =>
+							fetchArchive( extension.id )
+								.then( ( archive ) =>
 									download(
-										`${ extension.id }.extension.json`,
-										JSON.stringify( payload, null, 2 )
+										archive.filename,
+										Uint8Array.from(
+											atob( archive.content ),
+											( c ) => c.charCodeAt( 0 )
+										),
+										archive.mime_type
 									)
 								)
 								.catch( ( e ) => setError( errorMessage( e ) ) )
@@ -1686,10 +1709,12 @@ function slugOf( name: string ): string {
 		.slice( 0, 40 );
 }
 
-function download( filename: string, text: string ) {
-	const url = URL.createObjectURL(
-		new Blob( [ text ], { type: 'application/json' } )
-	);
+function download(
+	filename: string,
+	content: string | Uint8Array< ArrayBuffer >,
+	type = 'application/json'
+) {
+	const url = URL.createObjectURL( new Blob( [ content ], { type } ) );
 	const link = document.createElement( 'a' );
 	link.href = url;
 	link.download = filename;

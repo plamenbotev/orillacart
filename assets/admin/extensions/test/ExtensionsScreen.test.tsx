@@ -420,6 +420,42 @@ describe( 'ExtensionsScreen', () => {
 		} );
 	} );
 
+	it( 'imports a zip and says which of its files were left out', async () => {
+		let sent: unknown = null;
+		serve( ( { path, method, ...rest } ) => {
+			if (
+				path === '/orillacart/v1/extensions/upload' &&
+				method === 'POST'
+			) {
+				sent = ( rest as { body?: FormData } ).body?.get( 'file' );
+				return Promise.resolve( {
+					extension: greeter,
+					skipped: [ 'greeter/LICENSE' ],
+				} );
+			}
+			return undefined;
+		} );
+		const user = userEvent.setup();
+		render( <ExtensionsScreen /> );
+		await screen.findByRole( 'button', { name: 'Greeter' } );
+
+		const zip = new File( [ 'PK' ], 'greeter.zip', {
+			type: 'application/zip',
+		} );
+		await user.upload(
+			screen.getByLabelText( 'Import an extension file' ),
+			zip
+		);
+		expect(
+			(
+				await screen.findAllByText(
+					'Imported Greeter. Left out what is not an extension’s file: greeter/LICENSE.'
+				)
+			).length
+		).toBeGreaterThan( 0 );
+		expect( sent ).toBe( zip );
+	} );
+
 	it( 'asks the manager to grant what the extension needs before enabling it', async () => {
 		let granted: unknown = null;
 		serve( ( { path, method, data } ) => {

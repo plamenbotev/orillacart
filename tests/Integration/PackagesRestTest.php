@@ -184,10 +184,59 @@ final class PackagesRestTest extends RestTestCase
 
         // A template that does not compile is a finding, words not written as strings among it.
         $bad = $this->data($this->request('PUT', '/extensions/worded/files/' . rawurlencode('templates/note.html.twig'), ['content' => "<p>\n{{ __(name) }}</p>"], nonce: true));
-        self::assertCount(1, $bad['findings']);
-        self::assertStringStartsWith('templates/note.html.twig: "__" takes the words themselves', self::string($bad['findings'][0]));
-        self::assertStringEndsWith('(line 2, column 1)', self::string($bad['findings'][0]));
+        $findings = $bad['findings'];
+        self::assertIsArray($findings);
+        self::assertCount(1, $findings);
+        self::assertStringStartsWith('templates/note.html.twig: "__" takes the words themselves', self::string($findings[0]));
+        self::assertStringEndsWith('(line 2, column 1)', self::string($findings[0]));
         $this->request('DELETE', '/extensions/worded', nonce: true);
+    }
+
+    public function testAnExtensionIsInstalledFromAZipAndExportedAsOne(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'oc-extension');
+        if ($path === false) {
+            self::fail('no temporary file');
+        }
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::OVERWRITE));
+        $zip->addFromString('zipped-main/main.ocs', "extension \"zipped\" { name: \"Zipped\", version: \"0.3.0\" }\nfn one() { return 1 }\n");
+        $zip->addFromString('zipped-main/templates/note.html.twig', '<p>{{ __("Thanks") }}</p>');
+        $zip->addFromString('zipped-main/LICENSE', 'MIT');
+        $zip->addFromString('__MACOSX/zipped-main/._main.ocs', "\0");
+        $zip->close();
+
+        $uploaded = $this->upload('/extensions/upload', $path, 'zipped.zip');
+        self::assertSame(201, $uploaded->get_status(), (string) wp_json_encode($uploaded->get_data()));
+        $answer = $this->data($uploaded);
+        $extension = self::assoc($answer['extension']);
+        self::assertSame(['zipped', 'Zipped', '0.3.0', 'draft', []], [$extension['id'], $extension['name'], $extension['version'], $extension['state'], $extension['findings']], 'named by its extension block');
+        self::assertSame(['main.ocs', 'templates/note.html.twig'], array_column($this->rows($extension['files']), 'path'));
+        self::assertSame(['zipped-main/LICENSE'], $answer['skipped']);
+
+        // The export is a zip with extension.json, and installs again over the same extension.
+        $archive = $this->data($this->request('GET', '/extensions/zipped/archive'));
+        self::assertSame(['zipped-0.3.0.zip', 'application/zip'], [$archive['filename'], $archive['mime_type']]);
+        file_put_contents($path, (string) base64_decode(self::string($archive['content']), true));
+        $read = new \ZipArchive();
+        self::assertTrue($read->open($path));
+        self::assertSame(['id' => 'zipped', 'name' => 'Zipped', 'version' => '0.3.0'], array_intersect_key((array) json_decode((string) $read->getFromName('extension.json'), true), ['id' => 1, 'name' => 1, 'version' => 1]));
+        $read->close();
+        $again = $this->upload('/extensions/upload', $path, 'zipped-0.3.0.zip');
+        self::assertSame([201, []], [$again->get_status(), $this->data($again)['skipped']]);
+        self::assertCount(1, array_filter($this->rows($this->data($this->request('GET', '/extensions'))['extensions']), static fn(array $e): bool => $e['id'] === 'zipped'));
+
+        // A zip that names no extension, and a file that is not a zip, are refused.
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::OVERWRITE));
+        $zip->addFromString('main.ocs', "fn one() { return 1 }\n");
+        $zip->close();
+        $unnamed = $this->upload('/extensions/upload', $path, 'x.zip');
+        self::assertSame([422, 'orillacart_extension_zip_unnamed'], [$unnamed->get_status(), $this->data($unnamed)['code']]);
+        file_put_contents($path, 'not a zip');
+        self::assertSame(422, $this->upload('/extensions/upload', $path, 'x.zip')->get_status());
+        unlink($path);
+        $this->request('DELETE', '/extensions/zipped', nonce: true);
     }
 
     public function testFilesAreCheckedWithoutBeingSaved(): void

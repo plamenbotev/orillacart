@@ -292,5 +292,30 @@ export const importExtension = ( payload: unknown ) =>
 		data: payload as object,
 	} );
 
+/**
+ * Installs an extension from a zip of its files.
+ *
+ * @param file The zip.
+ */
+export const uploadExtension = ( file: File ) => {
+	const body = new FormData();
+	body.append( 'file', file );
+	return apiFetch< { extension: Extension; skipped: string[] } >( {
+		path: `${ BASE }/extensions/upload`,
+		method: 'POST',
+		body,
+	} );
+};
+
+/**
+ * The extension as a zip, base64, with its file name.
+ *
+ * @param id The extension's id.
+ */
+export const fetchArchive = ( id: string ) =>
+	apiFetch< { filename: string; content: string; mime_type: string } >( {
+		path: `${ BASE }/extensions/${ id }/archive`,
+	} );
+
 export const fetchReference = () =>
 	apiFetch< Reference >( { path: `${ BASE }/script-reference` } );

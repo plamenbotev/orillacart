@@ -790,8 +790,13 @@ fn posted() {
   Code, from `POST /extensions/<id>/test` or from `wp orillacart script test file.ocs`, enabled or not. See below.
 - **Enable.** A dialog lists the permissions the `needs` ask for; granting them enables the extension. Changing
   `needs` later asks again.
-- **Export and import.** An extension travels as one JSON file with its files; import it on another site or keep
-  it in version control. Records and field values are exported separately from `/extensions/<id>/data`.
+- **Export and import.** An extension travels as a zip of its files, with an `extension.json` naming it and
+  carrying its translations: Export downloads one, Import installs one (or the JSON file of before), as do
+  `wp orillacart extension export <id>` and `wp orillacart extension install file.zip`. A zip you make yourself
+  needs only the files, at its root or in one folder; the `extension` block names the extension, and files that
+  are not an extension's (a LICENSE, `package.json`) are left out and named. A new extension comes in as a draft;
+  one with the same id gets its files replaced and keeps a version of the change. Records and field values are
+  exported separately from `/extensions/<id>/data`.
 - **In VS Code.** The extension under `tools/vscode` (see its README) highlights `.ocs` files and runs a
   language server that proxies the site: the same check as you type, the same completion and hover, through an
   API key. Its pull and push commands move an extension's files between a folder named after the id and the

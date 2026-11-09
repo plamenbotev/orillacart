@@ -961,6 +961,12 @@ Puts an exported extension in place: a new one as a draft, or the files of the o
   - `format` (string): default 'orillacart-extension/1'
   - `translations` (array)
 
+### `POST /extensions/upload`
+
+Installs an extension from a zip of its files, a multipart upload in the "file" field: the .ocs scripts, templates/….html.twig and .md files, at the zip's root or in one folder, with an optional extension.json (the id, name, version and translations an export writes). A new extension is a draft; the files of one with the same id are replaced, and it keeps running its old files until enabled again. Answers the extension and the zip's files that are not an extension's, which were left out.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ### `GET /extensions/{id}`
 
 One extension with its files, its settings as shown, what it needs, and the static check's findings.
@@ -972,6 +978,12 @@ One extension with its files, its settings as shown, what it needs, and the stat
 Removes an extension with its files and settings. Export it first to keep a copy.
 
 - Who: shop managers; needs a nonce (not with an API key)
+
+### `GET /extensions/{id}/archive`
+
+An extension as a zip to keep, edit or install on another shop: its files, and an extension.json with its id, name, version and translations. The zip is base64, with its file name. Settings and permissions stay with the shop.
+
+- Who: shop managers
 
 ### `POST /extensions/{id}/check`
 

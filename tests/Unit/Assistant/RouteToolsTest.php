@@ -171,6 +171,7 @@ final class RouteToolsTest extends TestCase
         'update_tax_settings' => 'settings',
         'update_variation' => 'catalog',
         'upload_download' => 'a file for a product',
+        'upload_package_archive' => 'an extension installed from a zip as a draft, or its files replaced as an import does; nothing runs until enabled, which asks',
         'upload_product_import' => 'a file for an import, which start_product_import runs',
         'write_package_file' => 'a file of an extension written; an enabled one runs its old files until enabled again, which asks',
     ];
