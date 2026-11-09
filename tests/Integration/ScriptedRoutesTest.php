@@ -38,6 +38,10 @@ final class ScriptedRoutesTest extends RestTestCase
           return { tickets: ["one", "two"], from: request.query.from ?? "nowhere" }
         }
         slot "product_after_details" { template: "note.html.twig" } fn(context) { return { label: "Shelf A" } }
+        admin_page "/tickets" { title: "Tickets", template: "admin.html.twig" } fn(request) {
+          return { open: 3, manager: request.user.manager, state: request.query.state ?? "all" }
+        }
+        admin_page "/broken" { title: "Broken", template: "admin.html.twig" } fn(request) { fail refused("Not for you.") }
         template_data "x/pages/hello.html.twig" fn(context) { return { extra: "added" } }
         OCS;
 
@@ -53,6 +57,8 @@ final class ScriptedRoutesTest extends RestTestCase
             'templates/hello.html.twig' => '<p>Hello {{ who }} {{ ext.pages.extra }}</p>',
             'templates/support.html.twig' => '<ul>{% for t in tickets %}<li>{{ t }}</li>{% endfor %}</ul><em>{{ from }}</em>',
             'templates/note.html.twig' => '<span class="note">{{ label }} in {{ slot }}</span>{{ asset("note.css") }}{{ asset("note.js") }}',
+            'templates/admin.html.twig' => '<p class="tickets">{{ open }} open, {{ state }}, manager {{ manager ? "yes" : "no" }}</p>{{ asset("admin.js") }}',
+            'assets/admin.js' => 'console.log("admin")',
             'assets/note.css' => '.note { color: red }',
             'assets/note.js' => 'console.log("note")',
             'templates/bad.html.twig' => "{{ constant('PHP_VERSION') }}",
@@ -146,6 +152,36 @@ final class ScriptedRoutesTest extends RestTestCase
         self::assertStringContainsString('<li>one</li><li>two</li>', $html);
         self::assertStringContainsString('<em>the block</em>', $html);
         self::assertSame('', trim(wp_strip_all_tags(do_blocks('<!-- wp:orillacart/extension-page {"extension":"pages","path":"/missing"} /-->'))), 'no such page: nothing');
+    }
+
+    /** Design 60: an extension's screens in the Shop menu, before System, rendered from its template. */
+    public function testAnExtensionsAdminPagesAreScreensOfTheShopMenu(): void
+    {
+        global $submenu;
+        require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        $GLOBALS['menu'] = [];
+        $GLOBALS['submenu'] = [];
+        do_action('admin_menu');
+
+        self::assertIsArray($submenu);
+        $shop = $submenu['orillacart'] ?? [];
+        self::assertIsArray($shop);
+        $items = array_values(array_filter($shop, static fn(mixed $item): bool => \is_array($item) && ($item[4] ?? '') !== 'orillacart-menu-hidden'));
+        $titles = array_column($items, 0);
+        self::assertSame(['Tickets', 'Broken', 'System'], \array_slice($titles, -3), 'after the shop\'s groups, before System');
+        $slugs = array_column($items, 2);
+        self::assertContains('orillacart-x-pages-tickets', $slugs);
+
+        $_GET['state'] = 'open';
+        ob_start();
+        do_action('shop_page_orillacart-x-pages-tickets');
+        $printed = (string) ob_get_clean();
+        unset($_GET['state']);
+        self::assertMatchesRegularExpression('#^<div class="wrap orillacart-extension-page" data-extension="pages"><h1>Tickets</h1><p class="tickets">3 open, open, manager yes</p><script src="[^"]+/orillacart/extensions/pages/admin-[0-9a-f]{12}\.js" defer></script></div>$#', $printed);
+
+        ob_start();
+        do_action('shop_page_orillacart-x-pages-broken');
+        self::assertStringContainsString('<div class="notice notice-warning inline"><p>Not for you.</p></div>', (string) ob_get_clean());
     }
 
     public function testASlotTemplatePrintsInTheStorefrontsSlot(): void

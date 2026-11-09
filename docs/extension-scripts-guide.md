@@ -571,6 +571,23 @@ that is "Extension page" among the blocks, with the extension and the path chose
 existing page. A page made this way is a WordPress page: its URL is its slug, its title and visibility are the
 page's, and it can be linked from the storefront's navigation like any other.
 
+An `admin_page` is a screen of the extension's own in the **Shop** menu of wp-admin, for the shop manager:
+
+```
+admin_page "/tickets" { title: "Tickets", template: "tickets-admin.html.twig" } fn(request) {
+  return { open: objects.ticket.query({ where: { state: request.query.state ?? "open" }, limit: 50 }) }
+}
+```
+
+The entry is titled as declared, placed after the shop's own groups and before System, and opens
+`admin.php?page=orillacart-x-<extension>-tickets`. The handler gets the request as a route's, with the screen's
+query string, as the manager; its map is the template's data, and `fail refused("…")` shows the message instead
+of the screen. The template renders inside the admin's frame, with WordPress's own classes at hand (`notice`,
+`card`, `button`, `wp-list-table`). A screen that changes things does so through the extension's manager routes:
+its script, printed with `asset()`, calls them with `wp.apiFetch({ path: '/orillacart/v1/x/<extension>/tickets/3/close', method: 'POST', data: {} })`,
+which carries the REST nonce, and the page reloads or redraws. No permission is needed beyond the manager's own:
+the screen is theirs.
+
 ## 10. Templates and slots
 
 An extension's templates are files under `templates/` in the package, addressed as

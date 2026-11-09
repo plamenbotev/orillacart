@@ -169,7 +169,8 @@ final class SettingsRestTest extends RestTestCase
         self::assertIsArray($items);
         // Design 52: one entry per group; the group's other pages are in the submenu but hidden, reached as tabs.
         $isHidden = static fn(mixed $item): bool => \is_array($item) && ($item[4] ?? '') === AdminPageRegistrar::HIDDEN_CLASS;
-        $shown = array_values(array_filter($items, static fn(mixed $item): bool => !$isHidden($item)));
+        // An extension's own screens (design 60) sit before System; a test extension left by another test is not this test's business.
+        $shown = array_values(array_filter($items, static fn(mixed $item): bool => !$isHidden($item) && !(\is_array($item) && \is_string($item[2] ?? null) && str_starts_with($item[2], 'orillacart-x-'))));
         self::assertSame(['Home', 'Orders', 'Customers', 'Catalog', 'Marketing', 'Reports', 'Settings', 'System'], array_column($shown, 0));
         $hidden = array_column(array_filter($items, $isHidden), 2);
         self::assertContains('orillacart-tax', $hidden, 'Tax is a tab of Settings');

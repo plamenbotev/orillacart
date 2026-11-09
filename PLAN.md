@@ -589,6 +589,15 @@ Design 59 (`docs/designs/59-extension-assets.md`): files under `assets/` printed
 | ✅ | 364 | P2 | Served from `uploads/orillacart/extensions/<id>/<name>-<hash>.<ext>`, older names removed, the folder removed on uninstall; nothing served unless enabled and granted | 800fb6c6 |
 | ✅ | 365 | P3 | The check names an `asset()` file the package lacks; the guide, the reference's permissions, the editor's help | 800fb6c6 |
 
+## An extension's screens in the Shop menu (2026-11-09)
+
+Design 60 (`docs/designs/60-extension-admin-pages.md`): `admin_page` declarations as entries of the Shop menu.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 366 | P2 | `admin_page "/path" { title, template } fn(request)`: an entry of the Shop menu per screen, after the shop's groups and before System, rendered from the extension's template with the handler's data as the manager; refusals and errors shown as notices; `wp.apiFetch` enqueued | |
+| ✅ | 367 | P3 | The guide and the reference (declaration and handler) | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
