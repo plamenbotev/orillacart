@@ -555,9 +555,21 @@ list, sent as JSON, or with one of `respond.json(data, status?)`, `respond.error
 answers JSON, `respond.html` travels as `{ "html": "…" }` for the caller to insert. A stopped extension's routes
 answer 503 with a plain message. The same routes become the assistant's tools when declared as such (PLAN 331).
 
-A `page` is rendered on the **Extension page** block: the editor places the block on a WordPress page and gives
-it the path; the handler gets a request as above with the page's query string, and its map is the template's
-data. The template is one of the extension's own (§10).
+A `page` is a storefront page of the extension's own, with a URL of the site's: the buyer portal, an application
+form, a tracking page. It is rendered by the shop's **Extension page** block, so it lives wherever that block is
+placed and wears the theme like any page. The handler gets a request as above with the page's query string, and
+its map is the template's data; the template is one of the extension's own (§10). An extension cannot claim a
+URL by itself: someone places the block, which is how the owner decides where the page lives. In the editor
+that is "Extension page" among the blocks, with the extension and the path chosen. Through the assistant it is
+`create_landing_page` (a draft page holding the block) and `publish_page`, with this block markup as the content:
+
+```html
+<!-- wp:orillacart/extension-page {"extension":"trade","path":"/trade"} /-->
+```
+
+`list_pages` shows the pages the site has, `show_page` one of them, and `change_page` puts the block into an
+existing page. A page made this way is a WordPress page: its URL is its slug, its title and visibility are the
+page's, and it can be linked from the storefront's navigation like any other.
 
 ## 10. Templates and slots
 

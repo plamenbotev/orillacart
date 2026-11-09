@@ -75,7 +75,7 @@ the problem on the Extensions screen.
 - `product_block "id" { title, description; fn render(product, settings) }`: a block for product pages, its HTML cleaned
 - `mailing_list "id" { name; fn subscribe(subscriber); fn unsubscribe(email); fn forget(email) }`: a list the newsletter signs up to
 - `route METHOD "/path/{param}" { who: public|account|manager, tool: true|false|"name", title, description, input, risk } fn(request)`: a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html(); a browser sends the REST nonce on anything but GET, an app its key or token
-- `page "/path" { template } fn(request)`: a page rendered on the Extension page block, the handler's map as the template's data
+- `page "/path" { template } fn(request)`: a storefront page of the extension's own, with a URL of the site's, rendered by the shop's Extension page block: place the block on a WordPress page (the editor, or the assistant's create_landing_page then publish_page with the content <!-- wp:orillacart/extension-page {"extension":"<id>","path":"/path"} /-->); the handler's map is the template's data
 - `slot "product_after_details" { template } fn(context)`: a template printed in a storefront slot
 - `template_data "storefront/product.html.twig" fn(context)`: what the extension adds to a template's context, under ext.<extension>
 - `object "type" { fields: { name: kind { options } }, index: [field, …] }`: a kind of record of the extension's: objects.<type>.create/find/update/delete/query/count
