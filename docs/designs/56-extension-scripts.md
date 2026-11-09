@@ -131,7 +131,7 @@ Every function is a PHP class method with a signature the static check knows, gr
 | `respond` | `json`, `html(template, data)`, `redirect`, `error(status, message)` from a route | a route |
 | `jobs` | `push(name, payload, at?)` to the extension's own handlers, run in the `extensions` lane | always |
 | `log` | `info`, `warning`, `error` → debug.log and Shop → Status → Problems, under the extension's name | always |
-| `text` | `__`, `_n`, `slug`, `format` | always |
+| (none) | `__`, `_x`, `_n`, `_nx` and `language()`: the extension's words in the language shown (design 57) | always |
 | `time` | `now`, `today`, `parse`, `add`, `format` in the shop's timezone | always |
 
 Nothing else: no `eval`, no reflection, no file, no raw SQL, no WordPress function. New host functions are a PHP

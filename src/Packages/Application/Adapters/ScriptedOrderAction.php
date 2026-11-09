@@ -17,7 +17,7 @@ final class ScriptedOrderAction extends ScriptedProvider implements OrderAction
     {
         $label = $this->declaration['props']['label'] ?? null;
 
-        return \is_string($label) ? $label : $this->title();
+        return \is_string($label) ? $this->loaded->word($label) : $this->title();
     }
 
     public function isAvailable(OrderSummary $order): bool

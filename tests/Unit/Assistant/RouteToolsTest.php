@@ -141,6 +141,7 @@ final class RouteToolsTest extends TestCase
         'run_package_function' => 'the console: one function of the extension run with the permissions a manager granted when enabling it, which asked',
         'save_email_template' => 'a template saved; nothing is sent',
         'save_package_settings' => 'the values of an extension\'s own settings',
+        'save_package_translations' => 'translations of an extension\'s words, as the shop\'s own are saved with their objects',
         'save_product' => 'catalog',
         'save_record_fields' => 'an extension\'s fields on a product, an order or a customer, as the record\'s screen saves them; nobody is told',
         'send_test_email' => 'goes to the manager who asks, not to customers',

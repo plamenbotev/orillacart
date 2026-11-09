@@ -45,9 +45,14 @@ final class ShopExtension extends AbstractExtension
     {
         return [
             new TwigFunction('__', static fn(string $text): string => \function_exists('__') ? __($text, 'orillacart') : $text),
+            // {{ _x('Post', 'a verb') }}: words that mean something else elsewhere
+            new TwigFunction('_x', static fn(string $text, string $context): string => \function_exists('_x') ? _x($text, $context, 'orillacart') : $text),
             // {{ _n('%d item', '%d items', count)|format(count) }}
             new TwigFunction('_n', static fn(string $single, string $plural, int $number): string => \function_exists('_n')
                 ? _n($single, $plural, $number, 'orillacart')
+                : ($number === 1 ? $single : $plural)),
+            new TwigFunction('_nx', static fn(string $single, string $plural, int $number, string $context): string => \function_exists('_nx')
+                ? _nx($single, $plural, $number, $context, 'orillacart')
                 : ($number === 1 ? $single : $plural)),
             // {{ slot('product_after_form', product.id) }}: what add-ons print there (docs/extensions.md lists them)
             // Whether shop prices include tax, for the "incl. tax" next to them.

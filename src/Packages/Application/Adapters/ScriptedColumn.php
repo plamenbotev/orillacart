@@ -18,7 +18,7 @@ final class ScriptedColumn extends ScriptedProvider implements OrderColumn, Prod
     {
         $label = $this->declaration['props']['label'] ?? null;
 
-        return \is_string($label) ? $label : $this->title();
+        return \is_string($label) ? $this->loaded->word($label) : $this->title();
     }
 
     public function value(OrderSummary|ProductItem $row): string

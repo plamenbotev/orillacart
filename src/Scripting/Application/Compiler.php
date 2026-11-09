@@ -64,6 +64,14 @@ final class Compiler
     private array $topFunctions = [];
     /** @var list<string> the permissions the package declares */
     private array $needs = [];
+    /** @var list<array{text: string, plural: ?string, context: string, line: int}> what the calls of WORDS mark for translation */
+    private array $words = [];
+
+    /**
+     * The functions that translate words (design 57), with the arguments that are the words: the text, the plural,
+     * the context. Each must be written as a string in the call, so the words can be listed for a translator.
+     */
+    public const array WORDS = ['__' => [0, null, null], '_x' => [0, null, 1], '_n' => [0, 1, null], '_nx' => [0, 1, 3]];
 
     public function __construct(private readonly HostCatalog $catalog) {}
 
@@ -78,6 +86,7 @@ final class Compiler
         $this->tempCount = 0;
         $this->topFunctions = [];
         $this->needs = [];
+        $this->words = [];
         $className = 'Script_' . preg_replace('/[^A-Za-z0-9_]/', '_', $classSuffix);
 
         foreach ($program->declarations as $declaration) {
@@ -100,7 +109,7 @@ final class Compiler
             $manifest[] = $this->declaration($declaration);
         }
         if ($this->findings !== []) {
-            return new Compiled($namespace . '\\' . $className, null, $this->findings);
+            return new Compiled($namespace . '\\' . $className, null, $this->findings, $this->words);
         }
 
         $source = "<?php\n\ndeclare(strict_types=1);\n\nnamespace " . $namespace . ";\n\n"
@@ -110,7 +119,7 @@ final class Compiler
             . ($this->methods === [] ? '' : "\n" . implode("\n", $this->methods))
             . "}\n";
 
-        return new Compiled($namespace . '\\' . $className, $source, []);
+        return new Compiled($namespace . '\\' . $className, $source, [], $this->words);
     }
 
     /**
@@ -528,8 +537,35 @@ final class Compiler
         if ($function->needs !== null && !\in_array($function->needs, $this->needs, true)) {
             $this->finding($expr, \sprintf('"%s" needs the permission "%s": declare it in the extension\'s needs', $name, $function->needs));
         }
+        if (isset(self::WORDS[$name])) {
+            $this->word($name, $expr);
+        }
 
         return '$this->c->call(' . self::literal($name) . ", {$args})";
+    }
+
+    /** Keeps the words a translating call marks; words not written as a string are a finding. */
+    private function word(string $name, Call $expr): void
+    {
+        $words = [];
+        foreach (self::WORDS[$name] as $part => $index) {
+            if ($index === null) {
+                $words[$part] = null;
+                continue;
+            }
+            $arg = $expr->args[$index] ?? null;
+            if (!$arg instanceof Str) {
+                if ($arg !== null) {
+                    $this->finding($arg, \sprintf('"%s" takes the words themselves, written as a string, so they can be listed for translators: put the values in after, as __("%%s left")|replace({"%%s": count})', $name));
+                }
+
+                return;
+            }
+            $words[$part] = $arg->value;
+        }
+        if ($words[0] !== '') {
+            $this->words[] = ['text' => $words[0], 'plural' => $words[1], 'context' => $words[2] ?? '', 'line' => $expr->line];
+        }
     }
 
     private function lambda(FnExpr $fn, Scope $outer): string

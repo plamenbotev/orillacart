@@ -23,7 +23,7 @@ final class ScriptedFilter extends ScriptedProvider implements OrderFilter, Find
     {
         $label = $this->declaration['props']['label'] ?? null;
 
-        return \is_string($label) ? $label : $this->title();
+        return \is_string($label) ? $this->loaded->word($label) : $this->title();
     }
 
     public function findOrders(string $text): array

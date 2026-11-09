@@ -165,6 +165,31 @@ final class PackagesRestTest extends RestTestCase
         self::assertSame(['greeter'], array_column($this->rows($this->data($this->request('GET', '/extensions'))['extensions']), 'id'));
     }
 
+    public function testAnExtensionsWordsAreListedAndItsTemplatesChecked(): void
+    {
+        $script = "extension \"worded\" { name: \"Worded\" }\nsettings { greeting: text { label: \"Greeting\" } }\nfn hello() { return __(\"Free shipping\") ~ \" \" ~ language() }\n";
+        $this->request('POST', '/extensions', ['id' => 'worded', 'name' => 'Worded', 'files' => ['main.ocs' => $script, 'templates/note.html.twig' => "{{ _n('%d day', '%d days', 2) }}"]], nonce: true);
+
+        $words = $this->data($this->request('GET', '/extensions/worded/translations'));
+        self::assertSame([], $words['languages'], 'one language: nothing to translate into');
+        self::assertSame([['Worded', null], ['Greeting', null], ['Free shipping', null], ['%d day', '%d days']], array_map(static fn(array $w): array => [$w['text'], $w['plural']], $this->rows($words['words'])));
+        self::assertSame(['main.ocs, line 3'], $this->rows($words['words'])[2]['where']);
+        self::assertSame(422, $this->request('PUT', '/extensions/worded/translations', ['translations' => ['0123456789abcdef' => ['de_DE' => 'x']]], nonce: true)->get_status(), 'a word the extension does not have');
+
+        // In the site's language the words stand as written, or as the plugin translates them.
+        $this->request('POST', '/extensions/worded/enable', ['grant' => []], nonce: true);
+        $run = $this->data($this->request('POST', '/extensions/worded/run', ['function' => 'hello'], nonce: true));
+        self::assertSame(__('Free shipping', 'orillacart') . ' ' . determine_locale(), $run['result']);
+        self::assertSame([], $this->data($this->request('GET', '/extensions/worded/export'))['translations']);
+
+        // A template that does not compile is a finding, words not written as strings among it.
+        $bad = $this->data($this->request('PUT', '/extensions/worded/files/' . rawurlencode('templates/note.html.twig'), ['content' => "<p>\n{{ __(name) }}</p>"], nonce: true));
+        self::assertCount(1, $bad['findings']);
+        self::assertStringStartsWith('templates/note.html.twig: "__" takes the words themselves', self::string($bad['findings'][0]));
+        self::assertStringEndsWith('(line 2, column 1)', self::string($bad['findings'][0]));
+        $this->request('DELETE', '/extensions/worded', nonce: true);
+    }
+
     public function testFilesAreCheckedWithoutBeingSaved(): void
     {
         $answer = $this->data($this->request('POST', '/script/check', ['files' => ['a.ocs' => "fn ok() { return 1 }\n", 'b.ocs' => "fn bad() {\n  return nothing()\n}\n", 'templates/x.html.twig' => '{{ x }}'], 'id' => 'draft'], nonce: true));

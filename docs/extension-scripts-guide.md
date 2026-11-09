@@ -95,7 +95,7 @@ fn statements(items, limit) {
 - `break` and `continue` belong in a loop. `fail` is a statement and also a value: `x ?? fail refused("none")`
   (see §7).
 - `assert test` and `assert test, "message"` fail with kind `assertion` when the test is false, naming the line.
-  They are for an extension's own tests (§15) and for guarding what must hold.
+  They are for an extension's own tests (§16) and for guarding what must hold.
 - `fn(x) { … }` as an expression is a closure. It sees the variables around it at the time it is made.
 
 ```
@@ -552,7 +552,7 @@ data. The template is one of the extension's own (§10).
 
 An extension's templates are files under `templates/` in the package, addressed as
 `x/<extension>/<file>`. They are Twig, sandboxed: the tags `if for set include extends block macro import from
-with apply autoescape`, the storefront's filters and functions (`__`, `_n`, `slot`, `date`, `range`, the price
+with apply autoescape`, the storefront's filters and functions (`__`, `_x`, `_n`, `_nx`, `slot`, `date`, `range`, the price
 helpers), no raw PHP objects. A template that compiles against the sandbox passes the static check.
 
 ```
@@ -724,7 +724,48 @@ Writing to the shop's own records is deliberately narrow: an extension marks and
 prices, stock or statuses behind the shop's back. What it needs to change it does through the contracts in §8,
 where the shop stays in charge.
 
-## 15. Working on an extension
+## 15. Words in other languages
+
+On a site in several languages (Polylang or WPML), an extension's words are translated as the shop's own are:
+in the shop's translations table, edited in the Translations section of the extension's screen, by an agent with
+`save_package_translations`, or by WPML's translators, each extension being one of its string packages.
+
+```
+fn greeting(name) {
+  return __("Hello %s")|replace({"%s": name})
+}
+
+fn reminder(count) {
+  return _n("%d ticket waits", "%d tickets wait", count)|replace({"%d": count})
+}
+
+fn posted() {
+  return _x("Post", "a verb") ~ " (" ~ language() ~ ")"
+}
+```
+
+- Mark what a script shows people with `__("words")`, `_x("words", "context")` (the same words meaning
+  something else elsewhere), `_n("one", "many", count)` and `_nx("one", "many", count, "context")`. The words
+  must be written in the call: `__(name)` is refused by the check, since nothing could list such words for a
+  translator. Put values in after translating, with `|replace`, so the translator sees the whole sentence.
+- Templates mark theirs the same way: `{{ __("Thanks") }}`, `{{ _n("%d day", "%d days", days)|replace({"%d":
+  days}) }}`. In an extension's templates, and its overrides of the shop's, these read the extension's
+  translations first.
+- What the declarations say to people needs nothing: the extension's `name`; a setting's `label`, `help` and
+  choices; a provider's `name`; a column's, filter's and order action's `label`; a checkout field's `label`,
+  `help` and choices; a field's `label` and `help`; a product block's `title` and `description`. An assistant
+  tool's and a route's `title` and `description` are for a model and stay as written; a field's facet in the
+  search keeps its declared label in every language.
+- Which language: the one the shop shows words in, the page's, the email reader's, the manager's in the admin.
+  `language()` gives it as a locale (`"de_DE"`). In the site's default language the words stand as written.
+- A word the extension has no translation of takes the shop's own translation of the same words, so
+  `__("Free shipping")` needs nothing in a language the shop is translated into.
+- A plural has as many forms as the language: two in German, three in Polish, six in Arabic. The screen shows a
+  field for each; a form left empty takes the nearest filled one before it.
+- A word is its text: the same words in the same context are one word wherever they stand, and changing the
+  English makes a new word to translate. An export carries the translations beside the files.
+
+## 16. Working on an extension
 
 - **The editor** highlights the language, completes host functions after a dot with their arity, summary and
   permission, filters after `|`, tests after `is`, keywords, declaration kinds at the start of a line and the names
@@ -803,7 +844,7 @@ extension is enabled, and reports the first failure with its message, file and l
 requests made and the budget used. The editor runs the tests over the files as they are on screen, saved or not,
 and the VS Code command sends the folder's files the same way.
 
-## 16. A complete example
+## 17. A complete example
 
 A courier integration, the smallest useful version. The provider's endpoints are illustrative.
 

@@ -30,7 +30,7 @@ final readonly class ExtensionFieldFacets implements FacetSource
             foreach ($filtered as [$section, $fields]) {
                 foreach ($fields as $field) {
                     foreach (self::names($field, $byExtension[$section->extension][$field->name] ?? null) as $name) {
-                        $options[$productId][] = new DocumentOption($field->label, $name);
+                        $options[$productId][] = new DocumentOption($field->declaredLabel(), $name);
                     }
                 }
             }
@@ -44,7 +44,7 @@ final readonly class ExtensionFieldFacets implements FacetSource
         $names = [];
         foreach ($this->filtered() as [, $fields]) {
             foreach ($fields as $field) {
-                $names[] = $field->label;
+                $names[] = $field->declaredLabel();
             }
         }
 

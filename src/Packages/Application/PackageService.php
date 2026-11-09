@@ -51,6 +51,9 @@ final readonly class PackageService
         private ?PackageVersions $versions = null,
         private ?RunLog $runs = null,
         private ?PluginTemplates $templates = null,
+        private ?PackageTranslations $translations = null,
+        private ?ExtensionTranslations $words = null,
+        private ?TemplateWords $templateWords = null,
     ) {}
 
     /** @return list<PackageView> */
@@ -78,6 +81,7 @@ final readonly class PackageService
         $this->describeFrom($package, $this->compile($package));
         $this->packages->save($package);
         $this->versions?->keep($package, 'Installed', $this->clock->now());
+        $this->translations?->changed($package);
 
         return $this->view($package, $this->compile($package));
     }
@@ -92,6 +96,7 @@ final readonly class PackageService
         $this->packages->save($package);
         if ($before !== $content) {
             $this->versions?->keep($package, ($before === null ? 'Added ' : 'Saved ') . $path, $this->clock->now());
+            $this->translations?->changed($package);
         }
 
         return $this->view($package, $compiled);
@@ -103,6 +108,7 @@ final readonly class PackageService
         $package->removeFile($path, $this->clock->now());
         $this->packages->save($package);
         $this->versions?->keep($package, 'Deleted ' . $path, $this->clock->now());
+        $this->translations?->changed($package);
 
         return $this->view($package, $this->compile($package));
     }
@@ -151,6 +157,7 @@ final readonly class PackageService
         $this->objects?->forgetExtension($slug);
         $this->runs?->forgetExtension($slug);
         $this->versions?->forget($package);
+        $this->translations?->forget($package);
         $this->packages->remove($package);
         $this->logger->info('The extension "{extension}" was uninstalled.', ['extension' => $slug]);
     }
@@ -215,7 +222,7 @@ final readonly class PackageService
             $files[$file->path()] = $file->content();
         }
 
-        return new PackageExport($package->slug(), $package->name(), $package->version(), $files);
+        return new PackageExport($package->slug(), $package->name(), $package->version(), $files, translations: $this->translations?->export($package) ?? []);
     }
 
     /** An exported extension put in place: a new one, or the files of one with the same id replaced. */
@@ -223,7 +230,13 @@ final readonly class PackageService
     {
         $package = $this->packages->find($export->id);
         if ($package === null) {
-            return $this->install(new InstallPackage($export->id, $export->name, $export->files));
+            $installed = $this->install(new InstallPackage($export->id, $export->name, $export->files));
+            $package = $this->packages->find($export->id);
+            if ($package !== null && $this->translations !== null && $export->translations !== []) {
+                $this->translations->import($package, $export->translations);
+            }
+
+            return $installed;
         }
         $now = $this->clock->now();
         foreach ($package->files() as $file) {
@@ -238,6 +251,8 @@ final readonly class PackageService
         $this->describeFrom($package, $compiled);
         $this->packages->save($package);
         $this->versions?->keep($package, 'Imported', $now);
+        $this->translations?->import($package, $export->translations);
+        $this->translations?->changed($package);
 
         return $this->view($package, $compiled);
     }
@@ -263,7 +278,7 @@ final readonly class PackageService
                 $this->failed($package->slug(), $e->getMessage());
                 continue;
             }
-            $loaded[] = new LoadedPackage($package, $script::class, PackageManifest::ofClass($script::class));
+            $loaded[] = new LoadedPackage($package, $script::class, PackageManifest::ofClass($script::class), $this->words);
         }
 
         return $loaded;
@@ -361,6 +376,7 @@ final readonly class PackageService
             $manifest = $this->manifest($package);
             $needs = $manifest->needs();
             [$values, $secretsSet] = SettingValues::shown($manifest->settings(), $package->settings());
+            $shown = $this->words?->settings($package->slug(), ...$manifest->settings()) ?? $manifest->settings();
             $settings = array_map(static fn(Setting $setting): array => [
                 'key' => $setting->key,
                 'label' => $setting->label,
@@ -370,7 +386,7 @@ final readonly class PackageService
                 'choices' => $setting->choices,
                 'value' => $values[$setting->key] ?? null,
                 'set' => \in_array($setting->key, $secretsSet, true),
-            ], $manifest->settings());
+            ], $shown);
         }
 
         return PackageView::fromPackage($package, $needs, true, $settings, $this->findings($package, $compiled), $this->currentHashes($package));
@@ -413,6 +429,7 @@ final readonly class PackageService
         $this->describeFrom($package, $compiled);
         $this->packages->save($package);
         $this->versions->keep($package, \sprintf('Restored version %d', $number), $now);
+        $this->translations?->changed($package);
 
         return $this->view($package, $compiled);
     }
@@ -488,7 +505,27 @@ final readonly class PackageService
         }
         $compiled = $this->scripts->compile(implode("\n", $scripts), 'check/' . $scope);
 
-        return self::locate($scripts, $compiled->findings);
+        return [...self::locate($scripts, $compiled->findings), ...$this->templateFindings($files, $scope)];
+    }
+
+    /**
+     * What stops the templates among the files compiling, as the storefront compiles them.
+     *
+     * @param array<string, string> $files path → content
+     *
+     * @return list<array{file: string, line: int, column: int, message: string}>
+     */
+    private function templateFindings(array $files, string $extension): array
+    {
+        $findings = [];
+        foreach ($files as $path => $content) {
+            $problem = str_ends_with($path, '.html.twig') ? $this->templateWords?->problem($extension, $path, $content) : null;
+            if ($problem !== null) {
+                $findings[] = ['file' => $path, 'line' => $problem['line'], 'column' => 1, 'message' => $problem['message']];
+            }
+        }
+
+        return $findings;
     }
 
     /**
@@ -503,9 +540,14 @@ final readonly class PackageService
             $scripts[$file->path()] = $file->content();
         }
 
+        $templates = [];
+        foreach ($package->files() as $file) {
+            $templates[$file->path()] = $file->content();
+        }
+
         return array_map(
             static fn(array $finding): string => \sprintf('%s%s (line %d, column %d)', $finding['file'] === '' ? '' : $finding['file'] . ': ', $finding['message'], $finding['line'], $finding['column']),
-            self::locate($scripts, $compiled->findings),
+            [...self::locate($scripts, $compiled->findings), ...$this->templateFindings($templates, $package->slug())],
         );
     }
 

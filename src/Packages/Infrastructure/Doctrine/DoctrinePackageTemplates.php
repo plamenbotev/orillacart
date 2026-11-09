@@ -13,21 +13,33 @@ use OrillaCart\Packages\Domain\PackageState;
 /** Reads the templates from the enabled packages' files, once per request. */
 final class DoctrinePackageTemplates implements PackageTemplates
 {
-    /** @var array<string, string|null> */
+    /** @var array<string, array{string, string}|null> the source and the extension it is from, by name */
     private array $found = [];
 
     public function __construct(private readonly PackageRepository $packages) {}
 
     public function source(string $name): ?string
     {
-        if (\array_key_exists($name, $this->found)) {
-            return $this->found[$name];
-        }
-
-        return $this->found[$name] = $this->find($name);
+        return $this->found($name)[0] ?? null;
     }
 
-    private function find(string $name): ?string
+    public function owner(string $name): ?string
+    {
+        return $this->found($name)[1] ?? null;
+    }
+
+    /** @return array{string, string}|null */
+    private function found(string $name): ?array
+    {
+        if (!\array_key_exists($name, $this->found)) {
+            $this->found[$name] = $this->find($name);
+        }
+
+        return $this->found[$name];
+    }
+
+    /** @return array{string, string}|null */
+    private function find(string $name): ?array
     {
         if (str_starts_with($name, self::PREFIX)) {
             $parts = explode('/', substr($name, \strlen(self::PREFIX)), 2);
@@ -37,7 +49,9 @@ final class DoctrinePackageTemplates implements PackageTemplates
             [$slug, $path] = $parts;
             $package = $this->packages->find($slug);
 
-            return $package !== null && $package->state() === PackageState::Enabled ? $package->file('templates/' . $path)?->content() : null;
+            $content = $package !== null && $package->state() === PackageState::Enabled ? $package->file('templates/' . $path)?->content() : null;
+
+            return $content === null ? null : [$content, $slug];
         }
         // An override of one of the shop's templates: the first enabled extension granted `templates` that has it.
         foreach ($this->packages->enabled() as $package) {
@@ -46,7 +60,7 @@ final class DoctrinePackageTemplates implements PackageTemplates
             }
             $file = $package->file('templates/' . $name);
             if ($file instanceof PackageFile && $package instanceof Package) {
-                return $file->content();
+                return [$file->content(), $package->slug()];
             }
         }
 

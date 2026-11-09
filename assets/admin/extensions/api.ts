@@ -213,6 +213,51 @@ export const restoreVersion = ( id: string, number: number ) =>
 		method: 'POST',
 	} );
 
+/** One of the extension's words, with its forms in each other language. */
+export interface ExtensionWord {
+	key: string;
+	text: string;
+	plural: string | null;
+	context: string;
+	/** Where it stands: `main.ocs, line 12`, `settings: merchant_id, label`. */
+	where: string[];
+	/** Its forms by locale: as many as the language has for a plural, one otherwise. */
+	translations: Record< string, string[] >;
+}
+
+/** A language to translate into, with how many plural forms it has. */
+export interface WordLanguage {
+	locale: string;
+	name: string;
+	forms: number;
+}
+
+export interface ExtensionWords {
+	languages: WordLanguage[];
+	words: ExtensionWord[];
+}
+
+export const fetchTranslations = ( id: string ) =>
+	apiFetch< ExtensionWords >( {
+		path: `${ BASE }/extensions/${ id }/translations`,
+	} );
+
+/**
+ * Saves translations by word key and locale; the words and languages not sent keep theirs.
+ *
+ * @param id           The extension's id.
+ * @param translations The forms by word key, then locale.
+ */
+export const saveTranslations = (
+	id: string,
+	translations: Record< string, Record< string, string[] > >
+) =>
+	apiFetch< ExtensionWords >( {
+		path: `${ BASE }/extensions/${ id }/translations`,
+		method: 'PUT',
+		data: { translations },
+	} );
+
 export const fetchRuns = ( id: string ) =>
 	apiFetch< { runs: ExtensionRun[] } >( {
 		path: `${ BASE }/extensions/${ id }/runs`,

@@ -15,6 +15,7 @@ final readonly class FieldSpec
      * @param bool         $readonly shown in the admin, written by the scripts only
      * @param bool         $filter   a product field shoppers filter the catalogue by: its values go into the search index
      * @param bool         $column   a column of the export, and of the import for a product
+     * @param string|null  $written  the label as the declaration writes it, where $label is translated (design 57)
      */
     public function __construct(
         public string $name,
@@ -27,5 +28,12 @@ final readonly class FieldSpec
         public bool $readonly,
         public bool $filter,
         public bool $column,
+        public ?string $written = null,
     ) {}
+
+    /** The label as declared, in every language: what names the field's facet in the search index. */
+    public function declaredLabel(): string
+    {
+        return $this->written ?? $this->label;
+    }
 }

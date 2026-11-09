@@ -93,8 +93,13 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 
 ### Without a namespace
 
+- __("words"): the words in the language shown, as the extension's translations or the shop's give them; written as a string, values put in after (|replace)
+- _n("one", "many", count): the form the count takes in the language shown
+- _nx("one", "many", count, "context"): as _n(), with a context
+- _x("words", "context"): as __(), told apart from the same words meaning something else by the context
 - error(message, data?): the error value of a problem to log
 - keys(map): its keys as a list
+- language(): the locale words are shown in, as "de_DE"
 - len(value): how many items a list or map has, or characters a string
 - max(a, b, …) or max(list): the greatest
 - min(a, b, …) or min(list): the least

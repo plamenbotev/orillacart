@@ -959,6 +959,7 @@ Puts an exported extension in place: a new one as a draft, or the files of the o
   - `version` (string)
   - `files` (array)
   - `format` (string): default 'orillacart-extension/1'
+  - `translations` (array)
 
 ### `GET /extensions/{id}`
 
@@ -1052,6 +1053,20 @@ Saves the values of the settings an extension declares; a secret sent empty keep
 Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back.
 
 - Who: shop managers; needs a nonce (not with an API key)
+
+### `GET /extensions/{id}/translations`
+
+The words an extension shows people and their translations: each word with its key, its plural and context, where it stands in the extension, and its forms in each of the site's other languages; the languages with how many plural forms each has. Words come from the declarations (labels, names, help) and the scripts' and templates' __(), _x(), _n() and _nx() calls. On a site in one language there are no languages to translate into.
+
+- Who: shop managers
+
+### `PUT /extensions/{id}/translations`
+
+Saves translations of an extension's words, by the word's key (from its translations) and the locale: a plural's forms as a list, as many as the language has, a word without one as a string. The words and languages not sent keep theirs; an empty form removes it. Answers the words and translations as they are now.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `translations` (array)
 
 ### `GET /extensions/{id}/versions`
 

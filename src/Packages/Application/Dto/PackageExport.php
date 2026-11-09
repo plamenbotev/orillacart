@@ -10,7 +10,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class PackageExport
 {
     /**
-     * @param array<string, string> $files by path
+     * @param array<string, string>                                    $files        by path
+     * @param array<string, array<string, list<string>|string>> $translations its words' translations by word key and locale, the forms as a list (design 57)
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -21,5 +22,6 @@ final readonly class PackageExport
         #[Assert\All([new Assert\Type('string')])]
         public array $files = [],
         public string $format = 'orillacart-extension/1',
+        public array $translations = [],
     ) {}
 }

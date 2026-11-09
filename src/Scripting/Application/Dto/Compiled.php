@@ -11,12 +11,14 @@ namespace OrillaCart\Scripting\Application\Dto;
 final readonly class Compiled
 {
     /**
-     * @param list<Finding> $findings
+     * @param list<Finding>                                                         $findings
+     * @param list<array{text: string, plural: ?string, context: string, line: int}> $words    what `__`, `_x`, `_n` and `_nx` mark for translation, by the line of the call
      */
     public function __construct(
         public string $className,
         public ?string $source,
         public array $findings,
+        public array $words = [],
     ) {}
 
     public function ok(): bool

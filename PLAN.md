@@ -535,6 +535,20 @@ language stored in its database, written by a person in the admin or by an agent
 | ✅ | 339 | P2 | Language edges: in a list or map written over several lines the end of a line separates entries as a comma does (the same rule as a declaration's properties); `fail` is also a value (`x ?? fail refused("…")`); `assert test, message?` fails with kind `assertion` naming the line, for an extension's own tests | 50859655 |
 | ✅ | 340 | P2 | An extension's own tests: `test "name" { http, now, settings } fn() { … assert … }` run with HTTP answered from the test's map, time standing still, the test's settings, jobs recorded, records and fields rolled back, everything the `needs` ask for granted; `POST /extensions/{id}/test` over the saved files or the files sent, the Console's Run tests button over the files as edited, a VS Code command, `wp orillacart script test` | 0bf22d4e |
 
+## Extensions in the site's languages (2026-11-09)
+
+Design 57 (`docs/designs/57-extension-translations.md`): an extension's words translated in the shop's
+translations table, as the shop's own are, marked with `__()` in code and implied in declarations.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ⬜ | 341 | P2 | The language: `__`, `_x`, `_n`, `_nx` and `language()`, the static check refusing words not written in the call, plural rules by language, the lookup in the language shown with the shop's own `.mo` behind the extension's table | |
+| ⬜ | 342 | P2 | Declared words translated where they are shown: the extension's name, settings, providers' names, columns, filters, order actions, checkout fields, fields on records, product blocks | |
+| ⬜ | 343 | P2 | Templates: the loader marks an extension's sources with its id, a node visitor turns their `__` calls into the extension's lookup, words not written as strings refused at compile | |
+| ⬜ | 344 | P2 | `ExtensionWords` (declarations, scripts, templates, with where each stands), `GET\|PUT /extensions/{id}/translations` (assistant tools), the Translations section of the Extensions screen with plural forms per language | |
+| ⬜ | 345 | P3 | Export and import carry the translations, uninstalling forgets them; each extension a WPML string package, registered on save, import and restore, removed on uninstall | |
+| ⬜ | 346 | P2 | The guide's "Words in other languages", the reference regenerated, design 56's `text` row corrected | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

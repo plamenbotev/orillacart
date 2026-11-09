@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Twig;
 
+use OrillaCart\Packages\Application\ExtensionTranslations;
 use OrillaCart\Platform\CacheFolders;
 use OrillaCart\Platform\PluginContext;
 use Twig\Environment;
@@ -24,6 +25,7 @@ final readonly class TwigFactory
         private PluginContext $context,
         private ?ShopExtension $extension = null,
         private ?PackageTemplateLoader $packages = null,
+        private ?ExtensionTranslations $words = null,
     ) {}
 
     public function create(): Environment
@@ -48,6 +50,10 @@ final readonly class TwigFactory
         if ($this->packages !== null) {
             // The sandbox is on for the extensions' templates only: the loader is the source policy that says which.
             $twig->addExtension(new SandboxExtension(StorefrontSandbox::policy(), false, $this->packages));
+            if ($this->words !== null) {
+                // Their __() calls read the extension's words first (design 57).
+                $twig->addExtension(new ExtensionWordsExtension($this->words));
+            }
         }
 
         return $twig;

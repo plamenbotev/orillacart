@@ -12,6 +12,10 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
 import {
+	TranslationFields,
+	type ContentLanguage,
+} from '../shared/Translations';
+import {
 	Badge,
 	DataTable,
 	EmptyState,
@@ -35,6 +39,7 @@ import {
 	fetchOriginal,
 	fetchReference,
 	fetchRuns,
+	fetchTranslations,
 	fetchVersions,
 	importExtension,
 	installExtension,
@@ -42,6 +47,7 @@ import {
 	runFunction,
 	runTests,
 	saveSettings,
+	saveTranslations,
 	uninstallExtension,
 	writeFile,
 	type Extension,
@@ -49,6 +55,7 @@ import {
 	type ExtensionRun,
 	type ExtensionSetting,
 	type ExtensionVersion,
+	type ExtensionWords,
 	type Finding,
 	type Reference,
 	type RunResult,
@@ -666,6 +673,8 @@ function ExtensionEditor( {
 					onError={ setError }
 				/>
 			) }
+
+			<Translations extension={ extension } onError={ setError } />
 
 			<Console
 				extension={ extension }
@@ -1409,6 +1418,169 @@ function Versions( {
 				loading={ versions === null }
 				empty={ __( 'No versions kept yet.', 'orillacart' ) }
 			/>
+		</Section>
+	);
+}
+
+/**
+ * The extension's words in the site's other languages: each word with a field per language, a plural with one per
+ * form the language has. Nothing on a site in one language, or for an extension without words.
+ *
+ * @param props
+ * @param props.extension The extension.
+ * @param props.onError   Takes a message when a request fails.
+ */
+function Translations( {
+	extension,
+	onError,
+}: {
+	extension: Extension;
+	onError: ( message: string ) => void;
+} ) {
+	const [ shown, setShown ] = useState< ExtensionWords | null >( null );
+	const [ edited, setEdited ] = useState<
+		Record< string, Record< string, string[] > >
+	>( {} );
+	const [ busy, setBusy ] = useState( false );
+	const show = ( answer: ExtensionWords ) => {
+		setShown( answer );
+		setEdited(
+			Object.fromEntries(
+				answer.words.map( ( word ) => [ word.key, word.translations ] )
+			)
+		);
+	};
+	useEffect( () => {
+		setShown( null );
+		fetchTranslations( extension.id )
+			.then( show )
+			.catch( ( e ) => onError( errorMessage( e ) ) );
+	}, [ extension.id, extension.updated_at, onError ] );
+	if (
+		shown === null ||
+		shown.languages.length === 0 ||
+		shown.words.length === 0
+	) {
+		return null;
+	}
+	const save = () => {
+		setBusy( true );
+		saveTranslations( extension.id, edited )
+			.then( ( answer ) => {
+				show( answer );
+				notify( __( 'Translations saved.', 'orillacart' ) );
+			} )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setBusy( false ) );
+	};
+	const languages = ( forms: number ): ContentLanguage[] =>
+		shown.languages
+			.filter( ( language ) => language.forms > forms )
+			.map( ( language ) => ( {
+				code: language.locale,
+				locale: language.locale,
+				name: language.name,
+				default: false,
+			} ) );
+	/**
+	 * Takes one form of a word in each language, keeping each language's forms as many as it has.
+	 *
+	 * @param word  The word.
+	 * @param form  Which of its forms.
+	 * @param value The form by locale.
+	 */
+	const change = (
+		word: ExtensionWords[ 'words' ][ number ],
+		form: number,
+		value: Record< string, string >
+	) => {
+		const next = { ...( edited[ word.key ] ?? {} ) };
+		for ( const language of shown.languages ) {
+			const count = word.plural === null ? 1 : language.forms;
+			if ( form >= count ) {
+				continue;
+			}
+			const forms = Array.from(
+				{ length: count },
+				( _, i ) => next[ language.locale ]?.[ i ] ?? ''
+			);
+			forms[ form ] = value[ language.locale ] ?? '';
+			next[ language.locale ] = forms;
+		}
+		setEdited( { ...edited, [ word.key ]: next } );
+	};
+	const mostForms = Math.max(
+		...shown.languages.map( ( language ) => language.forms )
+	);
+	return (
+		<Section
+			title={ __( 'Translations', 'orillacart' ) }
+			description={ __(
+				'The words the extension shows people, from its declarations and its __() calls, in the site’s other languages. A word left empty shows the shop’s own translation of it, or the words as written.',
+				'orillacart'
+			) }
+		>
+			{ shown.words.map( ( word ) => {
+				const forms = word.plural === null ? 1 : mostForms;
+				return (
+					<div key={ word.key } className="oc-field">
+						<strong>
+							{ word.plural === null
+								? word.text
+								: `${ word.text } / ${ word.plural }` }
+						</strong>
+						{ word.context !== '' && (
+							<span className="oc-muted">
+								{ ' ' }
+								({ word.context })
+							</span>
+						) }
+						<p className="oc-muted">{ word.where.join( '; ' ) }</p>
+						{ Array.from( { length: forms }, ( _, form ) => (
+							<TranslationFields
+								key={ form }
+								label={
+									word.plural === null
+										? word.text
+										: sprintf(
+												/* translators: 1: words, such as "%d items"; 2: the number of one of a language's plural forms */
+												__(
+													'%1$s, form %2$d',
+													'orillacart'
+												),
+												form === 0
+													? word.text
+													: word.plural,
+												form + 1
+											)
+								}
+								languages={ languages( form ) }
+								value={ Object.fromEntries(
+									Object.entries(
+										edited[ word.key ] ?? {}
+									).map( ( [ locale, values ] ) => [
+										locale,
+										values[ form ] ?? '',
+									] )
+								) }
+								onChange={ ( value ) =>
+									change( word, form, value )
+								}
+							/>
+						) ) }
+					</div>
+				);
+			} ) }
+			<div className="oc-actions">
+				<Button
+					variant="primary"
+					onClick={ save }
+					isBusy={ busy }
+					disabled={ busy }
+				>
+					{ __( 'Save translations', 'orillacart' ) }
+				</Button>
+			</div>
 		</Section>
 	);
 }

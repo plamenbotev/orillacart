@@ -90,6 +90,26 @@ final readonly class GettextTranslations implements Translations
         return strtr($translated, $values);
     }
 
+    public function word(string $text, string $context = ''): string
+    {
+        if ($text === '' || $this->gettext !== null || !\function_exists('_x')) {
+            return $context === '' ? $this->translate($text) : $text;
+        }
+
+        // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText, WordPress.WP.I18n.NonSingularStringLiteralContext -- an extension's words, looked up in case the plugin has them
+        return $context === '' ? __($text, TextDomain::DOMAIN) : _x($text, $context, TextDomain::DOMAIN);
+    }
+
+    public function plural(string $single, string $plural, int $count, string $context = ''): string
+    {
+        if (!\function_exists('_nx')) {
+            return $count === 1 ? $single : $plural;
+        }
+
+        // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralSingle, WordPress.WP.I18n.NonSingularStringLiteralPlural, WordPress.WP.I18n.NonSingularStringLiteralContext -- an extension's words, looked up in case the plugin has them
+        return $context === '' ? _n($single, $plural, $count, TextDomain::DOMAIN) : _nx($single, $plural, $count, $context, TextDomain::DOMAIN);
+    }
+
     private function translate(string $text): string
     {
         if ($this->gettext !== null) {

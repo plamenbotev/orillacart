@@ -148,6 +148,11 @@ function serve(
 				],
 			} );
 		}
+		if (
+			request.path === '/orillacart/v1/extensions/greeter/translations'
+		) {
+			return Promise.resolve( { languages: [], words: [] } );
+		}
 		if ( request.path === '/orillacart/v1/extensions/greeter' ) {
 			return Promise.resolve( greeter );
 		}
@@ -336,6 +341,83 @@ describe( 'ExtensionsScreen', () => {
 				exact: false,
 			} )
 		).toBeVisible();
+	} );
+
+	it( 'translates the words with a field per language and a plural per form', async () => {
+		let saved: unknown = null;
+		const words = {
+			languages: [
+				{ locale: 'de_DE', name: 'Deutsch', forms: 2 },
+				{ locale: 'pl_PL', name: 'Polski', forms: 3 },
+			],
+			words: [
+				{
+					key: 'aaaaaaaaaaaaaaaa',
+					text: 'Hello',
+					plural: null,
+					context: '',
+					where: [ 'main.ocs, line 3' ],
+					translations: { de_DE: [ 'Hallo' ], pl_PL: [ '' ] },
+				},
+				{
+					key: 'bbbbbbbbbbbbbbbb',
+					text: '%d item',
+					plural: '%d items',
+					context: '',
+					where: [ 'main.ocs, line 4' ],
+					translations: {
+						de_DE: [ '', '' ],
+						pl_PL: [ '', '', '' ],
+					},
+				},
+			],
+		};
+		serve( ( { path, method, data } ) => {
+			if ( path === '/orillacart/v1/extensions/greeter/translations' ) {
+				if ( method === 'PUT' ) {
+					saved = data;
+				}
+				return Promise.resolve( words );
+			}
+			return undefined;
+		} );
+		const user = userEvent.setup();
+		render( <ExtensionsScreen /> );
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Greeter' } )
+		);
+
+		expect(
+			await screen.findByLabelText( 'Hello in Deutsch' )
+		).toHaveValue( 'Hallo' );
+		expect( screen.getByText( 'main.ocs, line 3' ) ).toBeVisible();
+		expect(
+			screen.getByLabelText( '%d items, form 3 in Polski' )
+		).toBeVisible();
+		expect(
+			screen.queryByLabelText( '%d items, form 3 in Deutsch' )
+		).toBeNull();
+
+		await user.type( screen.getByLabelText( 'Hello in Polski' ), 'Cześć' );
+		await user.type(
+			screen.getByLabelText( '%d items, form 3 in Polski' ),
+			'%d produktów'
+		);
+		await user.click(
+			screen.getByRole( 'button', { name: 'Save translations' } )
+		);
+		expect(
+			await screen.findByText( 'Translations saved.', TOAST )
+		).toBeVisible();
+		expect( saved ).toEqual( {
+			translations: {
+				aaaaaaaaaaaaaaaa: { de_DE: [ 'Hallo' ], pl_PL: [ 'Cześć' ] },
+				bbbbbbbbbbbbbbbb: {
+					de_DE: [ '', '' ],
+					pl_PL: [ '', '', '%d produktów' ],
+				},
+			},
+		} );
 	} );
 
 	it( 'asks the manager to grant what the extension needs before enabling it', async () => {

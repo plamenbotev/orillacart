@@ -27,14 +27,14 @@ final class ScriptedProductBlock extends ScriptedProvider implements ProductBloc
     {
         $title = $this->declaration['props']['title'] ?? null;
 
-        return \is_string($title) ? $title : parent::title();
+        return \is_string($title) ? $this->loaded->word($title) : parent::title();
     }
 
     public function description(): string
     {
         $description = $this->declaration['props']['description'] ?? null;
 
-        return \is_string($description) ? $description : '';
+        return \is_string($description) ? $this->loaded->word($description) : '';
     }
 
     public function render(ShownProduct $product, array $settings): string

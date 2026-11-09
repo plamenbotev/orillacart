@@ -21,17 +21,17 @@ final class ScriptedFieldCheck extends ScriptedProvider implements FieldCheck
         $props = $this->declaration['props'];
         $choices = [];
         foreach (\is_array($props['choices'] ?? null) ? $props['choices'] : [] as $value => $label) {
-            $choices[\is_int($value) ? Values::text($label) : $value] = Values::text($label);
+            $choices[\is_int($value) ? Values::text($label) : $value] = $this->loaded->word(Values::text($label));
         }
 
         return new CheckoutField(
             $this->id(),
-            \is_string($props['label'] ?? null) ? $props['label'] : $this->id(),
+            \is_string($props['label'] ?? null) ? $this->loaded->word($props['label']) : $this->id(),
             self::word($props['kind'] ?? null, CheckoutField::TEXT),
             self::word($props['section'] ?? null, CheckoutField::BILLING),
             ($props['required'] ?? false) === true,
             $choices,
-            \is_string($props['help'] ?? null) ? $props['help'] : '',
+            \is_string($props['help'] ?? null) ? $this->loaded->word($props['help']) : '',
             \is_int($props['longest'] ?? null) ? $props['longest'] : 200,
             $this->has('check') ? $this : null,
         );

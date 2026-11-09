@@ -48,7 +48,9 @@ abstract class ScriptedProvider
         /** @var list<array{kind: string, words: list<string>, name: ?string, props: array<string, mixed>, functions: array<string, string>, nested: list<array<string, mixed>>, handler: ?string}> $nested */
         $nested = $this->declaration['nested'];
 
-        return new PackageManifest($nested)->settings();
+        $settings = new PackageManifest($nested)->settings();
+
+        return $this->loaded->translations?->settings($this->loaded->package->slug(), ...$settings) ?? $settings;
     }
 
     /** What the shop calls the provider: its declared name, else the extension's. */
@@ -56,7 +58,7 @@ abstract class ScriptedProvider
     {
         $name = $this->declaration['props']['name'] ?? null;
 
-        return \is_string($name) && $name !== '' ? $name : $this->loaded->package->name();
+        return $this->loaded->word(\is_string($name) && $name !== '' ? $name : $this->loaded->package->name());
     }
 
     protected function has(string $function): bool

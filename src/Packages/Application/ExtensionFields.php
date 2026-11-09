@@ -39,11 +39,11 @@ final readonly class ExtensionFields
                     continue;
                 }
                 foreach (ObjectDefinitions::declaredFields($declaration['props']) as $name => [$kind, $options]) {
-                    $fields[] = self::spec($name, $kind, $options);
+                    $fields[] = self::spec($name, $kind, $options, $loaded->word(...));
                 }
             }
             if ($fields !== []) {
-                $sections[] = new FieldSection($loaded->package->slug(), $loaded->package->name(), $fields);
+                $sections[] = new FieldSection($loaded->package->slug(), $loaded->word($loaded->package->name()), $fields);
             }
         }
 
@@ -178,9 +178,10 @@ final readonly class ExtensionFields
     }
 
     /**
-     * @param array<string, mixed> $options
+     * @param array<string, mixed>    $options
+     * @param \Closure(string): string $word    the declared words in the language shown
      */
-    private static function spec(string $name, string $kind, array $options): FieldSpec
+    private static function spec(string $name, string $kind, array $options, \Closure $word): FieldSpec
     {
         $label = $options['label'] ?? null;
         $help = $options['help'] ?? null;
@@ -192,14 +193,15 @@ final readonly class ExtensionFields
         return new FieldSpec(
             $name,
             $kind,
-            \is_string($label) && $label !== '' ? $label : ucfirst(str_replace('_', ' ', $name)),
-            \is_string($help) && $help !== '' ? $help : null,
+            \is_string($label) && $label !== '' ? $word($label) : ucfirst(str_replace('_', ' ', $name)),
+            \is_string($help) && $help !== '' ? $word($help) : null,
             ($options['required'] ?? false) === true,
             $options['default'] ?? null,
             $of,
             ($options['readonly'] ?? false) === true,
             ($options['filter'] ?? false) === true,
             ($options['column'] ?? true) !== false,
+            \is_string($label) && $label !== '' ? $label : ucfirst(str_replace('_', ' ', $name)),
         );
     }
 }

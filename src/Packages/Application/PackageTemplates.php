@@ -14,4 +14,7 @@ interface PackageTemplates
 
     /** The source of the template with that name, or null when no enabled extension has it. */
     public function source(string $name): ?string;
+
+    /** The extension whose template that is, for its words (design 57); null when no enabled extension has it. */
+    public function owner(string $name): ?string;
 }
