@@ -219,7 +219,9 @@ final class InputSchemas
         $type = $parts[0] ?? 'mixed';
 
         if (preg_match('/^(non-empty-)?list<(.+)>$/', $type, $match) === 1) {
-            $schema = ['type' => 'array', 'items' => self::type($match[2], $dto, $defs)[0]];
+            // A list of anything says nothing of its items: an empty `items` would read as an invalid schema.
+            $items = self::type($match[2], $dto, $defs)[0];
+            $schema = $items === [] ? ['type' => 'array'] : ['type' => 'array', 'items' => $items];
             if ($match[1] !== '') {
                 $schema['minItems'] = 1;
             }
@@ -232,7 +234,9 @@ final class InputSchemas
             return [$values === [] ? ['type' => 'object'] : ['type' => 'object', 'additionalProperties' => $values], $nullable];
         }
         if (preg_match('/^array<int,\s*(.+)>$/', $type, $match) === 1) {
-            return [['type' => 'array', 'items' => self::type($match[1], $dto, $defs)[0]], $nullable];
+            $items = self::type($match[1], $dto, $defs)[0];
+
+            return [$items === [] ? ['type' => 'array'] : ['type' => 'array', 'items' => $items], $nullable];
         }
 
         $schema = match (strtolower(ltrim($type, '\\'))) {

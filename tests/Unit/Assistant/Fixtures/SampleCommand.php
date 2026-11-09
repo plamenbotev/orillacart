@@ -12,6 +12,7 @@ final readonly class SampleCommand
      * @param list<SampleLine> $lines the items it covers,
      *                                if any
      * @param list<int>        $ids
+     * @param list<mixed>      $arguments anything, as a console's
      */
     public function __construct(
         #[Assert\NotBlank]
@@ -33,5 +34,6 @@ final readonly class SampleCommand
         public ?string $from = null,
         #[Assert\Regex('/^[a-z]+$/i')]
         public string $caseless = '',
+        public array $arguments = [],
     ) {}
 }

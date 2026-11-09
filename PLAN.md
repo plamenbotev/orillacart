@@ -575,6 +575,7 @@ A loyalty program written as an extension over the MCP, to find what an extensio
 | ✅ | 357 | P1 | `create_order` and `quote_order` (the shop's own order) take `fields`, the checkout answers: checked as at checkout, kept on the order, priced by the add-ons' order adjusters | bd3c258b |
 | ✅ | 358 | P1 | Bug: the assistant's yes/no question read an accepted form with its box left as it is as a no (the box defaulted to off); accepting is the yes, the box (on by default) lets the owner accept it unticked as a no | bd3c258b |
 | ✅ | 359 | P1 | Bug: the customer screen showed an extension's fields empty after a reload: it was built from the list's row, which carries no extensions' values; the whole customer is read when one is opened | 9b55bdf6 |
+| ✅ | 360 | P1 | Bug: a tool whose input has a list of anything (`run_package_function`'s `arguments`) was described with `items: []`, an invalid schema that Claude Code drops the tool for; the list now says nothing of its items | |
 
 ## Deliberately not carried over
 

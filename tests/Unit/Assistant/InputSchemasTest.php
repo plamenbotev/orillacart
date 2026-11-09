@@ -28,6 +28,8 @@ final class InputSchemasTest extends TestCase
         self::assertSame(['description' => 'Use an amount such as 25.50.', 'type' => 'string', 'pattern' => '^\d{1,11}(\.\d{1,4})?$'], self::at($schema, 'properties', 'amount'));
         self::assertSame(['description' => 'The items it covers, if any. At most 5 items.', 'type' => 'array', 'items' => ['$ref' => '#/$defs/SampleLine'], 'maxItems' => 5], self::at($schema, 'properties', 'lines'));
         self::assertSame(['description' => 'Each more than 0.', 'type' => 'array', 'items' => ['type' => 'integer', 'exclusiveMinimum' => 0]], self::at($schema, 'properties', 'ids'));
+        // A list of anything says nothing of its items: `items: []` would be an invalid schema, which a client refuses the tool for (PLAN 360).
+        self::assertSame(['description' => 'Anything, as a console\'s.', 'type' => 'array'], self::at($schema, 'properties', 'arguments'));
         self::assertSame(['type' => ['string', 'null']], self::at($schema, 'properties', 'note'));
         self::assertSame(['type' => 'boolean', 'default' => false], self::at($schema, 'properties', 'notify'));
         self::assertSame(['enum' => ['fixed', 'percent'], 'default' => 'fixed'], self::at($schema, 'properties', 'kind'));
