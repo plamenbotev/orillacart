@@ -584,10 +584,10 @@ Design 59 (`docs/designs/59-extension-assets.md`): files under `assets/` printed
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 362 | P2 | Files under `assets/` (`.js`, `.css`, `.svg`) in a package: the path rule, the zip import keeping them (a script elsewhere skipped), the permission `assets: serve` | |
-| ✅ | 363 | P2 | `asset()` in an extension's template, bound to the extension by the visitor, the name a string; a deferred script tag, a stylesheet link, or an SVG's URL; printed once per page | |
-| ✅ | 364 | P2 | Served from `uploads/orillacart/extensions/<id>/<name>-<hash>.<ext>`, older names removed, the folder removed on uninstall; nothing served unless enabled and granted | |
-| ✅ | 365 | P3 | The check names an `asset()` file the package lacks; the guide, the reference's permissions, the editor's help | |
+| ✅ | 362 | P2 | Files under `assets/` (`.js`, `.css`, `.svg`) in a package: the path rule, the zip import keeping them (a script elsewhere skipped), the permission `assets: serve` | 800fb6c6 |
+| ✅ | 363 | P2 | `asset()` in an extension's template, bound to the extension by the visitor, the name a string; a deferred script tag, a stylesheet link, or an SVG's URL; printed once per page | 800fb6c6 |
+| ✅ | 364 | P2 | Served from `uploads/orillacart/extensions/<id>/<name>-<hash>.<ext>`, older names removed, the folder removed on uninstall; nothing served unless enabled and granted | 800fb6c6 |
+| ✅ | 365 | P3 | The check names an `asset()` file the package lacks; the guide, the reference's permissions, the editor's help | 800fb6c6 |
 
 ## Deliberately not carried over
 
