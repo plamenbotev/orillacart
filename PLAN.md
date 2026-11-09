@@ -555,10 +555,10 @@ Design 58 (`docs/designs/58-extension-zips.md`): an extension installed from a z
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ⬜ | 347 | P2 | Reading and writing zips: files at the root or in one folder, `extension.json` optional (else the `extension` block), other files skipped and named, limits read before and while reading, nothing written to disk | |
-| ⬜ | 348 | P2 | `POST /extensions/upload` and `GET /extensions/{id}/archive` (assistant tools), the Extensions screen's Import taking a zip and Export giving one | |
-| ⬜ | 349 | P3 | `wp orillacart extension install <zip>` and `export <id> [<zip>]` | |
-| ⬜ | 350 | P2 | The guide and the REST docs; without PHP's zip extension a zip is refused with that reason | |
+| ✅ | 347 | P2 | Reading and writing zips: files at the root or in one folder, `extension.json` optional (else the `extension` block), other files skipped and named, limits read before and while reading, nothing written to disk | f7493dde |
+| ✅ | 348 | P2 | `POST /extensions/upload` and `GET /extensions/{id}/archive` (assistant tools), the Extensions screen's Import taking a zip and Export giving one | f7493dde |
+| ✅ | 349 | P3 | `wp orillacart extension install <zip>` and `export <id> [<zip>]` | f7493dde |
+| ✅ | 350 | P2 | The guide and the REST docs; without PHP's zip extension a zip is refused with that reason | f7493dde |
 
 ## Deliberately not carried over
 
