@@ -592,8 +592,8 @@ Design 59 (`docs/designs/59-extension-assets.md`): files under `assets/` printed
 | ✅ | 369 | P3 | The editor completes the extension's own routes in a script: one snippet per route with its method, path and the right client; `PackageView::$routes` | 8ac7e2e6 |
 | ✅ | 370 | P1 | Bug: `respond.html` handed its data to the template unconverted, so a `money()` value reached Twig as an object; converted as `respond.json` does | 8ac7e2e6 |
 | ✅ | 371 | P2 | The call budget is 5 000 (was 200: every builtin and filter counts, and a screen of a dozen rows ran out); the guide says what a call is | 8ac7e2e6 |
-| ✅ | 372 | P2 | Bug: an `assistant_tool` whose `input` was written in the object fields' short form was dropped by the client as an invalid schema; the short form becomes a JSON schema | |
-| ✅ | 373 | P2 | `POST /extensions/{id}/preview` (`preview_package`): a page, an admin page, a slot or an HTML route rendered as the shop would show it, with the handler's data | |
+| ✅ | 372 | P2 | Bug: an `assistant_tool` whose `input` was written in the object fields' short form was dropped by the client as an invalid schema; the short form becomes a JSON schema | 03fcd262 |
+| ✅ | 373 | P2 | `POST /extensions/{id}/preview` (`preview_package`): a page, an admin page, a slot or an HTML route rendered as the shop would show it, with the handler's data | 03fcd262 |
 
 ## An extension's screens in the Shop menu (2026-11-09)
 
