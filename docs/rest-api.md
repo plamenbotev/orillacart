@@ -687,7 +687,7 @@ A page of the shop's customers, found by a search; nothing changes.
 
 ### `POST /customers`
 
-The shop makes a customer's account itself: an email that has none, a name, a password or none (the customer sets theirs through the lost-password link), the groups it joins, and whether the welcome email goes.
+The shop makes a customer's account itself: an email that has none, a name, a password or none (the customer sets theirs through the lost-password link), and the groups it joins. Nobody is emailed: send_customer_welcome tells the customer.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -696,7 +696,6 @@ The shop makes a customer's account itself: an email that has none, a name, a pa
   - `last_name` (string): at most 200 characters
   - `password` (string|null): 8 to 200 characters
   - `group_ids` (list<int>): each more than 0
-  - `email_customer` (bool): default false
 
 ### `GET /customers/{id}`
 
@@ -813,6 +812,12 @@ The shop refuses a certificate the customer sent, and tells them why.
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
   - `reason` (string): required; not empty; at most 200 characters
+
+### `POST /customers/{id}/welcome`
+
+Emails a customer the shop's welcome: that they have an account, where to log in, and the lost-password link for a password they were never given (an account the shop made with create_customer).
+
+- Who: shop managers; needs a nonce (not with an API key)
 
 ## /download-delivery
 

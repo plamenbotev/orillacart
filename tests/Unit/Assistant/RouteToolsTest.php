@@ -111,7 +111,7 @@ final class RouteToolsTest extends TestCase
         'create_attribute_set' => 'catalog setup',
         'create_carrier' => 'shipping setup',
         'create_coupon' => 'a coupon nobody has yet',
-        'create_customer' => 'an account the shop makes; the customer is emailed only when email_customer asks it',
+        'create_customer' => 'an account the shop makes; nobody is emailed (send_customer_welcome asks)',
         'create_customer_group' => 'customer setup',
         'create_form' => 'a checkout form',
         'create_price_rule' => 'catalog pricing, as the admin sets it',
@@ -192,7 +192,7 @@ final class RouteToolsTest extends TestCase
     public function testTheRisksAsTheOwnerWeighsThem(): void
     {
         $risks = [
-            'mark_order_paid' => Tool::MONEY, 'refund_return' => Tool::MONEY, 'issue_gift_card' => Tool::MONEY,
+            'send_customer_welcome' => Tool::CUSTOMERS, 'mark_order_paid' => Tool::MONEY, 'refund_return' => Tool::MONEY, 'issue_gift_card' => Tool::MONEY,
             'adjust_order_price' => Tool::MONEY, 'give_up_refund' => Tool::MONEY, 'update_payment_method' => Tool::MONEY,
             'approve_return' => Tool::CUSTOMERS, 'refuse_return' => Tool::CUSTOMERS, 'send_shipment' => Tool::CUSTOMERS,
             'ready_for_pickup' => Tool::CUSTOMERS, 'picked_up' => Tool::CUSTOMERS, 'shipment_arrived' => Tool::CUSTOMERS,

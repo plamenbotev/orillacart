@@ -288,8 +288,9 @@ final class CustomerAccountsTest extends TestCase
         self::assertSame(['grace@example.com', 'Grace', 'Hopper'], [$made->email, $made->firstName, $made->lastName]);
         self::assertSame([], array_filter($this->shop->accountMail->sent, static fn(array $mail): bool => $mail['kind'] === 'welcome'), 'no welcome unless asked');
 
-        $welcomed = $this->shop->customers->create(new CreateCustomer('Alan@Example.com', 'Alan', 'Turing', 'enigma1234', emailCustomer: true));
+        $welcomed = $this->shop->customers->create(new CreateCustomer('Alan@Example.com', 'Alan', 'Turing', 'enigma1234'));
         self::assertSame('alan@example.com', $welcomed->email);
+        $this->shop->customers->welcome($welcomed->id);
         self::assertSame(['alan@example.com'], array_column(array_values(array_filter($this->shop->accountMail->sent, static fn(array $mail): bool => $mail['kind'] === 'welcome')), 'to'));
 
         try {

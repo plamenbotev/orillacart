@@ -270,8 +270,8 @@ final readonly class CustomerService
      *                       that has an account since
      */
     /**
-     * The shop makes a customer's account itself, without the sign-up emails: on a network, a customer of another
-     * of its shops joins this one as they are.
+     * The shop makes a customer's account itself, without the sign-up emails and without telling the customer
+     * (welcome() does): on a network, a customer of another of its shops joins this one as they are.
      *
      * @throws RuleViolation for an email that has an account here
      */
@@ -288,11 +288,20 @@ final readonly class CustomerService
             // No password given: one nobody knows, until the customer sets theirs through the lost-password link.
             $id = $this->accounts->register($email, $command->password ?? bin2hex(random_bytes(24)), trim($command->firstName), trim($command->lastName));
         }
-        if ($command->emailCustomer) {
-            $this->accountMail->welcome($email, trim($command->firstName), $this->links->accountUrl());
-        }
 
         return $this->customer($id);
+    }
+
+    /**
+     * The welcome email to a customer the shop made an account for: how to log in, and the lost-password link for
+     * a password they were never given.
+     */
+    public function welcome(int $id): CustomerView
+    {
+        $customer = $this->customer($id);
+        $this->accountMail->welcome($customer->email, $customer->firstName, $this->links->accountUrl());
+
+        return $customer;
     }
 
     public function confirmAccount(ConfirmAccount $command): CustomerView

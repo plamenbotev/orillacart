@@ -16,7 +16,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-/** The shop makes a customer's account itself: an email that has none, a name, a password or none (the customer sets theirs through the lost-password link), the groups it joins, and whether the welcome email goes. */
+/** The shop makes a customer's account itself: an email that has none, a name, a password or none (the customer sets theirs through the lost-password link), and the groups it joins. Nobody is emailed: send_customer_welcome tells the customer. */
 #[Route('/customers', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateCustomerAction implements RequestHandlerInterface
 {

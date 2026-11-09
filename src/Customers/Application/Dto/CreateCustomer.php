@@ -8,8 +8,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Command: the shop makes a customer's account itself (a trade buyer it signed up on paper, a customer phoning
- * in), without the sign-up emails. With no password given, one is made up that nobody knows: the customer sets
- * theirs with WordPress's "lost password" link, or the welcome email's.
+ * in), without the sign-up emails: nobody is told until the shop sends the welcome (POST /customers/{id}/welcome).
+ * With no password given, one is made up that nobody knows: the customer sets theirs with WordPress's "lost
+ * password" link, or the welcome email's.
  */
 final readonly class CreateCustomer
 {
@@ -30,7 +31,5 @@ final readonly class CreateCustomer
         public ?string $password = null,
         #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $groupIds = [],
-        /** Whether the customer gets the shop's welcome email, with the link to their account. */
-        public bool $emailCustomer = false,
     ) {}
 }
