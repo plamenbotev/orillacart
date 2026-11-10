@@ -604,6 +604,19 @@ Design 60 (`docs/designs/60-extension-admin-pages.md`): `admin_page` declaration
 | ✅ | 366 | P2 | `admin_page "/path" { title, template } fn(request)`: an entry of the Shop menu per screen, after the shop's groups and before System, rendered from the extension's template with the handler's data as the manager; refusals and errors shown as notices; `wp.apiFetch` enqueued | ff7d7f67 |
 | ✅ | 367 | P3 | The guide and the reference (declaration and handler) | ff7d7f67 |
 
+## What an extension reaches of the shop (2026-11-10)
+
+Design 61 (`docs/designs/61-extension-shop-reach.md`): the gaps the trade-accounts extension worked around.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 374 | P1 | `shop.email.send(to, subject, html, reply_to?)` (`email: send`): the body cleaned, in the shop's layout, from its address; five a run; `Registry::emails()` | |
+| ✅ | 375 | P1 | `shop.products.find(id)` (`products: read`): the product as shoppers see it, price, sale, stock and variations; `Products::find()` | |
+| ✅ | 376 | P2 | `shop.customers.find(id)` (`customers: read`): name, email, addresses, groups, orders; `Registry::customers()` | |
+| ✅ | 377 | P1 | `shop.orders.create(order)` (`orders: create`, its own permission): placed as the shop places one by hand; refusals catchable; `Registry::orderCreation()` | |
+| ✅ | 378 | P2 | `|number` takes money; `|amount` writes it for an API | |
+| ✅ | 379 | P2 | Budgets: 50 queries a run (was 20), 5 emails; API 22; the guide's §14 with the product and customer maps | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

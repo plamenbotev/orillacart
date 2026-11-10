@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Extension\Catalog;
 
 /**
- * The shop's products, for add-ons marking them for their filters (ProductFilter). Since version 8.
+ * The shop's products, for add-ons marking them for their filters (ProductFilter, since version 8) and reading them
+ * (find, since version 22).
  */
 interface Products
 {
@@ -25,4 +26,7 @@ interface Products
     public function unmark(int $productId, string $filterId): void;
 
     public function isMarked(int $productId, string $filterId): bool;
+
+    /** The product as shoppers see it now, or null for none such (API 22). */
+    public function find(int $productId): ?ProductSummary;
 }

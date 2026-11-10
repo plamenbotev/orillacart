@@ -360,6 +360,11 @@ if ($registry->version() >= 5) {
 which the order's history records with the button's label. Throw `ProviderUnavailable` when it could not: the
 shop manager sees the message and nothing is recorded.
 
+From API 22, `$registry->products()->find($id)` gives a `ProductSummary` (today's price, sale, stock,
+variations), `$registry->customers()->find($id)` a `CustomerSummary`, `$registry->emails()->send($to, $subject,
+$html)` sends in the shop's layout, and `$registry->orderCreation()->create(new NewOrderRequest(…))` places an
+order as the shop does by hand.
+
 `$registry->orders()->find($number)` gives an `OrderSummary`: number, status, dates, email, customer,
 addresses, lines, totals, refunds, currency, payment, shipping, the customer's note and the field answers. Each
 `OrderLine` has, from API 7, `personalisation`: the answers to the shop's product forms (an engraving, a file by

@@ -198,6 +198,10 @@ fn filters(order) {
 }
 ```
 
+**Money in text.** `|number(2)` formats money as it does a number (`"1,450.00"`), and `|amount` writes it as an
+API or a form wants it (`"1450.00"`, two decimals unless given: `|amount(4)`). Templates format with `|money`,
+which adds the shop's currency.
+
 ## 6. Settings
 
 ```
@@ -263,7 +267,8 @@ fn safely(number) {
 ```
 
 **Budgets.** One run has 100 000 steps (every loop iteration and call is a step), 2 seconds, 16 MB of strings and
-lists, 5 000 calls, 5 HTTP calls and 20 object queries. A call is every builtin, filter and `shop.*` function
+lists, 5 000 calls, 5 HTTP calls, 5 emails and 50 queries (each `objects.*` query, find, count, create, update or
+delete, and each `shop.*.find` or `shop.orders.create`). A call is every builtin, filter and `shop.*` function
 (`money()`, `|format`, `str()`, `shop.orders.find()`); the extension's own functions are steps, not calls. A
 screen that formats fifty rows with a few filters each spends a few hundred. These are per handler call, not per
 request, and they are ample for anything an extension should do inline. Work that needs more belongs in a job
@@ -822,13 +827,38 @@ timezone and write moments as ISO 8601 text.
 | --------------------------------------------------------- | -------------------------- | ------------------------------- |
 | `shop.orders.find(number)`                                | `orders: read`             | the order map (§8), or null     |
 | `shop.orders.mark(number, filter)`, `unmark`, `is_marked` | `orders: write` / `read`   | the extension's order filters   |
+| `shop.orders.create(order)`                               | `orders: create`           | the order placed, its map       |
+| `shop.products.find(id)`                                  | `products: read`           | the product map, or null        |
 | `shop.products.mark(id, filter)`, `unmark`, `is_marked`   | `products: write` / `read` | the extension's product filters |
+| `shop.customers.find(id)`                                 | `customers: read`          | the customer map, or null       |
+| `shop.email.send(to, subject, html, reply_to?)`           | `email: send`              | true when the mail system took it |
 | `settings.get(key)`                                       |                            | one of the extension's settings |
 | `fields.*`, `objects.*`                                   |                            | the extension's own data (§11)  |
 
-Writing to the shop's own records is deliberately narrow: an extension marks and annotates, it does not change
-prices, stock or statuses behind the shop's back. What it needs to change it does through the contracts in §8,
-where the shop stays in charge.
+**The product map**: id, name, type, sku, price (money, today's, before tax; a variable product's lowest),
+regular_price (money while a sale runs, else null), for_sale, available (null when stock does not limit it),
+on_backorder, variations[{id, label, sku, price, regular_price, for_sale, available}]. A product's translation
+reads as its original.
+
+**The customer map**: id, email, first_name, last_name, registered_at, billing and shipping_address (as the
+order map's, or null), group_ids, orders (how many they placed). Nothing of their login.
+
+**Sending email.** `shop.email.send("buyer@example.com", "Your quote is ready", "<p>…</p>")` writes the body into
+the shop's own email layout, from its address, in the site's language; the body is cleaned as a product block
+is (paragraphs, lists, links, tables; no scripts). It answers whether the mail system took it, and five go per
+run: a reminder run that has more to send pushes a job per email (§12).
+
+**Placing an order.** `shop.orders.create({ email, customer_id, billing: { first_name, last_name, street, city,
+postcode, country, state, phone }, shipping_address, items: [{ product_id, quantity, option_ids, unit_price }],
+shipping_option, payment, paid, note, fields })` places it as the shop does by hand: priced as checkout prices it
+(a `unit_price` as agreed, else the catalogue's, with the extension's own adjusters applying), its stock taken,
+the checkout's questions answered with `fields`, on hold until paid unless `paid` says so, the customer emailed
+as the shop's settings say. It answers the order map; what the shop refuses (an item out of stock, a way to pay
+it does not offer) is a refusal the script may catch or pass on.
+
+Writing to the shop's own records stays narrow: an extension marks and annotates, places orders as the shop
+would, and does not change prices, stock or statuses behind the shop's back. What else it needs to change it
+does through the contracts in §8, where the shop stays in charge.
 
 ## 15. Words in other languages
 

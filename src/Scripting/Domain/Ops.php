@@ -15,7 +15,7 @@ final class Ops
 {
     /** The filters a script may use, Twig's names. */
     public const array FILTERS = [
-        'abs', 'capitalize', 'default', 'first', 'join', 'json', 'keys', 'last', 'length', 'lower', 'map', 'merge',
+        'abs', 'amount', 'capitalize', 'default', 'first', 'join', 'json', 'keys', 'last', 'length', 'lower', 'map', 'merge',
         'number', 'replace', 'reverse', 'round', 'slice', 'sort', 'split', 'title', 'trim', 'upper', 'values',
     ];
     /** The tests a script may use. */
@@ -334,6 +334,9 @@ final class Ops
                 return array_merge(self::iterable($value), self::iterable($args[0] ?? []));
             case 'number':
                 return number_format(self::number($value, 'number'), (int) self::number($args[0] ?? 0, 'number'), self::text($args[1] ?? '.'), self::text($args[2] ?? ','));
+            case 'amount':
+                // Money (or a number) as decimal text for an API or a form: "1450.00", no thousands separator.
+                return number_format(self::number($value, 'amount'), (int) self::number($args[0] ?? 2, 'amount'), '.', '');
             case 'replace':
                 $pairs = self::iterable($args[0] ?? []);
 
@@ -451,6 +454,9 @@ final class Ops
     {
         if (\is_int($value) || \is_float($value)) {
             return $value;
+        }
+        if ($value instanceof Money) {
+            return (float) $value->toFixed();
         }
         if (\is_string($value) && is_numeric($value)) {
             return str_contains($value, '.') || stripos($value, 'e') !== false ? (float) $value : (int) $value;

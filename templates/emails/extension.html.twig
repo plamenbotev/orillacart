@@ -1,0 +1,9 @@
+{#
+ # An email one of the shop's extensions sends (design 61): its subject and body, cleaned, in the shop's layout.
+ # subject; body (HTML, cleaned).
+ #}
+{% extends 'emails/layout.html.twig' %}
+{% block subject %}{{ subject }}{% endblock %}
+{% block heading %}{{ subject }}{% endblock %}
+{% block intro %}{% endblock %}
+{% block content %}{{ body|raw }}{% endblock %}

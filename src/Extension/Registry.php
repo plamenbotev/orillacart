@@ -15,9 +15,12 @@ use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Customer\Customers;
 use OrillaCart\Extension\Home\HomeContributor;
 use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Marketing\MailingList;
+use OrillaCart\Extension\Notifications\Emails;
+use OrillaCart\Extension\Order\CreatesOrders;
 use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
@@ -105,8 +108,17 @@ interface Registry
     /** Reads the shop's orders, and marks them for order filters (since version 8). Since version 2. */
     public function orders(): Orders;
 
-    /** Marks the shop's products for product filters. Since version 8. */
+    /** Marks the shop's products for product filters (since version 8), and reads them (since version 22). */
     public function products(): Products;
+
+    /** Reads the shop's customers. Since version 22. */
+    public function customers(): Customers;
+
+    /** Sends email in the shop's layout, from its address. Since version 22. */
+    public function emails(): Emails;
+
+    /** Places orders as the shop does by hand. Since version 22. */
+    public function orderCreation(): CreatesOrders;
 
     /** Which post is the product where Polylang or WPML translates products. Since version 17. */
     public function productLanguages(): ProductLanguages;

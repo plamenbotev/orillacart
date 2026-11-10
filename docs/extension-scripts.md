@@ -51,7 +51,7 @@ runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordP
 
 ## Budgets and failures
 
-A run has 100 000 steps, 2 seconds, 16 MB of values, 5 000 calls (every builtin, filter and shop function; the extension's own functions are steps), 5 HTTP calls and 20 queries. A run that
+A run has 100 000 steps, 2 seconds, 16 MB of values, 5 000 calls (every builtin, filter and shop function; the extension's own functions are steps), 5 HTTP calls, 5 emails and 50 queries. A run that
 exceeds them is stopped; the script cannot catch that. `fail unavailable("…")` says a provider cannot be
 reached (the shop tries later), `fail refused("…")` is an answer to show whoever asked, any other failure is
 a problem the shop logs. Ten failures in a row stop the extension; a manager enables it again after reading
@@ -200,10 +200,14 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 
 ### shop
 
+- shop.customers.find(customer_id): the customer ({ id, email, first_name, last_name, registered_at, billing, shipping_address, group_ids, orders }), or null [needs customers:read]
+- shop.email.send(to, subject, html, reply_to?): an email in the shop's layout, from its address; true when the mail system took it [needs email:send]
+- shop.orders.create({ email, customer_id, billing, shipping_address, items: [{ product_id, quantity, option_ids, unit_price }], shipping_option, payment, paid, note, fields }): places the order as the shop does by hand, and answers the order map [needs orders:create]
 - shop.orders.find(number): the order, or null [needs orders:read]
 - shop.orders.is_marked(number, filter_id): whether the order is under the filter [needs orders:read]
 - shop.orders.mark(number, filter_id): puts the order under the extension's order filter; false when there is no such order [needs orders:write]
 - shop.orders.unmark(number, filter_id): takes the order out of the filter [needs orders:write]
+- shop.products.find(product_id): the product as shoppers see it now ({ id, name, type, sku, price, regular_price, for_sale, available, on_backorder, variations[{ id, label, sku, price, regular_price, for_sale, available }] }), or null [needs products:read]
 - shop.products.is_marked(product_id, filter_id): whether the product is under the filter [needs products:read]
 - shop.products.mark(product_id, filter_id): puts the product under the extension's product filter [needs products:write]
 - shop.products.unmark(product_id, filter_id): takes the product out of the filter [needs products:write]
@@ -219,7 +223,7 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 
 ## Filters
 
-`abs`, `capitalize`, `default`, `first`, `join`, `json`, `keys`, `last`, `length`, `lower`, `map`, `merge`, `number`, `replace`, `reverse`, `round`, `slice`, `sort`, `split`, `title`, `trim`, `upper`, `values`
+`abs`, `amount`, `capitalize`, `default`, `first`, `join`, `json`, `keys`, `last`, `length`, `lower`, `map`, `merge`, `number`, `replace`, `reverse`, `round`, `slice`, `sort`, `split`, `title`, `trim`, `upper`, `values`
 
 ## Tests
 

@@ -91,4 +91,15 @@ final class LanguageEdgesTest extends TestCase
 
         return new Scripts(new Compiler($catalog), $catalog, new InMemoryScriptStore())->load($source . "\n", 'edges_' . substr(md5($source), 0, 8));
     }
+
+    /** Design 61: money formats as a number does, and |amount writes it for an API. */
+    public function testMoneyIsFormattedAsANumberAndWrittenAsAnAmount(): void
+    {
+        $price = \OrillaCart\Shared\Domain\Money::of('1450.5');
+        self::assertSame('1,450.50', \OrillaCart\Scripting\Domain\Ops::filter('number', $price, [2]));
+        self::assertSame('1450.50', \OrillaCart\Scripting\Domain\Ops::filter('amount', $price, []));
+        self::assertSame('1450.5000', \OrillaCart\Scripting\Domain\Ops::filter('amount', $price, [4]));
+        self::assertSame('3.00', \OrillaCart\Scripting\Domain\Ops::filter('amount', 3, []));
+    }
+
 }

@@ -109,7 +109,8 @@ final readonly class ScriptReference
         'job … fn(payload)' => 'payload: what jobs.push gave.',
         'assistant_tool.run(arguments, call)' => 'arguments: as the tool\'s input schema; call: { user_id, key_name }. Answers the tool\'s result (a map or text).',
         'payment_gateway.start(session) / handle(notification) / …' => 'session: { payment_id, order_number, amount, currency, return_url, cancel_url, notification_url, items[{name, sku, quantity, unit_amount}], breakdown, email, … }; notification: { headers, body, json, query }; see the guide\'s §8 for each gateway and courier handler.',
-        'the product map' => 'product_block.render(product, settings): product is { id, name, url, sku, price, regular_price, for_sale, available, rating, reviews, … }, the product shown; product_column.value(item) and product_filter rows: { product_id, variation_id, name, sku, price }. A product field of the extension\'s is read with fields.get("product", id, name).',
+        'the product map' => 'shop.products.find(id): { id, name, type, sku, price (money), regular_price, for_sale, available, on_backorder, variations[{ id, label, sku, price, regular_price, for_sale, available }] }; product_block.render(product, settings): product is { id, name, url, sku, price, regular_price, for_sale, available, rating, reviews, … }, the product shown; product_column.value(item) and product_filter rows: { product_id, variation_id, name, sku, price }. A product field of the extension\'s is read with fields.get("product", id, name).',
+        'the customer map' => 'shop.customers.find(id): { id, email, first_name, last_name, registered_at, billing, shipping_address, group_ids, orders }',
         'the order map' => '{ number, status, placed_at, paid_at, email, customer_id, billing{first_name, last_name, street, city, postcode, country, state, phone}, shipping_address, lines[{product_id, variation_id, sku, name, quantity, unit_price, total, tax, personalisation, type, add_on_type, adjustments[{kind, source, label, amount, scope, reason}]}], subtotal, discount, shipping_total, tax, total, refunded, currency, payment, transaction_id, shipping, note, fields, fees }: as shop.orders.find, order_action, order_column and the events\' lookups give it. A line\'s adjustments are the changes to its price as the order keeps them: kind coupon | automatic | manual | add_on | adjuster, source the coupon\'s code or the extension\'s or adjuster\'s id, amount money (below zero for a discount), scope line or order (a share of a change to the whole order).',
     ];
 
@@ -117,8 +118,11 @@ final readonly class ScriptReference
     public const array PERMISSIONS = [
         'orders: read' => 'shop.orders.find, is_marked; the order map in handlers',
         'orders: write' => 'shop.orders.mark and unmark',
-        'products: read' => 'shop.products.is_marked',
+        'orders: create' => 'shop.orders.create: places real orders, takes stock, emails the customer; its own permission, granted on purpose',
+        'products: read' => 'shop.products.find, is_marked',
         'products: write' => 'shop.products.mark and unmark',
+        'customers: read' => 'shop.customers.find',
+        'email: send' => 'shop.email.send: email in the shop\'s layout, from its address, five a run',
         'http: ["host.example", …]' => 'http.* calls to those hosts over HTTPS; the manager grants each host',
         'templates: override' => 'a file under templates/storefront/ or templates/emails/ in the package replaces the shop\'s template of that name',
         'assets: serve' => 'the package\'s files under assets/ (.js, .css, .svg) served to browsers, printed by asset() in its templates',
@@ -139,7 +143,8 @@ final readonly class ScriptReference
         'memory_bytes' => 16777216,
         'calls' => 5000,
         'http_calls' => 5,
-        'object_queries' => 20,
+        'queries' => 50,
+        'emails' => 5,
         'query_records' => 200,
         'errors_in_a_row_before_stopped' => 10,
         'route_requests_per_minute' => 120,

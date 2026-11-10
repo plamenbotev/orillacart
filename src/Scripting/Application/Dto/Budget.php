@@ -12,7 +12,8 @@ final readonly class Budget
         public float $seconds = 2.0,
         public int $calls = 5000,
         public int $httpCalls = 5,
-        public int $queries = 20,
+        public int $queries = 50,
+        public int $emails = 5,
         public int $bytes = 16 * 1024 * 1024,
     ) {}
 }

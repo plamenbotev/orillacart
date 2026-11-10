@@ -6,7 +6,12 @@ namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Extension\Catalog\ProductSummary;
+use OrillaCart\Extension\Catalog\ProductVariationSummary;
 use OrillaCart\Extension\Checkout\FeeQuery;
+use OrillaCart\Extension\Customer\CustomerSummary;
+use OrillaCart\Extension\Order\NewOrderItem;
+use OrillaCart\Extension\Order\NewOrderRequest;
 use OrillaCart\Extension\Order\OrderAddress;
 use OrillaCart\Extension\Order\OrderLine;
 use OrillaCart\Extension\Order\OrderSummary;
@@ -21,6 +26,8 @@ use OrillaCart\Extension\Shipping\PickupQuery;
 use OrillaCart\Extension\Shipping\Shipment;
 use OrillaCart\Extension\Shipping\ShipmentItem;
 use OrillaCart\Extension\Shipping\ShipmentRequest;
+use OrillaCart\Scripting\Domain\Ops;
+use OrillaCart\Scripting\Domain\ScriptError;
 use OrillaCart\Shared\Domain\Money;
 
 /**
@@ -182,6 +189,95 @@ final class Values
             'fields' => $order->fields,
             'fees' => self::record($order->fees),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function product(ProductSummary $product): array
+    {
+        return [
+            'id' => $product->id,
+            'name' => $product->name,
+            'type' => $product->type,
+            'sku' => $product->sku,
+            'price' => Money::of($product->price),
+            'regular_price' => $product->regularPrice === null ? null : Money::of($product->regularPrice),
+            'for_sale' => $product->forSale,
+            'available' => $product->available,
+            'on_backorder' => $product->onBackorder,
+            'variations' => array_map(static fn(ProductVariationSummary $variation): array => [
+                'id' => $variation->id,
+                'label' => $variation->label,
+                'sku' => $variation->sku,
+                'price' => Money::of($variation->price),
+                'regular_price' => $variation->regularPrice === null ? null : Money::of($variation->regularPrice),
+                'for_sale' => $variation->forSale,
+                'available' => $variation->available,
+            ], $product->variations),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function customer(CustomerSummary $customer): array
+    {
+        return [
+            'id' => $customer->id,
+            'email' => $customer->email,
+            'first_name' => $customer->firstName,
+            'last_name' => $customer->lastName,
+            'registered_at' => $customer->registeredAt->format(\DATE_ATOM),
+            'billing' => $customer->billing === null ? null : self::address($customer->billing),
+            'shipping_address' => $customer->shippingAddress === null ? null : self::address($customer->shippingAddress),
+            'group_ids' => $customer->groupIds,
+            'orders' => $customer->orders,
+        ];
+    }
+
+    /**
+     * `shop.orders.create({ email, customer_id, billing: { first_name, … }, shipping_address, items: [{ product_id,
+     * quantity, option_ids, unit_price }], shipping_option, payment, paid, note, fields })` as a request.
+     *
+     * @param array<mixed> $map
+     *
+     * @throws ScriptError for a map that is not an order
+     */
+    public static function orderRequest(array $map): NewOrderRequest
+    {
+        $billing = $map['billing'] ?? null;
+        if (!\is_array($billing)) {
+            throw new ScriptError('An order has a billing address: { first_name, last_name, street, city, postcode, country, state, phone }.');
+        }
+        $items = [];
+        foreach (\is_array($map['items'] ?? null) ? $map['items'] : [] as $item) {
+            if (!\is_array($item)) {
+                throw new ScriptError('An order\'s items are maps: { product_id, quantity, option_ids, unit_price }.');
+            }
+            $optionIds = \is_array($item['option_ids'] ?? null) ? array_map(static fn(mixed $id): int => (int) self::text($id), array_values($item['option_ids'])) : [];
+            $items[] = new NewOrderItem((int) self::text($item['product_id'] ?? 0), (int) self::text($item['quantity'] ?? 1), $optionIds, self::amount($item['unit_price'] ?? null));
+        }
+        $fields = [];
+        foreach (\is_array($map['fields'] ?? null) ? $map['fields'] : [] as $key => $value) {
+            $fields[(string) $key] = \is_bool($value) || \is_int($value) ? $value : self::text($value);
+        }
+        $shipping = $map['shipping_address'] ?? null;
+
+        return new NewOrderRequest(
+            self::text($map['email'] ?? ''),
+            self::orderAddress($billing),
+            $items,
+            \is_array($shipping) ? self::orderAddress($shipping) : null,
+            isset($map['customer_id']) && $map['customer_id'] !== '' ? (int) self::text($map['customer_id']) : null,
+            self::optionalText($map['shipping_option'] ?? null),
+            self::optionalText($map['payment'] ?? null),
+            Ops::truthy($map['paid'] ?? false),
+            self::text($map['note'] ?? ''),
+            $fields,
+        );
+    }
+
+    /** @param array<mixed> $map */
+    private static function orderAddress(array $map): OrderAddress
+    {
+        return new OrderAddress(self::text($map['first_name'] ?? ''), self::text($map['last_name'] ?? ''), self::text($map['street'] ?? ''), self::text($map['city'] ?? ''), self::text($map['postcode'] ?? ''), self::text($map['country'] ?? ''), self::optionalText($map['state'] ?? null), self::text($map['phone'] ?? ''));
     }
 
     /** @return array<string, mixed> */

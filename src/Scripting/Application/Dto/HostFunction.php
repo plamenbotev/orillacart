@@ -14,11 +14,12 @@ final readonly class HostFunction
     public const string CALL = 'call';
     public const string HTTP = 'http';
     public const string QUERY = 'query';
+    public const string EMAIL = 'email';
 
     /**
      * @param \Closure                          $callable takes the run's Context, the named segments, then the script's arguments, all mixed
      * @param string|null                       $needs    a permission such as `orders:read`, `http`; null for none
-     * @param self::CALL|self::HTTP|self::QUERY $counts
+     * @param self::CALL|self::HTTP|self::QUERY|self::EMAIL $counts
      */
     public function __construct(
         public string $name,

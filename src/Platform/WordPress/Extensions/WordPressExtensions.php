@@ -7,6 +7,8 @@ namespace OrillaCart\Platform\WordPress\Extensions;
 use OrillaCart\Catalog\Application\AddOnProducts;
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Checkout\Application\AddOnOrderPrices;
+use OrillaCart\Checkout\Application\ExtensionOrders;
+use OrillaCart\Customers\Application\CustomerSummaries;
 use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
@@ -18,10 +20,13 @@ use OrillaCart\Extension\Catalog\Products;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
+use OrillaCart\Extension\Customer\Customers;
 use OrillaCart\Extension\Home\HomeContributor;
 use OrillaCart\Extension\Invoice\EInvoiceSender;
 use OrillaCart\Extension\Log;
 use OrillaCart\Extension\Marketing\MailingList;
+use OrillaCart\Extension\Notifications\Emails;
+use OrillaCart\Extension\Order\CreatesOrders;
 use OrillaCart\Extension\Order\FindsOrders;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderColumn;
@@ -37,6 +42,7 @@ use OrillaCart\Extension\Storefront\ProductBlock;
 use OrillaCart\Extension\Tax\TaxProvider;
 use OrillaCart\Extension\Version;
 use OrillaCart\Ordering\Application\OrderSummaries;
+use OrillaCart\Packages\Application\ExtensionEmails;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shared\Extension\Registrant;
 use Psr\Log\LoggerInterface;
@@ -113,6 +119,9 @@ final class WordPressExtensions implements Registry, InstalledExtensions
      * @param \Closure(): Products      $products        a closure, as orders
      * @param \Closure(): OrderPrices   $orderPrices     a closure, as orders
      * @param \Closure(): ProductLanguages $productLanguages a closure, as orders
+     * @param \Closure(): Customers     $customers       a closure, as orders (design 61)
+     * @param \Closure(): Emails        $emails          a closure, as orders
+     * @param \Closure(): CreatesOrders $orderCreation   a closure, as orders
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
@@ -126,6 +135,12 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly \Closure $orderPrices,
         #[AutowireServiceClosure(ProductTranslations::class)]
         private readonly \Closure $productLanguages,
+        #[AutowireServiceClosure(CustomerSummaries::class)]
+        private readonly \Closure $customers,
+        #[AutowireServiceClosure(ExtensionEmails::class)]
+        private readonly \Closure $emails,
+        #[AutowireServiceClosure(ExtensionOrders::class)]
+        private readonly \Closure $orderCreation,
         /** @var iterable<Registrant> */
         #[AutowireIterator(Registrant::TAG)]
         private readonly iterable $registrants = [],
@@ -338,6 +353,30 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     public function products(): Products
     {
         return ($this->products)();
+    }
+
+    public function customers(): Customers
+    {
+        $customers = ($this->customers)();
+        \assert($customers instanceof Customers);
+
+        return $customers;
+    }
+
+    public function emails(): Emails
+    {
+        $emails = ($this->emails)();
+        \assert($emails instanceof Emails);
+
+        return $emails;
+    }
+
+    public function orderCreation(): CreatesOrders
+    {
+        $orders = ($this->orderCreation)();
+        \assert($orders instanceof CreatesOrders);
+
+        return $orders;
     }
 
     public function productLanguages(): ProductLanguages

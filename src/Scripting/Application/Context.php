@@ -20,6 +20,7 @@ final class Context
     private int $steps = 0;
     private int $calls = 0;
     private int $httpCalls = 0;
+    private int $emails = 0;
     private int $queries = 0;
     private int $bytes = 0;
     private float $startedAt;
@@ -88,14 +89,17 @@ final class Context
         if ($function->counts === HostFunction::HTTP && ++$this->httpCalls > $this->budget->httpCalls) {
             throw new BudgetExceeded(\sprintf('The script made more than %d HTTP calls', $this->budget->httpCalls));
         }
+        if ($function->counts === HostFunction::EMAIL && ++$this->emails > $this->budget->emails) {
+            throw new BudgetExceeded(\sprintf('The script sent more than %d emails', $this->budget->emails));
+        }
         if ($function->counts === HostFunction::QUERY && ++$this->queries > $this->budget->queries) {
             throw new BudgetExceeded(\sprintf('The script made more than %d queries', $this->budget->queries));
         }
     }
 
-    /** @return array{steps: int, calls: int, http_calls: int, queries: int, bytes: int, seconds: float} */
+    /** @return array{steps: int, calls: int, http_calls: int, queries: int, emails: int, bytes: int, seconds: float} */
     public function used(): array
     {
-        return ['steps' => $this->steps, 'calls' => $this->calls, 'http_calls' => $this->httpCalls, 'queries' => $this->queries, 'bytes' => $this->bytes, 'seconds' => round(hrtime(true) / 1e9 - $this->startedAt, 4)];
+        return ['steps' => $this->steps, 'calls' => $this->calls, 'http_calls' => $this->httpCalls, 'queries' => $this->queries, 'emails' => $this->emails, 'bytes' => $this->bytes, 'seconds' => round(hrtime(true) / 1e9 - $this->startedAt, 4)];
     }
 }
