@@ -14,7 +14,7 @@ final readonly class SavePaymentMethod
 {
     /**
      * @param list<string>               $countries where checkout offers it; empty for everywhere
-     * @param array<string, string|bool> $settings  the gateway's settings by key
+     * @param array<string, string|bool> $settings  the gateway's settings by key; one left out stays as saved
      */
     public function __construct(
         #[Assert\NotBlank]

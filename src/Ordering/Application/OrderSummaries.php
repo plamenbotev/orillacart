@@ -106,6 +106,7 @@ final readonly class OrderSummaries implements Orders
             array_column(array_map(static fn(OrderFieldView $field): array => [$field->id, $field->answer], $order->fields), 1, 0),
             array_column(array_map(static fn(NewOrderFee $fee): array => [$fee->label, $fee->amount], $order->fees), 1, 0),
             $order->test,
+            $order->shippingOption,
         );
     }
 

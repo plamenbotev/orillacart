@@ -97,7 +97,7 @@ final readonly class PackageService
     {
         $package = $this->get($slug);
         $before = $package->file($path)?->content();
-        $package->write($path, $content, $this->clock->now(), $this->originalHash($path));
+        $saved = $package->write($path, $content, $this->clock->now(), $this->originalHash($path));
         $compiled = $this->compile($package);
         $this->describeFrom($package, $compiled);
         $this->packages->save($package);
@@ -106,7 +106,8 @@ final readonly class PackageService
             $this->translations?->changed($package);
         }
 
-        return $this->view($package, $compiled);
+        // The file saved, not the whole extension again: the screen has the others.
+        return $this->view($package, $compiled, [$saved->path()]);
     }
 
     public function deleteFile(string $slug, string $path): PackageView
@@ -117,7 +118,7 @@ final readonly class PackageService
         $this->versions?->keep($package, 'Deleted ' . $path, $this->clock->now());
         $this->translations?->changed($package);
 
-        return $this->view($package, $this->compile($package));
+        return $this->view($package, $this->compile($package), []);
     }
 
     /** The static check as it stands: the view with its findings. */
@@ -125,7 +126,7 @@ final readonly class PackageService
     {
         $package = $this->get($slug);
 
-        return $this->view($package, $this->compile($package));
+        return $this->view($package, $this->compile($package), []);
     }
 
     /**
@@ -155,7 +156,7 @@ final readonly class PackageService
         $this->packages->save($package);
         $this->logger->info('The extension "{extension}" was enabled with the permissions {granted}.', ['extension' => $slug, 'granted' => $package->granted() === [] ? 'none' : implode(', ', $package->granted())]);
 
-        return $this->view($package, $compiled);
+        return $this->view($package, $compiled, []);
     }
 
     public function disable(string $slug): PackageView
@@ -164,7 +165,7 @@ final readonly class PackageService
         $package->disable($this->clock->now());
         $this->packages->save($package);
 
-        return $this->view($package, $this->compile($package));
+        return $this->view($package, $this->compile($package), []);
     }
 
     /** Removes the extension, its files and its records; its compiled class is left to the cache's next clearing. */
@@ -195,7 +196,7 @@ final readonly class PackageService
         $package->changeSettings($values, $this->clock->now());
         $this->packages->save($package);
 
-        return $this->view($package, $this->compile($package));
+        return $this->view($package, $this->compile($package), []);
     }
 
     /**
@@ -527,7 +528,11 @@ final readonly class PackageService
         return [$all, $running];
     }
 
-    private function view(Package $package, Compiled $compiled): PackageView
+    /**
+     * @param bool|list<string> $contents the files' contents: all, those of these paths, or none (the screen keeps
+     *                                    what it read; a save sends back the file saved, not the whole extension)
+     */
+    private function view(Package $package, Compiled $compiled, bool|array $contents = true): PackageView
     {
         $settings = null;
         $needs = [];
@@ -556,7 +561,7 @@ final readonly class PackageService
             ], $shown);
         }
 
-        return PackageView::fromPackage($package, $needs, true, $settings, $this->findings($package, $compiled), $this->currentHashes($package), $routes);
+        return PackageView::fromPackage($package, $needs, $contents, $settings, $this->findings($package, $compiled), $this->currentHashes($package), $routes);
     }
 
     /**
@@ -724,8 +729,43 @@ final readonly class PackageService
 
         return array_map(
             static fn(array $finding): string => \sprintf('%s%s (line %d, column %d)', $finding['file'] === '' ? '' : $finding['file'] . ': ', $finding['message'], $finding['line'], $finding['column']),
-            [...self::locate($scripts, $compiled->findings), ...$this->templateFindings($templates, $package->slug())],
+            [...self::locate($scripts, $compiled->findings), ...$this->templateFindings($templates, $package->slug()), ...($compiled->ok() ? self::secretFindings($scripts, $this->manifest($package)->settings()) : [])],
         );
+    }
+
+    /**
+     * A secret that names no `goes_with` goes with every other setting, so saving any of them (a tool changing
+     * one number) forgets it until it is typed again: said where it is declared, for the author to name the
+     * settings that say where it goes, or `[]` for one sent to the one host the needs name.
+     *
+     * @param array<string, string> $scripts path → content
+     * @param list<Setting>         $settings
+     *
+     * @return list<array{file: string, line: int, column: int, message: string}>
+     */
+    private static function secretFindings(array $scripts, array $settings): array
+    {
+        if (\count($settings) < 2) {
+            return [];
+        }
+        $findings = [];
+        foreach ($settings as $setting) {
+            if ($setting->type !== Setting::SECRET || $setting->goesWith !== null) {
+                continue;
+            }
+            $file = '';
+            $line = 1;
+            foreach ($scripts as $path => $content) {
+                if (preg_match('/^[ \t]*' . preg_quote($setting->key, '/') . '[ \t]*:[ \t]*secret\b/m', $content, $match, PREG_OFFSET_CAPTURE) === 1) {
+                    $file = $path;
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    break;
+                }
+            }
+            $findings[] = ['file' => $file, 'line' => $line, 'column' => 1, 'message' => \sprintf('The secret "%s" names no goes_with, so it goes with every other setting: saving any of them forgets it until it is typed again. Name the settings that say where it goes or whose it is (goes_with: ["mode"]), or goes_with: [] for one sent only to the hosts the needs name', $setting->key)];
+        }
+
+        return $findings;
     }
 
     /**

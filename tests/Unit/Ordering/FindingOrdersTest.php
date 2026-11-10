@@ -171,6 +171,9 @@ final class FindingOrdersTest extends TestCase
             },
         ];
         $orders = new OrderSummaries($this->shop->orders, $this->shop->orderRecords);
+        $shipped = $this->place(10, 'cy@example.com', self::address());
+        self::assertSame("rate:{$this->rate}", $orders->find($shipped)?->shippingOption, 'an add-on reads which option it ships with, by id');
+        self::assertNull($orders->find($first)?->shippingOption, 'nothing to ship');
 
         self::assertTrue($orders->mark($first, 'warehouse'));
         self::assertTrue($orders->mark($first, 'warehouse'), 'marking again changes nothing');

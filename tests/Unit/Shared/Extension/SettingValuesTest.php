@@ -97,4 +97,17 @@ final class SettingValuesTest extends TestCase
             }
         }
     }
+
+    public function testOneSettingChangesAloneAndTheOthersStayAsSaved(): void
+    {
+        $fields = [new Setting('api_key', 'API key', Setting::SECRET, goesWith: ['mode']), $this->fields[1], $this->fields[2], new Setting('active', 'Active', Setting::BOOLEAN), new Setting('points', 'Points per euro', Setting::NUMBER)];
+        $saved = ['api_key' => 'k3y', 'mode' => 'live', 'note' => 'Hi', 'active' => true, 'points' => '2'];
+
+        // A tool that saves one setting does not send the rest: they stay, the live offer with them.
+        self::assertSame(['api_key' => 'k3y', 'mode' => 'live', 'note' => 'Hi', 'active' => true, 'points' => '3'], SettingValues::accept($fields, $saved, ['points' => '3'], 'Loyalty'));
+        self::assertSame('', SettingValues::accept($fields, $saved, ['note' => ''], 'Loyalty')['note'], 'sent empty, it is cleared');
+        self::assertFalse(SettingValues::accept($fields, $saved, ['active' => false], 'Loyalty')['active']);
+        self::assertSame('', SettingValues::accept($fields, ['mode' => 'gone'], ['note' => 'x'], 'Loyalty')['mode'], 'a choice an update dropped is as never saved');
+        self::assertSame(['api_key' => '', 'mode' => '', 'note' => 'x', 'active' => false, 'points' => ''], SettingValues::accept($fields, [], ['note' => 'x'], 'Loyalty'), 'never saved: empty, off');
+    }
 }

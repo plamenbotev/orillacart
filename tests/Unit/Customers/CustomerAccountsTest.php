@@ -345,6 +345,21 @@ final class CustomerAccountsTest extends TestCase
         self::assertSame(2, $this->shop->orders->orders(new OrderQuery(customerId: $id))->total);
     }
 
+    public function testAnExtensionReadsTheLatestOrdersAddressesWhereTheAccountKeepsNone(): void
+    {
+        $id = $this->shop->accounts->add('ada@example.com');
+        $summaries = new \OrillaCart\Customers\Application\CustomerSummaries($this->shop->customers);
+        self::assertNull($summaries->find($id)?->billing, 'no account address, no order');
+
+        $order = $this->place(new CartOwner(null, $id), rememberAddresses: false);
+        $found = $summaries->find($id);
+        self::assertNotNull($found);
+        self::assertSame([$this->address->street, $order->number], [$found->billing?->street, $found->addressesFromOrder], 'the latest order\'s, and which it is');
+
+        $this->place(new CartOwner(null, $id));
+        self::assertNull($summaries->find($id)?->addressesFromOrder, 'the account keeps them now: its own');
+    }
+
     public function testCustomersSeeOnlyTheirOwnOrders(): void
     {
         $ada = $this->shop->accounts->add('ada@example.com');

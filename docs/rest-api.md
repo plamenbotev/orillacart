@@ -1137,7 +1137,7 @@ The latest runs of an extension's handlers and console functions, newest first: 
 
 ### `PUT /extensions/{id}/settings`
 
-Saves the values of the settings an extension declares; a secret sent empty keeps its value, false clears it.
+Saves the values of the settings an extension declares: those sent change, those left out stay; a secret sent empty keeps its value, false clears it.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):

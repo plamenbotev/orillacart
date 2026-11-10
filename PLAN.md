@@ -819,6 +819,18 @@ The owner asked to stop being asked for each extension file and for a way to say
 | ✅ | 520 | P2 | Writing or deleting an extension's file asked the owner each time (`CHANGES`), though `import_package`, `upload_package_archive` and `restore_package_version` replace the same files unasked and an enabled extension runs its enabled snapshot until enabled again (OPENING asks); the per-file yes protected nothing. Both run unasked, saying why; every write and delete is kept as a version | e848e9a0 |
 | ✅ | 521 | P2 | "Yes, and don't ask again for this tool" on the shop's approval page, for `CHANGES` and `PUBLISHING` only (never money, deleting, customers, opening) and only for a key: the key's choices say for how long (`allow_minutes`: 0, 15, 60 by default, 240), the allowance is kept with the key (`assistant.allowed`, tool => until), written to the change log, listed in the key's Assistant settings to ask again for one or all (`GET`/`DELETE /api-keys/{id}/assistant/allowances[/{tool}]`, logged in only), and choosing 0 takes back what was given. The app's own window never offers it | e848e9a0 |
 
+## Extension builder's report (2026-11-11)
+
+What held back the session building an extension over MCP; each was read in the code.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 522 | P2 | Every file save (and delete, check, enable, disable, settings save) answered with the whole extension, every file's content in it (~115 KB a save). A save answers with the file saved; the others are listed without content (`null`), which the editor keeps from what it read (`withContents`); reading, installing, importing and restoring answer with all | |
+| ✅ | 523 | P1 | Saving one setting stored the untouched ones as empty or off (`SettingValues::accept` read a setting left out as sent empty), so `save_package_settings` with one key broke a live offer; the same for payment and shipping settings. A setting left out keeps its saved value (one an update no longer takes is as never saved); sent empty or false, it is cleared | |
+| ✅ | 524 | P3 | A secret without `goes_with` goes with every other setting, so a one-setting save still forgets it, by design. The static check now says so where the secret is declared, naming `goes_with: [...]` or `[]` | |
+| ✅ | 525 | P2 | The order map had the shipping option's name only: `shipping_option` is its id (`rate:4`, `carrier:12:express`, `pickup:12:3`), as `order_fee`'s query and `shop.orders.create` name it (API 23) | |
+| ✅ | 526 | P2 | A customer whose account keeps no address (a guest's orders taken into an account, "don't remember") read as without one. Their latest order's addresses then, with `addresses_from_order` its number (API 23) | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

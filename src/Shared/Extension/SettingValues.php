@@ -12,7 +12,7 @@ use OrillaCart\Shared\Security\SecretKeys;
  * Checks what the admin screen sends for a gateway's or shipping method's settings against what it declares,
  * keeping the saved secrets the screen never receives, and shows saved values without them. A secret sent empty
  * stays as saved, unless a setting it goes with (Setting::$goesWith, every other setting when it declares none)
- * changed; sent as false, it is cleared.
+ * changed; sent as false, it is cleared. Any setting left out stays as saved, so one can be changed alone.
  */
 final class SettingValues
 {
@@ -22,7 +22,9 @@ final class SettingValues
     /**
      * @param list<Setting>              $fields
      * @param array<string, string|bool> $saved
-     * @param array<string, string|bool> $submitted
+     * @param array<string, string|bool> $submitted the settings sent: one left out keeps its saved value (a tool
+     *                                              changes one setting without sending the rest); sent empty
+     *                                              (or false), it is cleared
      *
      * @return array<string, string|bool> every declared setting, in their order
      *
@@ -47,7 +49,7 @@ final class SettingValues
             if ($field->type === Setting::SECRET) {
                 continue;
             }
-            $values[$key] = self::value($field, $submitted[$key] ?? null, $saved[$key] ?? null);
+            $values[$key] = \array_key_exists($key, $submitted) ? self::value($field, $submitted[$key], $saved[$key] ?? null) : self::kept($field, $saved[$key] ?? null);
             // One never saved is as the screen showed it: off, or empty. A checkbox an update added is no change.
             if (self::comparable($values[$key]) !== self::comparable($saved[$key] ?? ($field->type === Setting::BOOLEAN ? false : ''))) {
                 $changed[$key] = true;
@@ -116,6 +118,22 @@ final class SettingValues
     private static function comparable(string|bool $value): string|bool
     {
         return \is_bool($value) ? $value : rtrim(mb_strtolower(trim($value)), '/');
+    }
+
+    /**
+     * A setting not sent: as saved, when it is still a value the setting takes (an update may have dropped a
+     * choice); else as never saved.
+     */
+    private static function kept(Setting $field, string|bool|null $saved): string|bool
+    {
+        if ($saved !== null) {
+            try {
+                return self::value($field, $saved, $saved);
+            } catch (RuleViolation) {
+            }
+        }
+
+        return self::value($field, null, null);
     }
 
     private static function value(Setting $field, string|bool|null $value, string|bool|null $saved): string|bool

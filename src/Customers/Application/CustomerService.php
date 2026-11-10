@@ -188,6 +188,27 @@ final readonly class CustomerService
         return $this->account($id);
     }
 
+    /**
+     * The addresses of the customer's latest order, for where their account keeps none (a guest's orders taken
+     * into an account, an order placed by hand): its number, billing and shipping address; null without orders.
+     *
+     * @return array{int, AddressData, ?AddressData}|null
+     */
+    public function latestOrderAddresses(int $id): ?array
+    {
+        $latest = $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->orders[0] ?? null;
+        if ($latest === null) {
+            return null;
+        }
+        try {
+            $order = $this->orders->order($latest->number);
+        } catch (OrderNotFound) {
+            return null;
+        }
+
+        return [$order->number, $order->billing, $order->shippingAddress];
+    }
+
     /** Whether the user is one of the shop's customers: see customer(). */
     public function isCustomer(int $id): bool
     {

@@ -39,6 +39,7 @@ import {
 	fetchOriginal,
 	fetchReference,
 	fetchRuns,
+	withContents,
 	fetchTranslations,
 	fetchVersions,
 	importExtension,
@@ -103,7 +104,9 @@ export function ExtensionsScreen() {
 		reload();
 	}, [] ); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const show = ( extension: Extension ) => {
+	const show = ( answered: Extension ) => {
+		// An answer to a save carries the saved file's content only: the others are as this screen read them.
+		const extension = withContents( answered, open );
 		setOpen( extension );
 		setExtensions( ( list ) =>
 			list === null
@@ -407,7 +410,8 @@ function ExtensionEditor( {
 	const edited = useMemo( () => {
 		const sources: Record< string, string > = {};
 		for ( const file of files ) {
-			sources[ file.path ] = file.path === path ? content : file.content;
+			sources[ file.path ] =
+				file.path === path ? content : ( file.content ?? '' );
 		}
 		return sources;
 	}, [ files, path, content ] );

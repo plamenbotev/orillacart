@@ -15,7 +15,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-/** Saves the values of the settings an extension declares; a secret sent empty keeps its value, false clears it. */
+/** Saves the values of the settings an extension declares: those sent change, those left out stay; a secret sent empty keeps its value, false clears it. */
 #[Tool(unasked: 'the values of an extension\'s own settings')]
 #[Route('/extensions/{id}/settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '[a-z][a-z0-9_]*'])]
 final readonly class SavePackageSettingsAction implements RequestHandlerInterface

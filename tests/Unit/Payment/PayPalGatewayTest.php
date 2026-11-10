@@ -125,7 +125,7 @@ final class PayPalGatewayTest extends TestCase
 
     public function testLivePaymentsNeedTheWebhook(): void
     {
-        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret']));
+        $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'webhook_id' => '']));
         self::assertSame('Enter the webhook ID: live payments need it.', $this->shop->paymentMethods->show('paypal')->notReady);
 
         $this->shop->paymentMethods->update('paypal', new SavePaymentMethod('PayPal', true, settings: ['client_id' => 'id', 'client_secret' => 'secret', 'sandbox' => true]));

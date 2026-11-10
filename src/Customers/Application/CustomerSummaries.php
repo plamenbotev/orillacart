@@ -23,16 +23,28 @@ final readonly class CustomerSummaries implements Customers
             return null;
         }
 
+        $billing = $customer->billing;
+        $shipping = $customer->shippingAddress;
+        $fromOrder = null;
+        if ($billing === null && $shipping === null && $customer->orders > 0) {
+            // The account keeps no address, their orders do: the latest one's, and which order it is.
+            $latest = $this->customers->latestOrderAddresses($customer->id);
+            if ($latest !== null) {
+                [$fromOrder, $billing, $shipping] = $latest;
+            }
+        }
+
         return new CustomerSummary(
             $customer->id,
             $customer->email,
             $customer->firstName,
             $customer->lastName,
             new \DateTimeImmutable($customer->registeredAt),
-            $customer->billing === null ? null : self::address($customer->billing),
-            $customer->shippingAddress === null ? null : self::address($customer->shippingAddress),
+            $billing === null ? null : self::address($billing),
+            $shipping === null ? null : self::address($shipping),
             $customer->groupIds,
             $customer->orders,
+            $fromOrder,
         );
     }
 

@@ -6,12 +6,44 @@ export type ExtensionState = 'draft' | 'enabled' | 'disabled' | 'stopped';
 
 export interface ExtensionFile {
 	path: string;
-	content: string;
+	/**
+	 * Null in an answer that leaves it out (a save answers with the file saved only; a check, a delete or a
+	 * settings save with none): as it was when last read. withContents() fills it in.
+	 */
+	content: string | null;
 	updated_at: string;
 	/** The shop's template this file overrides, when it does. */
 	overrides?: string | null;
 	/** Whether a release changed that template since the override was saved. */
 	stale?: boolean;
+}
+
+/**
+ * The extension as answered, with each file's content left out taken from the copy read before.
+ *
+ * @param next   The extension as answered.
+ * @param before The extension as read before, or null.
+ */
+export function withContents(
+	next: Extension,
+	before: Extension | null
+): Extension {
+	if ( next.files === undefined || next.files === null ) {
+		return next;
+	}
+	const known = new Map(
+		( before?.id === next.id ? ( before.files ?? [] ) : [] ).map(
+			( file ) => [ file.path, file.content ]
+		)
+	);
+	return {
+		...next,
+		files: next.files.map( ( file ) =>
+			file.content === null
+				? { ...file, content: known.get( file.path ) ?? null }
+				: file
+		),
+	};
 }
 
 export interface ExtensionVersion {

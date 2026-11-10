@@ -103,7 +103,7 @@ async function pull(): Promise< void > {
 		for ( const file of extension.files ?? [] ) {
 			const target = join( folder, file.path );
 			mkdirSync( dirname( target ), { recursive: true } );
-			writeFileSync( target, file.content );
+			writeFileSync( target, file.content ?? '' );
 		}
 		void vscode.window.showInformationMessage(
 			`Pulled ${ extension.files?.length ?? 0 } files of "${ extension.name }" into ${ id }/.`

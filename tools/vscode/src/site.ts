@@ -39,7 +39,8 @@ export interface TestResult {
 
 export interface ExtensionFile {
 	path: string;
-	content: string;
+	/** Null in an answer that leaves it out: a save answers with the file saved only. */
+	content: string | null;
 }
 
 export interface Extension {

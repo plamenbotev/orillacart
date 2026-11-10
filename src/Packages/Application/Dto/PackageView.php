@@ -8,8 +8,10 @@ use OrillaCart\Packages\Domain\Package;
 use OrillaCart\Packages\Domain\PackageFile;
 
 /**
- * An extension as the admin and the tools see it. The files come with one extension, not with the list; the
- * settings come as the add-on API shows them: secrets as whether one is set, never the value.
+ * An extension as the admin and the tools see it. The files come with one extension, not with the list, and their
+ * contents only where asked: all when it is read, put in place or restored; the one saved after a save; none after
+ * a check, a delete, a settings save or a switch (each file then as it was when last read). The settings come as
+ * the add-on API shows them: secrets as whether one is set, never the value.
  */
 final readonly class PackageView
 {
@@ -45,12 +47,14 @@ final readonly class PackageView
 
     /**
      * @param list<string>                    $needs
+     * @param bool|list<string>               $withFiles   the files, with every content (true), with the contents
+     *                                                     of these paths only, or none (false)
      * @param list<array<string, mixed>>|null $settings
      * @param list<string>|null               $findings
      * @param array<string, string>|null      $currentHashes by path, the hash of the shop's template an override replaces as it is now
      * @param list<array{method: string, path: string, who: string}>|null $routes
      */
-    public static function fromPackage(Package $package, array $needs, bool $withFiles = false, ?array $settings = null, ?array $findings = null, ?array $currentHashes = null, ?array $routes = null): self
+    public static function fromPackage(Package $package, array $needs, bool|array $withFiles = false, ?array $settings = null, ?array $findings = null, ?array $currentHashes = null, ?array $routes = null): self
     {
         return new self(
             $package->slug(),
@@ -64,7 +68,7 @@ final readonly class PackageView
             $package->lastProblem(),
             $package->createdAt()->format(\DATE_ATOM),
             $package->updatedAt()->format(\DATE_ATOM),
-            $withFiles ? array_map(static fn(PackageFile $file): PackageFileView => PackageFileView::fromFile($file, $currentHashes[$file->path()] ?? null), $package->files()) : null,
+            $withFiles === false ? null : array_map(static fn(PackageFile $file): PackageFileView => PackageFileView::fromFile($file, $currentHashes[$file->path()] ?? null, $withFiles === true || \in_array($file->path(), $withFiles, true)), $package->files()),
             $settings,
             $findings,
             $routes,

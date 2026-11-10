@@ -7,7 +7,8 @@ namespace OrillaCart\Extension\Customer;
 use OrillaCart\Extension\Order\OrderAddress;
 
 /**
- * A customer as add-ons may read them (API 22): who they are, their saved addresses and how often they ordered.
+ * A customer as add-ons may read them (API 22): who they are, their saved addresses (or, where the account keeps
+ * none, their latest order's) and how often they ordered.
  * Nothing of their password or login.
  */
 final readonly class CustomerSummary
@@ -15,6 +16,9 @@ final readonly class CustomerSummary
     /**
      * @param list<int> $groupIds the customer groups they are in
      * @param int       $orders   how many orders they placed
+     * @param int|null  $addressesFromOrder the order whose addresses these are, by number, where the account keeps
+     *                                      none and their latest order has them; null when they are the account's
+     *                                      (API 23)
      */
     public function __construct(
         public int $id,
@@ -26,5 +30,6 @@ final readonly class CustomerSummary
         public ?OrderAddress $shippingAddress,
         public array $groupIds,
         public int $orders,
+        public ?int $addressesFromOrder = null,
     ) {}
 }

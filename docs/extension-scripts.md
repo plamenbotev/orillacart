@@ -205,7 +205,7 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 
 ### shop
 
-- shop.customers.find(customer_id): the customer ({ id, email, first_name, last_name, registered_at, billing, shipping_address, group_ids, orders }), or null [needs customers:read]
+- shop.customers.find(customer_id): the customer ({ id, email, first_name, last_name, registered_at, billing, shipping_address, group_ids, orders, addresses_from_order }), or null; where the account keeps no address, billing and shipping_address are their latest order's and addresses_from_order its number (else null) [needs customers:read]
 - shop.email.send(to, subject, html, reply_to?): an email in the shop's layout, from its address; true when the mail system took it [needs email:send]
 - shop.orders.create({ email, customer_id, billing, shipping_address, items: [{ product_id, quantity, option_ids, unit_price }], shipping_option, payment, paid, note, fields }): places the order as the shop does by hand, and answers the order map [needs orders:create]
 - shop.orders.find(number): the order, or null [needs orders:read]

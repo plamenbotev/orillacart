@@ -185,6 +185,7 @@ final class Values
             'payment' => $order->payment,
             'transaction_id' => $order->transactionId,
             'shipping' => $order->shipping,
+            'shipping_option' => $order->shippingOption,
             'note' => $order->note,
             'fields' => $order->fields,
             'fees' => self::record($order->fees),
@@ -230,6 +231,7 @@ final class Values
             'shipping_address' => $customer->shippingAddress === null ? null : self::address($customer->shippingAddress),
             'group_ids' => $customer->groupIds,
             'orders' => $customer->orders,
+            'addresses_from_order' => $customer->addressesFromOrder,
         ];
     }
 

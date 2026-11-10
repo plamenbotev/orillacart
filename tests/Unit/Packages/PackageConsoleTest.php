@@ -83,6 +83,33 @@ final class PackageConsoleTest extends TestCase
         self::assertStringContainsString('not granted', (string) json_encode($look->failure));
     }
 
+    public function testASaveAnswersWithTheFileSavedNotTheWholeExtension(): void
+    {
+        $service = $this->service();
+        $service->writeFile('peek', 'templates/big.html.twig', str_repeat('<p>Long.</p>', 2000));
+
+        $saved = $service->writeFile('peek', 'main.ocs', self::EDITED . "\n");
+        $contents = array_column(array_map(static fn($file): array => ['path' => $file->path, 'content' => $file->content], $saved->files ?? []), 'content', 'path');
+        self::assertSame(self::EDITED . "\n", $contents['main.ocs']);
+        self::assertArrayHasKey('templates/big.html.twig', $contents, 'every file is listed');
+        self::assertNull($contents['templates/big.html.twig'], 'without its content: the screen has it');
+        self::assertNotNull(array_column(array_map(static fn($file): array => ['path' => $file->path, 'content' => $file->content], $service->package('peek')->files ?? []), 'content', 'path')['templates/big.html.twig'], 'reading it gives them all');
+        self::assertSame([null, null], array_map(static fn($file): ?string => $file->content, $service->check('peek')->files ?? []));
+    }
+
+    public function testASecretWithoutGoesWithIsPointedOutWhereItIsDeclared(): void
+    {
+        $service = $this->service();
+        $settings = "\nsettings {\n  api_secret: secret { label: \"Secret\" }\n  points: number { label: \"Points\" }\n}\n";
+        $findings = $service->writeFile('peek', 'main.ocs', self::APPROVED . $settings)->findings ?? [];
+        self::assertCount(1, $findings, implode('; ', $findings));
+        self::assertStringStartsWith('main.ocs: The secret "api_secret" names no goes_with', $findings[0]);
+        self::assertStringContainsString('(line 5, column 1)', $findings[0]);
+
+        $named = str_replace('label: "Secret" }', 'label: "Secret", goes_with: [] }', $settings);
+        self::assertSame([], $service->writeFile('peek', 'main.ocs', self::APPROVED . $named)->findings);
+    }
+
     private function service(): PackageService
     {
         $catalog = HostCatalog::of([

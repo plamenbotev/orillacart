@@ -45,5 +45,10 @@ final readonly class OrderSummary
         public array $fees = [],
         /** Placed to try the shop out: never emailed, not counted (API 22). */
         public bool $test = false,
+        /**
+         * The shipping option it ships with, by id, as checkout's quote and shop.orders.create name it
+         * ("rate:4", "carrier:12:express", "pickup:12:3"); null for an order that ships nothing (API 23).
+         */
+        public ?string $shippingOption = null,
     ) {}
 }

@@ -218,7 +218,7 @@ Kinds: `text`, `secret`, `boolean`, `number`, `choice` (with `of`, a list or a m
 `label`, `required` and `help`. A secret takes `goes_with`, the settings that say where it goes or whose it is
 (an address, a user, live or test): when the manager changes one of them, the saved secret is forgotten unless
 typed again. `goes_with: []` keeps it whatever changes, for a secret that goes to the one host the `needs` name;
-a secret without `goes_with` goes with every other setting, so any change asks for it again. The manager fills them on the Extensions screen; a secret is sealed in the
+a secret without `goes_with` goes with every other setting, so any change asks for it again (the static check points such a secret out). The manager fills them on the Extensions screen; a secret is sealed in the
 database and shown as dots. A script reads them with `settings.get("api_key")`. Provider handlers also receive
 the whole map as their last parameter (`fn quote(shipment, settings)`), and a provider's own `settings { … }`
 block inside its declaration adds settings that only it sees. A provider whose required settings are empty is
@@ -498,8 +498,10 @@ order_filter "needs_invoice" {
 paid_at, email, customer_id, billing{first_name, last_name, street, city, postcode, country, state, phone},
 shipping_address (the same or null), lines[{product_id, variation_id, sku, name, quantity, unit_price, total,
 tax, personalisation, type, add_on_type, adjustments[{kind, source, label, amount, scope, reason}]}], subtotal,
-discount, shipping_total, tax, total, refunded, currency, payment, transaction_id, shipping, note, fields, fees.
-A line's `adjustments` are the changes to its price after its unit price, as the order keeps them: `kind` is
+discount, shipping_total, tax, total, refunded, currency, payment, transaction_id, shipping, shipping_option,
+note, fields, fees. `shipping` is the option's name as the customer read it; `shipping_option` its id
+(`rate:4`, `carrier:12:express`, `pickup:12:3`), as `order_fee`'s query and `shop.orders.create` name it; both null when
+nothing ships. A line's `adjustments` are the changes to its price after its unit price, as the order keeps them: `kind` is
 `coupon`, `automatic`, `manual`, `add_on` or `adjuster`; `source` the coupon's code, the extension's or
 adjuster's id, or the shop manager's user id; `amount` is money, below zero for a discount; `scope` is `line` for
 the line's own or `order` for its share of a change to the whole order.
@@ -885,7 +887,9 @@ on_backorder, variations[{id, label, sku, price, regular_price, for_sale, availa
 reads as its original.
 
 **The customer map**: id, email, first_name, last_name, registered_at, billing and shipping_address (as the
-order map's, or null), group_ids, orders (how many they placed). Nothing of their login.
+order map's, or null), group_ids, orders (how many they placed), addresses_from_order. Where the account keeps no
+address but they ordered, billing and shipping_address are their latest order's and `addresses_from_order` is
+that order's number; it is null when the addresses are the account's. Nothing of their login.
 
 **Sending email.** `shop.email.send("buyer@example.com", "Your quote is ready", "<p>…</p>")` writes the body into
 the shop's own email layout, from its address, in the site's language; the body is cleaned as a product block
