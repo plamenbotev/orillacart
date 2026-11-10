@@ -610,12 +610,12 @@ Design 61 (`docs/designs/61-extension-shop-reach.md`): the gaps the trade-accoun
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 374 | P1 | `shop.email.send(to, subject, html, reply_to?)` (`email: send`): the body cleaned, in the shop's layout, from its address; five a run; `Registry::emails()` | |
-| ✅ | 375 | P1 | `shop.products.find(id)` (`products: read`): the product as shoppers see it, price, sale, stock and variations; `Products::find()` | |
-| ✅ | 376 | P2 | `shop.customers.find(id)` (`customers: read`): name, email, addresses, groups, orders; `Registry::customers()` | |
-| ✅ | 377 | P1 | `shop.orders.create(order)` (`orders: create`, its own permission): placed as the shop places one by hand; refusals catchable; `Registry::orderCreation()` | |
-| ✅ | 378 | P2 | `|number` takes money; `|amount` writes it for an API | |
-| ✅ | 379 | P2 | Budgets: 50 queries a run (was 20), 5 emails; API 22; the guide's §14 with the product and customer maps | |
+| ✅ | 374 | P1 | `shop.email.send(to, subject, html, reply_to?)` (`email: send`): the body cleaned, in the shop's layout, from its address; five a run; `Registry::emails()` | 30a8047a |
+| ✅ | 375 | P1 | `shop.products.find(id)` (`products: read`): the product as shoppers see it, price, sale, stock and variations; `Products::find()` | 30a8047a |
+| ✅ | 376 | P2 | `shop.customers.find(id)` (`customers: read`): name, email, addresses, groups, orders; `Registry::customers()` | 30a8047a |
+| ✅ | 377 | P1 | `shop.orders.create(order)` (`orders: create`, its own permission): placed as the shop places one by hand; refusals catchable; `Registry::orderCreation()` | 30a8047a |
+| ✅ | 378 | P2 | `|number` takes money; `|amount` writes it for an API | 30a8047a |
+| ✅ | 379 | P2 | Budgets: 50 queries a run (was 20), 5 emails; API 22; the guide's §14 with the product and customer maps | 30a8047a |
 
 ## Deliberately not carried over
 
