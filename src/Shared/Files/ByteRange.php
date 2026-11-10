@@ -37,14 +37,17 @@ final readonly class ByteRange
         return $start >= $size ? false : new self($start, $end);
     }
 
-    /** Whether the header asks for the file from past its start, as a download that broke off and goes on. */
+    /**
+     * Whether the header asks for the file from past its start, as a download that broke off and goes on. A suffix
+     * range (`bytes=-N`, the last N bytes) is not: one as long as the file is the whole file.
+     */
     public static function resumes(string $header): bool
     {
         if (preg_match(self::PATTERN, trim($header), $parts) !== 1) {
             return false;
         }
 
-        return $parts[1] === '' ? $parts[2] !== '' : (int) $parts[1] > 0 && ($parts[2] === '' || (int) $parts[2] >= (int) $parts[1]);
+        return $parts[1] !== '' && (int) $parts[1] > 0 && ($parts[2] === '' || (int) $parts[2] >= (int) $parts[1]);
     }
 
     public function length(): int

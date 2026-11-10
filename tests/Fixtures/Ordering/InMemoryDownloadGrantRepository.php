@@ -28,7 +28,7 @@ final class InMemoryDownloadGrantRepository implements DownloadGrantRepository
         return null;
     }
 
-    public function consume(DownloadGrant $grant, \DateTimeImmutable $at): bool
+    public function consume(DownloadGrant $grant, \DateTimeImmutable $at, string $by = ''): bool
     {
         $remaining = $grant->remaining();
         if ($remaining !== null && $remaining < 1) {
@@ -37,6 +37,18 @@ final class InMemoryDownloadGrantRepository implements DownloadGrantRepository
         new \ReflectionProperty(DownloadGrant::class, 'remaining')->setValue($grant, $remaining === null ? null : $remaining - 1);
         new \ReflectionProperty(DownloadGrant::class, 'downloads')->setValue($grant, $grant->downloads() + 1);
         new \ReflectionProperty(DownloadGrant::class, 'lastDownloadedAt')->setValue($grant, $at);
+        new \ReflectionProperty(DownloadGrant::class, 'lastDownloadedBy')->setValue($grant, $by);
+        new \ReflectionProperty(DownloadGrant::class, 'resumesLeft')->setValue($grant, DownloadGrant::RESUMES);
+
+        return true;
+    }
+
+    public function resume(DownloadGrant $grant, string $by): bool
+    {
+        if ($grant->resumesLeft() < 1 || $grant->lastDownloadedBy() !== $by) {
+            return false;
+        }
+        new \ReflectionProperty(DownloadGrant::class, 'resumesLeft')->setValue($grant, $grant->resumesLeft() - 1);
 
         return true;
     }

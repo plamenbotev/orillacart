@@ -32,12 +32,23 @@ final readonly class UploadedAssetFiles implements AssetFiles
             }
             $older = glob($folder . '/' . basename($base) . '-*' . $suffix);
             foreach ($older === false ? [] : $older as $old) {
-                @unlink($old);
+                if (self::isVersionOf(basename($old), basename($base), $suffix)) {
+                    @unlink($old);
+                }
             }
             file_put_contents($path, $content, \LOCK_EX);
         }
 
         return $uploads['baseurl'] . '/' . $relative;
+    }
+
+    /**
+     * Whether a file is a written version of the named asset: `<base>-<12 hex>.<ext>` exactly, so `a-b-<hash>.js`
+     * is not a version of `a.js`.
+     */
+    public static function isVersionOf(string $file, string $base, string $suffix): bool
+    {
+        return preg_match('/^' . preg_quote($base, '/') . '-[0-9a-f]{12}' . preg_quote($suffix, '/') . '$/D', $file) === 1;
     }
 
     public function forget(string $extension): void

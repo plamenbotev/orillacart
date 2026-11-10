@@ -53,6 +53,26 @@ final class OAuthTest extends RestTestCase
         parent::tearDown();
     }
 
+    public function testACodeThatComesBackEndsTheTokensItGave(): void
+    {
+        $server = self::oauth();
+        $client = $server->register(['client_name' => 'Assistant', 'redirect_uris' => [self::REDIRECT]]);
+        self::assertIsString($client['client_id']);
+        $admin = $this->actAs('administrator');
+        [$verifier, $challenge] = self::pkce();
+        $back = $server->approve($server->authorization(self::query($client['client_id'], self::REDIRECT, $challenge)), $admin, true);
+        parse_str((string) parse_url($back, \PHP_URL_QUERY), $answer);
+        $code = $answer['code'] ?? null;
+        self::assertIsString($code);
+        $exchange = ['grant_type' => 'authorization_code', 'code' => $code, 'client_id' => $client['client_id'], 'code_verifier' => $verifier];
+
+        $tokens = $server->token($exchange);
+        self::assertIsString($tokens['access_token']);
+        self::assertNotNull($server->authenticate($tokens['access_token']));
+        self::assertSame('invalid_grant', $this->refused(static fn() => $server->token($exchange)), 'a code is good once');
+        self::assertNull($server->authenticate($tokens['access_token']), 'it came back: someone else has it, so what it gave ends');
+    }
+
     public function testARegisteredAppGetsTokensForTheMcpEndpointOnly(): void
     {
         $server = self::oauth();
@@ -75,7 +95,6 @@ final class OAuthTest extends RestTestCase
         self::assertSame(3600, $tokens['expires_in']);
         self::assertIsString($tokens['access_token']);
         self::assertIsString($tokens['refresh_token']);
-        self::assertSame('invalid_grant', $this->refused(static fn() => $server->token(['grant_type' => 'authorization_code', 'code' => $code, 'client_id' => $client['client_id'], 'code_verifier' => $verifier])), 'a code is good once');
 
         $key = $server->authenticate($tokens['access_token']);
         self::assertNotNull($key);
@@ -155,13 +174,14 @@ final class OAuthTest extends RestTestCase
         self::assertSame('', $this->redirected(), 'nor is a logged-in user without the capability');
 
         $this->actAs('administrator');
-        try {
-            do_action(OAuthConsent::LOAD);
-            self::fail('The shop manager\'s bad request was not sent back to the app.');
-        } catch (\RuntimeException) {
-        }
-        self::assertStringStartsWith('https://app.example/callback?error=unsupported_response_type', $this->redirected());
-        self::assertStringNotContainsString("\n", $this->redirected(), 'once');
+        do_action(OAuthConsent::LOAD);
+        self::assertSame('', $this->redirected(), 'nor the shop manager: anyone registers an app, so its address is shown, not gone to');
+        $consent = new OAuthConsent(self::oauth());
+        ob_start();
+        $consent->render();
+        $screen = (string) ob_get_clean();
+        self::assertStringContainsString('This app cannot connect', $screen);
+        self::assertStringContainsString('https://app.example/callback?error=unsupported_response_type', html_entity_decode($screen), 'a link back, for the manager to follow');
     }
 
     public function testAClientNobodyConnectedIsForgottenAfterADay(): void

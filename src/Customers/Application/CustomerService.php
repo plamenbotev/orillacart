@@ -281,13 +281,14 @@ final readonly class CustomerService
         if ($this->accounts->isRegistered($email)) {
             throw new RuleViolation('This email has an account already.', 'orillacart_account_exists');
         }
-        $id = $this->accounts->elsewhere($email);
-        if ($id !== null) {
-            $this->accounts->join($id);
-        } else {
-            // No password given: one nobody knows, until the customer sets theirs through the lost-password link.
-            $id = $this->accounts->register($email, $command->password ?? bin2hex(random_bytes(24)), trim($command->firstName), trim($command->lastName));
+        if ($this->accounts->elsewhere($email) !== null) {
+            // A user of another site of the network joins only by their own choice: they are sent the link to.
+            $this->requestAccount(new RegisterAccount($email, trim($command->firstName), trim($command->lastName)));
+
+            throw new RuleViolation('This email has an account elsewhere on the network: it was sent a link to join this shop, which makes the account once followed.', 'orillacart_account_invited');
         }
+        // No password given: one nobody knows, until the customer sets theirs through the lost-password link.
+        $id = $this->accounts->register($email, $command->password ?? bin2hex(random_bytes(24)), trim($command->firstName), trim($command->lastName));
         if ($command->test) {
             $this->accounts->markTest($id);
         }
@@ -321,6 +322,7 @@ final readonly class CustomerService
         // On a network, a customer of another of its shops: the email proved it is theirs, so they become this
         // shop's customer too, their password and details as they are; the one typed here is not theirs to change.
         $id = $this->accounts->elsewhere($account->email());
+        $joined = $id !== null;
         if ($id !== null) {
             $this->accounts->join($id);
         } else {
@@ -349,7 +351,11 @@ final readonly class CustomerService
             }
         }
         $this->pending->remove($account);
-        $this->accounts->logIn($id);
+        // A new account is logged in; one that joined from elsewhere on the network logs in as it always does,
+        // with its own password and whatever else the network asks (two factors), not on an emailed link alone.
+        if (!$joined) {
+            $this->accounts->logIn($id);
+        }
         $this->accountMail->welcome($account->email(), $account->firstName(), $this->links->accountUrl());
 
         return $this->customer($id);

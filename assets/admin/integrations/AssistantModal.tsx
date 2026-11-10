@@ -139,9 +139,35 @@ export function AssistantModal( { apiKey, catalogue, onClose }: Props ) {
 					} }
 				>
 					<h3>{ __( 'Ask me first when', 'orillacart' ) }</h3>
+					<RadioControl
+						label={ __( 'Where you say yes', 'orillacart' ) }
+						selected={ choices.answer ?? 'page' }
+						options={ [
+							{
+								label: __(
+									'On the shop’s page, logged in (safest: the app cannot answer for you)',
+									'orillacart'
+								),
+								value: 'page',
+							},
+							{
+								label: __(
+									'In the app’s own window (the app reports your answer)',
+									'orillacart'
+								),
+								value: 'app',
+							},
+						] }
+						onChange={ ( answer ) =>
+							setChoices( {
+								...choices,
+								answer: answer === 'app' ? 'app' : 'page',
+							} )
+						}
+					/>
 					<p>
 						{ __(
-							'The assistant asks you in its own window before it does these, when it can ask; when it cannot, it is refused.',
+							'The assistant asks you before it does these. On the shop’s page, it gives you a link to answer; in its own window, it asks there when it can.',
 							'orillacart'
 						) }
 					</p>

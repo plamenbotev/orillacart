@@ -21,7 +21,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * A bundle's price and stock with the customer's choices, for the product page while they choose: the price is
  * shown as the page shows prices. Changes nothing, so it is a POST only to carry the choices.
  */
-#[Route('/products/{id}/bundle-quote', methods: ['POST'], capability: Route::PUBLIC, requirements: ['id' => '\d+'])]
+#[Route('/products/{id}/bundle-quote', methods: ['POST'], capability: Route::PUBLIC, requirements: ['id' => '\d+'], guard: 'quotes')]
 final readonly class QuoteBundleAction implements RequestHandlerInterface
 {
     public function __construct(

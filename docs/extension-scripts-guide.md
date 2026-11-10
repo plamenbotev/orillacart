@@ -172,10 +172,10 @@ Filters take a value with `|` and sometimes arguments. The catalogue lists their
 | `length`                                | list, map, text | how many; same as `len(x)`                                      |
 | `map(fn)`                               | list, map       | each item through the closure                                   |
 | `merge(other)`                          | list, map       | the two together; a list appends, a map overrides by key        |
-| `number(decimals, point, thousands)`    | number, money   | formatted, `1234.5\|number(2, ",", ".")` → `1.234,50`           |
+| `number(decimals, point, thousands)`    | number, money   | formatted, `1234.5\|number(2, ",", ".")` → `1.234,50`; 0 to 20 decimals |
 | `replace({ from: to })`                 | text            | each `from` replaced by its `to`                                |
 | `reverse`                               | list, text      | backwards                                                       |
-| `round(decimals)`                       | number, money   | rounded                                                         |
+| `round(decimals)`                       | number, money   | rounded; -20 to 20 decimals, money 0 to 4                       |
 | `slice(start, length)`                  | list, text      | a part; `length` may be left out                                |
 | `sort`, `sort(fn)`                      | list, map       | ascending, or by a closure returning negative, zero or positive |
 | `split(sep)`                            | text            | a list; an empty separator splits into characters               |
@@ -272,7 +272,11 @@ delete, and each `shop.*.find` or `shop.orders.create`). A call is every builtin
 (`money()`, `|format`, `str()`, `shop.orders.find()`); the extension's own functions are steps, not calls. A
 screen that formats fifty rows with a few filters each spends a few hundred. These are per handler call, not per
 request, and they are ample for anything an extension should do inline. Work that needs more belongs in a job
-(§12).
+(§12). The time counts what host calls wait for: no call starts once it is spent, and an HTTP call waits at most
+what is left. A filter that would make more than the bytes left (`json` of a list holding itself, `split` of a
+long text, `join` with a long separator) stops the run before it does; a value nests at most 64 levels for `json`
+and the host. Across runs an extension sends at most 50 emails and makes 500 HTTP calls an hour; past that the
+call is an `unavailable` failure with `data.retry_after` in seconds.
 
 ## 8. Providers
 
@@ -308,7 +312,7 @@ payment_gateway "payfast" {
   }
   fn check(reference, transaction_id, settings) {
     let answer = http.get("https://api.payfast.example/sessions/" ~ reference, { headers: { Authorization: "Bearer " ~ settings.api_key } })
-    if answer.json.status == "paid" { return payment.completed(reference, answer.json.transaction) }
+    if answer.json.status == "paid" { return payment.completed(reference, answer.json.transaction, money(answer.json.amount), answer.json.currency) }
     if answer.json.status == "failed" { return payment.failed(reference) }
     return payment.pending(reference)
   }
@@ -330,7 +334,8 @@ payment_gateway "payfast" {
 | `check(reference, transaction_id, settings)` | what the shop knows                                                                                                                                                                                                                                                | a `payment.*` outcome                                                          |
 | `refund(request, settings)`                  | `request`: id, order_number, reference, transaction_id, amount, currency, reason                                                                                                                                                                                   | `payment.refunded(…)`, `payment.refund_pending(…)` or `payment.refund_done(…)` |
 
-Outcomes: `payment.completed(reference, transaction_id, amount?, currency?)`, `pending`, `failed`, `cancelled`,
+Outcomes: `payment.completed(reference, transaction_id, amount?, currency?)` (without the amount the provider
+reported, the payment waits for the shop to look, as one of the wrong amount does), `pending`, `failed`, `cancelled`,
 `held`, `disputed`. A gateway with a `refund` handler is a refunding gateway; without it, the order screen offers
 no refund button. `fail unavailable` from `start` tells the shopper to try another method.
 
@@ -561,7 +566,9 @@ parameters are `{name}`.
 The handler receives one map: `method`, `path`, `params` (from the path), `query`, `body` (the JSON body as a
 map, or null), `headers` (lower-case names) and `user: { id, logged_in, manager }`. It answers with a map or
 list, sent as JSON, or with one of `respond.json(data, status?)`, `respond.error(status, message)`,
-`respond.redirect(url, status?)` and `respond.html(template, data?, status?)`. Because WordPress's REST server
+`respond.redirect(url, status?)` and `respond.html(template, data?, status?)`. A redirect goes to a path or
+address of the site, or over https to a host declared in `needs.http`; anywhere else is an error. Its status is
+301 to 308, 302 when left out. Because WordPress's REST server
 answers JSON, `respond.html` travels as `{ "html": "…" }` for the caller to insert. A stopped extension's routes
 answer 503 with a plain message. The same routes become the assistant's tools when declared as such (PLAN 331).
 
@@ -603,7 +610,10 @@ the screen is theirs.
 An extension's templates are files under `templates/` in the package, addressed as
 `x/<extension>/<file>`. They are Twig, sandboxed: the tags `if for set include extends block macro import from
 with apply autoescape`, the storefront's filters and functions (`__`, `_x`, `_n`, `_nx`, `slot`, `date`, `range`, the price
-helpers), no raw PHP objects. A template that compiles against the sandbox passes the static check.
+helpers), no raw PHP objects. A template that compiles against the sandbox passes the static check. One render
+has 100 000 loop turns (each `for` turn, macro call and arrow function call) and 32 MB of memory; `range` and `..`
+make at most 10 000 numbers, `number_format` takes 0 to 20 decimals and `format` fields of at most 1 000
+characters. Past any of them the render fails.
 
 ```
 slot "product_after_details" { template: "note.html.twig" } fn(context) {

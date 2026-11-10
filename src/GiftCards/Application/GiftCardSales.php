@@ -91,6 +91,33 @@ final readonly class GiftCardSales
     }
 
     /**
+     * The payment of an order is disputed (a chargeback): gift cards it bought still spend while the money may go
+     * back, so the order says so for the shop to decide.
+     */
+    public function disputed(int $orderId): void
+    {
+        $cards = $this->cards->boughtWith($orderId);
+        if ($cards !== []) {
+            $this->flagCards($orderId, $cards, 'The payment is disputed, and the order bought gift cards that still spend (%s): disable them on the gift card screen until the dispute is settled.');
+        }
+    }
+
+    /**
+     * @param list<GiftCard> $cards
+     */
+    private function flagCards(int $orderId, array $cards, string $reason): void
+    {
+        $active = array_filter($cards, static fn(GiftCard $card): bool => $card->isActive());
+        if ($active === []) {
+            return;
+        }
+        try {
+            $this->orders->needsAttention($orderId, \sprintf($reason, implode(', ', array_map(static fn(GiftCard $card): string => '…' . $card->codeEnd(), $active))));
+        } catch (OrderNotFound) {
+        }
+    }
+
+    /**
      * Money went back for an order that bought gift cards: as many of its cards as were refunded (all of them
      * when the whole order was) pay no more, those with the most left first. What a card had spent already is the
      * shop's to settle with the customer, and the order says so.
@@ -115,6 +142,10 @@ final readonly class GiftCardSales
             }
         }
         if ($count < 1) {
+            // Money went back without naming the items: the cards bought still spend, which may be what was paid
+            // back. The shop decides, so the order says so.
+            $this->flagCards($orderId, $cards, 'Part of the order was refunded without naming items, and it bought gift cards that still spend (%s): disable them on the gift card screen if the refund was for them.');
+
             return;
         }
         $now = $this->clock->now();

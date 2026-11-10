@@ -9,12 +9,14 @@ use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** The shop adds a coupon code, or an automatic discount that needs no code, with its amount and rules. */
+#[Tool(risk: Tool::MONEY)]
 #[Route('/coupons', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateCouponAction implements RequestHandlerInterface
 {

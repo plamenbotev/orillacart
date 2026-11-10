@@ -115,6 +115,10 @@ final readonly class Reviews
                 throw new ReviewRuleViolation('Log in to review the product.', 'orillacart_review_log_in');
             }
             $author = ['name' => trim($command->name ?? ''), 'email' => trim($command->email ?? ''), 'customer' => null, 'verified' => false];
+            // Under an account's email, a guest's review would pass as the customer's, and keep them from writing theirs.
+            if ($this->store->isAccountEmail($author['email'])) {
+                throw new ReviewRuleViolation('This email has an account: log in to review the product.', 'orillacart_review_log_in');
+            }
         }
         if ($this->store->hasReviewed($productId, $author['customer'], $author['email'])) {
             throw new ReviewRuleViolation('You reviewed this product already.', 'orillacart_already_reviewed');

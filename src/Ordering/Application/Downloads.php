@@ -30,18 +30,20 @@ final readonly class Downloads
      * Counts a download and gives the file to send. A browser fetching the rest of one that broke off, soon after
      * it was counted, is given it without counting another, even when that was the last.
      *
-     * @param bool $resuming the request asks for the file from past its start
+     * @param bool   $resuming the request asks for the file from past its start
+     * @param string $client   the address the request came from: only the one a download was counted for resumes it
      *
      * @throws DownloadUnavailable for an unknown or expired link, an unpaid order, no downloads left, or a lost file
      */
-    public function open(string $token, bool $resuming = false): DownloadFile
+    public function open(string $token, bool $resuming = false, string $client = ''): DownloadFile
     {
         $grant = preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? $this->grants->findByToken($token) : null;
         if ($grant === null) {
             throw new DownloadUnavailable('This download link does not work.');
         }
         $now = $this->clock->now();
-        $resumes = $resuming && $grant->resumes($now);
+        $by = substr(hash('sha256', 'orillacart-download:' . $client), 0, 16);
+        $resumes = $resuming && $grant->resumes($now, $by) && $this->grants->resume($grant, $by);
         $refusal = $resumes ? null : $grant->refusal($now);
         if ($refusal !== null) {
             throw new DownloadUnavailable($refusal);
@@ -52,7 +54,7 @@ final readonly class Downloads
 
             throw new DownloadUnavailable('The file is not available right now. Please contact the shop.');
         }
-        if (!$resumes && !$this->grants->consume($grant, $now)) {
+        if (!$resumes && !$this->grants->consume($grant, $now, $by)) {
             throw new DownloadUnavailable('There are no downloads left for this file.');
         }
 

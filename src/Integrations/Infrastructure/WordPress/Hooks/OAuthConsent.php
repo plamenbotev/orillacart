@@ -50,20 +50,17 @@ final class OAuthConsent
         return ($_GET['page'] ?? null) === self::PAGE && \is_string($title) ? __('Connect an app', 'orillacart') . $title : $title;
     }
 
-    /** Before the screen is drawn, for the shop manager who may see it: a redirectable error goes back to the app now. */
+    /**
+     * Before the screen is drawn, for the shop manager who may see it. An error is shown on the screen, with a link
+     * back to the app, never sent there at once: anyone can register an app, so an address that bounced its
+     * visitors straight on would send the shop's managers wherever an app's redirect address says.
+     */
     public function check(): void
     {
         if (!is_user_logged_in() || !current_user_can(Capability::MANAGE_SHOP) || ($_GET['page'] ?? null) !== self::PAGE) {
             return;
         }
         $this->request = $this->checked(self::parameters($_GET));
-        if ($this->request instanceof OAuthError) {
-            $back = $this->server->refusal($this->request);
-            if ($back !== null) {
-                wp_redirect($back);
-                exit;
-            }
-        }
     }
 
     public function render(): void
@@ -71,13 +68,28 @@ final class OAuthConsent
         $request = $this->request ?? $this->checked(self::parameters($_GET));
         echo '<div class="wrap orillacart-connect">';
         if ($request instanceof OAuthError) {
-            printf('<h1>%s</h1><div class="notice notice-error"><p>%s</p></div></div>', esc_html__('This app cannot connect', 'orillacart'), esc_html($request->getMessage()));
+            printf('<h1>%s</h1><div class="notice notice-error"><p>%s</p></div>', esc_html__('This app cannot connect', 'orillacart'), esc_html($request->getMessage()));
+            $back = $this->server->refusal($request);
+            if ($back !== null) {
+                printf('<p><a class="button" href="%s">%s</a></p>', esc_url($back), esc_html(\sprintf(/* translators: %s: a web address's host */ __('Tell the app, at %s', 'orillacart'), (string) wp_parse_url($back, \PHP_URL_HOST))));
+            }
+            echo '</div>';
 
             return;
         }
         $user = wp_get_current_user();
         $host = (string) (wp_parse_url($request->redirectUri, \PHP_URL_HOST) ?? wp_parse_url($request->redirectUri, \PHP_URL_SCHEME));
         printf('<h1>%s</h1>', esc_html(\sprintf(/* translators: %s: an app's name */ __('Connect %s to your shop', 'orillacart'), $request->client->name)));
+        // An app names itself: the name is its own word. One that registered here is unverified; one identified
+        // by its address is that address's, which is what to trust.
+        $documented = str_starts_with($request->client->id, 'https://');
+        printf(
+            '<div class="notice %s inline"><p>%s</p></div>',
+            $documented ? 'notice-info' : 'notice-warning',
+            esc_html($documented
+                ? \sprintf(/* translators: %s: a web address's host */ __('This app is identified by its address at %s: connect it only if you know that site.', 'orillacart'), (string) wp_parse_url($request->client->id, \PHP_URL_HOST))
+                : __('This app registered itself and is not verified: its name is what it says it is. Connect it only if you just started connecting it yourself, in the app you mean.', 'orillacart')),
+        );
         printf(
             '<p>%s</p><p>%s</p>',
             esc_html(\sprintf(

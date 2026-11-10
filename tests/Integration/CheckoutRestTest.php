@@ -572,7 +572,7 @@ final class CheckoutRestTest extends RestTestCase
         self::assertIsString($redirect['back'] ?? null);
         parse_str((string) parse_url($redirect['back'], \PHP_URL_QUERY), $signed);
         $return = new \WP_REST_Request('GET', self::NAMESPACE . '/payments/test_pay/return');
-        $return->set_query_params(['ref' => $found[1]] + $signed);
+        $return->set_query_params(['ref' => $found[1], 'amount' => '38.33'] + $signed);
         $back = rest_do_request($return);
         self::assertSame([303, $paid['receipt_url']], [$back->get_status(), $back->get_headers()['Location'] ?? null]);
         self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($paid)}"))['status']);

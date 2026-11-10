@@ -61,7 +61,7 @@ final class TaxExemptionsRestTest extends RestTestCase
         $approved = $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/approve", ['regions' => ['US-TX'], 'expires_on' => '2030-12-31'], nonce: true);
         self::assertSame(200, $approved->get_status(), (string) wp_json_encode($approved->get_data()));
         self::assertSame(422, $this->request('POST', "/customers/{$customer}/tax-exemptions/{$id}/refuse", ['reason' => 'No'], nonce: true)->get_status(), 'checked already');
-        self::assertSame(422, $this->request('POST', '/customers/' . ($customer + 1000) . "/tax-exemptions/{$id}/approve", ['regions' => ['US-TX']], nonce: true)->get_status(), 'another customer\'s');
+        self::assertSame(404, $this->request('POST', '/customers/' . ($customer + 1000) . "/tax-exemptions/{$id}/approve", ['regions' => ['US-TX']], nonce: true)->get_status(), 'another customer\'s, who is none');
         self::assertContains('[' . get_bloginfo('name') . '] A tax exemption certificate to check', array_column($this->mails, 'subject'));
 
         wp_set_current_user($customer);

@@ -412,7 +412,7 @@ final class Compiler
                 $this->finding($expr, \sprintf('Unknown filter "%s"', $expr->name));
             }
 
-            return '$this->c->bytes(' . self::OPS . '::filter(' . self::literal($expr->name) . ', ' . $this->expr($expr->value, $scope) . ', ' . $this->args($expr->args, $scope) . '))';
+            return '$this->c->bytes(' . self::OPS . '::filter(' . self::literal($expr->name) . ', ' . $this->expr($expr->value, $scope) . ', ' . $this->args($expr->args, $scope) . ', $this->c->room()))';
         }
         if ($expr instanceof Test) {
             if (!\in_array($expr->name, Ops::TESTS, true)) {

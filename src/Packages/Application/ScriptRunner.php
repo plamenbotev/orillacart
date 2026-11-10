@@ -9,10 +9,13 @@ use OrillaCart\Packages\Domain\ExtensionRun;
 use OrillaCart\Packages\Domain\HandlerFailed;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Grant;
+use OrillaCart\Scripting\Application\Dto\HostFunction;
+use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\ScriptError;
 use OrillaCart\Scripting\Domain\ScriptFailure;
+use OrillaCart\Shared\Security\ReadOnlyRequest;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
@@ -29,7 +32,20 @@ final readonly class ScriptRunner
         private LoggerInterface $logger,
         private ?RunLog $log = null,
         private ?ClockInterface $clock = null,
+        private ?ReadOnlyRequest $readOnly = null,
     ) {}
+
+    /**
+     * Whether a host function changes something or reaches someone: refused on a read-only request, whatever the
+     * extension says its route or tool does.
+     */
+    public static function writes(HostFunction $function): bool
+    {
+        return $function->counts === HostFunction::EMAIL
+            || ($function->needs !== null && (str_ends_with($function->needs, ':write') || str_ends_with($function->needs, ':create')))
+            || \in_array($function->name, ['jobs.push', 'fields.set', 'http.post', 'http.put', 'http.patch', 'http.delete'], true)
+            || preg_match('/^(objects\.\*\.(create|update|delete)|shop\.[a-z_]+\.(mark|unmark|create))$/', $function->name) === 1;
+    }
 
     /**
      * @param list<mixed> $args
@@ -42,7 +58,7 @@ final readonly class ScriptRunner
         $grant = new Grant($package->slug(), $package->granted(), $loaded->manifest->hosts(), $package->settings());
         $script = null;
         try {
-            $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $grant);
+            $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $grant, $this->readOnly?->readOnly() === true ? $this->readingOnly() : null);
             $result = $script->run($method, ...$args);
         } catch (ScriptFailure $e) {
             // Saying "unavailable" or "refused" is an answer, not a failure of the extension.
@@ -120,5 +136,19 @@ final readonly class ScriptRunner
     public static function method(array $declaration, string $function): string
     {
         return $declaration['functions'][$function] ?? throw new HandlerFailed(HandlerFailed::ERROR, \sprintf('The extension declares no "%s" function here.', $function));
+    }
+
+    /** The host with every function that writes refusing: for a request that may only read. */
+    private function readingOnly(): HostCatalog
+    {
+        $refusing = [];
+        foreach ($this->scripts->catalog()->all() as $function) {
+            if (self::writes($function)) {
+                $name = $function->name;
+                $refusing[] = new HostFunction($name, static fn(): never => throw new ScriptFailure(ScriptFailure::REFUSED, \sprintf('%s changes the shop, and this request may only read (a read-only key).', $name)), $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts);
+            }
+        }
+
+        return $this->scripts->catalog()->with($refusing);
     }
 }

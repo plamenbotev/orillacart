@@ -62,7 +62,7 @@ final readonly class TestPayGateway implements PaymentGateway, HandlesReturns, H
 
     public function returned(string $reference, PaymentReturn $return, Settings $settings): PaymentOutcome
     {
-        return $return->cancelled ? PaymentOutcome::cancelled($reference) : PaymentOutcome::completed($reference, 'TX-' . $reference);
+        return $return->cancelled ? PaymentOutcome::cancelled($reference) : PaymentOutcome::completed($reference, 'TX-' . $reference, $return->query['amount'] ?? null, 'EUR');
     }
 
     public function notified(Notification $notification, Settings $settings): ?PaymentOutcome

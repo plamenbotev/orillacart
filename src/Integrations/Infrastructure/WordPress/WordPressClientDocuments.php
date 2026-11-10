@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Integrations\Infrastructure\WordPress;
 
 use OrillaCart\Integrations\Application\ClientDocuments;
+use OrillaCart\Shared\WordPress\OutboundRequests;
 
 /**
  * Client ID metadata documents fetched with WordPress's safe HTTP, which refuses the site's own network: at most
@@ -23,9 +24,9 @@ final readonly class WordPressClientDocuments implements ClientDocuments
         if (\is_array($kept)) {
             return array_filter($kept, \is_string(...), ARRAY_FILTER_USE_KEY);
         }
-        $response = wp_safe_remote_get($url, [
-            'timeout' => 5,
-            'redirection' => 0,
+        $response = OutboundRequests::send($url, [
+            'method' => 'GET',
+            'timeout' => 5.0,
             'limit_response_size' => self::MOST_BYTES,
             'headers' => ['Accept' => 'application/json'],
         ]);

@@ -555,6 +555,9 @@ final class AssistantMcpTest extends RestTestCase
         $this->actAs('administrator');
         $made = $this->data($this->request('POST', '/api-keys', ['name' => 'Assistant', 'scope' => $scope], nonce: true));
         $key = self::textAt($made, 'key');
+        // These tests ask in the app's window; the default, the shop's page, has tests of its own.
+        $chosen = $this->request('PUT', '/api-keys/' . self::intOf(self::at($made, 'api_key', 'id')) . '/assistant', ['answer' => 'app'], nonce: true);
+        self::assertSame(200, $chosen->get_status(), (string) wp_json_encode($chosen->get_data()));
         wp_set_current_user(0);
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $key;
         $_SERVER['REQUEST_URI'] = '/wp-json/orillacart/v1/mcp';
@@ -645,6 +648,13 @@ final class AssistantMcpTest extends RestTestCase
     private static function arrayOf(mixed $value): array
     {
         self::assertIsArray($value);
+
+        return $value;
+    }
+
+    private static function intOf(mixed $value): int
+    {
+        self::assertIsInt($value);
 
         return $value;
     }

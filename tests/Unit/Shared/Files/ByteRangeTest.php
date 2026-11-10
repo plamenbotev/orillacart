@@ -31,8 +31,7 @@ final class ByteRangeTest extends TestCase
     public function testOnlyARangeFromPastTheStartResumes(): void
     {
         self::assertTrue(ByteRange::resumes('bytes=100-'));
-        self::assertTrue(ByteRange::resumes('bytes=-100'));
-        foreach (['', 'bytes=0-', 'bytes=0-499', 'bytes=50-10', 'bytes=0-10,20-30'] as $header) {
+        foreach (['bytes=-100', 'bytes=-99999999999', '', 'bytes=0-', 'bytes=0-499', 'bytes=50-10', 'bytes=0-10,20-30'] as $header) {
             self::assertFalse(ByteRange::resumes($header), $header);
         }
     }

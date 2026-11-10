@@ -8,6 +8,7 @@ use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
 use OrillaCart\Shared\Files\ByteRange;
 use OrillaCart\Shared\Files\FileDelivery;
+use OrillaCart\Shared\Http\Security\ClientAddress;
 use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\WordPress\AsHook;
 
@@ -38,7 +39,7 @@ final readonly class ServeDownload
 
         $range = \is_string($_SERVER['HTTP_RANGE'] ?? null) ? $_SERVER['HTTP_RANGE'] : '';
         try {
-            $file = $this->downloads->open(sanitize_key($token), ByteRange::resumes($range));
+            $file = $this->downloads->open(sanitize_key($token), ByteRange::resumes($range), ClientAddress::of($_SERVER));
         } catch (DownloadUnavailable $e) {
             wp_die(esc_html($this->translations->text($e->text)), esc_html__('Download not available', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
@@ -50,6 +51,9 @@ final readonly class ServeDownload
         header('Content-Type: ' . $file->mimeType);
         header('Content-Disposition: attachment; filename="' . str_replace(['"', "\r", "\n"], '', $file->filename) . '"; filename*=UTF-8\'\'' . rawurlencode($file->filename));
         header('X-Content-Type-Options: nosniff');
+        // A bought file is the seller's, whatever it holds: opened in the browser it runs no script as the shop.
+        header("Content-Security-Policy: sandbox; default-src 'none'");
+        header('Cross-Origin-Resource-Policy: same-origin');
         header('X-Robots-Tag: noindex, nofollow');
         $handOff = $this->delivery->handOff($file->key);
         if ($handOff !== null) {

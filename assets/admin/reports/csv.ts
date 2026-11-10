@@ -11,9 +11,9 @@ export function toCsv(
 ): string {
 	const cell = ( value: string | number | null ): string => {
 		const text = value === null ? '' : String( value );
-		// A leading =, +, - or @ would make a spreadsheet run it as a formula.
+		// A leading =, +, -, @, tab or CR would make a spreadsheet run it as a formula; a plain number is kept.
 		const safe =
-			/^[=+\-@]/.test( text ) && ! /^-?\d/.test( text )
+			/^[=+\-@\t\r]/.test( text ) && ! /^-?\d+(\.\d+)?$/.test( text )
 				? `'${ text }`
 				: text;
 		return /[",\n\r]/.test( safe )

@@ -36,6 +36,10 @@ final readonly class RegisterOAuthClientAction implements RequestHandlerInterfac
         if ($this->limits->hit(self::LIMIT, 'ip:' . ClientAddress::of($request->getServerParams())) !== null) {
             return $this->responder->exact(['error' => 'slow_down', 'error_description' => 'Too many registrations from this address; wait an hour.'], 429);
         }
+        // And from everyone together: callers with addresses enough to pass the first would fill the table.
+        if ($this->limits->hit('oauth_register_any', 'site') !== null) {
+            return $this->responder->exact(['error' => 'slow_down', 'error_description' => 'Too many apps registered this hour; wait an hour.'], 429);
+        }
         $body = $request->getParsedBody();
         [$status, $answer] = $this->server->registrationAnswer(\is_array($body) ? $body : []);
 

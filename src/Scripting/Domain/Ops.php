@@ -18,6 +18,12 @@ final class Ops
         'abs', 'amount', 'capitalize', 'default', 'first', 'join', 'json', 'keys', 'last', 'length', 'lower', 'map', 'merge',
         'number', 'replace', 'reverse', 'round', 'slice', 'sort', 'split', 'title', 'trim', 'upper', 'values',
     ];
+    /** The bytes a filter may make when the caller does not say: the shop's ceiling for one run. */
+    public const int ROOM = 16 * 1024 * 1024;
+    /** How deep a value may nest for `json` and the host: deeper is a script's mistake, or a value built to blow up. */
+    public const int DEPTH = 64;
+    /** The decimals `number`, `amount` and `round` take, either way. */
+    public const int DECIMALS = 20;
     /** The tests a script may use. */
     public const array TESTS = ['defined', 'empty', 'even', 'iterable', 'list', 'map', 'money', 'null', 'number', 'odd', 'string'];
 
@@ -298,9 +304,13 @@ final class Ops
     }
 
     /**
+     * A filter. What it would make is predicted first where it can grow past its input (`json`, `join`, `split`,
+     * `reverse`, `replace`), so a run out of room stops before the memory is spent, not after.
+     *
      * @param list<mixed> $args
+     * @param int         $room the bytes the run may still make
      */
-    public static function filter(string $name, mixed $value, array $args): mixed
+    public static function filter(string $name, mixed $value, array $args, int $room = self::ROOM): mixed
     {
         switch ($name) {
             case 'abs':
@@ -312,9 +322,19 @@ final class Ops
             case 'first':
                 return \is_array($value) ? ($value === [] ? null : $value[array_key_first($value)]) : mb_substr(self::text($value), 0, 1);
             case 'join':
-                return implode(self::text($args[0] ?? ''), array_map(self::text(...), self::iterable($value)));
+                $separator = self::text($args[0] ?? '');
+                $items = self::iterable($value);
+                self::fits(max(0, \count($items) - 1) * \strlen($separator), $room);
+                $size = 0;
+                $texts = [];
+                foreach ($items as $item) {
+                    $texts[] = $text = self::text($item);
+                    self::fits($size += \strlen($text), $room);
+                }
+
+                return implode($separator, $texts);
             case 'json':
-                return (string) json_encode(self::plain($value), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+                return (string) json_encode(self::plain($value, $room), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             case 'keys':
                 return array_keys(self::iterable($value));
             case 'last':
@@ -333,20 +353,37 @@ final class Ops
             case 'merge':
                 return array_merge(self::iterable($value), self::iterable($args[0] ?? []));
             case 'number':
-                return number_format(self::number($value, 'number'), (int) self::number($args[0] ?? 0, 'number'), self::text($args[1] ?? '.'), self::text($args[2] ?? ','));
+                return number_format(self::number($value, 'number'), self::decimals($args[0] ?? 0, 'number', 0), self::text($args[1] ?? '.'), self::text($args[2] ?? ','));
             case 'amount':
                 // Money (or a number) as decimal text for an API or a form: "1450.00", no thousands separator.
-                return number_format(self::number($value, 'amount'), (int) self::number($args[0] ?? 2, 'amount'), '.', '');
+                return number_format(self::number($value, 'amount'), self::decimals($args[0] ?? 2, 'amount', 0), '.', '');
             case 'replace':
+                $text = self::text($value);
                 $pairs = self::iterable($args[0] ?? []);
+                $pairs = array_combine(array_map(strval(...), array_keys($pairs)), array_map(self::text(...), $pairs));
+                // Each match is replaced once, so the text plus every match's replacement bounds what it makes.
+                $size = \strlen($text);
+                foreach ($pairs as $from => $to) {
+                    if ($from !== '' && \strlen($to) > \strlen($from)) {
+                        self::fits($size += substr_count($text, $from) * (\strlen($to) - \strlen($from)), $room);
+                    }
+                }
 
-                return strtr(self::text($value), array_combine(array_map(strval(...), array_keys($pairs)), array_map(self::text(...), $pairs)));
+                return strtr($text, $pairs);
             case 'reverse':
-                return \is_array($value) ? array_reverse($value, !array_is_list($value)) : implode('', array_reverse(mb_str_split(self::text($value))));
-            case 'round':
-                $decimals = (int) self::number($args[0] ?? 0, 'round');
+                if (\is_array($value)) {
+                    return array_reverse($value, !array_is_list($value));
+                }
+                $text = self::text($value);
+                self::fits(mb_strlen($text) * 16 + \strlen($text), $room);
 
-                return $value instanceof Money ? $value->rounded($decimals) : round(self::number($value, 'round'), $decimals);
+                return implode('', array_reverse(mb_str_split($text)));
+            case 'round':
+                if ($value instanceof Money) {
+                    return $value->rounded(self::decimals($args[0] ?? 0, 'round', 0, Money::DECIMALS));
+                }
+
+                return round(self::number($value, 'round'), self::decimals($args[0] ?? 0, 'round', -self::DECIMALS));
             case 'slice':
                 $start = (int) self::number($args[0] ?? 0, 'slice');
                 $length = isset($args[1]) ? (int) self::number($args[1], 'slice') : null;
@@ -364,8 +401,10 @@ final class Ops
                 return \is_array($value) && array_is_list($value) ? array_values($sorted) : $sorted;
             case 'split':
                 $by = self::text($args[0] ?? '');
+                $text = self::text($value);
+                self::fits(($by === '' ? mb_strlen($text) : substr_count($text, $by) + 1) * 16 + \strlen($text), $room);
 
-                return $by === '' ? mb_str_split(self::text($value)) : explode($by, self::text($value));
+                return $by === '' ? mb_str_split($text) : explode($by, $text);
             case 'title':
                 return mb_convert_case(self::text($value), MB_CASE_TITLE);
             case 'trim':
@@ -419,14 +458,65 @@ final class Ops
         throw new ScriptError(\sprintf('Cannot make text of %s', self::kind($value)));
     }
 
-    /** A value as JSON takes it: money as its amount's text, closures refused. */
-    public static function plain(mixed $value): mixed
+    /**
+     * A value as JSON takes it: money as its amount's text, closures refused. Its size is counted first, as the
+     * run counts bytes, since a list holding itself twice over is small until it is copied out.
+     *
+     * @param int $room the bytes the copy may take
+     */
+    public static function plain(mixed $value, int $room = self::ROOM): mixed
+    {
+        $size = 0;
+        self::measure($value, $room, $size, 0);
+
+        return self::copy($value);
+    }
+
+    /**
+     * Adds a value's bytes to the size, as the run counts them (a string its length, a list 16 per item), and
+     * stops at the room or the depth; it walks no further than the room, however large the value would be.
+     */
+    private static function measure(mixed $value, int $room, int &$size, int $depth): void
+    {
+        if (\is_string($value)) {
+            self::fits($size += \strlen($value), $room);
+        } elseif (\is_array($value)) {
+            if ($depth >= self::DEPTH) {
+                throw new BudgetExceeded(\sprintf('A value nests deeper than %d levels', self::DEPTH));
+            }
+            self::fits($size += \count($value) * 16, $room);
+            foreach ($value as $item) {
+                self::measure($item, $room, $size, $depth + 1);
+            }
+        }
+    }
+
+    /** Stops the run when what a filter would make is more than the bytes it has left. */
+    private static function fits(int $size, int $room): void
+    {
+        if ($size > $room) {
+            throw new BudgetExceeded(\sprintf('The script would make more than its %d bytes of values', $room));
+        }
+    }
+
+    /** The decimals a filter was given, within its bounds. */
+    private static function decimals(mixed $value, string $filter, int $least, int $most = self::DECIMALS): int
+    {
+        $decimals = self::number($value, $filter);
+        if ($decimals < $least || $decimals > $most) {
+            throw new ScriptError(\sprintf('"%s" takes %d to %d decimals', $filter, $least, $most));
+        }
+
+        return (int) $decimals;
+    }
+
+    private static function copy(mixed $value): mixed
     {
         if ($value instanceof Money) {
             return $value->toFixed();
         }
         if (\is_array($value)) {
-            return array_map(self::plain(...), $value);
+            return array_map(self::copy(...), $value);
         }
         if ($value instanceof \Closure) {
             throw new ScriptError('A function cannot be made into data');

@@ -25,7 +25,7 @@ final class GeneratedCodeGate
         '\\' . Catchable::class => T_CATCH,
     ];
     private const array OPS_METHODS = ['truthy', 'get', 'assign', 'eq', 'cmp', 'add', 'sub', 'mul', 'div', 'intdiv', 'mod', 'neg', 'concat', 'in', 'startsWith', 'endsWith', 'range', 'iterable', 'invoke', 'key', 'failure', 'assert', 'filter', 'test'];
-    private const array CONTEXT_METHODS = ['step', 'bytes', 'call'];
+    private const array CONTEXT_METHODS = ['step', 'bytes', 'room', 'call'];
     private const array WORDS = ['strict_types', 'NULL', 'null', 'true', 'false'];
     private const array PUNCTUATION = ['(', ')', '=', ';', '{', '}', ':', '[', ']', ',', '>', '<', '!', '?'];
     private const array KINDS = [
@@ -131,6 +131,11 @@ final class GeneratedCodeGate
         if ($token->is(self::KINDS)) {
             return null;
         }
+        if ($text === '(' && $previous !== null && self::calls($previous)) {
+            // A call by value: `$v_f(…)`, `'passthru'(…)`, `[…](…)`, `(…)(…)`. The compiler calls a closure through
+            // Ops::invoke, so a call is only ever to a method or language construct it names.
+            return \sprintf('a call of a value after %s', $previous->text);
+        }
         if ($token->id === \ord($text[0]) && \strlen($text) === 1 && \in_array($text, self::PUNCTUATION, true)) {
             return null;
         }
@@ -159,6 +164,16 @@ final class GeneratedCodeGate
         }
 
         return \sprintf('the word %s', $text);
+    }
+
+    /** Whether `(` after this token would call what the token gives: a variable, a string, a list or an expression. */
+    private static function calls(\PhpToken $previous): bool
+    {
+        if ($previous->is([T_VARIABLE, T_CONSTANT_ENCAPSED_STRING, T_LNUMBER, T_DNUMBER, T_NAME_FULLY_QUALIFIED])) {
+            return true;
+        }
+
+        return \in_array($previous->text, [')', ']', '}', ...self::WORDS], true);
     }
 
     /** @param list<\PhpToken> $tokens */

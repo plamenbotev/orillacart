@@ -17,7 +17,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * The totals for the addresses and shipping the customer has chosen so far. Changes nothing.
  */
-#[Route('/checkout/summary', methods: ['POST'], capability: Route::PUBLIC)]
+#[Route('/checkout/summary', methods: ['POST'], capability: Route::PUBLIC, guard: 'checkout_summary')]
 final readonly class CheckoutSummaryAction implements RequestHandlerInterface
 {
     public function __construct(

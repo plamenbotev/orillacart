@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tax\Infrastructure\WordPress;
 
+use OrillaCart\Shared\Http\Security\ClientAddress;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use OrillaCart\Tax\Application\Dto\VatCheck;
 use OrillaCart\Tax\Application\VatRegistry;
 use Psr\Log\LoggerInterface;
@@ -22,7 +24,7 @@ final readonly class ViesVatRegistry implements VatRegistry
     /** How long a number VIES could not check is not asked about again. */
     private const int UNAVAILABLE_SECONDS = 300;
 
-    public function __construct(private LoggerInterface $logger) {}
+    public function __construct(private LoggerInterface $logger, private ?RateLimiter $limits = null) {}
 
     public function check(string $prefix, string $number): VatCheck
     {
@@ -30,6 +32,10 @@ final readonly class ViesVatRegistry implements VatRegistry
         $kept = get_transient($key);
         if (\is_array($kept) && \is_string($kept['status'] ?? null)) {
             return new VatCheck($kept['status'], $prefix . $number, \is_string($kept['name'] ?? null) ? $kept['name'] : null);
+        }
+        // A number not asked about before is a call out: so many an hour per caller, then unchecked (VAT charged).
+        if ($this->limits?->hit('vat_checks', 'ip:' . ClientAddress::of($_SERVER)) !== null) {
+            return new VatCheck(VatCheck::UNAVAILABLE, $prefix . $number);
         }
         $response = wp_remote_get(\sprintf(self::URL, rawurlencode($prefix), rawurlencode($number)), ['timeout' => self::TIMEOUT, 'headers' => ['Accept' => 'application/json']]);
         if ($response instanceof \WP_Error) {

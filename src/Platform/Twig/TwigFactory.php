@@ -52,6 +52,8 @@ final readonly class TwigFactory
         if ($this->packages !== null) {
             // The sandbox is on for the extensions' templates only: the loader is the source policy that says which.
             $twig->addExtension(new SandboxExtension(StorefrontSandbox::policy(), false, $this->packages));
+            // And on a budget: capped ranges and formats, and loop turns counted per render.
+            $twig->addExtension(new TemplateBudgetExtension());
             if ($this->words !== null) {
                 // Their __() calls read the extension's words first (design 57).
                 $twig->addExtension(new ExtensionWordsExtension($this->words));

@@ -63,7 +63,7 @@ final class ReturnsTest extends TestCase
     {
         $found = $this->shop->returns->withdrawable(new FindWithdrawableOrder($this->order, 'ADA@example.com'));
         self::assertSame([['line' => 0, 'name' => 'Lamp', 'quantity' => 2]], $found->lines, 'not shipped yet, and still withdrawable');
-        self::assertSame('Ada Lovelace', $found->name);
+        self::assertSame(['number', 'placedAt', 'lines'], array_keys(get_object_vars($found)), 'whoever knows the number and email learns nothing of the buyer');
 
         $withdrawn = $this->shop->returns->withdraw(new DeclareWithdrawal($this->order, 'ada@example.com', 'Ada Lovelace', 'ada.other@example.com', [new ReturnItem(0, 1)]));
 

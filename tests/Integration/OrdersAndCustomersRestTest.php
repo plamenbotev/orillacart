@@ -57,6 +57,19 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         parent::tearDown();
     }
 
+    public function testTheCustomerScreensReachTheShopsCustomersOnlyNotItsStaff(): void
+    {
+        $admin = $this->actAs('administrator');
+        $manager = $this->actAs('orillacart_shop_manager');
+        foreach ([$admin, $manager] as $staff) {
+            self::assertSame(404, $this->request('GET', '/customers/' . $staff)->get_status(), 'staff are not customers to read');
+            self::assertSame(404, $this->request('POST', '/customers/' . $staff . '/welcome', [], nonce: true)->get_status());
+            self::assertSame(404, $this->request('GET', '/customers/' . $staff . '/notes')->get_status());
+        }
+        $made = $this->data($this->request('POST', '/customers', ['email' => 'scope-' . wp_generate_password(6, false) . '@example.com', 'first_name' => 'Ada'], nonce: true));
+        self::assertSame(200, $this->request('GET', '/customers/' . (\is_int($made['id']) ? $made['id'] : 0))->get_status());
+    }
+
     public function testTheOrdersListFiltersAndSortsOnTheDatabase(): void
     {
         $this->actAs('administrator');

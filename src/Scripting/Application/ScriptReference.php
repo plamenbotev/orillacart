@@ -145,9 +145,13 @@ final readonly class ScriptReference
         'http_calls' => 5,
         'queries' => 50,
         'emails' => 5,
+        'emails_per_hour' => 50,
+        'http_calls_per_hour' => 500,
         'query_records' => 200,
         'errors_in_a_row_before_stopped' => 10,
         'route_requests_per_minute' => 120,
+        'template_loop_turns' => 100000,
+        'template_range' => 10000,
     ];
 
     public function __construct(private HostCatalog $catalog, private ?ScriptGuide $guide = null) {}

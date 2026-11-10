@@ -130,6 +130,17 @@ final class HttpKernelTest extends TestCase
         self::assertSame(200, $this->kernel()->handle($request->withAttribute(CsrfMiddleware::CHECKED, true))->getStatusCode());
     }
 
+    public function testABrowserRequestFromAnotherSiteIsRefusedNonceOrNot(): void
+    {
+        $route = $this->route(['POST'], Route::PUBLIC);
+        $request = new ServerRequest('POST', '/wp-json/orillacart/v1/test')->withAttribute(RouteDefinition::ATTRIBUTE, $route)->withHeader(CsrfMiddleware::HEADER, 'good-token');
+
+        self::assertSame(200, $this->kernel()->handle($request->withHeader('Origin', 'https://shop.test'))->getStatusCode());
+        $foreign = $this->kernel()->handle($request->withHeader('Origin', 'https://other.shop.test'));
+        self::assertSame(403, $foreign->getStatusCode(), 'a sibling site on the network holds the same visitor nonce');
+        self::assertSame(200, $this->kernel()->handle($request)->getStatusCode(), 'no Origin: as before');
+    }
+
     public function testRequestsWithoutCookiesNeedNoNonce(): void
     {
         $this->csrf->required = false;

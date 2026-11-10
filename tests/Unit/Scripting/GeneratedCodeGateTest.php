@@ -65,6 +65,13 @@ final class GeneratedCodeGateTest extends TestCase
         yield 'inline HTML' => ["        ?>hi<?php\n", 'the token T_CLOSE_TAG'];
         yield 'a line comment' => ['        // hidden', 'the token T_COMMENT'];
         yield 'goto' => ['        goto a;', 'the token T_GOTO'];
+        yield 'a call of a variable' => ["        return \$v_f('id');", 'a call of a value after $v_f'];
+        yield 'a call of a string' => ["        return 'passthru'('id');", "a call of a value after 'passthru'"];
+        yield 'a call of a list' => ["        return ['a', 'b']();", 'a call of a value after ]'];
+        yield 'a call of a call' => ["        return \\OrillaCart\\Scripting\\Domain\\Ops::get(\$v_x, 'f')('id');", 'a call of a value after )'];
+        yield 'a call of a closure made in place' => ['        return (function () { return null; })();', 'a call of a value after )'];
+        yield 'a call of a member' => ["        return \$this->c->call('x', [])('id');", 'a call of a value after )'];
+        yield 'a call of a word' => ["        return null('id');", 'a call of a value after null'];
         yield 'a callable string' => ["        return \\OrillaCart\\Scripting\\Domain\\Ops::invoke('system', ['ls']);", null];
     }
 

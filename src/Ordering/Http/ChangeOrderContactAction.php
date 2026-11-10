@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -20,6 +21,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Corrects the customer's email, billing and shipping addresses and checkout answers on an order, and answers with the
  * order. A shipment booked to the old address refuses the change.
  */
+#[Tool(risk: Tool::MONEY)]
 #[Route('/orders/{id}/contact', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ChangeOrderContactAction implements RequestHandlerInterface
 {

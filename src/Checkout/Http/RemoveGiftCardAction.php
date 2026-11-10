@@ -13,7 +13,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-#[Route('/cart/gift-cards/{code}', methods: ['DELETE'], capability: Route::PUBLIC, requirements: ['code' => '[^/]{1,40}'])]
+#[Route('/cart/gift-cards/{code}', methods: ['DELETE'], capability: Route::PUBLIC, requirements: ['code' => '[^/]{1,40}'], guard: 'checkout_summary')]
 final readonly class RemoveGiftCardAction implements RequestHandlerInterface
 {
     public function __construct(

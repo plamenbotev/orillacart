@@ -19,4 +19,10 @@ interface CsrfProtection
 
     /** A token for the current user that isTokenValid() accepts for the action. */
     public function newToken(string $action): string;
+
+    /**
+     * Whether a browser's Origin header names the site itself, or an origin the site allows (WordPress's
+     * allowed_http_origins: a storefront on another domain the site set up).
+     */
+    public function allowsOrigin(string $origin): bool;
 }

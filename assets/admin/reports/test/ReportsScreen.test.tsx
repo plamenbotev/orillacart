@@ -172,6 +172,23 @@ describe( 'report helpers', () => {
 		).toBe( '﻿name,net\r\n"Lamp, large",-5\r\n"\'=HYPERLINK(""x"")",' );
 	} );
 
+	it( 'escapes a formula that starts like a number, or with a tab or CR', () => {
+		expect(
+			toCsv(
+				[ 'a' ],
+				[
+					[ "-1+1+cmd|' /C calc'!A0" ],
+					[ '\t=1' ],
+					[ '\r=1' ],
+					[ '-5.25' ],
+					[ -3 ],
+				]
+			)
+		).toBe(
+			"﻿a\r\n'-1+1+cmd|' /C calc'!A0\r\n'\t=1\r\n\"'\r=1\"\r\n-5.25\r\n-3"
+		);
+	} );
+
 	it( 'names the period chosen and the change from the one before', () => {
 		const today = new Date( 2030, 2, 31 );
 		expect( presetOf( '2030-03-02', '2030-03-31', today ) ).toBe( '30d' );

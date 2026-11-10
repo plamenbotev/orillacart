@@ -38,6 +38,14 @@ final class InMemoryAccounts implements Accounts
         return $record === null ? null : new CustomerRecord($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $record->addresses, $record->cartReminders, $record->locale, isset($this->tests[$id]));
     }
 
+    /** @var list<int> staff, who are not customers */
+    public array $staff = [];
+
+    public function isShopCustomer(int $id): bool
+    {
+        return isset($this->accounts[$id]) && !\in_array($id, $this->staff, true);
+    }
+
     public function markTest(int $id): void
     {
         $this->tests[$id] = true;

@@ -159,7 +159,7 @@ final readonly class Returns
             $lines[] = ['line' => $line, 'name' => self::lineAt($order, $line)->name ?? '', 'quantity' => $quantity];
         }
 
-        return new WithdrawableOrderView($order->number, $order->placedAt, trim($order->billing->firstName . ' ' . $order->billing->lastName), $lines);
+        return new WithdrawableOrderView($order->number, $order->placedAt, $lines);
     }
 
     /**

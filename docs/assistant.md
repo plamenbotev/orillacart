@@ -92,6 +92,11 @@ In Shop → Integrations, **Choose…** beside a key (each app you connected has
   revision and cannot ask: the assistant then gives you a link to the shop's approval page, where you, logged in,
   read the same and answer. Once you say yes there, the assistant makes the same call again and it runs, once;
   the link lasts 15 minutes.
+- **Where you say yes**: on the shop's page (the default), or in the app's own window. On the page, every
+  question goes to the shop's approval page behind your login; an app that can open links (URL-mode
+  elicitation) opens it for you. In the app's window, the app reports your answer, so anything that holds the key
+  (the app itself, a script with the key in its settings, a model steered by text in the shop's data) could say
+  yes for you: choose it only for an app you watch.
 - **What it may use**: the shop's areas and each add-on's tools. An area added later is offered until you untick
   it.
 - **How the tools are listed**: all of them (about 230), or three tools that find, describe and run the others,

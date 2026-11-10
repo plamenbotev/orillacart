@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace OrillaCart\Assistant\Infrastructure\WordPress;
 
+use OrillaCart\Shared\WordPress\OutboundRequests;
+
 /**
  * The file a tool sends in place of an upload, written to a temporary file: base64 contents, or an http(s)
- * address the shop fetches with WordPress's safe HTTP, which refuses the site's own network.
+ * address the shop fetches from a public address only (OutboundRequests), every redirect checked as well.
  */
 final readonly class ToolFiles
 {
@@ -70,13 +72,13 @@ final readonly class ToolFiles
         if (!\in_array(\is_string($scheme) ? strtolower($scheme) : '', ['http', 'https'], true)) {
             throw new \InvalidArgumentException('file_url must be an http or https address.');
         }
-        $response = wp_safe_remote_get($url, [
-            'timeout' => 60,
+        $response = OutboundRequests::send($url, [
+            'method' => 'GET',
+            'timeout' => 60.0,
             'stream' => true,
             'filename' => $temporary,
             'limit_response_size' => self::MOST + 1,
-            'redirection' => 3,
-        ]);
+        ], redirects: 3);
         if (is_wp_error($response)) {
             throw new \InvalidArgumentException('The shop could not fetch file_url: ' . $response->get_error_message());
         }

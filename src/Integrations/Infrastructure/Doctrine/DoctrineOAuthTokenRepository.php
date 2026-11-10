@@ -43,6 +43,17 @@ final readonly class DoctrineOAuthTokenRepository implements OAuthTokenRepositor
         $this->entityManager->flush();
     }
 
+    public function removeFor(int $keyId, string $clientId): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->delete(OAuthToken::class, 'token')
+            ->where('IDENTITY(token.key) = :key AND token.clientId = :client')
+            ->setParameter('key', $keyId)
+            ->setParameter('client', $clientId)
+            ->getQuery()
+            ->execute();
+    }
+
     public function removeExpired(\DateTimeImmutable $before): void
     {
         $this->entityManager->createQueryBuilder()

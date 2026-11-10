@@ -184,7 +184,7 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 - respond.error(status, message): refuse the request with a status of 400 to 599 and a message
 - respond.html(template, data?, status?): one of the extension's templates rendered with the data; a route answers it as JSON { html }
 - respond.json(data, status?): the data as JSON
-- respond.redirect(url, status?): send the caller elsewhere
+- respond.redirect(url, status?): send the caller to a path or address of the site, or to a host the extension declared under needs.http
 
 ### settings
 

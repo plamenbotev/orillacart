@@ -15,8 +15,8 @@ final readonly class RedirectResponder
 {
     public function __construct(private ResponseFactoryInterface $responses) {}
 
-    public function to(string $url): ResponseInterface
+    public function to(string $url, int $status = 303): ResponseInterface
     {
-        return $this->responses->createResponse(303)->withHeader('Location', $url);
+        return $this->responses->createResponse($status)->withHeader('Location', $url);
     }
 }

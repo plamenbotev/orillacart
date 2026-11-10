@@ -133,11 +133,6 @@ final readonly class PaymentOutcomes
         if (!$gateway instanceof HandlesNotifications) {
             throw new PaymentMethodNotFound($gatewayId);
         }
-        // The same event once: a provider retrying, or a notification replayed, changes nothing again.
-        $eventId = $gateway instanceof NamesNotifiedEvents ? $gateway->eventId($notification) : null;
-        if ($eventId !== null && $this->handled->wasHandled($gatewayId, $eventId)) {
-            return;
-        }
         if ($gateway instanceof NamesNotifiedPayments) {
             $reference = $gateway->paymentReference($notification);
             if ($reference !== null && $this->payments->findByReference($gatewayId, $reference) === null) {
@@ -156,6 +151,12 @@ final readonly class PaymentOutcomes
             $this->logger->error('Payment method {gateway} failed on a notification: {message}', ['gateway' => $gatewayId, 'message' => $e->getMessage(), 'exception' => $e]);
 
             throw new PaymentProviderUnavailable($this->methods->findByGateway($gatewayId)?->name() ?? $gateway->defaultName(), $e->getMessage(), $e);
+        }
+        // The same event once: a provider retrying, or a notification replayed, changes nothing again. Asked only
+        // once the signature held, so an unsigned request learns nothing of which events the shop has seen.
+        $eventId = $gateway instanceof NamesNotifiedEvents ? $gateway->eventId($notification) : null;
+        if ($eventId !== null && $this->handled->wasHandled($gatewayId, $eventId)) {
+            return;
         }
         $this->act($gatewayId, $gateway, $outcome);
         // Only once acted on: an event that broke on the way is handled when the provider sends it again.
@@ -275,11 +276,17 @@ final readonly class PaymentOutcomes
         return new PaymentHeld($payment->orderId(), $payment->id(), $payment->gateway(), $marker);
     }
 
-    /** Whether what the provider says was paid is the payment's amount; providers that do not say are trusted. */
+    /**
+     * Whether what the provider says was paid is the payment's amount. One that does not say how much is not taken
+     * at its word: the payment waits for the shop to look, as a payment of the wrong amount does. An add-on's
+     * gateway that reads the provider's answer passes the amount it read.
+     */
     private function paysInFull(Payment $payment, PaymentOutcome $outcome): bool
     {
         if ($outcome->amount === null) {
-            return true;
+            $this->logger->warning('{gateway} said payment {payment} was made without saying how much was paid; the order waits for the shop.', ['gateway' => $payment->gateway(), 'payment' => $payment->id()]);
+
+            return false;
         }
         $paid = preg_match('/^\d{1,11}(\.\d{1,4})?$/', $outcome->amount) === 1 ? Money::of($outcome->amount) : Money::zero();
         if (($outcome->currency === null || $outcome->currency === $payment->currency()) && $paid->equals($payment->amount())) {

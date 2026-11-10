@@ -13,6 +13,7 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
+use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
@@ -70,6 +71,27 @@ final class DownloadsTest extends TestCase
         $this->shop->clock->modify('+1 day');
         $this->expectExceptionMessage('There are no downloads left for this file.');
         $this->shop->downloads->open($token, resuming: true);
+    }
+
+    public function testOnlyWhoTheDownloadWentToResumesItAndOnlyAFewTimes(): void
+    {
+        $order = $this->place();
+        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $token = $this->token($this->shop->orders->order($order->number)->downloads[0]->url);
+        $this->shop->downloads->open($token, client: '203.0.113.5');
+        $this->shop->downloads->open($token, client: '203.0.113.5');
+
+        for ($i = 0; $i < DownloadGrant::RESUMES; ++$i) {
+            $this->shop->downloads->open($token, resuming: true, client: '203.0.113.5');
+        }
+        try {
+            $this->shop->downloads->open($token, resuming: true, client: '198.51.100.7');
+            self::fail('another address resumed a download it was not given');
+        } catch (DownloadUnavailable $e) {
+            self::assertSame('There are no downloads left for this file.', $e->getMessage());
+        }
+        $this->expectExceptionMessage('There are no downloads left for this file.');
+        $this->shop->downloads->open($token, resuming: true, client: '203.0.113.5');
     }
 
     public function testLinksStopWorkingWhenTheyExpireOrTheOrderIsRefunded(): void

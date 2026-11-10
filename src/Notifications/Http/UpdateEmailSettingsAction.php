@@ -9,6 +9,7 @@ use OrillaCart\Notifications\Application\EmailSettingsService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -18,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Changes who the shop's emails come from, where the shop's own go, which are turned off, and when the payment and cart
  * reminders go, with which coupon.
  */
+#[Tool(risk: Tool::CUSTOMERS)]
 #[Route('/email-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateEmailSettingsAction implements RequestHandlerInterface
 {

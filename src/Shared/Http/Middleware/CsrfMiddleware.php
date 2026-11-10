@@ -15,7 +15,10 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Requires a valid nonce for the route's nonce action on every request that changes something.
  * The nonce comes in the X-WP-Nonce header (REST) or the _wpnonce field (forms). Signed routes, which payment
- * providers call, verify the provider's signature in their action instead.
+ * providers call, verify the provider's signature in their action instead. A browser's request that carries its
+ * cookies and says it comes from another site (Origin) is refused before the nonce is looked at, and so is its
+ * asking for the visitor's session (which hands out the nonce): a visitor's nonce is the same for every visitor,
+ * so it alone does not tell this site's pages from a sibling site's on the same network.
  */
 final readonly class CsrfMiddleware implements MiddlewareInterface
 {
@@ -34,6 +37,11 @@ final readonly class CsrfMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $route = RouteDefinition::fromRequest($request);
+        $origin = $request->getHeaderLine('Origin');
+        $unsafe = !\in_array(strtoupper($request->getMethod()), ['GET', 'HEAD', 'OPTIONS'], true);
+        if ($origin !== '' && ($unsafe || $route->path === '/session') && $request->getAttribute(self::CHECKED) !== true && $this->csrf->isRequired() && !$this->csrf->allowsOrigin($origin)) {
+            throw new HttpException(403, 'orillacart_foreign_origin', 'This request came from another site.');
+        }
 
         if ($route->needsNonce($request->getMethod()) && $request->getAttribute(self::CHECKED) !== true && $this->csrf->isRequired()) {
             $token = $this->token($request);

@@ -37,14 +37,14 @@ final readonly class TwigRenderer implements TemplateRenderer
     {
         $context = $this->contributed($template, $this->normalized($context));
 
-        return $this->leniently($template, fn(): string => $this->twig->render($template, $context));
+        return $this->budgeted(fn(): string => $this->leniently($template, fn(): string => $this->twig->render($template, $context)));
     }
 
     public function renderBlock(string $template, string $block, array $context = []): string
     {
         $context = $this->contributed($template, $this->normalized($context));
 
-        return $this->leniently($template, fn(): string => $this->twig->load($template)->renderBlock($block, $context));
+        return $this->budgeted(fn(): string => $this->leniently($template, fn(): string => $this->twig->load($template)->renderBlock($block, $context)));
     }
 
     /**
@@ -66,6 +66,25 @@ final readonly class TwigRenderer implements TemplateRenderer
         }
 
         return $context;
+    }
+
+    /**
+     * One render, with what it includes and the slots it reaches, is one budget for the extensions' templates.
+     *
+     * @param \Closure(): string $render
+     */
+    private function budgeted(\Closure $render): string
+    {
+        if (!$this->twig->hasExtension(TemplateBudgetExtension::class)) {
+            return $render();
+        }
+        $budget = $this->twig->getExtension(TemplateBudgetExtension::class);
+        $budget->enter();
+        try {
+            return $render();
+        } finally {
+            $budget->leave();
+        }
     }
 
     /**

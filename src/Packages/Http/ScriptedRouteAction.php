@@ -41,7 +41,7 @@ final readonly class ScriptedRouteAction implements RequestHandlerInterface
 
         return match ($answer->kind) {
             ScriptResponse::JSON => $this->json->ok($answer->data, $answer->status),
-            ScriptResponse::REDIRECT => $this->redirect->to((string) $answer->url),
+            ScriptResponse::REDIRECT => $this->redirect->to((string) $answer->url, $answer->status),
             ScriptResponse::ERROR => $this->json->error($answer->status, $answer->status >= 500 ? 'orillacart_extension_failed' : 'orillacart_extension_refused', $answer->message),
             // REST answers JSON: a rendered template travels in it, for the caller to put where it wants.
             default => $this->json->ok(['html' => $this->templates->render((string) $answer->template, $answer->data ?? [])], $answer->status),

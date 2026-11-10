@@ -11,7 +11,8 @@ final class StoreCreditRestTest extends RestTestCase
 {
     public function testACustomerWithoutStoreCreditHasAnEmptyUnsavedCard(): void
     {
-        $customer = $this->actAs('administrator');
+        $customer = $this->actAs('orillacart_customer');
+        $this->actAs('administrator');
 
         $response = $this->request('GET', '/customers/' . $customer . '/store-credit');
 

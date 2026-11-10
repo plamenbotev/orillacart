@@ -40,6 +40,14 @@ final class InMemoryReviewStore implements ReviewStore
         return $saved;
     }
 
+    /** @var list<string> */
+    public array $accountEmails = [];
+
+    public function isAccountEmail(string $email): bool
+    {
+        return \in_array(strtolower($email), $this->accountEmails, true);
+    }
+
     public function hasReviewed(int $productId, ?int $customerId, string $email): bool
     {
         foreach ($this->reviews as [$saved, $review]) {

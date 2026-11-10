@@ -14,7 +14,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-#[Route('/cart/store-credit', methods: ['PUT'], capability: Route::PUBLIC)]
+#[Route('/cart/store-credit', methods: ['PUT'], capability: Route::PUBLIC, guard: 'checkout_summary')]
 final readonly class UseStoreCreditAction implements RequestHandlerInterface
 {
     public function __construct(

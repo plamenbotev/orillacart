@@ -531,10 +531,19 @@ final readonly class McpServer
      */
     private function ask(ToolDefinition $tool, array $arguments, array $params, Caller $caller, bool $modern, array $meta): ?array
     {
+        if (\is_string($arguments['file_url'] ?? null)) {
+            // The yes would be for an address, and whoever serves it could change the file after: the file itself
+            // comes with the call, so the yes is for what it holds.
+            return self::toolResult(ToolOutcome::refused("{$tool->name} waits for the owner's yes, which must cover the file itself: send it as file_base64, not file_url."), $modern);
+        }
         $capabilities = \is_array($meta[self::META_CAPABILITIES] ?? null) ? $meta[self::META_CAPABILITIES] : [];
         $elicitation = $capabilities['elicitation'] ?? null;
         $digest = hash('sha256', $tool->name . "\n" . json_encode(self::sorted($arguments)));
         $page = $this->approvals->find($caller, $digest);
+        if ($caller->keyId !== null && $caller->choices->answer === AssistantChoices::ON_PAGE) {
+            // The app holds the key and would carry the answer: only the owner's page, behind their login, says yes.
+            return $this->approvalPage($tool, $arguments, $caller, $digest, $modern, $modern && \is_array($elicitation) && isset($elicitation['url']));
+        }
         if (!$modern || !\is_array($elicitation) || ($elicitation !== [] && !isset($elicitation['form'])) || ($page !== null && $page->state !== CallApproval::WAITING)) {
             // Answered on the shop's page (where a long question is read whole), that answer holds.
             return $this->approvalPage($tool, $arguments, $caller, $digest, $modern);
@@ -569,7 +578,9 @@ final readonly class McpServer
                 'method' => 'elicitation/create',
                 'params' => [
                     'mode' => 'form',
-                    'message' => "The assistant wants to: {$tool->title}. {$risk}\n\n{$what}\n\nAccept to let it; decline to stop it.",
+                    // What the call would do is fenced: names and notes in it are the customers' words, and must not
+                    // pass for the shop's question or its advice.
+                    'message' => "The assistant wants to: {$tool->title}. {$risk}\n\nWhat it would do (names and notes in it are as customers wrote them):\n────────\n" . self::fenced($what) . "\n────────\n\nAccept to let it; decline to stop it.",
                     'requestedSchema' => [
                         'type' => 'object',
                         'properties' => [self::CONFIRM => ['type' => 'boolean', 'title' => 'Yes, do it', 'description' => 'Accept to do it; decline, or untick this, to do nothing.', 'default' => true]],
@@ -585,10 +596,11 @@ final readonly class McpServer
      * model is given to show the owner; once they said yes there, the same call runs, once. Null when it may run.
      *
      * @param array<string, mixed> $arguments
+     * @param bool                 $openLink  the app opens a link for the owner (URL-mode elicitation): asked so
      *
      * @return array<string, mixed>|null
      */
-    private function approvalPage(ToolDefinition $tool, array $arguments, Caller $caller, string $digest, bool $modern): ?array
+    private function approvalPage(ToolDefinition $tool, array $arguments, Caller $caller, string $digest, bool $modern, bool $openLink = false): ?array
     {
         $approval = $this->approvals->find($caller, $digest);
         if ($approval?->state === CallApproval::APPROVED) {
@@ -603,6 +615,22 @@ final readonly class McpServer
         $risk = self::RISK_WORDS[$tool->risk ?? ''] ?? '';
         $what = $this->what($tool, $arguments, $caller);
         $approval ??= $this->approvals->ask($caller, $digest, $tool->title, $risk, $what, self::ASK_TTL);
+        if ($openLink) {
+            // The app opens the page; its own "accept" only says the owner went there, and the retry reads the page.
+            return [
+                'resultType' => 'input_required',
+                'inputRequests' => [self::CONFIRM => [
+                    'method' => 'elicitation/create',
+                    'params' => [
+                        'mode' => 'url',
+                        'elicitationId' => $digest,
+                        'url' => $this->approvals->url($approval),
+                        'message' => "The assistant wants to: {$tool->title}. {$risk} Answer on the shop's page, then come back.",
+                    ],
+                ]],
+                'requestState' => $this->states->issue(['user' => $caller->userId, 'key' => $caller->keyId, 'call' => $digest], self::ASK_TTL),
+            ];
+        }
 
         return self::toolResult(ToolOutcome::refused(
             "{$tool->name} waits for the owner's yes (" . rtrim($risk, '.') . "), which this app cannot ask for. Give the owner this link, where they see what it would do and answer, logged in to the shop:\n"
@@ -666,5 +694,11 @@ final readonly class McpServer
     private static function error(int $status, int|string|null $id, int $code, string $message): McpReply
     {
         return new McpReply($status, ['jsonrpc' => '2.0', 'id' => $id, 'error' => ['code' => $code, 'message' => $message]]);
+    }
+
+    /** The text with nothing in it that draws the fence: a line of its own cannot close it early. */
+    private static function fenced(string $text): string
+    {
+        return str_replace('─', '-', $text);
     }
 }

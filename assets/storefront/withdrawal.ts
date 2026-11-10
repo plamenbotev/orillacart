@@ -10,7 +10,6 @@ import { clearErrors, failure, showErrors, showMessage } from './dom';
 
 interface Withdrawable {
 	number: number;
-	name: string;
 	lines: { line: number; name: string; quantity: number }[];
 }
 
@@ -59,10 +58,6 @@ export function bindWithdrawal( form: HTMLFormElement ): void {
 		}
 		found = result.data;
 		showMessage( form, '' );
-		const name = field( 'name' );
-		if ( name && name.value === '' ) {
-			name.value = result.data.name;
-		}
 		if ( lines && items ) {
 			lines.replaceChildren(
 				...result.data.lines.map( ( line ) => {

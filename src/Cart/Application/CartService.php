@@ -377,7 +377,7 @@ final readonly class CartService
             return null;
         }
         $newToken = self::token();
-        $cart->rekey($newToken);
+        $cart->recovered($newToken);
         $this->carts->save($cart);
 
         return $newToken;

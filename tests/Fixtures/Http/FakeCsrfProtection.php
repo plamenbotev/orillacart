@@ -31,4 +31,12 @@ final class FakeCsrfProtection implements CsrfProtection
     {
         return $this->validTokens[$action] ??= bin2hex(random_bytes(5));
     }
+
+    /** @var list<string> */
+    public array $origins = ['https://shop.test'];
+
+    public function allowsOrigin(string $origin): bool
+    {
+        return \in_array($origin, $this->origins, true);
+    }
 }

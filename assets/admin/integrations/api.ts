@@ -130,6 +130,8 @@ export interface AssistantChoices {
 	list: 'all' | 'find';
 	/** The risks that wait for the owner's yes. */
 	ask: string[];
+	/** Where the owner says yes: on the shop's page (logged in), or in the app's own window. */
+	answer?: 'page' | 'app';
 }
 
 /** The assistant's endpoint and its tools by area, as GET /orillacart/v1/assistant returns them. */

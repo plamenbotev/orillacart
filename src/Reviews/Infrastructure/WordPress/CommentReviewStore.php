@@ -72,6 +72,11 @@ final readonly class CommentReviewStore implements ReviewStore
         return self::review($comment, []);
     }
 
+    public function isAccountEmail(string $email): bool
+    {
+        return $email !== '' && email_exists($email) !== false;
+    }
+
     public function hasReviewed(int $productId, ?int $customerId, string $email): bool
     {
         // Spam too: 'all' is only published and held, and someone marked spam would review again and again.

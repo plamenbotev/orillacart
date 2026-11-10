@@ -14,6 +14,7 @@ use OrillaCart\Notifications\Domain\BackInStockRequests;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRuleViolation;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -38,6 +39,7 @@ final readonly class BackInStock
         private Site $site,
         private Jobs $jobs,
         private ClockInterface $clock,
+        private ?RateLimiter $limits = null,
     ) {}
 
     /**
@@ -62,6 +64,10 @@ final readonly class BackInStock
             throw new EmailRuleViolation('It is not sold out: you can order it now.', 'orillacart_not_sold_out');
         }
         $email = strtolower(trim($command->email));
+        // An address typed in by anyone: so many items a day may write to it, not every item the shop has.
+        if (!$this->requests->has($item, $email) && $this->limits?->hit('back_in_stock_address', 'email:' . hash('sha256', $email)) !== null) {
+            throw new EmailRuleViolation('This email asked to hear of enough items today.', 'orillacart_back_in_stock_enough');
+        }
         if (!$this->requests->has($item, $email)) {
             $this->requests->save(new BackInStockRequest($item, $offer->id, $email, $locale, $this->clock->now()));
         }

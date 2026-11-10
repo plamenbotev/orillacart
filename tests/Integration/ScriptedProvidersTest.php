@@ -50,7 +50,7 @@ final class ScriptedProvidersTest extends RestTestCase
             if notification.headers["x-sign"] != settings.api_key { fail refused("not signed") }
             let event = notification.json
             if event == null { return null }
-            return event.status == "paid" ? payment.completed(event.ref, "TX-" ~ event.ref) : payment.failed(event.ref)
+            return event.status == "paid" ? payment.completed(event.ref, "TX-" ~ event.ref, money(event.amount), "EUR") : payment.failed(event.ref)
           }
           fn refund(request, settings) {
             if request.amount > money("50") { fail refused("Refunds up to 50 only.") }
@@ -124,7 +124,7 @@ final class ScriptedProvidersTest extends RestTestCase
         self::assertSame(['P7', 'completed', 'TX-P7', '12.5000', 'EUR'], [$outcome->reference, $outcome->status, $outcome->transactionId, $outcome->amount, $outcome->currency]);
         self::assertSame('cancelled', $gateway->returned('P7', new PaymentReturn([], true), $settings)->status);
 
-        $paid = $gateway->notified(new Notification(['X-Sign' => 'k1'], (string) json_encode(['ref' => 'P7', 'status' => 'paid'])), $settings);
+        $paid = $gateway->notified(new Notification(['X-Sign' => 'k1'], (string) json_encode(['ref' => 'P7', 'status' => 'paid', 'amount' => '12.50'])), $settings);
         self::assertSame('completed', $paid?->status);
         self::assertNull($gateway->notified(new Notification(['X-Sign' => 'k1'], 'not json'), $settings), 'nothing to say');
         try {

@@ -19,13 +19,23 @@ final readonly class DoctrineDownloadGrantRepository implements DownloadGrantRep
         return $this->entityManager->getRepository(DownloadGrant::class)->findOneBy(['token' => $token]);
     }
 
-    public function consume(DownloadGrant $grant, \DateTimeImmutable $at): bool
+    public function consume(DownloadGrant $grant, \DateTimeImmutable $at, string $by = ''): bool
     {
         // One statement, so two downloads at once cannot both take the last one.
         $changed = $this->entityManager->createQuery(
-            'UPDATE ' . DownloadGrant::class . ' g SET g.downloads = g.downloads + 1, g.lastDownloadedAt = :at, g.remaining = CASE WHEN g.remaining IS NULL THEN g.remaining ELSE g.remaining - 1 END
+            'UPDATE ' . DownloadGrant::class . ' g SET g.downloads = g.downloads + 1, g.lastDownloadedAt = :at, g.lastDownloadedBy = :by, g.resumesLeft = :resumes, g.remaining = CASE WHEN g.remaining IS NULL THEN g.remaining ELSE g.remaining - 1 END
              WHERE g.id = :id AND (g.remaining IS NULL OR g.remaining > 0)',
-        )->setParameter('id', $grant->id())->setParameter('at', $at, 'datetime_immutable')->execute();
+        )->setParameter('id', $grant->id())->setParameter('at', $at, 'datetime_immutable')->setParameter('by', $by)->setParameter('resumes', DownloadGrant::RESUMES)->execute();
+        $this->entityManager->refresh($grant);
+
+        return $changed === 1;
+    }
+
+    public function resume(DownloadGrant $grant, string $by): bool
+    {
+        $changed = $this->entityManager->createQuery(
+            'UPDATE ' . DownloadGrant::class . ' g SET g.resumesLeft = g.resumesLeft - 1 WHERE g.id = :id AND g.resumesLeft > 0 AND g.lastDownloadedBy = :by',
+        )->setParameter('id', $grant->id())->setParameter('by', $by)->execute();
         $this->entityManager->refresh($grant);
 
         return $changed === 1;

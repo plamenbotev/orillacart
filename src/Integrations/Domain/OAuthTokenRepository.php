@@ -18,6 +18,9 @@ interface OAuthTokenRepository
 
     public function remove(OAuthToken $token): void;
 
+    /** Every token the app holds for the key: when a code it was given comes back a second time. */
+    public function removeFor(int $keyId, string $clientId): void;
+
     /** Forgets the tokens whose refresh ran out before then. */
     public function removeExpired(\DateTimeImmutable $before): void;
 }

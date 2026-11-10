@@ -35,10 +35,19 @@ final readonly class TransientRateLimiter implements RateLimiter
         'cart' => [120, 600],
         'checkout_contact' => [20, 600],
         'session' => [120, 600],
+        // The checkout summary priced again as the form changes, a bundle priced as options are picked, store
+        // credit and gift cards taken off the cart: each prices the whole cart, and may ask a carrier or a register.
+        'checkout_summary' => [240, 600],
+        'quotes' => [240, 600],
+        // VAT numbers checked at VIES that it had not been asked about: each is a call out, and a row kept a day.
+        'vat_checks' => [20, 3600],
         'receipts' => [60, 600],
         'receipt_links' => [5, 3600],
         'order_lookup' => [5, 3600],
         'back_in_stock' => [10, 3600],
+        // To one address, from everyone: carts it is reminded of, items it waits for.
+        'reminder_address' => [3, 86400],
+        'back_in_stock_address' => [10, 86400],
         // Each may cost the shop a lookup at an address register.
         'address_check' => [30, 3600],
         'returns' => [10, 3600],
@@ -51,8 +60,12 @@ final readonly class TransientRateLimiter implements RateLimiter
         'settings_tests' => [20, 600],
         // An extension's routes, all of them together, per caller.
         'extensions' => [120, 600],
+        // What one extension's scripts send out, all their runs together.
+        'extension_emails' => [50, 3600],
+        'extension_http' => [500, 3600],
         // OAuth for AI assistants: anyone may register an app or ask for tokens.
         'oauth_register' => [20, 3600],
+        'oauth_register_any' => [200, 3600],
         'oauth_token' => [120, 600],
     ];
 
@@ -83,6 +96,7 @@ final readonly class TransientRateLimiter implements RateLimiter
             return null;
         }
         [$max, $seconds] = [$limit[0], $limit[1]];
+        $caller = self::network($caller);
         $now = time();
         $window = intdiv($now, $seconds);
         $ends = ($window + 1) * $seconds;
@@ -90,6 +104,24 @@ final readonly class TransientRateLimiter implements RateLimiter
         $count = $this->cached($bucket, $ends - $now) ?? $this->counted($bucket, $ends, $now);
 
         return $count > $max ? $ends - $now : null;
+    }
+
+    /**
+     * An IPv6 caller by its /64: one connection is given a whole /64 to pick addresses from, so counting each
+     * address would give one caller billions of tries. IPv4 addresses, and callers that are no address, as they are.
+     */
+    public static function network(string $caller): string
+    {
+        if (!str_starts_with($caller, 'ip:')) {
+            return $caller;
+        }
+        $address = substr($caller, 3);
+        $binary = filter_var($address, \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV6) === false ? false : @inet_pton($address);
+        if ($binary === false || \strlen($binary) !== 16) {
+            return $caller;
+        }
+
+        return 'ip:' . bin2hex(substr($binary, 0, 8)) . '::/64';
     }
 
     /** The count in the external object cache, whose add and incr are atomic; null for a site without one. */

@@ -9,7 +9,7 @@ namespace OrillaCart\Shared\WordPress;
  * declared host, a webhook. It goes only to a public address: never to the server itself, the private network or
  * a cloud's metadata service (169.254.169.254). The host is resolved once and the connection pinned to what it
  * resolved to, so a name cannot answer a public address to the check and a private one to the connection. It
- * follows no redirect: a redirect would be a second address nobody checked. A site in development may call its
+ * follows a redirect only when the caller allows, and checks its address as the first one. A site in development may call its
  * own local names (localhost, *.test, *.local) when the caller allows it. The checking and pinning happen in the
  * request's own filters (Integrations' PublicOnlyRequests), for the requests sent through here.
  */
@@ -19,20 +19,37 @@ final class OutboundRequests
     public const string PUBLIC_ONLY = 'orillacart_public_only';
 
     /**
-     * As wp_remote_request(): the response, or a WP_Error, also when the address is not one to call.
+     * As wp_remote_request(): the response, or a WP_Error, also when the address is not one to call. Redirects are
+     * followed only when $redirects allows, each one checked as the first address was (a GET from then on, as
+     * browsers do for 301, 302 and 303).
      *
      * @param array<string, mixed> $args
      *
      * @return array<string, mixed>|\WP_Error
      */
-    public static function send(string $url, array $args, bool $allowLocal = false): array|\WP_Error
+    public static function send(string $url, array $args, bool $allowLocal = false, int $redirects = 0): array|\WP_Error
     {
         $args['redirection'] = 0;
-        $host = strtolower((string) parse_url($url, \PHP_URL_HOST));
-        $args[self::PUBLIC_ONLY] = !($allowLocal && self::local($host) && self::development());
-
-        // @phpstan-ignore argument.type (WordPress passes keys it does not know on to its filters, as this one is)
-        return wp_remote_request($url, $args);
+        for ($hop = 0; ; ++$hop) {
+            $host = strtolower((string) parse_url($url, \PHP_URL_HOST));
+            $args[self::PUBLIC_ONLY] = !($allowLocal && self::local($host) && self::development());
+            // @phpstan-ignore argument.type (WordPress passes keys it does not know on to its filters, as this one is)
+            $response = wp_remote_request($url, $args);
+            $status = \is_array($response) ? (int) wp_remote_retrieve_response_code($response) : 0;
+            $location = \is_array($response) ? wp_remote_retrieve_header($response, 'location') : '';
+            if ($hop >= $redirects || $status < 300 || $status > 399 || !\is_string($location) || $location === '') {
+                return $response;
+            }
+            $next = \WP_Http::make_absolute_url($location, $url);
+            if (!\in_array(strtolower((string) parse_url($next, \PHP_URL_SCHEME)), ['http', 'https'], true)) {
+                return new \WP_Error('orillacart_unsafe_address', \sprintf('%s redirected to %s, which is not a web address.', $url, $next));
+            }
+            if ($status !== 307 && $status !== 308) {
+                $args['method'] = 'GET';
+                unset($args['body']);
+            }
+            $url = $next;
+        }
     }
 
     /**

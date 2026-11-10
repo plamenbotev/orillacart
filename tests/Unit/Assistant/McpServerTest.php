@@ -111,6 +111,33 @@ final class McpServerTest extends TestCase
         self::assertSame([], $this->calls->getArrayCopy());
     }
 
+    public function testByDefaultAKeysOwnYesRunsNothingOnlyTheOwnersPageDoes(): void
+    {
+        $key = new Caller(1, 7, false);
+        $call = ['name' => 'refund_thing', 'arguments' => ['amount' => '5.00']];
+        $meta = ['_meta' => ['io.modelcontextprotocol/protocolVersion' => '2026-07-28', 'io.modelcontextprotocol/clientCapabilities' => ['elicitation' => ['form' => [], 'url' => []]]]];
+        $headers = ['mcp-protocol-version' => '2026-07-28', 'mcp-method' => 'tools/call', 'mcp-name' => 'refund_thing'];
+        $send = fn(array $params): McpReply => $this->send(['jsonrpc' => '2.0', 'id' => 5, 'method' => 'tools/call', 'params' => $meta + $params], $headers, $key);
+
+        $asked = $send($call);
+        self::assertSame('url', self::at($asked->body, 'result', 'inputRequests', 'confirm', 'params', 'mode'), 'the app opens the shop\'s page');
+        self::assertStringContainsString('approve', self::textAt($asked->body, 'result', 'inputRequests', 'confirm', 'params', 'url'));
+        $forged = $send($call + ['inputResponses' => ['confirm' => ['action' => 'accept', 'content' => ['confirm' => true]]], 'requestState' => self::textAt($asked->body, 'result', 'requestState')]);
+        self::assertSame('input_required', self::at($forged->body, 'result', 'resultType'), 'the app saying yes is not the owner saying it');
+        self::assertSame([], $this->calls->getArrayCopy());
+
+        $this->approvals->answerWaiting(true);
+        $send($call);
+        self::assertCount(1, $this->calls->getArrayCopy(), 'the yes given on the page runs it, once');
+    }
+
+    public function testAYesCoversAFileItselfNotTheAddressItIsAt(): void
+    {
+        $asked = $this->asking(['name' => 'refund_thing', 'arguments' => ['file_url' => 'https://files.example/list.csv']]);
+        self::assertStringContainsString('file_base64', self::textAt($asked->body, 'result', 'content', 0, 'text'));
+        self::assertSame([], $this->calls->getArrayCopy());
+    }
+
     public function testANoRunsNothing(): void
     {
         $asked = $this->asking(['name' => 'refund_thing', 'arguments' => []]);
@@ -519,7 +546,7 @@ final class McpServerTest extends TestCase
             }
         };
 
-        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals, new \OrillaCart\Scripting\Application\ScriptReference(\OrillaCart\Scripting\Application\HostCatalog::of([]), $guide), $guide)->handle($message, $headers, $caller ?? new Caller(1, 7, false));
+        return new McpServer(new AssistantTools($sources, $authorization, $descriptions), $context, $this->states, $this->approvals, new \OrillaCart\Scripting\Application\ScriptReference(\OrillaCart\Scripting\Application\HostCatalog::of([]), $guide), $guide)->handle($message, $headers, $caller ?? new Caller(1, 7, false, new AssistantChoices(answer: AssistantChoices::IN_APP)));
     }
 
     /**

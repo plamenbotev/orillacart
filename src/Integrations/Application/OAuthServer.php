@@ -331,6 +331,11 @@ final readonly class OAuthServer
     {
         $code = \is_string($form['code'] ?? null) ? $form['code'] : '';
         $grant = $code === '' ? null : $this->codes->redeem($code);
+        $spent = $grant === null && $code !== '' ? $this->codes->spent($code) : null;
+        if ($spent !== null && \is_int($spent['key'] ?? null) && \is_string($spent['client'] ?? null)) {
+            // The code came back after it was used: someone else has it, so what it gave ends too.
+            $this->tokens->removeFor($spent['key'], $spent['client']);
+        }
         if ($grant === null || ($grant['client'] ?? null) !== $clientId) {
             throw new OAuthError('invalid_grant', 'The code is not one the shop gave this app, or it ran out or was used.');
         }

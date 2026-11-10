@@ -18,6 +18,8 @@ use Doctrine\ORM\Mapping as ORM;
 class DownloadGrant
 {
     public const int RESUME_HOURS = 24;
+    /** Resumes of one counted download: enough for a connection that keeps breaking, not a second copy a day. */
+    public const int RESUMES = 10;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -30,6 +32,14 @@ class DownloadGrant
     /** When a download was last counted: a browser resuming it soon after is not counted again. */
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $lastDownloadedAt = null;
+
+    /** Who the last counted download went to (a hash of their address): only they resume it. */
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $lastDownloadedBy = null;
+
+    /** How many more times the last counted download may be resumed without counting another. */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $resumesLeft = 0;
 
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'grants')]
@@ -143,10 +153,25 @@ class DownloadGrant
         return $this->lastDownloadedAt;
     }
 
-    /** Whether the rest of the last counted download can still be fetched without counting another. */
-    public function resumes(\DateTimeImmutable $now): bool
+    public function lastDownloadedBy(): ?string
+    {
+        return $this->lastDownloadedBy;
+    }
+
+    public function resumesLeft(): int
+    {
+        return $this->resumesLeft;
+    }
+
+    /**
+     * Whether the rest of the last counted download can still be fetched without counting another: by whoever it
+     * went to, soon after, a few times.
+     */
+    public function resumes(\DateTimeImmutable $now, string $by): bool
     {
         return $this->order->isPaid()
+            && $this->lastDownloadedBy !== null && hash_equals($this->lastDownloadedBy, $by)
+            && $this->resumesLeft > 0
             && ($this->expiresAt === null || $this->expiresAt >= $now)
             && $this->lastDownloadedAt !== null
             && $this->lastDownloadedAt > $now->modify(\sprintf('-%d hours', self::RESUME_HOURS));

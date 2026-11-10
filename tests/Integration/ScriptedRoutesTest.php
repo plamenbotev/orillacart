@@ -28,7 +28,7 @@ final class ScriptedRoutesTest extends RestTestCase
         route POST "/echo" { who: manager } fn(request) {
           return respond.json({ got: request.body, manager: request.user.manager }, 201)
         }
-        route GET "/away" { who: public } fn(request) { return respond.redirect("https://example.com/") }
+        route GET "/away" { who: public } fn(request) { return respond.redirect("/thanks?from=away", 307) }
         route GET "/nope" { who: public } fn(request) { return respond.error(418, "No tea.") }
         route GET "/mine" { who: account } fn(request) { return { id: request.user.id } }
         route GET "/page" { who: public } fn(request) { return respond.html("hello.html.twig", { who: "Ada", total: money("12.5"), lines: [{ price: money("3") }] }) }
@@ -103,8 +103,8 @@ final class ScriptedRoutesTest extends RestTestCase
         self::assertSame(401, $this->request('POST', '/x/pages/echo', ['a' => 1])->get_status(), 'a manager route refuses a guest');
 
         $away = $this->request('GET', '/x/pages/away');
-        self::assertSame(303, $away->get_status(), 'as the shop redirects');
-        self::assertSame('https://example.com/', $away->get_headers()['Location'] ?? null);
+        self::assertSame(307, $away->get_status(), 'the status the script asked for');
+        self::assertSame('/thanks?from=away', $away->get_headers()['Location'] ?? null, 'a path of the site; another host is refused (RespondRedirectTest)');
 
         $nope = $this->request('GET', '/x/pages/nope');
         self::assertSame([418, 'No tea.'], [$nope->get_status(), $this->data($nope)['message']]);

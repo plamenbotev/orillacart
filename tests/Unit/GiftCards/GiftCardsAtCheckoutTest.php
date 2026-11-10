@@ -273,6 +273,18 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertStringContainsString('had spent 10 of 25 EUR: settle that with the customer', $notes);
     }
 
+    public function testARefundThatNamesNoItemsLeavesTheCardsForTheShopToJudge(): void
+    {
+        $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
+        $placed = $this->shop->checkout->placeOrder($this->cart([20, 2]), $this->order('bank_transfer', null));
+        $this->shop->orders->markPaid($placed->number, null);
+
+        $this->shop->refunds->refund($placed->number, new MakeRefund('5', outside: true), 1);
+
+        self::assertSame([true, true], array_map(static fn($card): bool => $card->active, $this->cards()), 'which card the money was for, the shop knows');
+        self::assertStringContainsString('gift cards that still spend', (string) $this->shop->orders->order($placed->number)->attention);
+    }
+
     public function testACardWhoseEmailDidNotGoIsForTheShopToSendAgain(): void
     {
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));

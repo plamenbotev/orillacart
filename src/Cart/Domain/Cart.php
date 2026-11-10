@@ -518,6 +518,16 @@ class Cart
         $this->recoverHash = self::hash($token);
     }
 
+    /**
+     * The reminder's link brought the cart back: it works once. Sent on to someone else, a link that kept working
+     * would let whoever sent it open the cart again later and see what was added, and the email given.
+     */
+    public function recovered(string $token): void
+    {
+        $this->rekey($token);
+        $this->recoverHash = null;
+    }
+
     /** Forgets the email given at checkout, as a privacy request asks. */
     public function forgetContact(): void
     {

@@ -60,6 +60,13 @@ final class ReviewsTest extends TestCase
         $this->reviews->write(20, new WriteReview(1, 'Again.', 'Bobby', 'BOB@example.com'), null);
     }
 
+    public function testAGuestDoesNotReviewUnderACustomersEmail(): void
+    {
+        $this->store->accountEmails = ['ada@example.com'];
+        $this->expectExceptionMessage('This email has an account: log in to review the product.');
+        $this->reviews->write(20, new WriteReview(1, 'Awful.', 'Ada', 'ada@example.com'), null);
+    }
+
     public function testAnUnpaidOrderMakesNoBuyer(): void
     {
         $ada = $this->shop->accounts->add('ada@example.com');

@@ -55,6 +55,31 @@ final class Context
         return $value;
     }
 
+    /** The seconds the run has left, host calls' time included; stops the run when there are none. */
+    public function secondsLeft(): float
+    {
+        $left = $this->budget->seconds - (hrtime(true) / 1e9 - $this->startedAt);
+        if ($left <= 0) {
+            throw new BudgetExceeded(\sprintf('The script ran longer than %s seconds', $this->budget->seconds));
+        }
+
+        return $left;
+    }
+
+    /** Counts the bytes of text a host function made, as bytes() does. */
+    public function text(string $text): string
+    {
+        $this->bytes($text);
+
+        return $text;
+    }
+
+    /** The bytes the run may still make: what a filter checks before it makes them. */
+    public function room(): int
+    {
+        return max(0, $this->budget->bytes - $this->bytes);
+    }
+
     /**
      * Calls a host function by its dotted name as the script wrote it.
      *
@@ -70,6 +95,8 @@ final class Context
         $this->allow($function);
         $this->count($function);
         $this->step();
+        // The time host calls waited (HTTP, mail, queries) is the script's own: none starts once it is spent.
+        $this->secondsLeft();
 
         return ($function->callable)($this, ...$captured, ...$args);
     }

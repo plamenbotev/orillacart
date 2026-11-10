@@ -11,6 +11,7 @@ use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
+use OrillaCart\Shared\Security\Capability;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
@@ -41,6 +42,16 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         $user = get_userdata($id);
 
         return $user instanceof \WP_User ? $this->record($user) : null;
+    }
+
+    public function isShopCustomer(int $id): bool
+    {
+        $user = get_userdata($id);
+        if (!$user instanceof \WP_User || (is_multisite() && !is_user_member_of_blog($id))) {
+            return false;
+        }
+
+        return !is_super_admin($id) && !user_can($user, 'manage_options') && !user_can($user, Capability::MANAGE_SHOP);
     }
 
     public function isRegistered(string $email): bool

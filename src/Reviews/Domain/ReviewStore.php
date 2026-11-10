@@ -24,6 +24,9 @@ interface ReviewStore
     /** Whether the person reviewed the product already: published, waiting, or marked spam. */
     public function hasReviewed(int $productId, ?int $customerId, string $email): bool;
 
+    /** Whether the email is an account's on the site: a guest does not review under it. */
+    public function isAccountEmail(string $email): bool;
+
     /**
      * The product's published reviews, newest first.
      *

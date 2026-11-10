@@ -27,4 +27,9 @@ final readonly class WordPressCsrfProtection implements CsrfProtection
     {
         return wp_create_nonce($action);
     }
+
+    public function allowsOrigin(string $origin): bool
+    {
+        return is_allowed_http_origin($origin) !== '';
+    }
 }

@@ -15,6 +15,10 @@ final readonly class AssistantChoices
 {
     public const string ALL_TOOLS = 'all';
     public const string FIND_ON_DEMAND = 'find';
+    /** The owner answers on the shop's own page, logged in: the yes is theirs, whatever the app says. */
+    public const string ON_PAGE = 'page';
+    /** The owner answers in the app's own window (MCP elicitation): the app reports the answer, and is trusted to. */
+    public const string IN_APP = 'app';
 
     /**
      * @param list<string> $offAreas the areas whose tools it is not offered ("Ordering", an add-on's name): an area
@@ -23,6 +27,8 @@ final readonly class AssistantChoices
      * @param string            $list   all: every tool is listed; find: three tools find, describe and run them
      * @param list<string>      $ask    the risks (Tool::RISKS) that wait for the owner's yes: a risk that comes
      *                                  later, with an update, waits too until the owner unticks it
+     * @param string            $answer where the owner answers: on the shop's page (the default: an app that holds
+     *                                  the key could answer its own question), or in the app's window
      */
     public function __construct(
         #[Assert\Count(max: 100)]
@@ -35,6 +41,8 @@ final readonly class AssistantChoices
         public string $list = self::ALL_TOOLS,
         #[Assert\All([new Assert\Choice(choices: Tool::RISKS)])]
         public array $ask = Tool::RISKS,
+        #[Assert\Choice(choices: [self::ON_PAGE, self::IN_APP])]
+        public string $answer = self::ON_PAGE,
     ) {}
 
     /**
@@ -55,17 +63,18 @@ final readonly class AssistantChoices
             \is_array($stored['ask'] ?? null)
                 ? array_values(array_filter(Tool::RISKS, static fn(string $risk): bool => \in_array($risk, $strings($stored['ask']), true) || !\in_array($risk, $strings($stored['risks'] ?? []), true)))
                 : Tool::RISKS,
+            ($stored['answer'] ?? null) === self::IN_APP ? self::IN_APP : self::ON_PAGE,
         );
     }
 
     /**
      * The choices to store, with the risks there were to choose from, so a later one is not taken as unticked.
      *
-     * @return array{offAreas: list<string>, off: list<string>, list: string, ask: list<string>, risks: list<string>}
+     * @return array{offAreas: list<string>, off: list<string>, list: string, ask: list<string>, risks: list<string>, answer: string}
      */
     public function toArray(): array
     {
-        return ['offAreas' => $this->offAreas, 'off' => $this->off, 'list' => $this->list, 'ask' => $this->ask, 'risks' => Tool::RISKS];
+        return ['offAreas' => $this->offAreas, 'off' => $this->off, 'list' => $this->list, 'ask' => $this->ask, 'risks' => Tool::RISKS, 'answer' => $this->answer];
     }
 
     public function offers(ToolDefinition $tool): bool

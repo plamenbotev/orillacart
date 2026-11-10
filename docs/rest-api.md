@@ -216,6 +216,7 @@ Chooses what the AI assistant that uses a key is offered, and which risks wait f
   - `off` (list<string>): at most 1000 items
   - `list` (string): one of all, find; default 'all'
   - `ask` (list<string>): each one of money, deleting, customers, opening, publishing
+  - `answer` (string): one of page, app; default 'page'
 
 ## /assistant
 
@@ -347,7 +348,7 @@ Removes a carrier and its rates; placed orders keep its name.
 
 ### `POST /cart/checkout-contact`
 
-The checkout page tells of the customer at checkout with their cart: the email so far, and whether they ask to be reminded of the cart if they leave it.
+The checkout page tells of the customer at checkout with their cart: the email so far, and whether they ask to be reminded of the cart if they leave it. So many carts an address may be reminded of a day: an address typed in by someone else is not sent reminder after reminder; past that, the cart keeps the email and no reminder.
 
 - Who: anyone; needs a nonce (not with an API key); at most 20 every ten minutes from each address
 - Body (JSON):
@@ -378,7 +379,7 @@ How far the shopper's cart is from free shipping, as the Free shipping progress 
 
 ### `DELETE /cart/gift-cards/{code}`
 
-- Who: anyone; needs a nonce (not with an API key)
+- Who: anyone; needs a nonce (not with an API key); at most 240 every ten minutes from each address
 
 ### `POST /cart/given/{code}`
 
@@ -414,7 +415,7 @@ The promotions the shopper's cart gets and what it still needs for others, a low
 
 ### `PUT /cart/store-credit`
 
-- Who: anyone; needs a nonce (not with an API key)
+- Who: anyone; needs a nonce (not with an API key); at most 240 every ten minutes from each address
 - Body (JSON):
   - `use` (bool): default true
 
@@ -468,7 +469,7 @@ What the add-ons' address checks say of the addresses on the checkout form, befo
 
 The totals for the addresses and shipping the customer has chosen so far. Changes nothing.
 
-- Who: anyone; needs a nonce (not with an API key)
+- Who: anyone; needs a nonce (not with an API key); at most 240 every ten minutes from each address
 - Body (JSON):
   - `shipping_country` (string|null): matches `/^[A-Z]{2}$/`
   - `shipping_state` (string|null): matches `/^[A-Z0-9]{1,3}$/`
@@ -1964,7 +1965,7 @@ Saves a product's shop details all at once: price, sale, tax, stock, shipping, i
 
 A bundle's price and stock with the customer's choices, for the product page while they choose: the price is shown as the page shows prices. Changes nothing, so it is a POST only to carry the choices.
 
-- Who: anyone; needs a nonce (not with an API key)
+- Who: anyone; needs a nonce (not with an API key); at most 240 every ten minutes from each address
 - Body (JSON):
   - `bundle_choices` (list<int>): at most 100 items; each more than 0
 
@@ -2336,7 +2337,7 @@ Shows the search engine the shop uses, how far behind its index is, and products
 
 ### `PUT /search-engine`
 
-Switches the search engine after checking OpenSearch answers; the view says what the check found.
+Switches the search engine after checking OpenSearch answers; the view says what the check found. Pointing the shop at an OpenSearch server is the site administrator's (`manage_options`): its address may be anywhere on the server's network, and the shop sends it requests and reads the answers. A shop manager switches back to the database search.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):

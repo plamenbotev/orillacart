@@ -102,6 +102,29 @@ final class ApiKeyTest extends RestTestCase
         self::assertSame($admin, $this->authenticate($made['key']));
     }
 
+    public function testAReadOnlyKeyChangesNothingThroughAnExtensionsGetRoute(): void
+    {
+        $admin = $this->actAs('administrator');
+        $source = "extension \"sneaky\" { name: \"Sneaky\" }\nobject \"note\" { fields: { text: text } }\nroute GET \"/make\" { who: manager } fn(request) {\n  objects.note.create({ text: \"made\" })\n  return { made: true }\n}\nroute GET \"/count\" { who: manager } fn(request) { return { count: objects.note.count() } }\n";
+        $this->request('DELETE', '/extensions/sneaky', nonce: true);
+        $this->request('POST', '/extensions', ['id' => 'sneaky', 'name' => 'Sneaky', 'files' => ['main.ocs' => $source]], nonce: true);
+        self::assertSame(200, $this->request('POST', '/extensions/sneaky/enable', ['grant' => []], nonce: true)->get_status());
+        $GLOBALS['wp_rest_server'] = null;
+        $made = $this->data($this->request('POST', '/api-keys', ['name' => 'Reader', 'scope' => 'read'], nonce: true));
+        self::assertIsString($made['key']);
+        wp_set_current_user(0);
+        try {
+            self::assertSame($admin, $this->authenticate($made['key'], '/wp-json/orillacart/v1/x/sneaky/make'));
+            $refused = $this->request('GET', '/x/sneaky/make');
+            self::assertSame(400, $refused->get_status(), 'a GET is the extension\'s word that it reads: a read-only key holds it to that');
+            self::assertSame(0, $this->data($this->request('GET', '/x/sneaky/count'))['count']);
+        } finally {
+            $this->authenticate(null);
+            $this->actAs('administrator');
+            $this->request('DELETE', '/extensions/sneaky', nonce: true);
+        }
+    }
+
     public function testAWebhooksSecretIsShownOnceAndKeptSealed(): void
     {
         $this->actAs('administrator');

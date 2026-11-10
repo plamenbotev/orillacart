@@ -13,6 +13,13 @@ interface Accounts
 {
     public function find(int $id): ?CustomerRecord;
 
+    /**
+     * Whether the user is one of this shop's customers, for the screens a manager reads and changes customers on:
+     * a user of this site (on a network) who is not its staff (an administrator, a shop manager, a super admin).
+     * Other users' details are not the shop's to show.
+     */
+    public function isShopCustomer(int $id): bool;
+
     /** Whether the email has an account at this shop: on a network, a user of this site. */
     public function isRegistered(string $email): bool;
 

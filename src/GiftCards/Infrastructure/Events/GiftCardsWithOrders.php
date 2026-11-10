@@ -11,6 +11,7 @@ use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Domain\OrderStatus;
+use OrillaCart\Payment\Domain\Event\PaymentInQuestion;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -44,6 +45,12 @@ final readonly class GiftCardsWithOrders
     public function paid(OrderPaid $event): void
     {
         $this->sales->issueFor($event->orderId);
+    }
+
+    #[AsEventListener]
+    public function disputed(PaymentInQuestion $event): void
+    {
+        $this->sales->disputed($event->orderId);
     }
 
     #[AsEventListener]

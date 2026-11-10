@@ -57,6 +57,7 @@ final class AbandonedCartsTest extends TestCase
         self::assertNotNull($token);
         self::assertSame(1, $this->shop->carts->cart(new CartOwner($token))->cart->items);
         self::assertSame(0, $this->shop->carts->cart($owner)->cart->items);
+        self::assertNull($this->shop->carts->recover($link[1]), 'the link works once: passed on, it does not let the sender back in');
 
         $order = $this->shop->checkout->placeOrder(new CartOwner($token), new PlaceOrder('ada@example.com', $this->address(), payment: 'bank_transfer'));
         [$from, $until] = $this->today();
