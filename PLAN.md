@@ -623,12 +623,12 @@ Design 62 (`docs/designs/62-test-data.md`): records made to try the shop out nev
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 380 | P1 | The mail guard: no email to a reserved name (example.com, .test, .invalid, …) or the site's own (`orillacart_undeliverable_address`), about a test order, or to a test customer; logged, answered as sent | |
-| ✅ | 381 | P1 | The test mark: `test: true` on `create_customer`, `create_order`, `shop.orders.create`; a test customer's orders are test orders, checkout included; set only when made | |
-| ✅ | 382 | P1 | A test order takes no invoice or credit note (no gaps in the series), issues no gift card, is told to no webhook or tax service | |
-| ✅ | 383 | P2 | Left out of the reports, lifetime values and exports; `test=yes|no` on the orders list; "Test" badges on the orders list, the order and the customer screens | |
-| ✅ | 384 | P2 | `GET /test-data` and `DELETE /test-data` (`remove_test_data`, asks): open test orders cancelled so stock comes back, then removed with the test customers' accounts | |
-| ✅ | 385 | P2 | `shop.orders.create` emails the customer only with `email_customer: true`; the order map's `test` | |
+| ✅ | 380 | P1 | The mail guard: no email to a reserved name (example.com, .test, .invalid, …) or the site's own (`orillacart_undeliverable_address`), about a test order, or to a test customer; logged, answered as sent | d6ca9410 |
+| ✅ | 381 | P1 | The test mark: `test: true` on `create_customer`, `create_order`, `shop.orders.create`; a test customer's orders are test orders, checkout included; set only when made | d6ca9410 |
+| ✅ | 382 | P1 | A test order takes no invoice or credit note (no gaps in the series), issues no gift card, is told to no webhook or tax service | d6ca9410 |
+| ✅ | 383 | P2 | Left out of the reports, lifetime values and exports; `test=yes|no` on the orders list; "Test" badges on the orders list, the order and the customer screens | d6ca9410 |
+| ✅ | 384 | P2 | `GET /test-data` and `DELETE /test-data` (`remove_test_data`, asks): open test orders cancelled so stock comes back, then removed with the test customers' accounts | d6ca9410 |
+| ✅ | 385 | P2 | `shop.orders.create` emails the customer only with `email_customer: true`; the order map's `test` | d6ca9410 |
 
 ## Deliberately not carried over
 
