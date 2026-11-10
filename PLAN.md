@@ -825,11 +825,11 @@ What held back the session building an extension over MCP; each was read in the 
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 522 | P2 | Every file save (and delete, check, enable, disable, settings save) answered with the whole extension, every file's content in it (~115 KB a save). A save answers with the file saved; the others are listed without content (`null`), which the editor keeps from what it read (`withContents`); reading, installing, importing and restoring answer with all | |
-| ✅ | 523 | P1 | Saving one setting stored the untouched ones as empty or off (`SettingValues::accept` read a setting left out as sent empty), so `save_package_settings` with one key broke a live offer; the same for payment and shipping settings. A setting left out keeps its saved value (one an update no longer takes is as never saved); sent empty or false, it is cleared | |
-| ✅ | 524 | P3 | A secret without `goes_with` goes with every other setting, so a one-setting save still forgets it, by design. The static check now says so where the secret is declared, naming `goes_with: [...]` or `[]` | |
-| ✅ | 525 | P2 | The order map had the shipping option's name only: `shipping_option` is its id (`rate:4`, `carrier:12:express`, `pickup:12:3`), as `order_fee`'s query and `shop.orders.create` name it (API 23) | |
-| ✅ | 526 | P2 | A customer whose account keeps no address (a guest's orders taken into an account, "don't remember") read as without one. Their latest order's addresses then, with `addresses_from_order` its number (API 23) | |
+| ✅ | 522 | P2 | Every file save (and delete, check, enable, disable, settings save) answered with the whole extension, every file's content in it (~115 KB a save). A save answers with the file saved; the others are listed without content (`null`), which the editor keeps from what it read (`withContents`); reading, installing, importing and restoring answer with all | 8bf08e99 |
+| ✅ | 523 | P1 | Saving one setting stored the untouched ones as empty or off (`SettingValues::accept` read a setting left out as sent empty), so `save_package_settings` with one key broke a live offer; the same for payment and shipping settings. A setting left out keeps its saved value (one an update no longer takes is as never saved); sent empty or false, it is cleared | 8bf08e99 |
+| ✅ | 524 | P3 | A secret without `goes_with` goes with every other setting, so a one-setting save still forgets it, by design. The static check now says so where the secret is declared, naming `goes_with: [...]` or `[]` | 8bf08e99 |
+| ✅ | 525 | P2 | The order map had the shipping option's name only: `shipping_option` is its id (`rate:4`, `carrier:12:express`, `pickup:12:3`), as `order_fee`'s query and `shop.orders.create` name it (API 23) | 8bf08e99 |
+| ✅ | 526 | P2 | A customer whose account keeps no address (a guest's orders taken into an account, "don't remember") read as without one. Their latest order's addresses then, with `addresses_from_order` its number (API 23) | 8bf08e99 |
 
 ## Deliberately not carried over
 
