@@ -22,5 +22,7 @@ final readonly class CustomerRecord
         public bool $cartReminders = true,
         /** The language their profile names; null for the site's. */
         public ?string $locale = null,
+        /** Made to try the shop out (design 62). */
+        public bool $test = false,
     ) {}
 }

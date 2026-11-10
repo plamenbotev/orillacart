@@ -127,8 +127,10 @@ final readonly class ManualOrders
      */
     public function create(CreateOrder $command, ?int $userId): OrderView
     {
+        $test = $command->test;
         if ($command->customerId !== null) {
-            $this->customers->customer($command->customerId);
+            // An order of a customer made to try the shop out is a test order too (design 62).
+            $test = $this->customers->customer($command->customerId)->test || $test;
         }
         $billingAddress = $this->addresses->require($command->billing, 'billing', soldToCountry: false);
         $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->addresses->require($command->shippingAddress, 'shipping', soldToCountry: false);
@@ -139,7 +141,7 @@ final readonly class ManualOrders
 
         $failed = $this->failures->mark();
         // In the site's language, which the order has for its emails, whichever the admin's is (design 51).
-        $order = $this->languages->in(null, fn(): OrderView => $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId, $failed): OrderView {
+        $order = $this->languages->in(null, fn(): OrderView => $this->transactions->run(function () use ($command, $billingAddress, $shippingAddress, $currency, $userId, $failed, $test): OrderView {
             [$priced, $reverse] = $this->priced(
                 self::items($command->items),
                 new TaxAddress($shippingAddress->country, $shippingAddress->state, $shippingAddress->postcode, $shippingAddress->city, $shippingAddress->street),
@@ -186,6 +188,7 @@ final readonly class ManualOrders
                 importScheme: $priced['import']->scheme,
                 importNumber: $priced['import']->charges ? $priced['import']->number : null,
                 shopFields: $shopAnswers,
+                test: $test,
             ));
             // The shop's automatic discounts count their uses as at checkout; the shop enters no codes.
             $this->discounts->redeem($order->number, $priced['discounts']->coupons, $command->customerId, $command->email);

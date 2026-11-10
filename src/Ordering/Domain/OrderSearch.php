@@ -68,6 +68,8 @@ final readonly class OrderSearch
         public array $markedIds = [],
         public ?string $currency = null,
         public array $addOnMarks = [],
+        /** true for the test orders only, false for none of them, null for all (design 62) */
+        public ?bool $test = null,
     ) {}
 
     public static function ofCustomer(int $customerId): self

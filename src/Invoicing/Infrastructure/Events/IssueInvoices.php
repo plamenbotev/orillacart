@@ -34,6 +34,9 @@ final readonly class IssueInvoices
     #[AsEventListener(priority: 10)]
     public function refunded(OrderRefunded $event): void
     {
-        $this->send->forDocument($this->invoices->creditNote($event->orderId, $event->amount, array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($event->quantities), array_values($event->quantities)), $event->taxes));
+        $number = $this->invoices->creditNote($event->orderId, $event->amount, array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($event->quantities), array_values($event->quantities)), $event->taxes);
+        if ($number !== null) {
+            $this->send->forDocument($number);
+        }
     }
 }

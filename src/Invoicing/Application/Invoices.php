@@ -43,8 +43,8 @@ final readonly class Invoices
     ) {}
 
     /**
-     * The invoice of an order that was just paid, by its number; nothing when it has one. Run it in the payment's
-     * transaction.
+     * The invoice of an order that was just paid, by its number; nothing when it has one, or for a test order,
+     * which takes no number of the shop's series (design 62). Run it in the payment's transaction.
      *
      * @throws OrderNotFound
      */
@@ -56,21 +56,28 @@ final readonly class Invoices
             }
         }
         $order = $this->orders->inCustomerWords($orderId);
+        if ($order->test) {
+            return null;
+        }
 
         return $this->issue($orderId, InvoiceKind::Invoice, Money::of($order->total), $order->currency, []);
     }
 
     /**
-     * The credit note of money given back. Run it in the refund's transaction.
+     * The credit note of money given back; none for a test order, which took no invoice (design 62). Run it in the
+     * refund's transaction.
      *
      * @param list<array{line: int, quantity: int}>                       $lines
      * @param list<array{name: string, percent: string, amount: string}> $taxes the tax inside the amount, by rate
      *
      * @throws OrderNotFound
      */
-    public function creditNote(int $orderId, string $amount, array $lines, array $taxes = []): string
+    public function creditNote(int $orderId, string $amount, array $lines, array $taxes = []): ?string
     {
         $order = $this->orders->inCustomerWords($orderId);
+        if ($order->test) {
+            return null;
+        }
 
         return $this->issue($orderId, InvoiceKind::CreditNote, Money::of($amount), $order->currency, $lines, $taxes);
     }

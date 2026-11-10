@@ -10,6 +10,7 @@ use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\QuoteOrder;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Dto\SaveCoupon;
+use OrillaCart\Customers\Application\TestData;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Pricing\Adjustment;
@@ -151,6 +152,45 @@ final class ManualOrdersTest extends TestCase
         $told = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer', emailCustomer: true), 7);
         self::assertSame(["ada@example.com: [Lamp Shop] We received your order #{$told->number}"], $this->shop->mail->summary(), 'the customer, not the shop that took it');
         self::assertSame('on_hold', $quiet->status);
+    }
+
+    /** Design 62: a test order takes no invoice number, no lifetime value, and is removed whole. */
+    public function testATestOrderIsKeptOutOfTheBooksAndRemovedWithTheTestData(): void
+    {
+        $customerId = $this->shop->accounts->register('grace@example.com', 'secret12', 'Grace', 'Hopper');
+        $sale = $this->shop->manualOrders->create(new CreateOrder('grace@example.com', self::address('BG'), [new EditedItem(20, 1)], customerId: $customerId, paid: true), 7);
+        $test = $this->shop->manualOrders->create(new CreateOrder('grace@example.com', self::address('BG'), [new EditedItem(20, 2)], customerId: $customerId, paid: true, test: true), 7);
+
+        self::assertFalse($sale->test);
+        self::assertTrue($test->test);
+        self::assertCount(1, $this->shop->invoiceRecords->ofOrder($sale->number), 'a sale takes its invoice');
+        self::assertSame([], $this->shop->invoiceRecords->ofOrder($test->number), 'a test order takes no number of the series');
+        self::assertSame(1, $this->shop->customers->customer($customerId)->lifetimeValue?->paidOrders, 'the test order is not counted');
+
+        self::assertSame([$test->number], $this->shop->orders->testOrders());
+        $removed = new TestData($this->shop->orders, $this->shop->accounts, $this->shop->customers)->remove();
+        self::assertSame([1, 0], [$removed->orders, $removed->customers]);
+        self::assertSame([], $this->shop->orders->testOrders());
+        self::assertSame($sale->number, $this->shop->orders->order($sale->number)->number, 'the sale stays');
+
+        try {
+            $this->shop->orders->removeTest($sale->number);
+            self::fail('a sale removed as test data');
+        } catch (\OrillaCart\Ordering\Domain\OrderRuleViolation $e) {
+            self::assertSame('orillacart_order_not_test', $e->errorCode);
+        }
+    }
+
+    public function testATestCustomersOrdersAreTestOrders(): void
+    {
+        $made = $this->shop->customers->create(new \OrillaCart\Customers\Application\Dto\CreateCustomer('tester@shop.dev', 'Test', 'Buyer', test: true));
+        self::assertTrue($made->test);
+        $order = $this->shop->manualOrders->create(new CreateOrder('tester@shop.dev', self::address('BG'), [new EditedItem(20, 1)], customerId: $made->id), 7);
+        self::assertTrue($order->test, 'an order of a test customer is a test order');
+
+        $removed = new TestData($this->shop->orders, $this->shop->accounts, $this->shop->customers)->remove();
+        self::assertSame([1, 1], [$removed->orders, $removed->customers]);
+        self::assertNull($this->shop->accounts->find($made->id));
     }
 
     public function testAPaidOrderStartsProcessing(): void

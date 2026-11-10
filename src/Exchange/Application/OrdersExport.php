@@ -66,6 +66,8 @@ final readonly class OrdersExport
     {
         $columns = $this->choice->chosen(ExportKind::Orders, $this->columns->all());
         $file->start(array_map(ColumnChoice::id(...), $columns), array_map($this->choice->label(...), $columns));
+        // Test orders are not the shop's sales: an export leaves them out unless it asks for them (design 62).
+        $query = $query->test === null ? $query->withTest('no') : $query;
         $this->summaries->each($this->orders->search($query, forShop: true), self::BATCH, function (array $orders) use ($file, $columns, $between): void {
             foreach ($orders as $order) {
                 $file->row(array_map(fn(Column|OrderColumn $column): string => $this->value($column, $order), $columns));

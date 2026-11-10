@@ -116,6 +116,7 @@ The logged-in customer's orders, newest first. Whatever customer the query names
   - `delivery_until` (string|null): a date, Y-m-d
   - `has` (string|null): matches `/^[a-z][a-z0-9_]{0,39}(,[a-z][a-z0-9_]{0,39}){0,19}$/`
   - `currency` (string|null): matches `/^[A-Z]{3}$/`
+  - `test` (string|null): one of yes, no
 
 ### `GET /account/orders/{id}`
 
@@ -696,6 +697,7 @@ The shop makes a customer's account itself: an email that has none, a name, a pa
   - `last_name` (string): at most 200 characters
   - `password` (string|null): 8 to 200 characters
   - `group_ids` (list<int>): each more than 0
+  - `test` (bool): default false
 
 ### `GET /customers/{id}`
 
@@ -1498,6 +1500,7 @@ Lists a page of orders, newest first, found by number, customer, product and mor
   - `delivery_until` (string|null): a date, Y-m-d
   - `has` (string|null): matches `/^[a-z][a-z0-9_]{0,39}(,[a-z][a-z0-9_]{0,39}){0,19}$/`
   - `currency` (string|null): matches `/^[A-Z]{3}$/`
+  - `test` (string|null): one of yes, no
 
 ### `POST /orders`
 
@@ -1518,6 +1521,7 @@ The shop takes an order itself, as on the phone or in person: it is priced and t
   - `pickup_point` (string|null): at most 64 characters
   - `vat_number` (string|null): at most 20 characters; matches `/^[A-Za-z0-9 .\-]*$/`
   - `fields` (array): at most 100 items
+  - `test` (bool): default false
 
 ### `GET /orders/facets`
 
@@ -2898,6 +2902,20 @@ Replaces the tax settings: by which address the shop taxes, whether prices inclu
   - `same_price_everywhere` (bool): default true
   - `shipping_taxed_as_items` (bool): default false
   - `eu_threshold` (string|null): matches `/^\d{1,12}(\.\d{1,2})?$/`
+
+## /test-data
+
+### `GET /test-data`
+
+How many test orders and test customers the shop has: those made to try it out, never emailed and not counted.
+
+- Who: shop managers
+
+### `DELETE /test-data`
+
+Removes every test order (an open one cancelled first, so its stock comes back) and every test customer's account; answers how many went. Sales and real customers are never touched.
+
+- Who: shop managers; needs a nonce (not with an API key)
 
 ## /translations
 

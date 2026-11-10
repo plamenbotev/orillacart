@@ -26,6 +26,8 @@ final readonly class OrderSummaryView
         public bool $needsAttention = false,
         /** The money came, whether or not it was given back since: such an order stays for the books. */
         public bool $paid = false,
+        /** Placed to try the shop out (design 62). */
+        public bool $test = false,
     ) {}
 
     public static function fromOrder(Order $order, bool $forShop = false): self
@@ -43,6 +45,7 @@ final readonly class OrderSummaryView
             $order->placedAt()->format(\DATE_ATOM),
             $forShop && $order->attention() !== null,
             $order->paidAt() !== null,
+            test: $order->isTest(),
         );
     }
 }

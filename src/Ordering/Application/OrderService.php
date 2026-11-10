@@ -136,6 +136,10 @@ final readonly class OrderService
             $command->shopFields,
         ));
         $order->addNote('Order placed.', NoteAuthor::System, false, $this->clock->now());
+        if ($command->test) {
+            $order->markAsTest();
+            $order->addNote('A test order: it is not emailed and not counted.', NoteAuthor::System, false, $this->clock->now());
+        }
         $this->orders->save($order);
         $this->stock->record(self::takenOf($command->lines), new StockNote(StockReason::Sale, $order->id()));
         $this->events->dispatch(new OrderPlaced($order->id()));
@@ -324,6 +328,7 @@ final readonly class OrderService
             markedIds: $markedIds,
             currency: $query->currency,
             addOnMarks: array_values(array_intersect($has, array_keys($addOnFilters))),
+            test: $query->test === null ? null : $query->test === 'yes',
         );
     }
 
@@ -804,6 +809,42 @@ final readonly class OrderService
             $this->orders->remove($order);
             $this->events->dispatch(new OrderDeleted($id));
         });
+    }
+
+    /**
+     * Removes a test order (design 62), whatever its status: an open one is cancelled first, so the stock it took
+     * comes back, then it goes with all it kept. A sale is never removed this way.
+     *
+     * @throws OrderNotFound
+     * @throws OrderRuleViolation for an order that is not a test order
+     */
+    public function removeTest(int $id): void
+    {
+        $order = $this->get($id);
+        if (!$order->isTest()) {
+            throw new OrderRuleViolation('Order #%d is a sale, not a test order: it stays.', 'orillacart_order_not_test', values: [$id]);
+        }
+        // Still open: cancelled, so the stock it took comes back. One shipped or completed keeps its stock as sold.
+        if (\in_array($order->status(), [OrderStatus::PendingPayment, OrderStatus::OnHold, OrderStatus::Processing], true)) {
+            $this->cancel($id, 'Removed with the test data.');
+        }
+        $this->changing($id, function (Order $order) use ($id): void {
+            $this->events->dispatch(new OrderDeleting($id));
+            $this->orders->remove($order);
+            $this->events->dispatch(new OrderDeleted($id, test: true));
+        });
+    }
+
+    /**
+     * The test orders' numbers, a page at a time (design 62).
+     *
+     * @return list<int>
+     */
+    public function testOrders(int $limit = 200): array
+    {
+        [$orders] = $this->orders->search(new OrderSearch(test: true), 0, $limit);
+
+        return array_map(static fn(Order $order): int => $order->id(), $orders);
     }
 
     /**

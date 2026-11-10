@@ -850,10 +850,12 @@ run: a reminder run that has more to send pushes a job per email (§12).
 
 **Placing an order.** `shop.orders.create({ email, customer_id, billing: { first_name, last_name, street, city,
 postcode, country, state, phone }, shipping_address, items: [{ product_id, quantity, option_ids, unit_price }],
-shipping_option, payment, paid, note, fields })` places it as the shop does by hand: priced as checkout prices it
-(a `unit_price` as agreed, else the catalogue's, with the extension's own adjusters applying), its stock taken,
-the checkout's questions answered with `fields`, on hold until paid unless `paid` says so, the customer emailed
-as the shop's settings say. It answers the order map; what the shop refuses (an item out of stock, a way to pay
+shipping_option, payment, paid, note, fields, email_customer, test })` places it as the shop does by hand:
+priced as checkout prices it (a `unit_price` as agreed, else the catalogue's, with the extension's own adjusters
+applying), its stock taken, the checkout's questions answered with `fields`, on hold until paid unless `paid`
+says so. The customer is emailed only when `email_customer` is true. `test: true` makes it a test order: never
+emailed, no invoice number, not counted, removed with the shop's test data; an order of a test customer is one
+anyway. The order map's `test` says which an order is, so an `on order_paid` handler can leave test orders out. It answers the order map; what the shop refuses (an item out of stock, a way to pay
 it does not offer) is a refusal the script may catch or pass on.
 
 Writing to the shop's own records stays narrow: an extension marks and annotates, places orders as the shop

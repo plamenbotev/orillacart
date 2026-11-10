@@ -19,6 +19,8 @@ final class InMemoryAccounts implements Accounts
     public array $wishlists = [];
     /** @var array<int, CustomerRecord> users of another shop of the network, by id */
     public array $elsewhere = [];
+    /** @var array<int, true> */
+    public array $tests = [];
     private int $nextId = 100;
 
     public function add(string $email, string $firstName = 'Ada', string $lastName = 'Lovelace'): int
@@ -31,7 +33,31 @@ final class InMemoryAccounts implements Accounts
 
     public function find(int $id): ?CustomerRecord
     {
-        return $this->accounts[$id] ?? null;
+        $record = $this->accounts[$id] ?? null;
+
+        return $record === null ? null : new CustomerRecord($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $record->addresses, $record->cartReminders, $record->locale, isset($this->tests[$id]));
+    }
+
+    public function markTest(int $id): void
+    {
+        $this->tests[$id] = true;
+    }
+
+    public function isTestEmail(string $email): bool
+    {
+        $id = $this->idOf($email);
+
+        return $id !== null && isset($this->tests[$id]);
+    }
+
+    public function testIds(): array
+    {
+        return array_keys($this->tests);
+    }
+
+    public function remove(int $id): void
+    {
+        unset($this->accounts[$id], $this->tests[$id]);
     }
 
     public function idOf(string $email): ?int

@@ -51,12 +51,16 @@ abstract class RestTestCase extends TestCase
         // One closure, kept, so remove_filter() finds the same one.
         $this->mailCatcher = $this->catchMail(...);
         add_filter('pre_wp_mail', $this->mailCatcher, 10, 2);
+        // The catcher is the mail system here: the tests' example.com addresses reach it (design 62's guard is
+        // tested with the rule on, in TestDataRestTest).
+        add_filter('orillacart_undeliverable_address', '__return_false');
     }
 
     protected function tearDown(): void
     {
         if ($this->mailCatcher !== null) {
             remove_filter('pre_wp_mail', $this->mailCatcher);
+            remove_filter('orillacart_undeliverable_address', '__return_false');
         }
         if ($this->uploadCheck !== null) {
             remove_filter('orillacart_genuine_upload', $this->uploadCheck);

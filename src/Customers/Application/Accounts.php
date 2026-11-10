@@ -62,4 +62,20 @@ interface Accounts
      * @return array{list<CustomerRecord>, int}
      */
     public function search(?string $text, int $offset, int $limit): array;
+
+    /** Marks the account as made to try the shop out (design 62): never emailed, removed with the test data. */
+    public function markTest(int $id): void;
+
+    /** Whether the account of that email, if any, was made to try the shop out. */
+    public function isTestEmail(string $email): bool;
+
+    /**
+     * The accounts made to try the shop out.
+     *
+     * @return list<int>
+     */
+    public function testIds(): array;
+
+    /** Removes the account from the site; on a network, from this site only. */
+    public function remove(int $id): void;
 }

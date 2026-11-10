@@ -130,7 +130,7 @@ final class WebhooksTest extends TestCase
     public function testTheShopsEventsAreQueuedForWebhooksInsideTheirTransaction(): void
     {
         $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::ORDER_PLACED]));
-        $announce = new AnnounceToWebhooks($this->webhooks);
+        $announce = new AnnounceToWebhooks($this->webhooks, $this->shop->orderRecords);
         $this->shop->events->addListener(OrderPaid::class, $announce->orderPaid(...));
         $this->shop->events->addListener(OrderPlaced::class, $announce->orderPlaced(...));
         $queuedAt = [];

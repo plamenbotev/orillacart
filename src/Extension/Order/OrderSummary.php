@@ -43,5 +43,7 @@ final readonly class OrderSummary
         public string $note,
         public array $fields,
         public array $fees = [],
+        /** Placed to try the shop out: never emailed, not counted (API 22). */
+        public bool $test = false,
     ) {}
 }

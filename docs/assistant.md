@@ -122,6 +122,20 @@ Besides tools, the server offers a resource, `orillacart://shop`, with the shop 
 currency, whether visitors can order, what still stops it), and three prompts: **Set up my shop**, **Review
 today's orders** and **What is running low**.
 
+## Trying the shop out
+
+An assistant that tries the shop out (a test customer, a test order, an extension's checkout) marks what it makes
+as test data: `create_customer` and `create_order` take `test: true`, and every order of a test customer is a test
+order too. Test data is never emailed, whatever its address; a test order takes no invoice number, issues no gift
+card, is told to no webhook and no tax service, and is left out of the reports, lifetime values and exports (the
+orders list shows it with a "Test" badge; `GET /orders?test=yes` lists it). `show_test_data` counts it and
+`remove_test_data` removes it: open test orders are cancelled first, so their stock comes back, then they and the
+test customers' accounts go. Sales and real customers are never touched.
+
+Besides, no email ever goes to an address that cannot be delivered: the names reserved for examples and tests
+(`example.com`, `.test`, `.invalid` and the like). A site adds its own with the filter
+`orillacart_undeliverable_address`.
+
 ## Protocol
 
 The endpoint speaks MCP's Streamable HTTP transport with JSON answers: revision 2026-07-28 (stateless,

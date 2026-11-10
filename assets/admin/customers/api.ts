@@ -8,6 +8,8 @@ export interface Customer {
 	extensions?: Record< string, Record< string, unknown > > | null;
 	id: number;
 	email: string;
+	/** Made to try the shop out (design 62): never emailed, their orders not counted. */
+	test?: boolean;
 	first_name: string;
 	last_name: string;
 	registered_at: string;

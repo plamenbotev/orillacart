@@ -288,6 +288,9 @@ final readonly class CustomerService
             // No password given: one nobody knows, until the customer sets theirs through the lost-password link.
             $id = $this->accounts->register($email, $command->password ?? bin2hex(random_bytes(24)), trim($command->firstName), trim($command->lastName));
         }
+        if ($command->test) {
+            $this->accounts->markTest($id);
+        }
 
         return $this->customer($id);
     }

@@ -32,7 +32,7 @@ import {
 } from './api';
 import { TaxExemptions } from './TaxExemptions';
 import { shopDateTime, shopDate } from '../shared/dates';
-import { Columns, Section } from '../shared/ui';
+import { Badge, Columns, Section } from '../shared/ui';
 import { ExtensionFieldsSection } from '../shared/ExtensionFields';
 
 interface CustomerCardProps {
@@ -70,6 +70,14 @@ export function CustomerCard( {
 							<a href={ `mailto:${ customer.email }` }>
 								{ customer.email }
 							</a>
+							{ customer.test && (
+								<>
+									{ ' ' }
+									<Badge tone="neutral">
+										{ __( 'Test customer', 'orillacart' ) }
+									</Badge>
+								</>
+							) }
 						</p>
 						<Value customer={ customer } />
 						{ groups.length > 0 && (

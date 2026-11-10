@@ -43,6 +43,10 @@ final readonly class GiftCardSales
             return 0;
         }
         $order = $this->orders->order($orderId);
+        if ($order->test) {
+            // A card from a test order would be money anyone could spend (design 62).
+            return 0;
+        }
         $now = $this->clock->now();
         $made = [];
         foreach ($order->lines as $line) {

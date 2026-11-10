@@ -188,6 +188,7 @@ final class Values
             'note' => $order->note,
             'fields' => $order->fields,
             'fees' => self::record($order->fees),
+            'test' => $order->test,
         ];
     }
 
@@ -271,6 +272,8 @@ final class Values
             Ops::truthy($map['paid'] ?? false),
             self::text($map['note'] ?? ''),
             $fields,
+            Ops::truthy($map['email_customer'] ?? false),
+            Ops::truthy($map['test'] ?? false),
         );
     }
 

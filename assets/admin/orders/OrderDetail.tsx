@@ -65,7 +65,7 @@ import { type ItemRow, ItemRows } from './ItemRows';
 import { RefundsCard } from './RefundsCard';
 import { fetchGroups, type TaxGroup } from '../tax/api';
 import { useOtherLanguages } from '../shared/Translations';
-import { Columns, Page, Skeleton } from '../shared/ui';
+import { Badge, Columns, Page, Skeleton } from '../shared/ui';
 import { ExtensionFieldsSection } from '../shared/ExtensionFields';
 
 type Message = { status: 'success' | 'error'; text: string } | null;
@@ -180,15 +180,26 @@ export function OrderDetail( { id, onBack }: OrderDetailProps ) {
 				order.number,
 				STATUS_LABELS[ order.status ]
 			) }
-			description={ sprintf(
-				/* translators: 1: date and time, 2: payment method, 3: "Paid" or "Not paid yet" */
-				__( 'Placed %1$s · %2$s · %3$s', 'orillacart' ),
-				when( order.placed_at ),
-				order.payment_name,
-				order.paid_at === null
-					? __( 'Not paid yet', 'orillacart' )
-					: __( 'Paid', 'orillacart' )
-			) }
+			description={
+				<>
+					{ order.test && (
+						<>
+							<Badge tone="neutral">
+								{ __( 'Test order', 'orillacart' ) }
+							</Badge>{ ' ' }
+						</>
+					) }
+					{ sprintf(
+						/* translators: 1: date and time, 2: payment method, 3: "Paid" or "Not paid yet" */
+						__( 'Placed %1$s · %2$s · %3$s', 'orillacart' ),
+						when( order.placed_at ),
+						order.payment_name,
+						order.paid_at === null
+							? __( 'Not paid yet', 'orillacart' )
+							: __( 'Paid', 'orillacart' )
+					) }
+				</>
+			}
 			back={ back }
 			sticky
 			actions={

@@ -77,7 +77,11 @@ final readonly class ProjectOrders implements KeepsFailures
         $facts = [];
         foreach ($ids as $id) {
             try {
-                $facts[] = $this->facts($this->orders->order($id));
+                $order = $this->orders->order($id);
+                // A test order is not a sale (design 62): the reports keep nothing of it.
+                if (!$order->test) {
+                    $facts[] = $this->facts($order);
+                }
             } catch (OrderNotFound) {
                 // Deleted: what was kept of it goes.
             }

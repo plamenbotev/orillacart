@@ -32,6 +32,8 @@ final readonly class CustomerView
         public ?SubscriptionView $newsletter = null,
         /** @var array<string, array<string, mixed>>|null the enabled extensions' fields on it, by extension (design 56); only in one record's view */
         public ?array $extensions = null,
+        /** Made to try the shop out (design 62): never emailed, their orders not counted. */
+        public bool $test = false,
     ) {}
 
     /**
@@ -56,7 +58,7 @@ final readonly class CustomerView
             $saved[] = new SavedAddressView((string) $id, $address, (string) $id === $book->billingId, (string) $id === $shippingId);
         }
 
-        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $book->billing(), $book->shipping(), $orders, $groupIds, $saved, $lifetimeValue, $record->cartReminders, $newsletter);
+        return new self($record->id, $record->email, $record->firstName, $record->lastName, $record->registeredAt, $book->billing(), $book->shipping(), $orders, $groupIds, $saved, $lifetimeValue, $record->cartReminders, $newsletter, test: $record->test);
     }
 
     /** As the customer sees their own account: without the shop's groups and what they spent, which are the shop's. */

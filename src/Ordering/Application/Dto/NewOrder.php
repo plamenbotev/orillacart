@@ -59,5 +59,7 @@ final readonly class NewOrder
          * @var array<string, array{label: string, answer: string}>
          */
         public array $shopFields = [],
+        /** Placed to try the shop out (design 62): never emailed, not counted. */
+        public bool $test = false,
     ) {}
 }

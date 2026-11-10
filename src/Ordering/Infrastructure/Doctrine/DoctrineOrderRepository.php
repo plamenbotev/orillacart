@@ -121,6 +121,9 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         if ($search->customerId !== null) {
             $query->andWhere('o.customerId = :customer')->setParameter('customer', $search->customerId);
         }
+        if ($search->test !== null) {
+            $query->andWhere('o.test = :test')->setParameter('test', $search->test);
+        }
         if ($search->who !== null) {
             $query->andWhere($search->who === OrderSearch::GUESTS ? 'o.customerId IS NULL' : 'o.customerId IS NOT NULL');
         }
@@ -409,6 +412,8 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             ->from(Order::class, 'o')
             ->where('o.customerId IN (:customers)')->setParameter('customers', $customerIds)
             ->andWhere('o.status NOT IN (:unplaced)')->setParameter('unplaced', [OrderStatus::Cancelled, OrderStatus::Failed])
+            // A test order is not a sale (design 62).
+            ->andWhere('o.test = false')
             ->setParameter('currency', $currency)
             ->groupBy('o.customerId')->getQuery()->getScalarResult();
         $spend = [];

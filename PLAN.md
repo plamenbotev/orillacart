@@ -617,6 +617,19 @@ Design 61 (`docs/designs/61-extension-shop-reach.md`): the gaps the trade-accoun
 | ✅ | 378 | P2 | `|number` takes money; `|amount` writes it for an API | 30a8047a |
 | ✅ | 379 | P2 | Budgets: 50 queries a run (was 20), 5 emails; API 22; the guide's §14 with the product and customer maps | 30a8047a |
 
+## Test data (2026-11-10)
+
+Design 62 (`docs/designs/62-test-data.md`): records made to try the shop out never mail, invoice, or count.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 380 | P1 | The mail guard: no email to a reserved name (example.com, .test, .invalid, …) or the site's own (`orillacart_undeliverable_address`), about a test order, or to a test customer; logged, answered as sent | |
+| ✅ | 381 | P1 | The test mark: `test: true` on `create_customer`, `create_order`, `shop.orders.create`; a test customer's orders are test orders, checkout included; set only when made | |
+| ✅ | 382 | P1 | A test order takes no invoice or credit note (no gaps in the series), issues no gift card, is told to no webhook or tax service | |
+| ✅ | 383 | P2 | Left out of the reports, lifetime values and exports; `test=yes|no` on the orders list; "Test" badges on the orders list, the order and the customer screens | |
+| ✅ | 384 | P2 | `GET /test-data` and `DELETE /test-data` (`remove_test_data`, asks): open test orders cancelled so stock comes back, then removed with the test customers' accounts | |
+| ✅ | 385 | P2 | `shop.orders.create` emails the customer only with `email_customer: true`; the order map's `test` | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

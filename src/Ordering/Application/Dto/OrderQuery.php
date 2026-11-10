@@ -67,9 +67,18 @@ final readonly class OrderQuery
         public ?string $has = null,
         #[Assert\Regex(pattern: '/^[A-Z]{3}$/')]
         public ?string $currency = null,
+        /** "yes" for the test orders only, "no" for none of them; all when left out (design 62). */
+        #[Assert\Choice(choices: ['yes', 'no'])]
+        public ?string $test = null,
     ) {}
 
     /** The same query for another page: an export walks every page of it. */
+    /** The same, with its test orders as asked: "yes" for those only, "no" for none of them (design 62). */
+    public function withTest(string $test): self
+    {
+        return clone($this, ['test' => $test]);
+    }
+
     public function withPage(int $page, int $perPage): self
     {
         return new self(

@@ -38,9 +38,9 @@ final readonly class ExtensionOrders implements CreatesOrders
             $request->payment,
             $request->paid,
             $request->note,
-            // The customer hears of an order placed for them, as of one the shop takes for them.
-            true,
+            $request->emailCustomer,
             fields: $request->fields,
+            test: $request->test,
         );
         try {
             return OrderSummaries::summary($this->orders->create($command, null));

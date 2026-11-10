@@ -55,7 +55,10 @@ final readonly class RecordTaxesWithTheService
     private function taxedByAService(int $orderId): bool
     {
         try {
-            return $this->orders->order($orderId)->taxProvider !== null;
+            $order = $this->orders->order($orderId);
+
+            // A test order is not a sale: the tax service hears nothing of it (design 62).
+            return $order->taxProvider !== null && !$order->test;
         } catch (OrderNotFound) {
             return false;
         }

@@ -102,7 +102,7 @@ final class InMemoryOrderRepository implements OrderRepository
         $spend = [];
         foreach ($this->orders as $order) {
             $customer = $order->customerId();
-            if ($customer === null || !\in_array($customer, $customerIds, true) || \in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)) {
+            if ($customer === null || $order->isTest() || !\in_array($customer, $customerIds, true) || \in_array($order->status(), [OrderStatus::Cancelled, OrderStatus::Failed], true)) {
                 continue;
             }
             $was = $spend[$customer] ?? ['paid_orders' => 0, 'paid' => '0', 'refunded' => '0', 'first' => null, 'last' => null];
@@ -251,6 +251,7 @@ final class InMemoryOrderRepository implements OrderRepository
         $delivery = $order->delivery()?->date->format('Y-m-d');
 
         return ($search->statuses === [] || \in_array($order->status(), $search->statuses, true))
+            && ($search->test === null || $order->isTest() === $search->test)
             && (!$search->attentionOnly || $order->attention() !== null)
             && ($search->customerId === null || $order->customerId() === $search->customerId)
             && ($search->who === null || ($search->who === OrderSearch::GUESTS) === ($order->customerId() === null))

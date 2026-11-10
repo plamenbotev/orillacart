@@ -31,5 +31,10 @@ final readonly class CreateCustomer
         public ?string $password = null,
         #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $groupIds = [],
+        /**
+         * Made to try the shop out (design 62): the account is never emailed, its orders are test orders, and it
+         * goes with the shop's test data.
+         */
+        public bool $test = false,
     ) {}
 }

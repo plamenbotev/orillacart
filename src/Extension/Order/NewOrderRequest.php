@@ -6,7 +6,7 @@ namespace OrillaCart\Extension\Order;
 
 /**
  * An order an add-on places for a customer (API 22), as the shop places one by hand: priced as checkout prices
- * it, stock taken, on hold until paid unless $paid says it is.
+ * it, stock taken, on hold until paid unless $paid says it is; the customer emailed only when $emailCustomer says so.
  */
 final readonly class NewOrderRequest
 {
@@ -28,5 +28,9 @@ final readonly class NewOrderRequest
         public bool $paid = false,
         public string $note = '',
         public array $fields = [],
+        /** Whether the customer is emailed about it, as the shop's settings say; off unless asked. */
+        public bool $emailCustomer = false,
+        /** Placed to try the shop out: never emailed, not counted, removed with the test data. */
+        public bool $test = false,
     ) {}
 }

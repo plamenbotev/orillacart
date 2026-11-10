@@ -28,6 +28,8 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
     public const string ADDRESSES = 'orillacart_addresses';
     public const string NO_CART_REMINDERS = 'orillacart_no_cart_reminders';
     public const string WISHLIST = 'orillacart_wishlist';
+    /** Made to try the shop out (design 62). */
+    public const string TEST = 'orillacart_test';
 
     public function __construct(
         private NormalizerInterface $normalizer,
@@ -137,6 +139,36 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         }
     }
 
+    public function markTest(int $id): void
+    {
+        update_user_meta($id, self::key(self::TEST), '1');
+    }
+
+    public function isTestEmail(string $email): bool
+    {
+        $id = email_exists($email);
+
+        return \is_int($id) && get_user_meta($id, self::key(self::TEST), true) === '1';
+    }
+
+    public function testIds(): array
+    {
+        $ids = get_users(['meta_key' => self::key(self::TEST), 'meta_value' => '1', 'fields' => 'ID', 'blog_id' => 0, 'number' => -1]);
+
+        return array_values(array_map(static fn(mixed $id): int => is_numeric($id) ? (int) $id : 0, $ids));
+    }
+
+    public function remove(int $id): void
+    {
+        if (is_multisite()) {
+            remove_user_from_blog($id, get_current_blog_id());
+
+            return;
+        }
+        require_once ABSPATH . 'wp-admin/includes/user.php';
+        wp_delete_user($id);
+    }
+
     public function search(?string $text, int $offset, int $limit): array
     {
         $query = new \WP_User_Query(array_filter([
@@ -206,6 +238,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
             $this->addressBook($user->ID),
             get_user_meta($user->ID, self::key(self::NO_CART_REMINDERS), true) !== '1',
             \is_string($user->locale) && $user->locale !== '' ? $user->locale : null,
+            get_user_meta($user->ID, self::key(self::TEST), true) === '1',
         );
     }
 

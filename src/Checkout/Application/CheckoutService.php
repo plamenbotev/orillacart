@@ -31,6 +31,7 @@ use OrillaCart\Coupons\Application\Dto\AppliedDiscounts;
 use OrillaCart\Coupons\Domain\Coupon;
 use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
+use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\GiftCards\Application\Dto\GiftCardCodeInput;
 use OrillaCart\GiftCards\Application\Dto\GiftCardPlan;
@@ -524,6 +525,15 @@ final readonly class CheckoutService
         [$answers, $shopAnswers] = $this->fields->answers($command->fields, new FieldContext($command->email, $billingAddress->country, $priced['needs_shipping'] ? $shippingAddress->country : null, $owner->customerId), array_map(static fn(array $line): ItemQuote => $line['quote'], $priced['lines']), $priced['needs_shipping']);
         $registering = $this->registration($owner, $command);
 
+        // A customer made to try the shop out places test orders (design 62).
+        $test = false;
+        if ($owner->customerId !== null) {
+            try {
+                $test = $this->customers->customer($owner->customerId)->test;
+            } catch (CustomerNotFound) {
+                $test = false;
+            }
+        }
         $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,
             $command->email,
@@ -554,6 +564,7 @@ final readonly class CheckoutService
             $command->buyerReference,
             $gateway === null ? null : $this->paymentOptions->shopName($gateway),
             $shopAnswers,
+            test: $test,
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
             $this->orders->note($order->number, $failure, false);

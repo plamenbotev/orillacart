@@ -145,12 +145,18 @@ const fields = (
 			{ value: 'yes', label: __( 'Needs attention', 'orillacart' ) },
 		],
 		filterBy: { operators: [ 'is' ] },
-		render: ( { item } ) =>
-			item.needs_attention ? (
-				<Badge tone="danger">
-					{ __( 'Needs attention', 'orillacart' ) }
-				</Badge>
-			) : null,
+		render: ( { item } ) => (
+			<>
+				{ item.needs_attention && (
+					<Badge tone="danger">
+						{ __( 'Needs attention', 'orillacart' ) }
+					</Badge>
+				) }
+				{ item.test && (
+					<Badge tone="neutral">{ __( 'Test', 'orillacart' ) }</Badge>
+				) }
+			</>
+		),
 	},
 	{
 		id: 'total',

@@ -142,6 +142,13 @@ class Order
     #[ORM\Column(options: ['default' => false])]
     private bool $reverseCharge = false;
 
+    /**
+     * Placed to try the shop out, not sold (design 62): never emailed, left out of the reports and lifetime values,
+     * and removed with the rest of the shop's test data.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $test = false;
+
     /** The language the customer ordered in (a WordPress locale such as de_DE), for what the shop writes them. */
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $locale = null;
@@ -1576,6 +1583,17 @@ class Order
     public function reverseCharge(): bool
     {
         return $this->reverseCharge;
+    }
+
+    /** Marks the order as placed to try the shop out (design 62); only as it is placed, so a sale never becomes one. */
+    public function markAsTest(): void
+    {
+        $this->test = true;
+    }
+
+    public function isTest(): bool
+    {
+        return $this->test;
     }
 
     /** The customer's language; null for the site's. */

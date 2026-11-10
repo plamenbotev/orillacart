@@ -62,5 +62,10 @@ final readonly class CreateOrder
         #[Assert\Count(max: 100)]
         #[Assert\All([new Assert\Type(['string', 'bool', 'int'])])]
         public array $fields = [],
+        /**
+         * Placed to try the shop out (design 62): never emailed, left out of the reports, removed with the test
+         * data. An order of a test customer is one whatever this says.
+         */
+        public bool $test = false,
     ) {}
 }

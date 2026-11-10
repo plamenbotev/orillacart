@@ -117,6 +117,8 @@ final readonly class OrderView
         public ?string $buyerReference = null,
         /** @var array<string, array<string, mixed>>|null the enabled extensions' fields on it, by extension (design 56); only in one record's view */
         public ?array $extensions = null,
+        /** Placed to try the shop out (design 62): never emailed, not counted. */
+        public bool $test = false,
     ) {}
 
     /**
@@ -206,6 +208,7 @@ final readonly class OrderView
             $order->shopCurrency(),
             $order->exchangeRate(),
             $order->buyerReference(),
+            test: $order->isTest(),
         );
     }
 }

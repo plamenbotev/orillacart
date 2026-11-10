@@ -35,6 +35,8 @@ export interface OrderSummary {
 	placed_at: string;
 	/** The shop has to look at it, such as a payment disputed after it was paid. */
 	needs_attention: boolean;
+	/** Placed to try the shop out (design 62): never emailed, not counted. */
+	test?: boolean;
 	/** The money came, given back since or not: the order stays, with its invoice, for the books. */
 	paid: boolean;
 }
@@ -218,6 +220,8 @@ export interface Order {
 	reverse_charge: boolean;
 	/** The customer's details were erased, as a privacy request asked. */
 	anonymised: boolean;
+	/** Placed to try the shop out (design 62): never emailed, not counted. */
+	test?: boolean;
 	/** The amounts include tax: the taxes are in the total, not added to it. */
 	prices_include_tax?: boolean;
 	/** What is left to give back. */
