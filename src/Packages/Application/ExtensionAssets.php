@@ -60,14 +60,14 @@ final class ExtensionAssets
 
             return null;
         }
-        $file = $package->file(self::FOLDER . ltrim($name, '/'));
-        if ($file === null) {
+        $content = $package->runningFile(self::FOLDER . ltrim($name, '/'));
+        if ($content === null) {
             $this->logger->warning('The extension "{extension}" has no file assets/{name}: nothing is served for it.', ['extension' => $extension, 'name' => $name]);
 
             return null;
         }
 
-        return $this->files->publish($extension, ltrim($name, '/'), $file->content());
+        return $this->files->publish($extension, ltrim($name, '/'), $content);
     }
 
     /** Forgets the extension's published files: it was uninstalled. */

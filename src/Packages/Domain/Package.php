@@ -51,6 +51,18 @@ class Package
     #[ORM\Column(length: 16, options: ['default' => ''])]
     private string $enabledChecksum = '';
 
+    /**
+     * The files as they stood when it was enabled: what runs until it is enabled again, so an edit, an import or a
+     * restore changes nothing a manager has not approved. Null for one enabled before the shop kept them.
+     *
+     * A list, not a map: a JSON object's keys come back in the database's order, and the scripts' order is the
+     * collection's (by path) when it was enabled.
+     *
+     * @var list<array{0: string, 1: string}>|null [path, content] pairs
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $enabledFiles = null;
+
     #[ORM\Column(options: ['default' => 0])]
     private int $failures = 0;
 
@@ -225,6 +237,59 @@ class Package
         return array_values(array_filter($this->files(), static fn(PackageFile $file): bool => $file->isScript()));
     }
 
+    /**
+     * The files it runs: as they stood when it was enabled while it is; the files as they are otherwise.
+     *
+     * @return array<string, string> path → content
+     */
+    public function running(): array
+    {
+        $files = [];
+        if ($this->state->runs() && $this->enabledFiles !== null) {
+            foreach ($this->enabledFiles as [$path, $content]) {
+                $files[$path] = $content;
+            }
+
+            return $files;
+        }
+        foreach ($this->files as $file) {
+            $files[$file->path()] = $file->content();
+        }
+
+        return $files;
+    }
+
+    /** The scripts it runs, as one source in the order source() has them. */
+    public function runningSource(): string
+    {
+        return implode("\n", array_values(array_filter($this->running(), static fn(string $path): bool => str_ends_with($path, '.ocs'), \ARRAY_FILTER_USE_KEY)));
+    }
+
+    /** One file as it runs: a template or an asset. */
+    public function runningFile(string $path): ?string
+    {
+        return $this->running()[$path] ?? null;
+    }
+
+    /**
+     * The files a browser runs as the page it is on: templates (their text is HTML, `|raw` prints as it is) and
+     * scripts, stylesheets and SVGs under assets/. Whoever enables an extension that has them publishes HTML as
+     * whoever views the page, administrators included.
+     *
+     * @return list<string> paths
+     */
+    public function browserFiles(): array
+    {
+        $paths = [];
+        foreach ($this->files as $file) {
+            if (str_ends_with($file->path(), '.html.twig') || str_starts_with($file->path(), 'assets/')) {
+                $paths[] = $file->path();
+            }
+        }
+
+        return $paths;
+    }
+
     /** Of the files as they are now: the compiled class is kept by it. */
     public function checksum(): string
     {
@@ -255,6 +320,10 @@ class Package
         $this->granted = array_values(array_unique($granted));
         $this->state = PackageState::Enabled;
         $this->enabledChecksum = $this->checksum();
+        $this->enabledFiles = [];
+        foreach ($this->files as $file) {
+            $this->enabledFiles[] = [$file->path(), $file->content()];
+        }
         $this->failures = 0;
         $this->lastProblem = null;
         $this->updatedAt = $at;

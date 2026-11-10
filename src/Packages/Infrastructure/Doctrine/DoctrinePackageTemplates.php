@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Infrastructure\Doctrine;
 
 use OrillaCart\Packages\Application\PackageTemplates;
-use OrillaCart\Packages\Domain\Package;
-use OrillaCart\Packages\Domain\PackageFile;
 use OrillaCart\Packages\Domain\PackageRepository;
 use OrillaCart\Packages\Domain\PackageState;
 
@@ -49,7 +47,7 @@ final class DoctrinePackageTemplates implements PackageTemplates
             [$slug, $path] = $parts;
             $package = $this->packages->find($slug);
 
-            $content = $package !== null && $package->state() === PackageState::Enabled ? $package->file('templates/' . $path)?->content() : null;
+            $content = $package !== null && $package->state() === PackageState::Enabled ? $package->runningFile('templates/' . $path) : null;
 
             return $content === null ? null : [$content, $slug];
         }
@@ -58,9 +56,9 @@ final class DoctrinePackageTemplates implements PackageTemplates
             if (!\in_array('templates', $package->granted(), true)) {
                 continue;
             }
-            $file = $package->file('templates/' . $name);
-            if ($file instanceof PackageFile && $package instanceof Package) {
-                return [$file->content(), $package->slug()];
+            $content = $package->runningFile('templates/' . $name);
+            if ($content !== null) {
+                return [$content, $package->slug()];
             }
         }
 

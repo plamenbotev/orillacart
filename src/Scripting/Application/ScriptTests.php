@@ -19,7 +19,9 @@ use Psr\Clock\ClockInterface;
  * Runs a script's own `test "name" { … } fn() { … }` declarations. Each test gets a fresh instance of the class
  * whose `http.*` answer from the test's `http` map and refuse anything not in it, whose `time.*` stand at the
  * test's `now`, whose `settings.get` reads the test's `settings` over the extension's, and whose `jobs.push`
- * records instead of queuing. Everything else is the shop's host; the package layer runs each test inside a
+ * records instead of queuing. A function that reaches outside the shop runs as it says it does in tests (mail
+ * held, an order placed as a test order) and is listed in the result's `effects`; one that says nothing, and
+ * counts as email, refuses. Everything else is the shop's host; the package layer runs each test inside a
  * transaction it rolls back, so records and field values leave no trace.
  */
 final readonly class ScriptTests
@@ -57,7 +59,8 @@ final readonly class ScriptTests
         $props = $declaration['props'];
         $http = [];
         $jobs = [];
-        $fakes = [];
+        $effects = [];
+        $fakes = self::doubles($this->scripts->catalog()->all(), $effects);
         $answers = [];
         foreach (\is_array($props['http'] ?? null) ? $props['http'] : [] as $key => $value) {
             $answers[(string) $key] = $value;
@@ -116,7 +119,37 @@ final readonly class ScriptTests
         }
         $context = new \ReflectionProperty(CompiledScript::class, 'c')->getValue($script);
 
-        return new TestResult($name, $outcome[0], $outcome[1], $outcome[2], $http, $jobs, $context instanceof Context ? $context->used() : []);
+        return new TestResult($name, $outcome[0], $outcome[1], $outcome[2], $http, $jobs, $context instanceof Context ? $context->used() : [], $effects);
+    }
+
+    /**
+     * The stand-ins for the functions that reach outside the shop, recording each call into $effects.
+     *
+     * @param array<string, HostFunction>                             $functions
+     * @param list<array{function: string, arguments: list<mixed>}> $effects
+     *
+     * @return list<HostFunction>
+     */
+    private static function doubles(array $functions, array &$effects): array
+    {
+        $doubles = [];
+        foreach ($functions as $function) {
+            $inTests = $function->inTests;
+            if ($inTests === null && $function->counts !== HostFunction::EMAIL) {
+                continue;
+            }
+            $name = $function->name;
+            $doubles[] = new HostFunction($name, static function (Context $c, mixed ...$arguments) use ($inTests, $name, &$effects): mixed {
+                if ($inTests === null) {
+                    throw new ScriptError(\sprintf('%s does not run in tests', $name));
+                }
+                $effects[] = ['function' => $name, 'arguments' => array_map(Ops::plain(...), array_values($arguments))];
+
+                return $inTests($c, ...$arguments);
+            }, $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, $inTests);
+        }
+
+        return $doubles;
     }
 
     /**

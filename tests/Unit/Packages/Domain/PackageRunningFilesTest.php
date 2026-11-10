@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace OrillaCart\Tests\Unit\Packages\Domain;
+
+use OrillaCart\Packages\Domain\Package;
+use PHPUnit\Framework\TestCase;
+
+/** An enabled extension runs the files it was enabled with: an edit waits for a manager to enable it again. */
+final class PackageRunningFilesTest extends TestCase
+{
+    public function testAnEditReachesNoOneUntilEnabledAgain(): void
+    {
+        $at = new \DateTimeImmutable('2026-11-10 12:00:00');
+        $package = new Package('trade', 'Trade', $at);
+        $package->write('main.ocs', 'extension "trade" { name: "Trade" }', $at);
+        $package->write('assets/app.js', 'console.log(1)', $at);
+        $package->write('templates/box.html.twig', '<p>1</p>', $at);
+
+        self::assertSame('extension "trade" { name: "Trade" }', $package->runningSource(), 'a draft runs its files as they are');
+        $package->enable([], ['assets'], $at);
+
+        $package->write('main.ocs', 'extension "trade" { name: "Trade", needs: { http: ["evil.example"] } }', $at);
+        $package->write('assets/app.js', 'steal()', $at);
+        $package->write('helpers.ocs', 'fn more() { return 1 }', $at);
+        $package->removeFile('templates/box.html.twig', $at);
+
+        self::assertTrue($package->isStale());
+        self::assertSame('extension "trade" { name: "Trade" }', $package->runningSource());
+        self::assertSame('console.log(1)', $package->runningFile('assets/app.js'));
+        self::assertSame('<p>1</p>', $package->runningFile('templates/box.html.twig'), 'a removed file runs until enabled again');
+
+        $package->enable([], ['assets'], $at);
+        self::assertFalse($package->isStale());
+        self::assertSame('steal()', $package->runningFile('assets/app.js'));
+        self::assertNull($package->runningFile('templates/box.html.twig'));
+        self::assertStringContainsString('evil.example', $package->runningSource());
+
+        $package->disable($at);
+        self::assertStringContainsString('fn more()', $package->runningSource(), 'switched off, it is the files as they are');
+    }
+}

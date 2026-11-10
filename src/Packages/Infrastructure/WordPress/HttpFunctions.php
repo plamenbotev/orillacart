@@ -10,10 +10,12 @@ use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Scripting\Domain\Ops;
 use OrillaCart\Scripting\Domain\ScriptError;
 use OrillaCart\Scripting\Domain\ScriptFailure;
+use OrillaCart\Shared\WordPress\OutboundRequests;
 
 /**
  * `http`: calls out of the shop, to the hosts the extension declared and a manager granted, over HTTPS, with a
- * short timeout and a cap on the answer. A host that does not answer is an `unavailable` failure the script may
+ * short timeout and a cap on the answer; to public addresses only, with no redirect followed (a 3xx is the answer,
+ * and its location a host the extension must have declared too). Local names work in development only. A host that does not answer is an `unavailable` failure the script may
  * catch, and the shop's provider handling knows.
  */
 final readonly class HttpFunctions implements HostNamespace
@@ -50,7 +52,7 @@ final readonly class HttpFunctions implements HostNamespace
         if (!\is_string($host) || !\in_array($host, $c->grant->hosts, true)) {
             throw new ScriptError(\sprintf('The extension may not call %s: declare the host in needs.http and enable it again.', \is_string($host) ? $host : $url));
         }
-        if ($scheme !== 'https' && !\in_array($host, ['localhost', '127.0.0.1'], true) && !str_ends_with($host, '.test') && !str_ends_with($host, '.local')) {
+        if ($scheme !== 'https' && !(OutboundRequests::local(strtolower($host)) && OutboundRequests::development())) {
             throw new ScriptError('Calls out of the shop go over https.');
         }
         $options = \is_array($options) ? $options : [];
@@ -74,14 +76,13 @@ final readonly class HttpFunctions implements HostNamespace
             'method' => $method,
             'headers' => $headers,
             'timeout' => (float) $timeout,
-            'redirection' => 2,
             'limit_response_size' => self::MOST_BYTES,
             'user-agent' => 'OrillaCart extension ' . $c->grant->extension,
         ];
         if ($body !== null) {
             $args['body'] = $body;
         }
-        $response = wp_remote_request($url, $args);
+        $response = OutboundRequests::send($url, $args, allowLocal: true);
         if (is_wp_error($response)) {
             throw new ScriptFailure(ScriptFailure::UNAVAILABLE, \sprintf('%s did not answer: %s', $host, $response->get_error_message()));
         }

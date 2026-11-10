@@ -11,6 +11,7 @@ final readonly class TestResult
      * @param list<array{method: string, url: string, status: int}>       $http the requests the test made, as the fakes answered them
      * @param list<array{name: string, payload: mixed, at: string|null}>  $jobs the jobs the test pushed, recorded instead of queued
      * @param array<string, int|float>                                     $used the budget the run used
+     * @param list<array{function: string, arguments: list<mixed>}>       $effects the calls that would reach outside the shop, as the test's stand-ins took them
      */
     public function __construct(
         public string $name,
@@ -20,5 +21,6 @@ final readonly class TestResult
         public array $http,
         public array $jobs,
         public array $used,
+        public array $effects = [],
     ) {}
 }

@@ -49,7 +49,7 @@ final class OAuthTest extends RestTestCase
         apply_filters('determine_current_user', 0);
         wp_set_current_user(0);
         update_option('permalink_structure', $this->permalinks);
-        remove_all_filters('pre_http_request');
+        remove_all_filters('pre_http_request', 10); // its own answers; the shop's request guard stays
         parent::tearDown();
     }
 

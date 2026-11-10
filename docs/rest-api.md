@@ -1026,7 +1026,7 @@ Switches an extension off: its files, settings and data stay; nothing of it runs
 
 ### `POST /extensions/{id}/enable`
 
-Switches an extension on with the permissions granted, which must cover what it declares it needs; it must compile. From then on its providers, routes and handlers run in the shop with those permissions.
+Switches an extension on with the permissions granted, which must cover what it declares it needs; it must compile. From then on its providers, routes and handlers run in the shop with those permissions, from the files as they are now until it is enabled again. One with templates or browser files (assets/) is enabled only by a user who may publish raw HTML (`unfiltered_html`: an administrator, a super admin on a network).
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):

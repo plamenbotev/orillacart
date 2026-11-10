@@ -16,7 +16,8 @@ use OrillaCart\Shared\WordPress\AsHook;
  * sends no cookies, so it needs no nonce (orillacart_api_key_did_authenticate tells the nonce check). A key the
  * shop has not is refused (401), never served as a visitor. Cookies that come with a key are not asked about:
  * the key decides. Keys open the shop's API only, not WordPress's: the route is read as WordPress reads it (a
- * rest_route parameter wins over the path), and the route WordPress then dispatches is checked again.
+ * rest_route parameter wins over the path), and the route WordPress then dispatches is checked again. Only on
+ * the front controller (index.php): wp-admin, admin-ajax.php, admin-post.php, wp-login.php and cron never take a key.
  */
 #[AsHook('determine_current_user', method: 'user', filter: true, priority: 25)]
 #[AsHook('rest_authentication_errors', method: 'errors', filter: true, priority: 20)]
@@ -96,6 +97,11 @@ final readonly class ApiKeyAuthentication
     /** Whether the request is for the shop's own routes: keys open nothing else. */
     private static function shopApi(): bool
     {
+        // Only the REST front controller serves the shop's API. admin-ajax.php, admin-post.php, wp-login.php, cron
+        // and XML-RPC read no route but would still take the key's user as logged in: a key never opens them.
+        if (!self::frontController()) {
+            return false;
+        }
         // As WP::parse_request(): a rest_route sent with the request wins over the one in the path.
         $given = $_POST['rest_route'] ?? $_GET['rest_route'] ?? null;
         if ($given !== null) {
@@ -106,6 +112,16 @@ final readonly class ApiKeyAuthentication
         $base = rtrim((string) wp_parse_url(home_url('/'), \PHP_URL_PATH), '/') . '/' . rest_get_url_prefix();
 
         return \is_string($path) && str_starts_with($path, $base . '/') && self::ours(substr($path, \strlen($base)));
+    }
+
+    private static function frontController(): bool
+    {
+        if (is_admin() || wp_doing_ajax() || wp_doing_cron() || \defined('XMLRPC_REQUEST') || \defined('IFRAME_REQUEST')) {
+            return false;
+        }
+        $script = $_SERVER['SCRIPT_FILENAME'] ?? $_SERVER['SCRIPT_NAME'] ?? '';
+
+        return \is_string($script) && basename($script) === 'index.php';
     }
 
     private static function ours(string $route): bool

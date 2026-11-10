@@ -116,6 +116,44 @@ final class ScriptTestsTest extends TestCase
         self::assertNull($byName['a provider down']->line);
     }
 
+    public function testWhatReachesOutsideTheShopIsHeldInTestsAndListed(): void
+    {
+        $sent = [];
+        $catalog = HostCatalog::of([
+            ...new Builtins()->functions(),
+            new HostFunction('shop.email.send', static function (Context $c, mixed $to) use (&$sent): bool {
+                $sent[] = $to;
+
+                return true;
+            }, 3, 3, '', 'email:send', HostFunction::EMAIL, static fn(Context $c, mixed $to, mixed $subject, mixed $body): bool => true),
+            new HostFunction('mail.raw', static function (Context $c, mixed $to) use (&$sent): bool {
+                $sent[] = $to;
+
+                return true;
+            }, 1, 1, '', null, HostFunction::EMAIL),
+        ]);
+        $scripts = new Scripts(new Compiler($catalog), $catalog, new InMemoryScriptStore());
+        $source = <<<'OCS'
+            extension "mailer" { name: "Mailer", needs: { email: send } }
+
+            test "sends" fn() {
+              assert shop.email.send("ada@shop.example", "Hi", "<p>Hi</p>")
+            }
+
+            test "a mail function with no stand-in" fn() {
+              mail.raw("ada@shop.example")
+            }
+            OCS;
+
+        $results = new ScriptTests($scripts)->run($source . "\n", 'mailer_tests', new Grant('mailer', ['email:send']));
+
+        self::assertSame([], $sent, 'no mail left the shop');
+        self::assertTrue($results[0]->ok, (string) $results[0]->message);
+        self::assertSame([['function' => 'shop.email.send', 'arguments' => ['ada@shop.example', 'Hi', '<p>Hi</p>']]], $results[0]->effects);
+        self::assertFalse($results[1]->ok);
+        self::assertStringContainsString('mail.raw does not run in tests', (string) $results[1]->message);
+    }
+
     public function testASourceWithoutTestsHasNoResults(): void
     {
         $catalog = HostCatalog::of(new Builtins()->functions());

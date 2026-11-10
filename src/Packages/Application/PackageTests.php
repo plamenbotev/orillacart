@@ -17,7 +17,8 @@ use OrillaCart\Scripting\Application\ScriptTests;
 /**
  * An extension's own tests, run against the shop with everything the `needs` ask for granted, whether or not the
  * extension is enabled: its records and field values are rolled back after each test, its HTTP calls answered
- * from the test's map, its jobs recorded. Files sent with the request stand in for the saved ones, so an editor
+ * from the test's map, its jobs recorded, its mail held and its orders placed as test orders (never sent, never
+ * invoiced), so files sent with the request reach no one. Files sent with the request stand in for the saved ones, so an editor
  * tests what is on screen.
  */
 final readonly class PackageTests
@@ -33,7 +34,7 @@ final readonly class PackageTests
     /**
      * @param array<string, string>|null $files path → content, instead of the saved files
      *
-     * @return list<array{name: string, ok: bool, message: ?string, file: ?string, line: ?int, http: list<array{method: string, url: string, status: int}>, jobs: list<array{name: string, payload: mixed, at: ?string}>, used: array<string, int|float>}>
+     * @return list<array{name: string, ok: bool, message: ?string, file: ?string, line: ?int, http: list<array{method: string, url: string, status: int}>, jobs: list<array{name: string, payload: mixed, at: ?string}>, used: array<string, int|float>, effects: list<array{function: string, arguments: list<mixed>}>}>
      */
     public function run(string $slug, ?array $files = null): array
     {
@@ -79,6 +80,7 @@ final readonly class PackageTests
                 'http' => $result->http,
                 'jobs' => $result->jobs,
                 'used' => $result->used,
+                'effects' => $result->effects,
             ];
         }, $results);
     }

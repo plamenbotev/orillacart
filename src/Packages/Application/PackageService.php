@@ -132,9 +132,19 @@ final readonly class PackageService
      * Switches the extension on: it must compile, and the manager's grant must cover what it declares it needs.
      * The compiled class is made now, so the first request that needs it finds it.
      */
-    public function enable(string $slug, EnablePackage $command): PackageView
+    /**
+     * @param bool $mayPublishHtml whether whoever enables it may publish HTML that runs as script for others
+     *                             (WordPress's `unfiltered_html`): an extension with templates or browser files
+     *                             does exactly that, so a shop manager without it drafts and tests such an
+     *                             extension, and an administrator enables it
+     */
+    public function enable(string $slug, EnablePackage $command, bool $mayPublishHtml = false): PackageView
     {
         $package = $this->get($slug);
+        $browser = $package->browserFiles();
+        if ($browser !== [] && !$mayPublishHtml) {
+            throw new PackageRuleViolation('The extension has templates or browser files (%s): they run as script for whoever views the page, so only a user who may publish raw HTML (an administrator; a super admin on a network) enables it.', 'orillacart_extension_needs_unfiltered_html', values: [implode(', ', \array_slice($browser, 0, 5))]);
+        }
         $compiled = $this->compile($package);
         if (!$compiled->ok()) {
             throw new PackageRuleViolation('The extension does not compile: %s', 'orillacart_extension_does_not_compile', values: [implode('; ', $this->findings($package, $compiled))]);
@@ -376,7 +386,7 @@ final readonly class PackageService
         }
         foreach ($packages as $package) {
             try {
-                $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $this->grantOf($package));
+                $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $this->grantOf($package));
             } catch (\InvalidArgumentException $e) {
                 $this->failed($package->slug(), $e->getMessage());
                 continue;
@@ -430,10 +440,14 @@ final readonly class PackageService
         return \count(array_filter($this->packages->all(), static fn(Package $package): bool => $package->state() === PackageState::Stopped));
     }
 
-    /** What a run of the extension is allowed: its granted permissions, the hosts it declared, its settings. */
+    /**
+     * What a run of the extension is allowed: its granted permissions, the hosts the files it was enabled with
+     * declared (a host added since waits for enabling again), its settings.
+     */
     public function grantOf(Package $package): Grant
     {
-        $hosts = $this->compile($package)->ok() ? $this->manifest($package)->hosts() : [];
+        $running = $package->runningSource();
+        $hosts = $this->scripts->compile($running, $package->slug())->ok() ? PackageManifest::ofClass($this->scripts->load($running, $package->slug())::class)->hosts() : [];
 
         return new Grant($package->slug(), $package->granted(), $hosts, $package->settings());
     }

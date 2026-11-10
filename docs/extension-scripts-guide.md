@@ -815,7 +815,10 @@ fn fetch_rate(settings) {
 manager granted, over HTTPS only. Options: `json` (a value sent as JSON), `body` (text), `form` (a map sent as a
 form), `headers`, `timeout` (seconds, at most 5). The answer is `{ status, headers, body, json }`, with `json`
 the parsed body when it is JSON and the body cut at 1 MB. A host that does not answer is an `unavailable`
-failure. Five HTTP calls per run.
+failure. Five HTTP calls per run. The call goes only to a public address: a host that resolves to the server
+itself, a private network or a cloud's metadata address is refused, and redirects are not followed (a 3xx comes
+back as the answer; follow its `location` with another call, to a host also declared). `localhost`, `*.test` and
+`*.local` over plain http work only on a site in development (`WP_ENVIRONMENT_TYPE` local or development).
 
 `json.parse(text)` and `json.text(value)` convert; `time.now()`, `time.today()`, `time.parse(text)`,
 `time.add(moment, "2 hours")`, `time.diff(from, to)` and `time.format(moment, "d.m.Y")` work in the shop's
@@ -917,8 +920,10 @@ fn posted() {
   permissions, and shows the result or the failure plus the budget used. Write small helpers (`api(...)`,
   `site_of(...)`) and try them there before wiring them into handlers.
 - **Versions.** Every save, delete, import and restore keeps the files as they stood; the last thirty show on the
-  screen with what changed, and any can be restored. An enabled extension keeps running what it was enabled with
-  until it is enabled again, so a restore is safe to try.
+  screen with what changed, and any can be restored. An enabled extension keeps running the files it was enabled
+  with (scripts, templates and assets, and the hosts they declared) until it is enabled again, so a restore is safe
+  to try and an edit reaches shoppers only once a manager approves it. The console runs the files as saved, but
+  with the hosts the extension was enabled with.
 - **Recent runs.** Each handler call and console run is logged with how it ended and the budget it used, kept
   as long as the shop keeps its history; the screen shows the latest.
 - **Overrides.** A `templates/<name>` file that replaces one of the shop's templates says so, compares against
@@ -927,7 +932,9 @@ fn posted() {
 - **Tests.** An extension declares its own tests and runs them from the Console's *Run tests* button, from VS
   Code, from `POST /extensions/<id>/test` or from `wp orillacart script test file.ocs`, enabled or not. See below.
 - **Enable.** A dialog lists the permissions the `needs` ask for; granting them enables the extension. Changing
-  `needs` later asks again.
+  `needs` later asks again. An extension with templates (`*.html.twig`) or files under `assets/` prints HTML and
+  script into pages others view, so it is enabled only by a user who may publish raw HTML (`unfiltered_html`: an
+  administrator, a super admin on a network); a shop manager writes and tests it, and asks one to enable it.
 - **Export and import.** An extension travels as a zip of its files, with an `extension.json` naming it and
   carrying its translations: Export downloads one, Import installs one (or the JSON file of before), as do
   `wp orillacart extension export <id>` and `wp orillacart extension install file.zip`. A zip you make yourself
@@ -981,6 +988,9 @@ extension is enabled, and reports the first failure with its message, file and l
 - `jobs.push` records the job instead of queuing it; the result lists what was pushed.
 - `objects.*` and `fields.*` work on the shop's database inside a transaction rolled back after the test, so a test
   may create records and read them back and leaves none behind.
+- `shop.email.send` holds the mail: it answers true and sends nothing. `shop.orders.create` places a test order
+  (never emailed, never invoiced) inside the same rolled-back transaction. The result's `effects` lists each such
+  call with its arguments, so a test can be checked for what it would have sent.
 - Everything else, `shop.*` included, is the real shop, read-only by nature.
 
 `assert test, message?` is the check; `fail`, an error or a budget used up also fail the test. The result lists the

@@ -80,6 +80,28 @@ final class ApiKeyTest extends RestTestCase
         self::assertSame('orillacart_api_key_forbidden', $this->data($this->request('GET', '/webhooks'))['code'], 'webhooks are a logged-in manager\'s: their secrets sign what the shop sends');
     }
 
+    public function testAKeyLogsNoOneInOutsideTheRestFrontController(): void
+    {
+        $admin = $this->actAs('administrator');
+        $made = $this->data($this->request('POST', '/api-keys', ['name' => 'ERP', 'scope' => 'read'], nonce: true));
+        self::assertIsString($made['key']);
+        wp_set_current_user(0);
+        $_GET['rest_route'] = '/orillacart/v1/mcp';
+
+        foreach (['wp-admin/admin-ajax.php', 'wp-admin/admin-post.php', 'wp-login.php', 'xmlrpc.php'] as $script) {
+            $_SERVER['SCRIPT_FILENAME'] = ABSPATH . $script;
+            self::assertSame(0, $this->authenticate($made['key'], '/' . $script), $script . ' reads no route: a key opens it never');
+        }
+        $_SERVER['SCRIPT_FILENAME'] = ABSPATH . 'index.php';
+        add_filter('wp_doing_ajax', '__return_true');
+        try {
+            self::assertSame(0, $this->authenticate($made['key']), 'an Ajax request is not the API, whatever its script');
+        } finally {
+            remove_filter('wp_doing_ajax', '__return_true');
+        }
+        self::assertSame($admin, $this->authenticate($made['key']));
+    }
+
     public function testAWebhooksSecretIsShownOnceAndKeptSealed(): void
     {
         $this->actAs('administrator');

@@ -296,6 +296,44 @@ final class PackagesRestTest extends RestTestCase
         return $rows;
     }
 
+    public function testAnExtensionThatPrintsHtmlIsEnabledOnlyByWhoMayPublishIt(): void
+    {
+        $files = ['main.ocs' => "extension \"boxed\" { name: \"Boxed\" }\nfn one() { return 1 }\n", 'templates/box.html.twig' => '<script>alert(1)</script>'];
+        $this->request('POST', '/extensions', ['id' => 'boxed', 'name' => 'Boxed', 'files' => $files], nonce: true);
+
+        $this->actAs('orillacart_shop_manager');
+        $refused = $this->request('POST', '/extensions/boxed/enable', ['grant' => []], nonce: true);
+        self::assertSame(422, $refused->get_status());
+        self::assertSame('orillacart_extension_needs_unfiltered_html', $this->data($refused)['code'], 'a manager may not publish raw HTML, so may not enable what prints it');
+        $this->request('POST', '/extensions', ['id' => 'plain', 'name' => 'Plain', 'files' => ['main.ocs' => "extension \"plain\" { name: \"Plain\" }\nfn one() { return 1 }\n"]], nonce: true);
+        self::assertSame(200, $this->request('POST', '/extensions/plain/enable', ['grant' => []], nonce: true)->get_status(), 'one with scripts only, a manager enables');
+
+        $this->actAs('administrator');
+        self::assertSame(200, $this->request('POST', '/extensions/boxed/enable', ['grant' => []], nonce: true)->get_status());
+    }
+
+    public function testAnExtensionsTestsSendNoMailAndSayWhatTheyWouldHaveSent(): void
+    {
+        $sent = 0;
+        $count = static function (mixed $short) use (&$sent): mixed {
+            ++$sent;
+
+            return $short;
+        };
+        add_filter('pre_wp_mail', $count);
+        $source = "extension \"mailer\" { name: \"Mailer\", needs: { email: send } }\n\ntest \"mails\" fn() {\n  assert shop.email.send(\"someone@gmail.com\", \"Hi\", \"<p>Hi</p>\")\n}\n";
+        try {
+            $this->request('POST', '/extensions', ['id' => 'mailer', 'name' => 'Mailer', 'files' => ['main.ocs' => $source]], nonce: true);
+            $tests = $this->rows($this->data($this->request('POST', '/extensions/mailer/test', [], nonce: true))['tests']);
+        } finally {
+            remove_filter('pre_wp_mail', $count);
+        }
+
+        self::assertSame(0, $sent, 'a test reaches no one, whatever it declares');
+        self::assertTrue($tests[0]['ok'], (string) json_encode($tests[0]));
+        self::assertSame([['function' => 'shop.email.send', 'arguments' => ['someone@gmail.com', 'Hi', '<p>Hi</p>']]], $tests[0]['effects']);
+    }
+
     /** @return array<string, mixed> */
     private static function assoc(mixed $value): array
     {

@@ -42,7 +42,7 @@ final readonly class ScriptRunner
         $grant = new Grant($package->slug(), $package->granted(), $loaded->manifest->hosts(), $package->settings());
         $script = null;
         try {
-            $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $grant);
+            $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $grant);
             $result = $script->run($method, ...$args);
         } catch (ScriptFailure $e) {
             // Saying "unavailable" or "refused" is an answer, not a failure of the extension.
