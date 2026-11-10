@@ -48,12 +48,18 @@ final readonly class GiftCardPayments
 
     /**
      * How the codes, and the customer's store credit when they use it, would pay a total: each in turn takes what
-     * is left, store credit last.
+     * is left, store credit last. An order the shop has gift cards and credit not pay for (GiftCardProducts::refusesCards())
+     * has every code refused, and no credit to use.
      *
      * @param list<string> $codes as entered
      */
-    public function plan(array $codes, ?int $customerId, bool $useCredit, Money $total, string $currency): GiftCardPlan
+    public function plan(array $codes, ?int $customerId, bool $useCredit, Money $total, string $currency, bool $refused = false): GiftCardPlan
     {
+        if ($refused) {
+            $reason = new Text('Gift cards are bought with money only: not with gift cards or store credit.');
+
+            return new GiftCardPlan([], array_fill_keys(\array_slice($codes, 0, self::MAX_CODES), $reason), '0');
+        }
         $now = $this->clock->now();
         $left = $total;
         $uses = [];

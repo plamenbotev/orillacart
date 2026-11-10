@@ -31,6 +31,7 @@ use OrillaCart\Extension\Tax\TaxLine;
 use OrillaCart\Extension\Tax\TaxRequest;
 use OrillaCart\Extension\Tax\TaxRequestLine;
 use OrillaCart\Forms\Application\ShopForms;
+use OrillaCart\GiftCards\Application\GiftCardProducts;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
@@ -78,7 +79,7 @@ use Psr\Log\LoggerInterface;
  * @phpstan-type PricedLine array{quote: ItemQuote, option_ids: list<int>, bundle_choices: list<int>, quantity: int, unit_price: string, total: Money, discount: Money, tax: Money, places: list<int>, given: ?string, add_on: array{type: string, label: string}|null, personalisation: list<array{id: string, label: string, answer: string, value: string, price: ?string, upload_id: ?int}>}
  * @phpstan-type FeeLine array{type: string, quantity: int, unit: Money, source: ?string, taxable: bool, tax_group_id: ?int, as_line: bool, for_product_ids?: list<int>}
  * @phpstan-type Charge array{label: string, amount: string, quantity: int, taxable: bool, tax_group_id: ?int, source: string, given?: bool, for_product_ids?: list<int>}
- * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string, shop_shipping: array{carrier: string, rate: string, collect_at: ?PickupPointView}|null, shop_fees: list<string>, fee_lines: list<FeeLine>}
+ * @phpstan-type Priced array{exemption: array{reason: string, certificate: string}|null, import: ImportDecision, lines: list<PricedLine>, bill: Bill, needs_shipping: bool, options: list<ShippingChoiceView>, chosen: ?ShippingChoiceView, discounts: AppliedDiscounts, coupon_lines: list<list<Money>>, changes: array<int, list<AdjustmentView>>, free_from: ?string, ships_from: ?string, shop_shipping: array{carrier: string, rate: string, collect_at: ?PickupPointView}|null, shop_fees: list<string>, fee_lines: list<FeeLine>, sized: Money}
  */
 final readonly class OrderPricing
 {
@@ -99,6 +100,7 @@ final readonly class OrderPricing
         private ImportSchemes $importSchemes,
         private ShopForms $forms,
         private ShopCalendar $calendar,
+        private GiftCardProducts $giftCards,
     ) {}
 
     /**
@@ -237,7 +239,7 @@ final readonly class OrderPricing
         }
         $services = array_filter($priced['lines'], static fn(array $line): bool => $line['quote']->type !== 'physical');
 
-        return $reverse->applies && $services !== [] ? new ReverseCharge(true, $reverse->number, $goods->message) : $goods;
+        return $reverse->applies && $services !== [] ? new ReverseCharge(true, $reverse->number, $goods->message, $reverse->registeredName) : $goods;
     }
 
     /**
@@ -248,17 +250,21 @@ final readonly class OrderPricing
      */
     public function discountRequest(array $priced, ?string $country, ?int $customerId, string $currency): DiscountRequest
     {
-        return new DiscountRequest(self::discountItems($priced['lines']), $currency, $country, $customerId, rate: $this->currencies->rate($currency));
+        return new DiscountRequest($this->discountItems($priced['lines']), $currency, $country, $customerId, rate: $this->currencies->rate($currency));
     }
 
     /**
+     * The items as coupons see them. Items coupons give and gift cards do not count towards the order's size.
+     *
      * @param list<PricedLine> $lines
      *
      * @return list<DiscountItem>
      */
-    private static function discountItems(array $lines): array
+    private function discountItems(array $lines): array
     {
-        return array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds, $line['quote']->coupons), $lines);
+        $giftCards = $this->giftCards->ids();
+
+        return array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds, $line['quote']->coupons, $line['given'] === null && !\in_array($line['quote']->productId, $giftCards, true)), $lines);
     }
 
     /**
@@ -346,7 +352,7 @@ final readonly class OrderPricing
             }
         }
         $discounts = $lines === [] ? new AppliedDiscounts() : $this->discounts->apply($codes, new DiscountRequest(
-            self::discountItems($lines),
+            $this->discountItems($lines),
             $currency,
             $shipping?->country,
             $customerId,
@@ -383,6 +389,15 @@ final readonly class OrderPricing
             $lines[$index]['places'] = $places[$index] ?? [];
         }
         $free = $discounts->freeShipping();
+        // What thresholds judge (free shipping, the minimum order): the items after discounts, gift cards left out,
+        // as a gift card is money to spend, not goods; one bought would otherwise ship the rest free.
+        $giftCards = $this->giftCards->ids();
+        $sized = $bill->subtotal()->subtract($bill->discount());
+        foreach ($lines as $line) {
+            if (\in_array($line['quote']->productId, $giftCards, true)) {
+                $sized = $sized->subtract($line['total'])->add($line['discount']);
+            }
+        }
 
         $needsShipping = $parcel !== [];
         $options = [];
@@ -392,7 +407,7 @@ final readonly class OrderPricing
         if ($needsShipping && !$itemsOnly) {
             // Rates are the shop's: they look at what the order is worth in its currency, as the shopper's amount
             // stands for it (Currencies::amount() of a band's end is what the page shows).
-            $query = new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $this->shopAmount($bill->subtotal()->subtract($bill->discount()), $currency), $postcode);
+            $query = new ShippingQuery($shipping?->country, $shipping?->state, $parcel, (string) $this->shopAmount($sized, $currency), $postcode);
             $offered = $this->shipping->options($query);
             $inCurrency = fn(?string $amount): ?string => $amount === null ? null : (string) $this->currencies->amount(Money::of($amount), $currency);
             $freeFrom = $free ? null : $inCurrency($this->shipping->freeFrom($query));
@@ -486,7 +501,7 @@ final readonly class OrderPricing
             }
         }
 
-        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'import' => $import, 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'changes' => $adjusted, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom, 'shop_shipping' => $chosen['shop'] ?? null, 'shop_fees' => $shopFees, 'fee_lines' => $feeLines];
+        return ['exemption' => $exemption === null ? null : ['reason' => $exemption->reason, 'certificate' => $exemption->certificate], 'import' => $import, 'lines' => $lines, 'bill' => $bill, 'needs_shipping' => $needsShipping, 'options' => $options, 'chosen' => $chosen['view'] ?? null, 'discounts' => $discounts, 'coupon_lines' => $couponLines, 'changes' => $adjusted, 'free_from' => $freeFrom, 'ships_from' => $shipsFrom, 'shop_shipping' => $chosen['shop'] ?? null, 'shop_fees' => $shopFees, 'fee_lines' => $feeLines, 'sized' => $sized];
     }
 
     /**

@@ -59,7 +59,7 @@ final readonly class VatNumbers
             return $reverse;
         }
 
-        return new ReverseCharge(false, $reverse->number, $country === $shopCountry ? 'The goods are delivered in the shop\'s own country, so VAT is charged, even with a VAT number of another EU country.' : null);
+        return new ReverseCharge(false, $reverse->number, registeredName: $reverse->registeredName, message: $country === $shopCountry ? 'The goods are delivered in the shop\'s own country, so VAT is charged, even with a VAT number of another EU country.' : null);
     }
 
     public function reverseCharge(?string $billingCountry, ?string $vatNumber): ReverseCharge
@@ -92,10 +92,48 @@ final readonly class VatNumbers
         $check = $this->registry->check($prefix, $number);
 
         return match ($check->status) {
-            VatCheck::VALID => new ReverseCharge(true, $check->number),
+            VatCheck::VALID => new ReverseCharge(true, $check->number, registeredName: $check->name),
             VatCheck::UNAVAILABLE => new ReverseCharge(false, $check->number, 'Your VAT number could not be checked right now, so VAT is charged. Order later to buy without it, or claim the VAT back.'),
             default => new ReverseCharge(false, $check->number, 'The EU does not know this VAT number, so VAT is charged.'),
         };
+    }
+
+    /**
+     * Why the shop should look at an order sold under the reverse charge: the name VIES has the number registered
+     * to shares no word with the billing name, nor with the email's domain (ACME GMBH and ada@acme.de agree). Null
+     * when they agree, or VIES gave no name. The order is not refused: a business orders in its staff's names.
+     */
+    public function nameMismatch(ReverseCharge $reverse, string $billingName, string $email): ?string
+    {
+        $registered = trim((string) $reverse->registeredName);
+        if (!$reverse->applies || $registered === '' || trim($registered, '- ') === '') {
+            return null;
+        }
+        $words = self::words($registered);
+        $domain = strtolower(substr($email, (int) strrpos($email, '@') + 1));
+        $billing = self::words($billingName);
+        foreach ($words as $word) {
+            if (\in_array($word, $billing, true) || str_contains($domain, $word)) {
+                return null;
+            }
+        }
+
+        return \sprintf('VIES has the VAT number %1$s registered to "%2$s", which is not the billing name "%3$s". Check that the buyer is that business: the order is sold without VAT.', (string) $reverse->number, $registered, trim($billingName));
+    }
+
+    /**
+     * The words of a name, lowercased, of 3 letters or more: legal forms shorter than that (SA, AB) say nothing.
+     *
+     * @return list<string>
+     */
+    private static function words(string $name): array
+    {
+        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($name), -1, \PREG_SPLIT_NO_EMPTY);
+        if ($words === false) {
+            return [];
+        }
+
+        return array_values(array_filter($words, static fn(string $word): bool => mb_strlen($word) >= 3 && !\in_array($word, ['gmbh', 'ltd', 'llc', 'inc', 'sarl', 'srl', 'spa', 'eood', 'ood', 'bvba', 'oy', 'the', 'and', 'und'], true)));
     }
 
     /**

@@ -13,7 +13,9 @@ use OrillaCart\Scripting\Application\Scripts;
 /**
  * The words an extension shows people, to translate (design 57): those its declarations hold where a person reads
  * them (a setting's label, a payment method's name, a column's label), those its scripts' `__` calls mark, and
- * those its templates' do. Each with the places it stands; the same words in the same context are one.
+ * those its templates' do. Each with the places it stands; the same words in the same context are one. They are
+ * the words of the files it runs (Package::running()): for an enabled extension the ones it was enabled with, so an
+ * edit's words wait, as the edit does, until a manager enables it again.
  */
 final readonly class ExtensionWords
 {
@@ -34,25 +36,24 @@ final readonly class ExtensionWords
             $words[$word->key()] = isset($words[$word->key()]) ? $words[$word->key()]->alsoAt($where) : $word;
         };
 
-        $compiled = $this->scripts->compile($package->source(), $package->slug());
+        $running = $package->running();
+        $source = $package->runningSource();
+        $compiled = $this->scripts->compile($source, $package->slug());
         if ($compiled->ok()) {
-            $script = $this->scripts->load($package->source(), $package->slug());
+            $script = $this->scripts->load($source, $package->slug());
             self::declared(PackageManifest::ofClass($script::class)->all(), $add);
         }
-        $scripts = [];
-        foreach ($package->scripts() as $file) {
-            $scripts[$file->path()] = $file->content();
-        }
+        $scripts = array_filter($running, static fn(string $path): bool => str_ends_with($path, '.ocs'), \ARRAY_FILTER_USE_KEY);
         foreach ($compiled->words as $word) {
             $placed = PackageService::locate($scripts, [new Finding($word['line'], 1, '')])[0];
             $add($word['text'], \sprintf('%s, line %d', $placed['file'], $placed['line']), $word['plural'], $word['context']);
         }
-        foreach ($package->files() as $file) {
-            if ($this->templates === null || !str_ends_with($file->path(), '.html.twig')) {
+        foreach ($running as $path => $content) {
+            if ($this->templates === null || !str_ends_with($path, '.html.twig')) {
                 continue;
             }
-            foreach ($this->templates->of($file->path(), $file->content()) as $word) {
-                $add($word['text'], \sprintf('%s, line %d', $file->path(), $word['line']), $word['plural'], $word['context']);
+            foreach ($this->templates->of($path, $content) as $word) {
+                $add($word['text'], \sprintf('%s, line %d', $path, $word['line']), $word['plural'], $word['context']);
             }
         }
 

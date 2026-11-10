@@ -12,12 +12,13 @@ use Psr\Clock\ClockInterface;
 
 /**
  * Where the shop's areas push work for later. Pushed inside a transaction, a job is part of it. A request that
- * pushed jobs runs a few of them after its response, where the server sends the response first and unless
- * long-running workers serve the queue; WP-Cron and workers run the rest.
+ * pushed jobs runs a few from the lanes it pushed to after its response, where the server sends the response
+ * first and unless long-running workers serve the lane; WP-Cron and workers run the rest. A cheap push does not
+ * make a visitor's request work other lanes' imports or PDFs.
  */
 final readonly class Jobs
 {
-    /** How many jobs a request runs after its response, at most. */
+    /** How many jobs of each lane it pushed to a request runs after its response, at most. */
     private const int AFTER_RESPONSE = 20;
     /** History kept: hourly counts, failed jobs, workers that stopped without a word. */
     private const string KEEP_STATS = '-90 days';
@@ -62,10 +63,9 @@ final readonly class Jobs
         if (!$this->afterResponse->detaches()) {
             return;
         }
-        $this->afterResponse->defer(self::class, function (): void {
-            $lanes = $this->workers->unserved($this->handlers->queues());
-            if ($lanes !== []) {
-                $this->runner->work($lanes, self::AFTER_RESPONSE, 'request:' . getmypid());
+        $this->afterResponse->defer(self::class . ':' . $queue, function () use ($queue): void {
+            if ($this->workers->unserved([$queue]) !== []) {
+                $this->runner->work([$queue], self::AFTER_RESPONSE, 'request:' . getmypid());
             }
         });
     }

@@ -66,7 +66,7 @@ final class SetupServiceTest extends TestCase
                 return ['format' => 'test', 'version' => '1', 'exported_at' => '', 'site' => '', 'settings' => $this->shop->names];
             }
 
-            public function import(array $file): array
+            public function import(array $file, bool $administrator): array
             {
                 return ['imported' => [], 'refused' => []];
             }

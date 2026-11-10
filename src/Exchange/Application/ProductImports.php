@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Exchange\Application;
 
+use OrillaCart\Audit\Application\ChangeLog;
 use OrillaCart\Exchange\Application\Dto\Column;
 use OrillaCart\Exchange\Application\Dto\ColumnView;
 use OrillaCart\Exchange\Application\Dto\ImportView;
@@ -52,6 +53,7 @@ final readonly class ProductImports
         private Transactions $transactions,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private ?ChangeLog $changeLog = null,
     ) {}
 
     /**
@@ -289,6 +291,13 @@ final readonly class ProductImports
         try {
             $this->posts->asUser($import->userId(), fn() => $this->transactions->run(function () use ($counted, $row, $all, $line): void {
                 [$created, $refused] = $this->rows->import($row, $counted->userId(), $all);
+                // Each saved row is a change the importing manager made, kept with the row as the file had it; the
+                // log never stands in its way.
+                try {
+                    $this->changeLog?->record($counted->userId(), 'PUT', '/imports/products/{id}/rows/{line}', "/imports/products/{$counted->id()}/rows/{$line}", $row);
+                } catch (\Throwable $e) {
+                    $this->logger->error('The change log could not record row {line} of products import {import}: {message}', ['line' => $line, 'import' => $counted->id(), 'message' => $e->getMessage()]);
+                }
                 match (true) {
                     $refused !== null => $counted->failedRow($line, $refused),
                     $created => $counted->createdRow(),

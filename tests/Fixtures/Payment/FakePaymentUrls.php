@@ -7,10 +7,14 @@ namespace OrillaCart\Tests\Fixtures\Payment;
 use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Payment\Application\PaymentUrls;
 use OrillaCart\Shared\Security\Signatures;
+use Psr\Clock\ClockInterface;
 
 final readonly class FakePaymentUrls implements PaymentUrls
 {
-    public function __construct(private Signatures $signatures) {}
+    public function __construct(
+        private Signatures $signatures,
+        private ClockInterface $clock,
+    ) {}
 
     public function returnUrl(string $gateway, int $paymentId): string
     {
@@ -30,10 +34,10 @@ final readonly class FakePaymentUrls implements PaymentUrls
     /**
      * What the shop signs into the return and cancel addresses of a payment.
      *
-     * @return array{payment: string, sig: string}
+     * @return array{payment: string, day: string, sig: string}
      */
     public function query(string $gateway, int $paymentId): array
     {
-        return ['payment' => (string) $paymentId, 'sig' => $this->signatures->sign(PaymentOutcomes::RETURN_SIGNATURE, "{$gateway}:{$paymentId}")];
+        return PaymentOutcomes::returnQuery($this->signatures, $gateway, $paymentId, $this->clock->now());
     }
 }

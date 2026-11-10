@@ -194,6 +194,38 @@ describe( 'placing the order', () => {
 		expect( reloadPage ).toHaveBeenCalled();
 	} );
 
+	it( 'goes to the provider over http(s) only, and to the receipt otherwise', async () => {
+		for ( const [ redirect, to ] of [
+			[
+				'https://pay.example/session/1',
+				'https://pay.example/session/1',
+			],
+			[ 'javascript:alert(document.cookie)', '/receipt/' ],
+		] ) {
+			jest.mocked( navigate ).mockClear();
+			serve( {
+				page: () =>
+					Promise.resolve( { status: 200, text: page( '40.00' ) } ),
+				checkout: () =>
+					Promise.resolve( {
+						status: 201,
+						json: {
+							receipt_url: '/receipt/',
+							redirect_url: redirect,
+						},
+					} ),
+			} );
+			open();
+
+			(
+				document.querySelector( 'form' ) as HTMLFormElement
+			 ).requestSubmit();
+			await settle();
+
+			expect( navigate ).toHaveBeenCalledWith( to );
+		}
+	} );
+
 	it( 'goes to the cart when the cart emptied', async () => {
 		serve( {
 			page: () =>

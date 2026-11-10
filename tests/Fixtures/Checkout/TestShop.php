@@ -76,6 +76,7 @@ use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
 use OrillaCart\GiftCards\Application\GiftCardPersonalData;
+use OrillaCart\GiftCards\Application\GiftCardProducts;
 use OrillaCart\GiftCards\Application\GiftCardSales;
 use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\GiftCards\Infrastructure\Events\GiftCardsWithOrders;
@@ -513,7 +514,7 @@ final class TestShop
         $this->paymentRecords = new InMemoryPaymentRepository($this->transactions);
         $gateways = new Gateways($extensions);
         $this->signatures = new Signatures('test secret');
-        $this->paymentUrls = $urls = new FakePaymentUrls($this->signatures);
+        $this->paymentUrls = $urls = new FakePaymentUrls($this->signatures, $this->clock);
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls, $this->contentTranslations, $this->transactions, $this->translationPackages);
         $this->packageSources->append(new PaymentMethodPackages($methodRecords));
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock, $this->logger);
@@ -576,7 +577,7 @@ final class TestShop
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());
         $this->importSchemes = new ImportSchemes(new InMemoryImportRegistrations(), $settings, $geography);
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms, new SofiaCalendar());
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms, new SofiaCalendar(), $giftCardProducts = new GiftCardProducts($this->giftCardSettings));
         $vatNumbers = new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts, $this->languages, $vatNumbers);
         $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers, new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers));
@@ -602,6 +603,7 @@ final class TestShop
             $this->addressChecks = new AddressChecks($extensions, $this->logger),
             $this->newsletter,
             $this->giftCardPayments,
+            $giftCardProducts,
             $this->currencies,
             $this->shownPrices = new ShownPrices($taxes, $this->customers, $settings),
             $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
@@ -613,7 +615,7 @@ final class TestShop
         $this->reorder = new Reorder($this->orders, $this->carts);
         $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content));
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));
-        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies);
+        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies, $this->pricing);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();
         $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock, $this->receipts);

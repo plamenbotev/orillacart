@@ -34,7 +34,8 @@ final readonly class ProductCards
     public function cards(array $ids, bool $excerpts = false): array
     {
         self::prime($ids);
-        $ids = array_values(array_filter($ids, static fn(int $id): bool => get_post_status($id) === 'publish'));
+        // Not one behind a password the visitor has not given.
+        $ids = array_values(array_filter($ids, static fn(int $id): bool => get_post_status($id) === 'publish' && !post_password_required($id)));
         if ($ids === []) {
             return [];
         }

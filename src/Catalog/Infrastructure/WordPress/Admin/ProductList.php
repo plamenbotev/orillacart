@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Infrastructure\WordPress\Admin;
 
+use OrillaCart\Audit\Application\ChangeLog;
 use OrillaCart\Catalog\Application\BulkEdits;
 use OrillaCart\Catalog\Application\Dto\BulkEdit;
 use OrillaCart\Catalog\Application\Dto\ProductOffer;
@@ -16,6 +17,7 @@ use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
+use Psr\Log\LoggerInterface;
 
 /**
  * WordPress's list of products, as the old one was: a picture, SKU, price and order beside each name (its filters
@@ -50,6 +52,8 @@ final class ProductList
         private readonly BulkEdits $bulk,
         private readonly StockroomService $stockrooms,
         private readonly Translations $translations,
+        private readonly ChangeLog $changeLog,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /**
@@ -145,6 +149,7 @@ final class ProductList
         }
         try {
             $this->products->changePrice($postId, $price);
+            $this->logChange('PUT', '/products/{id}/quick-edit', "/products/{$postId}/quick-edit", ['price' => $price]);
         } catch (RuleViolation $e) {
             wp_die(esc_html(\sprintf(
                 /* translators: %s: why the price was refused */
@@ -212,6 +217,13 @@ final class ProductList
         $products = array_values(array_filter(array_map(intval(...), $updated), static fn(int $id): bool => get_post_type($id) === ProductPostType::NAME));
         try {
             $refused = array_map($this->translations->text(...), $this->bulk->apply($products, $edit, get_current_user_id()));
+            $this->logChange('PUT', '/products/bulk-edit', '/products/bulk-edit', array_filter([
+                'products' => $products,
+                'price' => $edit->price === null ? null : [$edit->price, $edit->priceBy],
+                'sale' => $edit->sale === null ? null : [$edit->sale, $edit->saleBy],
+                'stock' => $edit->stock === null ? null : [$edit->stock, $edit->stockroomId, $edit->stockBy],
+                'refused' => $refused === [] ? null : $refused,
+            ], static fn(mixed $value): bool => $value !== null));
         } catch (RuleViolation $e) {
             $refused = [$this->translations->text($e->text)];
         }
@@ -266,11 +278,27 @@ final class ProductList
         check_admin_referer('orillacart_duplicate_' . $id);
         try {
             $copy = $this->products->duplicate($id);
+            $this->logChange('POST', '/products/{id}/duplicate', "/products/{$id}/duplicate", ['copy' => $copy->id]);
         } catch (RuleViolation $e) {
             wp_die(esc_html($this->translations->text($e->text)), esc_html__('Duplicate', 'orillacart'), ['response' => 422, 'back_link' => true]);
         }
         wp_safe_redirect(get_edit_post_link($copy->id, 'raw') ?? admin_url('edit.php?post_type=' . ProductPostType::NAME));
         exit;
+    }
+
+    /**
+     * Writes the change into the change log, as the shop's API does for its routes; a record that cannot be
+     * written is logged instead, never in the change's way.
+     *
+     * @param array<string, mixed> $values
+     */
+    private function logChange(string $method, string $route, string $path, array $values): void
+    {
+        try {
+            $this->changeLog->record(get_current_user_id(), $method, $route, $path, $values);
+        } catch (\Throwable $e) {
+            $this->logger->error('The change log could not record {route}: {message}', ['route' => "{$method} {$route}", 'message' => $e->getMessage()]);
+        }
     }
 
     /** @param array<int|string, string> $choices */

@@ -54,7 +54,7 @@ final class ZipPackageArchivesTest extends TestCase
             '__MACOSX/payfast-main/._main.ocs' => "\0",
         ]));
 
-        self::assertSame(['README.md', 'assets/portal.js', 'main.ocs', 'templates/x.html.twig'], array_keys($archive->files));
+        self::assertSame(['assets/portal.js', 'main.ocs', 'readme.md', 'templates/x.html.twig'], array_keys($archive->files), 'paths are lowercase');
         self::assertSame(['payfast-main/webpack.config.js', 'payfast-main/LICENSE'], $archive->skipped, 'hidden files go without a word; a script outside assets/ is a tool\'s');
         self::assertNull($archive->manifest);
     }

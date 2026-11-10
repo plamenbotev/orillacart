@@ -8,6 +8,7 @@ use OrillaCart\Extension\Cart\CartRefusal;
 use OrillaCart\Extension\Checkout\Fee;
 use OrillaCart\Extension\Home\HomeLine;
 use OrillaCart\Extension\Home\HomeTile;
+use OrillaCart\Extension\Home\HomeUrl;
 use OrillaCart\Extension\Pricing\Adjustment;
 use OrillaCart\Packages\Application\Values;
 use OrillaCart\Scripting\Application\Context;
@@ -29,16 +30,27 @@ final readonly class ContractFunctions implements HostNamespace
             new HostFunction('cart.refuse_line', static fn(Context $c, mixed $lineId, mixed $message): CartRefusal => CartRefusal::line((int) Values::text($lineId), Values::text($message)), 2, 2, 'cart.refuse_line(line_id, message): one line cannot be ordered as it is'),
             new HostFunction('fee.of', static fn(Context $c, mixed $label, mixed $amount, mixed $taxable = true, mixed $taxGroupId = null, mixed $asLine = false): Fee => new Fee(Values::text($label), Values::amount($amount) ?? '0', Ops::truthy($taxable), $taxGroupId === null ? null : (int) Values::text($taxGroupId), Ops::truthy($asLine)), 2, 5, 'fee.of(label, amount, taxable?, tax_group_id?, as_line?): a fee added to the order'),
             new HostFunction('price.adjustment', static fn(Context $c, mixed $label, mixed $amount, mixed $line = null, mixed $reason = ''): Adjustment => new Adjustment(Values::text($label), Values::amount($amount) ?? '0', $line === null ? null : (int) Values::text($line), Values::text($reason)), 2, 4, 'price.adjustment(label, amount, line?, reason?): an amount taken off (negative) or added to the order or one of its lines'),
-            new HostFunction('home.tile', static fn(Context $c, mixed $label, mixed $value, mixed $detail = '', mixed $url = ''): HomeTile => new HomeTile(Values::text($label), Values::text($value), Values::text($detail), Values::text($url)), 2, 4, 'home.tile(label, value, detail?, url?): a figure on the Home screen'),
+            new HostFunction('home.tile', static fn(Context $c, mixed $label, mixed $value, mixed $detail = '', mixed $url = ''): HomeTile => new HomeTile(Values::text($label), Values::text($value), Values::text($detail), self::homeUrl('home.tile', $url)), 2, 4, 'home.tile(label, value, detail?, url?): a figure on the Home screen; url a Shop page ("orders?status=processing"), an admin page, a path or an http(s) URL of the site'),
             new HostFunction('home.line', static function (Context $c, mixed $text, mixed $url = '', mixed $tone = 'warning'): HomeLine {
                 $tone = Values::text($tone);
                 if (!\in_array($tone, [HomeLine::ATTENTION, HomeLine::WARNING, HomeLine::INFO], true)) {
                     throw new ScriptError('home.line takes a tone of attention, warning or info');
                 }
 
-                return new HomeLine(Values::text($text), Values::text($url), $tone);
+                return new HomeLine(Values::text($text), self::homeUrl('home.line', $url), $tone);
             }, 1, 3, 'home.line(text, url?, tone?): something that waits, on the Home screen; tone attention, warning or info'),
             new HostFunction('html.escape', static fn(Context $c, mixed $text): string => htmlspecialchars(Values::text($text), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), 1, 1, 'html.escape(text): the text safe inside HTML'),
         ];
+    }
+
+    /** A Home link as the screen takes it; one on another site is dropped there. */
+    private static function homeUrl(string $function, mixed $url): string
+    {
+        $url = Values::text($url);
+        if ($url !== '' && !HomeUrl::relative($url) && !HomeUrl::absolute($url)) {
+            throw new ScriptError(\sprintf('%s takes a url that is a Shop page ("orders?status=processing"), an admin page ("admin.php?page=…"), a path of the site or an http(s) URL', $function));
+        }
+
+        return $url;
     }
 }

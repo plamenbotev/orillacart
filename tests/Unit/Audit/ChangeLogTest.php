@@ -7,8 +7,10 @@ namespace OrillaCart\Tests\Unit\Audit;
 use OrillaCart\Audit\Application\ChangeLog;
 use OrillaCart\Audit\Application\Dto\ChangeLogQuery;
 use OrillaCart\Audit\Domain\ChangeRecord;
-use OrillaCart\Audit\Domain\ChangeRecordRepository;
+use OrillaCart\Extension\Setting;
+use OrillaCart\Shared\Extension\SettingValues;
 use OrillaCart\Shared\Users\UserNames;
+use OrillaCart\Tests\Fixtures\Audit\InMemoryChangeRecords;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -34,6 +36,23 @@ final class ChangeLogTest extends TestCase
         $view = $log->page(new ChangeLogQuery())->records[0];
         self::assertSame(['Ada', 'payment-methods', 'PUT /payment-methods/{gateway}'], [$view->user, $view->area, $view->route]);
         self::assertSame(['name' => 'PayPal', 'settings' => ['client_id' => 'abc', 'client_secret' => '••••', 'webhook_id' => '', 'api_key' => null], 'password' => '••••', 'key' => '••••'], $view->values, 'an empty secret says it was emptied');
+    }
+
+    public function testASettingDeclaredSecretIsBlankedOutWhateverItsName(): void
+    {
+        $records = new InMemoryChangeRecords();
+        $log = new ChangeLog($records, new class implements UserNames {
+            public function names(array $ids): array
+            {
+                return [];
+            }
+        }, new MockClock('2026-10-21 08:00:00 UTC'));
+        // The extension's settings were checked against what it declares while the request was handled.
+        SettingValues::accept([new Setting('merchant_pin', 'PIN', Setting::SECRET), new Setting('signing_salt', 'Salt', Setting::SECRET), new Setting('shop_id', 'Shop', Setting::TEXT)], [], [], 'ERP');
+
+        $log->record(1, 'PUT', '/extensions/{id}/settings', '/extensions/erp/settings', ['settings' => ['merchant_pin' => '1234', 'signing_salt' => 'NaCl', 'shop_id' => '7']]);
+
+        self::assertSame(['settings' => ['merchant_pin' => '••••', 'signing_salt' => '••••', 'shop_id' => '7']], $log->page(new ChangeLogQuery())->records[0]->values);
     }
 
     public function testWhatIsTooLongIsNotKeptButTheChangeIs(): void
@@ -74,46 +93,20 @@ final class ChangeLogTest extends TestCase
         ], array_map(static fn(ChangeRecord $record): array => $record->values(), $records->records), 'not another order whose number starts the same');
         self::assertSame('PUT /orders/{id}/contact', $records->records[0]->route(), 'who changed what, and when, stays');
     }
-}
 
-final class InMemoryChangeRecords implements ChangeRecordRepository
-{
-    /** @var list<ChangeRecord> */
-    public array $records = [];
-
-    public function save(ChangeRecord $record): void
+    public function testAnEmailIsMatchedWholeNotWithinAnother(): void
     {
-        new \ReflectionProperty(ChangeRecord::class, 'id')->setValue($record, \count($this->records) + 1);
-        $this->records[] = $record;
-    }
-
-    public function search(?string $area, ?int $userId, int $offset, int $limit): array
-    {
-        return [\array_slice(array_reverse($this->records), $offset, $limit), \count($this->records)];
-    }
-
-    public function areas(): array
-    {
-        return array_values(array_unique(array_map(static fn(ChangeRecord $record): string => $record->area(), $this->records)));
-    }
-
-    public function replaceValues(array $paths, ?string $mention, array $values): int
-    {
-        $changed = 0;
-        foreach ($this->records as $record) {
-            $below = array_filter($paths, static fn(string $path): bool => $record->path() === $path || str_starts_with($record->path(), "{$path}/"));
-            $mentions = $mention !== null && $mention !== '' && stripos((string) json_encode($record->values()), $mention) !== false;
-            if ($below !== [] || $mentions) {
-                new \ReflectionProperty(ChangeRecord::class, 'values')->setValue($record, $values);
-                ++$changed;
+        $records = new InMemoryChangeRecords();
+        $log = new ChangeLog($records, new class implements UserNames {
+            public function names(array $ids): array
+            {
+                return [];
             }
-        }
+        }, new MockClock());
+        $log->record(1, 'POST', '/gift-cards', '/gift-cards', ['recipient_email' => 'john@gmail.com']);
+        $log->record(1, 'POST', '/gift-cards', '/gift-cards', ['recipient_email' => 'N@gmail.com']);
 
-        return $changed;
-    }
-
-    public function removeOlderThan(\DateTimeImmutable $before): int
-    {
-        return 0;
+        self::assertSame(1, $log->forget([], 'n@gmail.com'));
+        self::assertSame(['recipient_email' => 'john@gmail.com'], $records->records[0]->values());
     }
 }

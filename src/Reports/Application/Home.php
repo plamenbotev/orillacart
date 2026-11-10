@@ -8,10 +8,12 @@ use OrillaCart\Catalog\Application\LowStock;
 use OrillaCart\Extension\Home\HomeContributor;
 use OrillaCart\Extension\Home\HomeLine;
 use OrillaCart\Extension\Home\HomeTile;
+use OrillaCart\Extension\Home\HomeUrl;
 use OrillaCart\Jobs\Application\JobOverview;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Packages\Application\PackageService;
+use OrillaCart\Packages\Application\RedirectTargets;
 use OrillaCart\Reports\Application\Dto\ReportQuery;
 use OrillaCart\Settings\Application\SetupState;
 use OrillaCart\Settings\Application\StatusReport;
@@ -41,6 +43,7 @@ final readonly class Home
         private LoggerInterface $logger,
         private ?HomeCache $cache = null,
         private ?PackageService $packages = null,
+        private ?RedirectTargets $site = null,
     ) {}
 
     /**
@@ -139,7 +142,7 @@ final readonly class Home
         foreach ($this->extensions->homeContributors() as $contributor) {
             foreach ($this->guarded($contributor, $contributor->needsYou(...)) as $extra) {
                 if ($extra instanceof HomeLine) {
-                    $lines[] = ['kind' => $contributor->id(), 'text' => $extra->text, 'count' => 0, 'url' => $extra->url, 'tone' => $extra->tone];
+                    $lines[] = ['kind' => $contributor->id(), 'text' => $extra->text, 'count' => 0, 'url' => $this->url($contributor, $extra->url), 'tone' => $extra->tone];
                 }
             }
         }
@@ -154,12 +157,27 @@ final readonly class Home
         foreach ($this->extensions->homeContributors() as $contributor) {
             foreach ($this->guarded($contributor, $contributor->tiles(...)) as $tile) {
                 if ($tile instanceof HomeTile) {
-                    $tiles[] = ['label' => $tile->label, 'value' => $tile->value, 'detail' => $tile->detail, 'url' => $tile->url];
+                    $tiles[] = ['label' => $tile->label, 'value' => $tile->value, 'detail' => $tile->detail, 'url' => $this->url($contributor, $tile->url)];
                 }
             }
         }
 
         return $tiles;
+    }
+
+    /**
+     * Where an add-on's line or tile leads: a page of the admin or of the site, or an http(s) URL on the site's
+     * own hosts; anything else is no link, and the log says why.
+     */
+    private function url(HomeContributor $contributor, string $url): string
+    {
+        $link = HomeUrl::link($url, fn(string $url): ?string => $this->site?->sameSite($url));
+        if ($link !== '' || $url === '') {
+            return $link;
+        }
+        $this->logger->warning('The add-on {id} gave the Home screen a link that is not to the site: {url}; it is shown without it.', ['id' => $contributor->id(), 'url' => $url]);
+
+        return '';
     }
 
     /**

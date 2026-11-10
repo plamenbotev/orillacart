@@ -26,6 +26,7 @@ final readonly class OptionGiftCardSettingsRepository implements GiftCardSetting
             return new GiftCardSettings(
                 array_values(array_filter(\is_array($stored['product_ids'] ?? null) ? $stored['product_ids'] : [], \is_int(...))),
                 \is_int($months) ? $months : null,
+                ($stored['paid_with_money_only'] ?? true) !== false,
             );
         } catch (GiftCardRuleViolation) {
             return new GiftCardSettings();
@@ -34,7 +35,7 @@ final readonly class OptionGiftCardSettingsRepository implements GiftCardSetting
 
     public function save(GiftCardSettings $settings): void
     {
-        update_option(self::OPTION, ['product_ids' => $settings->productIds, 'valid_months' => $settings->validMonths], true);
+        update_option(self::OPTION, ['product_ids' => $settings->productIds, 'valid_months' => $settings->validMonths, 'paid_with_money_only' => $settings->paidWithMoneyOnly], true);
     }
 
     public function activate(): void

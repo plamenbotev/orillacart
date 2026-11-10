@@ -18,10 +18,15 @@ use OrillaCart\Shared\WordPress\AsHook;
  * the key decides. Keys open the shop's API only, not WordPress's: the route is read as WordPress reads it (a
  * rest_route parameter wins over the path), and the route WordPress then dispatches is checked again. Only on
  * the front controller (index.php): wp-admin, admin-ajax.php, admin-post.php, wp-login.php and cron never take a key.
+ *
+ * The key's user is given only once WordPress serves the REST request (rest_api_init): WordPress asks who the user
+ * is early (at init), and until the route is the shop's, other plugins' init and plugins_loaded handlers see a
+ * visitor. At rest_api_init WordPress is asked again, and from then on the key's user is the request's.
  */
-#[AsHook('determine_current_user', method: 'user', filter: true, priority: 25)]
+#[AsHook('determine_current_user', method: 'user', filter: true, priority: 25, anySite: true)]
 #[AsHook('rest_authentication_errors', method: 'errors', filter: true, priority: 20)]
 #[AsHook('rest_pre_dispatch', method: 'dispatching', filter: true, priority: 1, arguments: 3)]
+#[AsHook('rest_api_init', method: 'serving', priority: 0)]
 final readonly class ApiKeyAuthentication
 {
     public function __construct(
@@ -38,6 +43,12 @@ final readonly class ApiKeyAuthentication
         if ($secret === null || !self::shopApi()) {
             return $userId;
         }
+        if (!self::restServed()) {
+            $this->request->deferred = true;
+
+            return $userId;
+        }
+        $this->request->deferred = false;
         // An OAuth access token an AI assistant's app was given, or one of the shop's keys.
         $key = str_starts_with($secret, 'oat_') ? $this->oauth->authenticate($secret) : $this->keys->authenticate($secret);
         if ($key === null || get_userdata($key->userId) === false) {
@@ -52,6 +63,20 @@ final readonly class ApiKeyAuthentication
         do_action('orillacart_api_key_did_authenticate', $key->userId, $key->keyId);
 
         return $key->userId;
+    }
+
+    /**
+     * WordPress serves the REST request now: the user it found before, without the key, is asked for again, so the
+     * key's user is the one the route runs as.
+     */
+    public function serving(): void
+    {
+        if (!$this->request->deferred) {
+            return;
+        }
+        $this->request->deferred = false;
+        $GLOBALS['current_user'] = null;
+        wp_get_current_user();
     }
 
     public function errors(mixed $errors): mixed
@@ -112,6 +137,12 @@ final readonly class ApiKeyAuthentication
         $base = rtrim((string) wp_parse_url(home_url('/'), \PHP_URL_PATH), '/') . '/' . rest_get_url_prefix();
 
         return \is_string($path) && str_starts_with($path, $base . '/') && self::ours(substr($path, \strlen($base)));
+    }
+
+    /** Whether WordPress is serving the REST request: its route was parsed, and the REST server is up. */
+    private static function restServed(): bool
+    {
+        return (\defined('REST_REQUEST') && REST_REQUEST) || did_action('rest_api_init') > 0;
     }
 
     private static function frontController(): bool

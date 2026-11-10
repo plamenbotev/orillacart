@@ -6,7 +6,7 @@ import { Field, Row, Section } from '../shared/ui';
 
 const ROUNDINGS = [
 	{ value: 'decimals', label: __( 'To the cent', 'orillacart' ) },
-	{ value: 'whole', label: __( 'To whole units (37)', 'orillacart' ) },
+	{ value: 'whole', label: __( 'Up to whole units (37)', 'orillacart' ) },
 	{
 		value: 'ninety_nine',
 		label: __( 'Just under the next unit (36.99)', 'orillacart' ),

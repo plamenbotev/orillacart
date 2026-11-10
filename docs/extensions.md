@@ -63,7 +63,7 @@ Implement `OrillaCart\Extension\Payment\PaymentGateway`:
 | `id()`, `defaultName()` | the shop renames the method as it likes |
 | `settings()` | see above |
 | `notReady($settings, $currency, $decimals)` | why checkout may not offer it (credentials missing, currency or its decimals not taken), or null |
-| `start($session, $settings)` | `PaymentStart::offline()` (the order waits on hold for the money), or `PaymentStart::redirect($url, $reference)` to send the customer to the provider; `$reference` is the provider's id of the payment |
+| `start($session, $settings)` | `PaymentStart::offline()` (the order waits on hold for the money), or `PaymentStart::redirect($url, $reference)` to send the customer to the provider (an https URL; any other fails the payment and the customer is told the method is unavailable); `$reference` is the provider's id of the payment |
 
 Throw `ProviderUnavailable` when the provider cannot be reached or refuses; the customer sees a general message,
 the order is cancelled (its stock and coupon uses go back), and the customer keeps the cart to try again.
@@ -191,7 +191,9 @@ orders shipped by the carrier's services:
   when it refuses: the shop manager sees it.
 - An order may go in several shipments: the shop chooses which items each carries, and the `Shipment` holds
   only those. The amount to collect comes with the first shipment of the order only.
-- `label($number, $settings)` returns the `Label` (a PDF, usually) the shop prints.
+- `label($number, $settings)` returns the `Label` (a PDF, usually) the shop prints. A PDF, PNG, GIF or JPEG
+  opens to print; any other type (ZPL, HTML, SVG) reaches the admin as `application/octet-stream` and is
+  downloaded.
 - `cancelShipment($number, $settings)` cancels one the courier has not picked up; throw when it cannot.
 
 A method that implements `TracksShipments` is asked every hour where the shipments on their way are:
@@ -254,7 +256,10 @@ product, variation, SKU, name, quantity and unit price) and returns refusals:
   being added has the id 0.
 - The cart shows every refusal, and cannot be checked out until the customer changes it; checkout refuses the
   order too.
-- A rule that throws is logged and left out.
+- A rule that throws is logged and left out. One the shop cannot do without (an age check, a licence, an export
+  limit) also implements `OrillaCart\Extension\FailsClosed`: when it throws, the cart shows "Your cart cannot be
+  checked right now. Try again in a moment." as a refusal of the whole cart, nothing can be added to it, and
+  checkout refuses the order, until the rule answers again.
 
 ## Cart line types
 
@@ -659,6 +664,9 @@ $registry->homeContributor(new class implements OrillaCart\Extension\Home\HomeCo
   the shop's own.
 - `needsYou()` gives lines for what waits now, each with where to act and how pressing it is (`ATTENTION`,
   `WARNING`, `INFO`); give none when nothing waits, so the list can say "Nothing needs you."
+- A URL is a Shop page with its query (`orders?status=processing`), an admin page (`admin.php?page=…`), a path
+  of the site, or an http(s) URL on the site's own hosts; any other is dropped (the line or tile shows without a
+  link) and logged.
 - Both are asked each time the screen opens: keep them quick. A contributor that throws is logged and left off
   the screen; the screen still shows.
 
@@ -728,7 +736,9 @@ stay as entered) or `AddressSuggestion::notFound($message)`. Register it with `$
   check with something to say is heard.
 - A check never keeps the customer from ordering. An order placed with an address a check would have corrected,
   or could not find, says so in a note for the shop.
-- A check that throws is logged and left out. Keep it quick: it runs while the customer waits.
+- A check that throws is logged and left out. Keep it quick: it runs while the customer waits. One that implements
+  `OrillaCart\Extension\FailsClosed` says "The address cannot be checked right now. Try again in a moment." when
+  it throws, and checkout refuses the order until it answers.
 
 ## Actions and filters
 

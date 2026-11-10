@@ -13,6 +13,7 @@ use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\PrivatePages;
 use OrillaCart\Storefront\Infrastructure\WordPress\Merchandise;
 use OrillaCart\Storefront\Infrastructure\WordPress\ProductCards;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
@@ -20,7 +21,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
  * The cart page: what is in the cart, changing quantities, the products the shop offers with them (cross-sells),
- * and the way to the checkout.
+ * and the way to the checkout. The shopper's own, on whatever page it is: page caches keep none of it.
  */
 final readonly class CartBlock implements BlockDefinition
 {
@@ -46,6 +47,7 @@ final readonly class CartBlock implements BlockDefinition
         if ($links['cart'] === null) {
             return $this->templates->render('storefront/catalog-only.html.twig', ['links' => $links]);
         }
+        PrivatePages::markPrivate();
         $owner = $this->shopper->cart();
         $cart = $this->carts->cart($owner)->cart;
         $priced = null;

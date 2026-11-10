@@ -33,6 +33,11 @@ final class SiteTurnsTest extends TestCase
                 return [1, 2, 3];
             }
 
+            public function apart(): array
+            {
+                return [];
+            }
+
             public function outdated(): bool
             {
                 return false;

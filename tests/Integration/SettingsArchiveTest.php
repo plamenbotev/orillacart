@@ -68,6 +68,31 @@ final class SettingsArchiveTest extends RestTestCase
         return array_filter($file, \is_string(...), ARRAY_FILTER_USE_KEY);
     }
 
+    public function testASavedPasswordIsLeftBehindWhenTheFileChangesTheAddressAndOnlyAnAdministratorPointsSearchElsewhere(): void
+    {
+        update_option('orillacart_search_engine', ['engine' => 'opensearch', 'host' => 'https://search.example.com', 'index' => 'shop', 'username' => 'shop', 'password' => 'sealed-secret']);
+        $file = $this->data($this->request('GET', '/settings-archive'));
+        self::assertIsArray($file['settings']);
+        self::assertIsArray($file['settings']['search']);
+        $file['settings']['search']['host'] = 'https://elsewhere.example.net';
+
+        $this->actAs('orillacart_shop_manager');
+        $refused = $this->data($this->request('PUT', '/settings-archive', self::body($file), nonce: true));
+        self::assertIsArray($refused['refused']);
+        self::assertSame('Only the site\'s administrator points the shop at an OpenSearch server.', $refused['refused']['search'] ?? null);
+        $search = get_option('orillacart_search_engine');
+        self::assertIsArray($search);
+        self::assertSame('https://search.example.com', $search['host'] ?? null);
+
+        $this->actAs('administrator');
+        $result = $this->data($this->request('PUT', '/settings-archive', self::body($file), nonce: true));
+        self::assertIsArray($result['imported']);
+        self::assertContains('search', $result['imported']);
+        $search = get_option('orillacart_search_engine');
+        self::assertIsArray($search);
+        self::assertSame(['https://elsewhere.example.net', ''], [$search['host'] ?? null, $search['password'] ?? ''], 'the password is not sent to the new address');
+    }
+
     public function testASectionTheShopCannotUseIsLeftAsItWas(): void
     {
         update_option('orillacart_settings', ['currency' => 'EUR', 'weight_unit' => 'kg', 'dimension_unit' => 'cm']);

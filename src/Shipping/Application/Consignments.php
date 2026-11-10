@@ -60,6 +60,8 @@ final readonly class Consignments
     private const string CASH_ON_DELIVERY = 'cash_on_delivery';
     private const array CLOSED = ['cancelled', 'failed', 'refunded'];
     private const int TRACKED_PER_RUN = 1000;
+    /** The label kinds the admin opens to print, by type: everything else is a file to download. */
+    private const array LABEL_TYPES = ['application/pdf' => 'pdf', 'image/png' => 'png', 'image/gif' => 'gif', 'image/jpeg' => 'jpg'];
 
     public function __construct(
         private ConsignmentRepository $consignments,
@@ -295,9 +297,28 @@ final readonly class Consignments
         } catch (\Throwable $e) {
             throw $this->broken('a label', $e);
         }
-        $extension = $label->mimeType === 'application/pdf' ? 'pdf' : (str_starts_with($label->mimeType, 'image/') ? substr($label->mimeType, 6) : 'bin');
+        [$type, $extension] = self::labelType($label->mimeType);
 
-        return new LabelView("label-{$consignment->number()}.{$extension}", $label->mimeType, base64_encode($label->content));
+        return new LabelView("label-{$consignment->number()}.{$extension}", $type, base64_encode($label->content));
+    }
+
+    /**
+     * A label's type and file extension as the admin gets them: a PDF or a PNG, GIF or JPEG image as it is; ZPL
+     * and any other type (HTML, SVG: they would run as the admin who opens them) as a file to download.
+     *
+     * @return array{string, string}
+     */
+    public static function labelType(string $mimeType): array
+    {
+        $type = strtolower(trim(explode(';', $mimeType, 2)[0]));
+        if ($type === 'image/jpg') {
+            $type = 'image/jpeg';
+        }
+        if (isset(self::LABEL_TYPES[$type])) {
+            return [$type, self::LABEL_TYPES[$type]];
+        }
+
+        return ['application/octet-stream', \in_array($type, ['application/zpl', 'application/x-zpl', 'text/zpl', 'x-application/zpl'], true) ? 'zpl' : 'bin'];
     }
 
     /**

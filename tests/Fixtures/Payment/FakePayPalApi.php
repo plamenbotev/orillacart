@@ -43,6 +43,8 @@ final class FakePayPalApi implements PayPalApi
     public ?\Closure $whileCreating = null;
     /** @var (\Closure(): void)|null what else happens while PayPal captures, such as its webhook arriving */
     public ?\Closure $whileCapturing = null;
+    /** Where PayPal sends the buyer instead of its own page, such as an address that is not https. */
+    public ?string $approveUrl = null;
 
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder
     {
@@ -53,7 +55,7 @@ final class FakePayPalApi implements PayPalApi
         $this->created[] = $request;
         $id = 'PAYPAL-' . \count($this->created);
 
-        return new PayPalOrder($id, "https://www.sandbox.paypal.com/checkoutnow?token={$id}");
+        return new PayPalOrder($id, $this->approveUrl ?? "https://www.sandbox.paypal.com/checkoutnow?token={$id}");
     }
 
     public function captureOrder(PayPalAccount $account, string $orderId): PayPalCapture

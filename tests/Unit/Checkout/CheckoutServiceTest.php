@@ -275,6 +275,23 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(0, $this->shop->carts->cart($owner)->cart->items, 'emptied once the payment started');
     }
 
+    public function testAGatewayThatSendsTheBuyerAnywhereButHttpsIsShownAsUnavailable(): void
+    {
+        $this->shop->payPalApi->approveUrl = 'javascript:alert(document.cookie)';
+        $owner = $this->cart([10, 1]);
+
+        try {
+            $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
+            self::fail('the address is a script');
+        } catch (PaymentProviderUnavailable $e) {
+            self::assertSame('The payment method gave an address that is not https.', $e->detail);
+        }
+
+        self::assertSame('cancelled', array_values($this->shop->orderRecords->orders)[0]->status()->value);
+        self::assertSame(1, $this->shop->carts->cart($owner)->cart->items, 'the customer keeps the cart');
+        self::assertSame('failed', array_values($this->shop->paymentRecords->payments)[0]->status()->value ?? null);
+    }
+
     public function testAGatewayThatBreaksIsShownAsUnavailableAndTheCustomerKeepsTheCart(): void
     {
         $this->shop->payPalApi->breaks = new \TypeError('A bug in the gateway.');

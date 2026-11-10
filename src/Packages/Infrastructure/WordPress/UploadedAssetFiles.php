@@ -10,11 +10,36 @@ use OrillaCart\Packages\Application\AssetFiles;
  * An extension's assets under the site's uploads folder (`uploads/orillacart/extensions/<extension>/`), which
  * the web server serves as any upload; on a network each site has its own uploads. A file is written as
  * `<name>-<hash>.<ext>`, so its URL changes with its content and may be cached for long; writing a new one
- * removes the older of the same name.
+ * removes the older of the same name. The folder has an `.htaccess` that turns off every script handler, so
+ * Apache serves its files as files whatever handlers its setup adds by name.
  */
 final readonly class UploadedAssetFiles implements AssetFiles
 {
     private const string FOLDER = 'orillacart/extensions';
+    /** Apache's rules for the folder: nothing in it runs; scripts, stylesheets and SVGs are served as they are. */
+    public const string HTACCESS = <<<'APACHE'
+        # Written by OrillaCart: the extensions' assets are served as files, never run.
+        <FilesMatch "\.(?i:php\d*|phtml|phar|pht|pl|py|cgi|shtml|asp|aspx|jsp|sh)">
+            <IfModule mod_authz_core.c>
+                Require all denied
+            </IfModule>
+            <IfModule !mod_authz_core.c>
+                Order allow,deny
+                Deny from all
+            </IfModule>
+        </FilesMatch>
+        <IfModule mod_mime.c>
+            RemoveHandler .php .php5 .php7 .php8 .phtml .phar .pht .pl .py .cgi .shtml .asp .aspx .jsp .sh
+            RemoveType .php .php5 .php7 .php8 .phtml .phar .pht
+        </IfModule>
+        <IfModule mod_php.c>
+            php_flag engine off
+        </IfModule>
+        <IfModule mod_php7.c>
+            php_flag engine off
+        </IfModule>
+
+        APACHE;
 
     public function publish(string $extension, string $name, string $content): string
     {
@@ -30,6 +55,7 @@ final readonly class UploadedAssetFiles implements AssetFiles
             if (!is_dir($folder)) {
                 wp_mkdir_p($folder);
             }
+            self::guard($uploads['basedir'] . '/' . self::FOLDER);
             $older = glob($folder . '/' . basename($base) . '-*' . $suffix);
             foreach ($older === false ? [] : $older as $old) {
                 if (self::isVersionOf(basename($old), basename($base), $suffix)) {
@@ -40,6 +66,15 @@ final readonly class UploadedAssetFiles implements AssetFiles
         }
 
         return $uploads['baseurl'] . '/' . $relative;
+    }
+
+    /** Writes the folder's `.htaccess` when it is missing or not the shop's as it is now. */
+    public static function guard(string $folder): void
+    {
+        $file = $folder . '/.htaccess';
+        if (is_dir($folder) && (!is_file($file) || file_get_contents($file) !== self::HTACCESS)) {
+            file_put_contents($file, self::HTACCESS, \LOCK_EX);
+        }
     }
 
     /**

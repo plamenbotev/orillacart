@@ -8,6 +8,7 @@ use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Security\WordPressCsrfProtection;
 use OrillaCart\Shared\Persistence\LoadedEntities;
 use PHPUnit\Framework\TestCase;
 
@@ -131,7 +132,7 @@ abstract class RestTestCase extends TestCase
             $request->set_body((string) wp_json_encode($body));
         }
         if ($nonce !== false) {
-            $request->set_header('X-WP-Nonce', $nonce === true ? wp_create_nonce('wp_rest') : $nonce);
+            $request->set_header('X-WP-Nonce', $nonce === true ? wp_create_nonce(WordPressCsrfProtection::action('wp_rest')) : $nonce);
         }
 
         return rest_do_request($request);
@@ -162,7 +163,7 @@ abstract class RestTestCase extends TestCase
             $this->treatAsUploaded($path);
         }
         $request = new \WP_REST_Request('POST', self::NAMESPACE . $route);
-        $request->set_header('X-WP-Nonce', wp_create_nonce('wp_rest'));
+        $request->set_header('X-WP-Nonce', wp_create_nonce(WordPressCsrfProtection::action('wp_rest')));
         $request->set_body_params($fields);
         $request->set_file_params(['file' => ['name' => $name, 'type' => 'application/octet-stream', 'tmp_name' => $path, 'error' => UPLOAD_ERR_OK, 'size' => max(0, (int) filesize($path))]]);
 

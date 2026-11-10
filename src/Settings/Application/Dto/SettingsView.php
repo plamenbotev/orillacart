@@ -46,7 +46,7 @@ final readonly class SettingsView
         /** Deleting the plugin removes the shop's data too. */
         public bool $removeDataOnUninstall = false,
         public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
-        public ?int $unpaidHoldDays = null,
+        public ?int $unpaidHoldDays = StoreSettings::DEFAULT_UNPAID_HOLD_DAYS,
         public ?int $returnDays = null,
         public ?string $minimumOrder = null,
         /** The day the reports count an order on: paid or placed. */
@@ -57,6 +57,8 @@ final readonly class SettingsView
         public string $freeItemsOnReturn = 'spread',
         /** How many days the shop keeps its history: stock movements, past prices, carts left at checkout. */
         public int $historyDays = StoreSettings::DEFAULT_HISTORY_DAYS,
+        /** Orders on hold unpaid one shopper may have at once; null for no limit. */
+        public ?int $unpaidOrdersEach = StoreSettings::DEFAULT_UNPAID_ORDERS_EACH,
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -89,6 +91,7 @@ final readonly class SettingsView
             ReportDay::values(),
             $settings->freeItemsOnReturn->value,
             $settings->historyDays,
+            $settings->unpaidOrdersEach,
         );
     }
 }

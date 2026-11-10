@@ -16,7 +16,7 @@ use OrillaCart\Shared\WordPress\AsHook;
  * Sends a bought file to whoever follows its secret link (?orillacart_download=TOKEN). PHP reads it from the
  * private store, or hands it to the web server when the shop chose X-Sendfile or X-Accel-Redirect: either way
  * only after the link was checked, since the web server never serves the folder by itself. A browser resuming a
- * download that broke off gets the rest (Range), counted as the same download.
+ * download that broke off gets the rest (Range), counted as the same download; it is told how far the download got.
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class ServeDownload
@@ -39,7 +39,7 @@ final readonly class ServeDownload
 
         $range = \is_string($_SERVER['HTTP_RANGE'] ?? null) ? $_SERVER['HTTP_RANGE'] : '';
         try {
-            $file = $this->downloads->open(sanitize_key($token), ByteRange::resumes($range), ClientAddress::of($_SERVER));
+            $file = $this->downloads->open(sanitize_key($token), $range, ClientAddress::of($_SERVER));
         } catch (DownloadUnavailable $e) {
             wp_die(esc_html($this->translations->text($e->text)), esc_html__('Download not available', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
@@ -61,12 +61,21 @@ final readonly class ServeDownload
             header($handOff);
             exit;
         }
-        self::send($file->path, $range);
+        // Told how far it got when the visitor goes, so a resume goes on from there (Downloads::sentOnly()).
+        ignore_user_abort(true);
+        $until = self::send($file->path, $range);
+        if ($until !== null) {
+            $this->downloads->sentOnly(sanitize_key($token), $until);
+        }
         exit;
     }
 
-    /** The file, or the one range of it asked for, in pieces, so a large file never fills PHP's memory. */
-    private static function send(string $path, string $range): void
+    /**
+     * The file, or the one range of it asked for, in pieces, so a large file never fills PHP's memory.
+     *
+     * @return int|null how far into the file went out, when the visitor went before the end
+     */
+    private static function send(string $path, string $range): ?int
     {
         $size = (int) filesize($path);
         $part = $range === '' ? null : ByteRange::of($range, $size);
@@ -75,7 +84,7 @@ final readonly class ServeDownload
             status_header(416);
             header("Content-Range: bytes */{$size}");
 
-            return;
+            return null;
         }
         $part ??= new ByteRange(0, $size - 1);
         if ($range !== '' && $part->length() !== $size) {
@@ -85,7 +94,7 @@ final readonly class ServeDownload
         header('Content-Length: ' . (string) max(0, $part->length()));
         $handle = fopen($path, 'rb');
         if ($handle === false) {
-            return;
+            return null;
         }
         fseek($handle, $part->start);
         $left = $part->length();
@@ -99,5 +108,7 @@ final readonly class ServeDownload
             $left -= \strlen($chunk);
         }
         fclose($handle);
+
+        return $left > 0 ? $part->end + 1 - $left : null;
     }
 }

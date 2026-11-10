@@ -10,7 +10,7 @@ use OrillaCart\Shared\WordPress\AsHook;
 
 /**
  * A file a shopper sent with an item, for the shop manager from the order screen:
- * admin-post.php?action=orillacart_order_upload&order=12&upload=34 with the REST nonce the admin screens hold.
+ * admin-post.php?action=orillacart_order_upload&order=12&upload=34 with the nonce the admin screens hold for it.
  * Only the order's own files; always as an attachment, never shown in the browser, which runs nothing of it.
  */
 #[AsHook('admin_post_orillacart_order_upload', method: 'serve')]
@@ -21,7 +21,7 @@ final readonly class ServeOrderUpload
     public function serve(): void
     {
         $nonce = $_GET['_wpnonce'] ?? '';
-        if (!current_user_can(Capability::MANAGE_SHOP) || !\is_string($nonce) || wp_verify_nonce($nonce, 'wp_rest') === false) {
+        if (!current_user_can(Capability::MANAGE_SHOP) || !\is_string($nonce) || wp_verify_nonce($nonce, 'orillacart_order_upload') === false) {
             wp_die(esc_html__('You may not see the files of orders.', 'orillacart'), esc_html__('File', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
         $order = $_GET['order'] ?? '';

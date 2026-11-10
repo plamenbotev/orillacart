@@ -9,18 +9,18 @@ use OrillaCart\Audit\Application\Dto\ChangeLogQuery;
 use OrillaCart\Audit\Application\Dto\ChangeRecordView;
 use OrillaCart\Audit\Domain\ChangeRecord;
 use OrillaCart\Audit\Domain\ChangeRecordRepository;
+use OrillaCart\Shared\Security\SecretKeys;
 use OrillaCart\Shared\Users\UserNames;
 use Psr\Clock\ClockInterface;
 
 /**
  * The shop's change log: each change a shop manager made through the shop's API, kept for KEEP_DAYS. What was
- * sent is kept as sent, but for secrets (passwords, keys, tokens), which are blanked out.
+ * sent is kept as sent, but for secrets, which are blanked out: settings declared secret by the gateway, shipping
+ * method or extension the change was for, and keys named as secrets (SecretKeys).
  */
 final readonly class ChangeLog
 {
     public const int KEEP_DAYS = 365;
-    /** Keys whose values are never kept: "client_secret", "password", "api_key", "token", "key". */
-    private const string SECRET = '/(secret|password|passwd|token|api_?key|private)|^key$/i';
     private const int MOST_BYTES = 8000;
 
     public function __construct(
@@ -87,7 +87,7 @@ final readonly class ChangeLog
     {
         $kept = [];
         foreach ($values as $key => $value) {
-            $kept[(string) $key] = preg_match(self::SECRET, (string) $key) === 1 && $value !== '' && $value !== null
+            $kept[(string) $key] = SecretKeys::isSecret((string) $key) && $value !== '' && $value !== null
                 ? '••••'
                 : (\is_array($value) ? self::blank($value) : $value);
         }

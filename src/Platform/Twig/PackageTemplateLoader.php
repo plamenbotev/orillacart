@@ -14,7 +14,8 @@ use Twig\Source;
  * The scripted extensions' templates for the storefront's Twig, ahead of the theme's and the plugin's: an
  * extension's own (`x/<extension>/…`) and its overrides of the shop's. Every template it serves renders in the
  * sandbox (it is the source policy); the plugin's and the theme's keep their freedom. A source's path names the
- * extension it is from (`orillacart-extension:<extension>:<name>`), for its words (design 57).
+ * extension it is from (`orillacart-extension:<extension>:<name>`), for its words (design 57). It serves only
+ * `.html.twig` names: an extension's notes and other files are not templates.
  */
 final class PackageTemplateLoader implements LoaderInterface, SourcePolicyInterface
 {
@@ -24,7 +25,7 @@ final class PackageTemplateLoader implements LoaderInterface, SourcePolicyInterf
 
     public function getSourceContext(string $name): Source
     {
-        $source = $this->templates->source($name) ?? throw new LoaderError(\sprintf('No extension has the template "%s".', $name));
+        $source = (self::isTemplate($name) ? $this->templates->source($name) : null) ?? throw new LoaderError(\sprintf('No extension has the template "%s".', $name));
 
         // The path marks the source as an extension's: the sandbox is on for it and nothing else.
         return new Source($source, $name, self::path($this->templates->owner($name) ?? '', $name));
@@ -60,7 +61,13 @@ final class PackageTemplateLoader implements LoaderInterface, SourcePolicyInterf
 
     public function exists(string $name): bool
     {
-        return $this->templates->source($name) !== null;
+        return self::isTemplate($name) && $this->templates->source($name) !== null;
+    }
+
+    /** Whether a name is one of a template: lowercase, ending in .html.twig. */
+    public static function isTemplate(string $name): bool
+    {
+        return str_ends_with($name, '.html.twig') && $name === strtolower($name);
     }
 
     public function enableSandbox(Source $source): bool

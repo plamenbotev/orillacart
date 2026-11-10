@@ -389,13 +389,14 @@ final readonly class CustomerService
     /**
      * Moves an order to a customer's account, or makes it a guest's order.
      *
-     * @throws CustomerNotFound for an account that does not exist
+     * @throws CustomerNotFound for an account that does not exist or is not one of the shop's customers
      * @throws OrderNotFound
      */
     public function assignOrder(int $orderId, ?int $customerId, ?int $userId): OrderView
     {
-        if ($customerId !== null) {
-            $this->accounts->find($customerId) ?? throw new CustomerNotFound($customerId);
+        // Only the shop's own customers take orders: not its staff, and on a network not another site's users.
+        if ($customerId !== null && (!$this->accounts->isShopCustomer($customerId) || $this->accounts->find($customerId) === null)) {
+            throw new CustomerNotFound($customerId);
         }
 
         return $this->orders->changeCustomer($orderId, $customerId, $userId);

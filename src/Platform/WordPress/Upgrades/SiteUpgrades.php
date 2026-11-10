@@ -133,6 +133,24 @@ final readonly class SiteUpgrades
     }
 
     /**
+     * The plugins on for the site alone, not for the whole network, but for the shop: what a process booted as the
+     * site loads besides what every site loads.
+     *
+     * @return list<string> sorted
+     */
+    public function plugins(int $siteId): array
+    {
+        $active = is_multisite() ? get_blog_option($siteId, 'active_plugins') : get_option('active_plugins');
+        $network = is_multisite() ? get_site_option('active_sitewide_plugins') : [];
+        $network = \is_array($network) ? array_map(strval(...), array_keys($network)) : [];
+        $own = plugin_basename($this->context->pluginFile);
+        $plugins = array_values(array_filter(\is_array($active) ? array_filter($active, \is_string(...)) : [], static fn(string $plugin): bool => $plugin !== $own && !\in_array($plugin, $network, true)));
+        sort($plugins);
+
+        return array_values(array_unique($plugins));
+    }
+
+    /**
      * The shops whose tables are not at the files' build.
      *
      * @return list<int>

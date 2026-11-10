@@ -7,11 +7,14 @@ namespace OrillaCart\Tests\Unit\Checkout;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
+use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\Dto\CheckAddresses;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\AddressSuggestion;
 use OrillaCart\Extension\Checkout\CheckedAddress;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -83,6 +86,34 @@ final class AddressChecksTest extends TestCase
         $notes = array_column($this->shop->orders->order($placed->number)->notes, 'text');
         self::assertContains('The billing address check suggested 1 Vitosha Blvd, 1000, Sofia; the customer kept their address.', $notes);
         self::assertContains('The shipping address check could not find the address (We could not find this street in Sofia.); the customer kept it.', $notes);
+    }
+
+    public function testACheckTheShopCannotDoWithoutHoldsTheOrderWhenItFails(): void
+    {
+        array_unshift($this->shop->extensions->addressChecks, new class implements AddressCheck, FailsClosed {
+            public function id(): string
+            {
+                return 'required_register';
+            }
+
+            public function check(CheckedAddress $address): ?AddressSuggestion
+            {
+                throw new \RuntimeException('register down');
+            }
+        });
+        $said = $this->shop->addressChecks->suggest(new CheckAddresses(self::address('1 Vitosha')));
+        self::assertNotNull($said->billing);
+        self::assertSame([false, AddressChecks::UNCHECKED], [$said->billing->found, $said->billing->message]);
+
+        $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]))->rates[0]->id;
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
+        try {
+            $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', self::address('1 Vitosha'), null, "rate:{$rate}", 'bank_transfer'));
+            self::fail('the order waits for the check');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame(AddressChecks::UNCHECKED, $e->getMessage());
+        }
+        self::assertSame([], $this->shop->orderRecords->orders, 'no order was placed');
     }
 
     private static function address(string $street): AddressData

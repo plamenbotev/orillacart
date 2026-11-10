@@ -193,6 +193,33 @@ final class ManualOrdersTest extends TestCase
         self::assertNull($this->shop->accounts->find($made->id));
     }
 
+    public function testATestAccountMadeStaffSinceStaysWithTheTestData(): void
+    {
+        $made = $this->shop->customers->create(new \OrillaCart\Customers\Application\Dto\CreateCustomer('editor@shop.dev', 'Test', 'Editor', test: true));
+        $this->shop->accounts->staff[] = $made->id;
+
+        $removed = new TestData($this->shop->orders, $this->shop->accounts, $this->shop->customers)->remove();
+        self::assertSame(0, $removed->customers);
+        self::assertNotNull($this->shop->accounts->find($made->id), 'no longer a customer, so not the test data\'s to remove');
+    }
+
+    public function testAnOpenOrderIsAnonymisedByHandOnlyOnceSettledOrOld(): void
+    {
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer'), 7);
+        $yearAgo = $this->shop->clock->now()->modify('-365 days');
+        try {
+            $this->shop->orders->anonymise($order->number, 7, $yearAgo);
+            self::fail('an open order anonymised by hand');
+        } catch (\OrillaCart\Ordering\Domain\OrderRuleViolation $e) {
+            self::assertSame('orillacart_order_open', $e->errorCode);
+        }
+        self::assertTrue($this->shop->orders->anonymise($order->number, 7, $this->shop->clock->now()->modify('+1 day'))->anonymised, 'older than the history');
+
+        $other = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer'), 7);
+        $this->shop->orders->changeStatus($other->number, new \OrillaCart\Ordering\Application\Dto\ChangeOrderStatus('cancelled'), 7);
+        self::assertTrue($this->shop->orders->anonymise($other->number, 7, $yearAgo)->anonymised, 'cancelled');
+    }
+
     public function testAPaidOrderStartsProcessing(): void
     {
         $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], paid: true), 7);

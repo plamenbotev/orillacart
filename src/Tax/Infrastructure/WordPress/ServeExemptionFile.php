@@ -11,8 +11,8 @@ use OrillaCart\Tax\Application\ExemptionCertificates;
 
 /**
  * The copy of a certificate a customer sent, for the shop manager from the customer's page:
- * admin-post.php?action=orillacart_exemption_file&customer=12&exemption=34 with the REST nonce the admin screens
- * hold. Always as an attachment, never shown in the browser, which runs nothing of it.
+ * admin-post.php?action=orillacart_exemption_file&customer=12&exemption=34 with the nonce the admin screens
+ * hold for it. Always as an attachment, never shown in the browser, which runs nothing of it.
  */
 #[AsHook('admin_post_orillacart_exemption_file', method: 'serve')]
 final readonly class ServeExemptionFile
@@ -22,7 +22,7 @@ final readonly class ServeExemptionFile
     public function serve(): void
     {
         $nonce = $_GET['_wpnonce'] ?? '';
-        if (!current_user_can(Capability::MANAGE_SHOP) || !\is_string($nonce) || wp_verify_nonce($nonce, 'wp_rest') === false) {
+        if (!current_user_can(Capability::MANAGE_SHOP) || !\is_string($nonce) || wp_verify_nonce($nonce, 'orillacart_exemption_file') === false) {
             wp_die(esc_html__('You may not see customers’ certificates.', 'orillacart'), esc_html__('File', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
         $customer = $_GET['customer'] ?? '';

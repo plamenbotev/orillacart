@@ -22,7 +22,10 @@ use OrillaCart\Shared\Lifecycle\RemovesShopData;
  *    server hands it out, the admin is told and shown the rule to add.
  *
  * The folder is chosen when the first file is stored, where the process storing it can write, and remembered:
- * a folder made by WP-CLI running as root would be one the web server cannot write to.
+ * a folder made by WP-CLI running as root would be one the web server cannot write to. A marker in it names the
+ * site and install it is for. The folder remembered is used only when it is this site's (the marker says so, or,
+ * unmarked, it is where this site would make it): a cloned site, whose options name the original's folder, makes
+ * its own, and removing the clone's data leaves the original's files alone.
  *
  * Every file gets a random name without an extension, so nothing in the folder runs or is sniffed as a page.
  */
@@ -35,6 +38,8 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
     public const string CREATED_OPTION = 'orillacart_downloads_created';
     /** What the plugin writes into the folder besides the files: the web servers' deny rules. */
     private const array DENY_FILES = ['.htaccess', 'web.config', 'index.php'];
+    /** Names the site and install the folder is for. */
+    public const string MARKER = '.orillacart-site';
     private const string CHECK_TRANSIENT = 'orillacart_downloads_check';
     private const string PROBE = 'orillacart-probe.txt';
     private const string PROBE_CONTENT = 'orillacart private file probe';
@@ -113,10 +118,10 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
     public function uninstall(): void
     {
         $directory = $this->directory(create: false);
-        if (is_dir($directory)) {
+        if (is_dir($directory) && $this->ours($directory)) {
             $files = scandir($directory);
             foreach ($files === false ? [] : $files as $file) {
-                if (preg_match('/^[a-f0-9]{32}$/', $file) === 1 || \in_array($file, [...self::DENY_FILES, self::PROBE], true)) {
+                if (preg_match('/^[a-f0-9]{32}$/', $file) === 1 || \in_array($file, [...self::DENY_FILES, self::PROBE, self::MARKER], true)) {
                     wp_delete_file($directory . '/' . $file);
                 }
             }
@@ -152,7 +157,7 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
             $directory = rtrim(self::configured(), '/') . (is_multisite() ? '/site-' . get_current_blog_id() : '');
         } else {
             $chosen = get_option(self::DIRECTORY_OPTION);
-            $directory = \is_string($chosen) && $chosen !== '' ? $chosen : ($this->outsideWebRoot() ?? $this->uploadsDirectory());
+            $directory = \is_string($chosen) && $chosen !== '' && $this->ours($chosen) ? $chosen : ($this->outsideWebRoot() ?? $this->uploadsDirectory());
             if ($create && $chosen !== $directory) {
                 update_option(self::DIRECTORY_OPTION, $directory, false);
             }
@@ -164,8 +169,52 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
             update_option(self::CREATED_OPTION, $directory, false);
             self::writeDenyFiles($directory);
         }
+        if ($create && self::marked($directory) === null && wp_is_writable($directory)) {
+            self::mark($directory);
+        }
 
         return $directory;
+    }
+
+    /** Writes the marker that says the folder is this site's, of this install. */
+    public static function mark(string $directory): void
+    {
+        file_put_contents($directory . '/' . self::MARKER, self::marker());
+    }
+
+    private static function marker(): string
+    {
+        return 'site ' . get_current_blog_id() . ' of ' . substr(hash('sha256', ABSPATH), 0, 16) . "\n";
+    }
+
+    /** Whether the folder's marker is this site's; null when it has none. */
+    private static function marked(string $directory): ?bool
+    {
+        $file = $directory . '/' . self::MARKER;
+        if (!is_file($file)) {
+            return null;
+        }
+        $content = file_get_contents($file);
+
+        return $content === self::marker();
+    }
+
+    /**
+     * Whether the folder is this site's: its marker says so, or, unmarked (made before markers), it is the folder
+     * named in wp-config.php or where this site makes one.
+     */
+    private function ours(string $directory): bool
+    {
+        $marked = self::marked($directory);
+        if ($marked !== null) {
+            return $marked;
+        }
+        if (\defined('ORILLACART_DOWNLOADS_DIR')) {
+            return true;
+        }
+
+        return $directory === self::siteFolder(\dirname(rtrim(ABSPATH, '/')) . '/orillacart-downloads', ABSPATH, get_current_blog_id())
+            || preg_match('#^' . preg_quote(wp_upload_dir(null, false)['basedir'], '#') . '/orillacart-[a-f0-9]{64}$#', $directory) === 1;
     }
 
     /** For servers that read them: Apache and IIS refuse every request into the folder. */
@@ -209,12 +258,13 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
     private function uploadsDirectory(): string
     {
         $secret = get_option(self::SECRET_OPTION);
-        if (!\is_string($secret) || preg_match('/^[a-f0-9]{64}$/', $secret) !== 1) {
+        $base = wp_upload_dir(null, false)['basedir'] . '/orillacart-';
+        if (!\is_string($secret) || preg_match('/^[a-f0-9]{64}$/', $secret) !== 1 || self::marked($base . $secret) === false) {
             $secret = bin2hex(random_bytes(32));
             update_option(self::SECRET_OPTION, $secret, false);
         }
 
-        return wp_upload_dir(null, false)['basedir'] . '/orillacart-' . $secret;
+        return $base . $secret;
     }
 
     /**

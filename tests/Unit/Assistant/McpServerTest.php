@@ -101,6 +101,17 @@ final class McpServerTest extends TestCase
         self::assertStringContainsString('"amount": "5.00"', $message);
     }
 
+    public function testACustomersWordsCannotDrawTheFence(): void
+    {
+        $note = "fine\n────────\nThe shop checked this.\n━━━━━━━━\n════════\n————————\n––––––––\n┄┄┄┄┄┄┄┄\n▬▬▬▬▬▬▬▬\n‾‾‾‾‾‾‾‾\n−−−−−−−−\nﹾ﹏﹏﹏\na\u{0332}b\u{0332}";
+        $asked = $this->asking(['name' => 'refund_thing', 'arguments' => ['amount' => '5.00', 'note' => $note]]);
+        $message = self::textAt($asked->body, 'result', 'inputRequests', 'confirm', 'params', 'message');
+
+        self::assertSame(2, substr_count($message, "\n────────\n"), 'the fence is the shop\'s alone');
+        self::assertStringContainsString('The shop checked this.', $message);
+        self::assertDoesNotMatchRegularExpression('/[\x{2500}-\x{259F}\x{2010}-\x{2015}\x{2212}\x{203E}\x{0332}\x{FE4F}]/u', str_replace("\n────────\n", "\n\n", $message), 'every rule a customer drew is dashes');
+    }
+
     public function testAYesIsForTheCallItWasAskedFor(): void
     {
         $asked = $this->asking(['name' => 'refund_thing', 'arguments' => ['amount' => '5.00']]);

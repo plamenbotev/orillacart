@@ -14,6 +14,7 @@ use OrillaCart\Reviews\Application\Dto\ReviewInvitationView;
 use OrillaCart\Reviews\Application\Dto\UpdateReviewSettings;
 use OrillaCart\Reviews\Application\Dto\WriteReview;
 use OrillaCart\Reviews\Application\Reviews;
+use OrillaCart\Reviews\Application\ReviewTokens;
 use OrillaCart\Reviews\Domain\ReviewRuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Reviews\InMemoryReviewSettings;
@@ -25,6 +26,7 @@ final class ReviewsTest extends TestCase
     private TestShop $shop;
     private InMemoryReviewStore $store;
     private Reviews $reviews;
+    private ReviewTokens $tokens;
 
     protected function setUp(): void
     {
@@ -34,7 +36,7 @@ final class ReviewsTest extends TestCase
         $this->shop->content->add(30, 'Album');
         $this->shop->products->save(30, new SaveProduct('12', 'virtual'));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $this->reviews = new Reviews($this->store = new InMemoryReviewStore(), new InMemoryReviewSettings(), $this->shop->orders, $this->shop->accounts, $this->shop->productTranslations);
+        $this->reviews = new Reviews($this->store = new InMemoryReviewStore(), new InMemoryReviewSettings(), $this->shop->orders, $this->shop->accounts, $this->shop->productTranslations, $this->tokens = new ReviewTokens($this->shop->signatures, $this->shop->clock));
     }
 
     public function testAnyoneReviewsOnceAndABuyersReviewIsMarked(): void
@@ -76,21 +78,45 @@ final class ReviewsTest extends TestCase
         self::assertFalse($this->reviews->invitation(30, $ada)->verified);
     }
 
-    public function testTheLinkToAReceiptMakesAGuestABuyerOfWhatTheyPaidFor(): void
+    public function testTheReviewLinkOfAnOrderMakesAGuestABuyerOfWhatTheyPaidFor(): void
     {
         $number = $this->order(20, 'grace@example.com', null, paid: true);
-        $receipt = $this->shop->receipts->issue($number);
+        $token = $this->tokens->issue($number, 20);
 
-        $invitation = $this->reviews->invitation(20, null, $receipt);
+        $invitation = $this->reviews->invitation(20, null, $token);
         self::assertSame(['Grace H.', true], [$invitation->author, $invitation->verified]);
-        self::assertFalse($this->reviews->invitation(30, null, $receipt)->verified, 'not a product of the order');
+        self::assertNull($this->reviews->invitation(30, null, $token)->author, 'the link is for its own product alone');
+        self::assertNull($this->reviews->invitation(20, null, $this->shop->receipts->issue($number))->author, 'a receipt\'s token is no review link');
 
-        $written = $this->reviews->write(20, new WriteReview(4, 'Good.', 'Someone else', 'other@example.com', $receipt), null);
+        $written = $this->reviews->write(20, new WriteReview(4, 'Good.', 'Someone else', 'other@example.com', $token), null);
         self::assertSame(['Grace H.', true], [$written->review->author, $written->review->verified], 'the order says who wrote it');
         self::assertSame('grace@example.com', $this->store->reviews[0][1]->authorEmail);
 
+        try {
+            $this->reviews->write(30, new WriteReview(4, 'Good.', token: $token), null);
+            self::fail('a link for another product was taken');
+        } catch (ReviewRuleViolation $e) {
+            self::assertSame('orillacart_review_receipt', $e->errorCode);
+        }
         $this->expectException(ReviewRuleViolation::class);
-        $this->reviews->write(30, new WriteReview(4, 'Good.', receipt: '1-1-' . str_repeat('0', 32)), null);
+        $this->reviews->write(30, new WriteReview(4, 'Good.', token: '1-30-1-' . str_repeat('0', 32)), null);
+    }
+
+    public function testAReviewLinkExpires(): void
+    {
+        $number = $this->order(20, 'grace@example.com', null, paid: true);
+        $token = $this->tokens->issue($number, 20);
+
+        $this->shop->clock->modify('+' . (ReviewTokens::VALID_DAYS - 1) . ' days');
+        self::assertSame('Grace H.', $this->reviews->invitation(20, null, $token)->author);
+        $this->shop->clock->modify('+1 day');
+        self::assertNull($this->reviews->invitation(20, null, $token)->author, 'too old: a visitor like any other');
+    }
+
+    public function testAPageNumberPastAnyShopsReviewsIsTheLastOneTaken(): void
+    {
+        self::assertSame(Reviews::MAX_PAGE, $this->reviews->page(20, \PHP_INT_MAX)->page);
+        self::assertSame([], $this->reviews->page(20, \PHP_INT_MAX)->reviews);
     }
 
     public function testOnlyBuyersWhenTheShopSaysSo(): void

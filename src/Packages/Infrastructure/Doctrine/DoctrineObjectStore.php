@@ -168,6 +168,29 @@ final readonly class DoctrineObjectStore implements ObjectStore
         $this->entityManager->createQuery('DELETE FROM ' . ExtensionValue::class . ' v WHERE v.kind = :k AND v.ownerId = :c')->setParameter('k', 'customer')->setParameter('c', $customerId)->execute();
     }
 
+    public function forgetOrder(int $orderId): void
+    {
+        /** @var list<ExtensionObject> $objects */
+        $objects = $this->entityManager->getRepository(ExtensionObject::class)->findBy(['orderId' => $orderId]);
+        foreach ($objects as $object) {
+            $this->entityManager->createQuery('DELETE FROM ' . ExtensionValue::class . ' v WHERE v.extension = :e AND v.kind = :k AND v.ownerId = :id')
+                ->setParameter('e', $object->extension())->setParameter('k', ExtensionValue::OBJECT)->setParameter('id', $object->id())->execute();
+        }
+        $this->entityManager->createQuery('DELETE FROM ' . ExtensionObject::class . ' o WHERE o.orderId = :o')->setParameter('o', $orderId)->execute();
+        $this->entityManager->createQuery('DELETE FROM ' . ExtensionValue::class . ' v WHERE v.kind = :k AND v.ownerId = :o')->setParameter('k', 'order')->setParameter('o', $orderId)->execute();
+    }
+
+    public function ofOrders(string $extension, array $orderIds): array
+    {
+        if ($orderIds === []) {
+            return [];
+        }
+        /** @var list<ExtensionObject> $objects */
+        $objects = $this->entityManager->getRepository(ExtensionObject::class)->findBy(['extension' => $extension, 'orderId' => $orderIds], ['id' => 'ASC']);
+
+        return array_map(static fn(ExtensionObject $object): array => $object->toArray(), $objects);
+    }
+
     public function ofCustomer(string $extension, int $customerId): array
     {
         /** @var list<ExtensionObject> $objects */

@@ -55,7 +55,7 @@ final readonly class Promotions
             return [];
         }
         $known = ($request->email ?? '') !== '' || $request->customerId !== null;
-        $lines = array_map(static fn(DiscountItem $item): BasketLine => new BasketLine($item->productId, $item->quantity, Money::of($item->total), $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons), $request->items);
+        $lines = array_map(static fn(DiscountItem $item): BasketLine => new BasketLine($item->productId, $item->quantity, Money::of($item->total), $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons, $item->sized), $request->items);
         $basket = new Basket(
             $lines,
             $request->currency,

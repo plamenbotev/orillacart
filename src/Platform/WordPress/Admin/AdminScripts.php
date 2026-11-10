@@ -37,8 +37,10 @@ final readonly class AdminScripts
         ]) . ';', 'before');
         // The shop's time zone, in which dates are entered and shown (shared/dates.ts): a name or an offset.
         wp_add_inline_script($handle, 'window.orillacartTimeZone = ' . wp_json_encode(wp_timezone_string()) . ';', 'before');
-        // Where exports download from (shared/ExportDialog.tsx), with the nonce that lets the shop manager.
-        wp_add_inline_script($handle, 'window.orillacartExport = ' . wp_json_encode(['url' => admin_url('admin-post.php'), 'nonce' => wp_create_nonce('wp_rest')]) . ';', 'before');
+        // Where exports and files download from (shared/exports.ts), with a nonce for each kind of download: the
+        // address keeps it (history, server logs), so it lets no more than that download.
+        $downloads = ['orillacart_export_orders', 'orillacart_export_products', 'orillacart_export_subscribers', 'orillacart_exemption_file', 'orillacart_order_upload'];
+        wp_add_inline_script($handle, 'window.orillacartExport = ' . wp_json_encode(['url' => admin_url('admin-post.php'), 'nonces' => array_combine($downloads, array_map(wp_create_nonce(...), $downloads))]) . ';', 'before');
         wp_enqueue_script($handle);
         wp_enqueue_style('wp-components');
         if (wp_style_is($handle, 'registered')) {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Returns\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\References;
 
 /**
@@ -52,6 +53,13 @@ class ItemReturn
     #[ORM\Column(nullable: true)]
     #[References('refunds', onDelete: 'SET NULL')]
     private ?int $refundId = null;
+
+    /**
+     * What its refund kept back of the coupons whose least order what was kept no longer met; less than nothing
+     * when it gave back what earlier returns kept.
+     */
+    #[ORM\Column(type: 'decimal', precision: Money::PRECISION, scale: Money::DECIMALS, options: ['default' => '0.0000'])]
+    private string $couponsTaken = '0';
 
     /**
      * @param array<int, int> $items quantities by line position
@@ -117,6 +125,13 @@ class ItemReturn
     public function answer(): string
     {
         return $this->answer;
+    }
+
+    /** The customer was erased from the order: what they wrote, and what the shop wrote back to them, go. */
+    public function forgetWords(): void
+    {
+        $this->comment = '';
+        $this->answer = '';
     }
 
     public function requestedAt(): \DateTimeImmutable
@@ -194,13 +209,20 @@ class ItemReturn
      *
      * @throws ReturnRuleViolation for one whose items did not come back
      */
-    public function refunding(int $refundId): void
+    public function refunding(int $refundId, ?Money $couponsTaken = null): void
     {
         if ($this->status !== ReturnStatus::Received) {
             throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$this->id(), $this->status->value]);
         }
         $this->status = ReturnStatus::Refunding;
         $this->refundId = $refundId;
+        $this->couponsTaken = ($couponsTaken ?? Money::zero())->toFixed();
+    }
+
+    /** What its refund kept back of coupons the items kept no longer met (Returns). */
+    public function couponsTaken(): Money
+    {
+        return Money::of($this->couponsTaken);
     }
 
     public function refundId(): ?int

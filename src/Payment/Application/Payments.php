@@ -72,11 +72,30 @@ final readonly class Payments
             throw new PaymentProviderUnavailable($method->name(), $e->getMessage(), $e);
         }
 
+        if ($start->redirectUrl !== null && !self::isHttps($start->redirectUrl)) {
+            // The customer's browser goes where it says: never a script, never in the clear.
+            $this->logger->error('Payment method {gateway} sent the payment of order {order} to an address that is not https: {url}', ['gateway' => $gateway->id(), 'order' => $command->orderId, 'url' => $start->redirectUrl]);
+            $payment->fail(null, $this->clock->now());
+            $this->payments->save($payment);
+
+            throw new PaymentProviderUnavailable($method->name(), 'The payment method gave an address that is not https.');
+        }
         if ($start->reference !== null) {
             $payment->refer($start->reference);
             $this->payments->save($payment);
         }
 
         return new PaymentStartView($payment->id(), $start->redirectUrl);
+    }
+
+    /** Whether a redirect goes over https to a host: nothing a browser reads another way (`javascript:`, `//`, `\\`). */
+    public static function isHttps(string $url): bool
+    {
+        if (preg_match('/[\x00-\x20\x7f\\\\]/', $url) === 1 || preg_match('#^https://[^/?\#@:]#i', $url) !== 1) {
+            return false;
+        }
+        $host = parse_url($url, \PHP_URL_HOST);
+
+        return \is_string($host) && $host !== '';
     }
 }

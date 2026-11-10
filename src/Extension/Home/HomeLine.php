@@ -17,7 +17,7 @@ final readonly class HomeLine
     public function __construct(
         /** What waits: "3 returns to accept". */
         public string $text,
-        /** An admin URL where to act, or empty for none. */
+        /** Where to act: a Shop page, an admin page, a path or an http(s) URL of the site (HomeUrl); empty for none. */
         public string $url = '',
         /** How pressing: ATTENTION (red), WARNING (amber) or INFO (blue). */
         public string $tone = self::WARNING,

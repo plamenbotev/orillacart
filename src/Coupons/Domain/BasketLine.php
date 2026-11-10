@@ -24,5 +24,7 @@ final readonly class BasketLine
         public array $brandIds = [],
         /** Coupons may come off it: not when a price rule that set its price says so. */
         public bool $coupons = true,
+        /** It counts towards the order's size: not an item a coupon gives, nor a gift card. */
+        public bool $sized = true,
     ) {}
 }

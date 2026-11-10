@@ -114,6 +114,13 @@ network's with `--except`.
 wp orillacart jobs work --network --loop --max-time=3600 --path=/var/www/html
 ```
 
+A worker for the network is one process, so it runs with the plugins of the site it starts as: add-ons hook into
+the shop's jobs (an ERP sync hears of each order, a gateway settles payments), and a site with other add-ons than
+that one would have its jobs run without its own and with the other site's. So `--network` serves only the sites
+whose plugins, apart from those on for the whole network, are the starting site's, and names the others on start
+(and when they change) for workers of their own with `--url`. **Activate add-ons for the whole network** for one
+worker to serve every shop; an add-on on for some shops only needs a worker per shop that has it.
+
 Without `--network` a worker serves the site `--url` names. A busy shop with workers of its own, beside the
 network's:
 
@@ -135,8 +142,9 @@ date, and the shops' admin screens remind super admins of it.
 
 ## Under load
 
-A request that pushed jobs runs up to twenty of them after its response, but only on the queues no worker serves:
-with a worker running, requests run none, and PHP's workers are free for shoppers. A shop under real traffic runs a
+A request that pushed jobs runs up to twenty of them after its response, only on the queues it pushed to and only on
+the queues no worker serves: a shopper's cheap push does not work the queue of imports or invoices, and with a worker
+running, requests run none, and PHP's workers are free for shoppers. A shop under real traffic runs a
 worker. It also runs a persistent object cache (Redis, Memcached): the storefront's listings then share their totals
 and filter counts across requests for a minute, or until the search index changes (design 55); without one each
 request counts for itself.

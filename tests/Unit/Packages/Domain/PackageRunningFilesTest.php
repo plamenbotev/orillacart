@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Packages\Domain;
 
 use OrillaCart\Packages\Domain\Package;
+use OrillaCart\Packages\Domain\PackageState;
 use PHPUnit\Framework\TestCase;
 
 /** An enabled extension runs the files it was enabled with: an edit waits for a manager to enable it again. */
@@ -39,5 +40,20 @@ final class PackageRunningFilesTest extends TestCase
 
         $package->disable($at);
         self::assertStringContainsString('fn more()', $package->runningSource(), 'switched off, it is the files as they are');
+    }
+
+    public function testAStoppedExtensionKeepsTheFilesItWasEnabledWith(): void
+    {
+        $at = new \DateTimeImmutable('2026-11-10 12:00:00');
+        $package = new Package('trade', 'Trade', $at);
+        $package->write('main.ocs', 'route GET "/a" fn(request) { return 1 }', $at);
+        $package->enable([], [], $at);
+        $package->write('main.ocs', 'route GET "/b" fn(request) { return 2 }', $at);
+        for ($i = 0; $i < Package::FAILURES_TO_STOP; ++$i) {
+            $package->failed('broke', $at);
+        }
+
+        self::assertSame(PackageState::Stopped, $package->state());
+        self::assertSame('route GET "/a" fn(request) { return 1 }', $package->runningSource(), 'its routes are the ones it ran, to answer that it is stopped');
     }
 }

@@ -386,8 +386,13 @@ class Coupon
         return $this->matching(new Basket([$line], '')) !== [];
     }
 
-    /** Why it cannot hold for this shopper now, whatever the cart; null when it may. */
-    private function unavailable(Basket $basket, \DateTimeImmutable $now, int $customerUses): ?Text
+    /**
+     * Why it cannot hold for this shopper now, whatever the cart (refusal() without the cart's size); null when it
+     * may.
+     *
+     * @param int $customerUses how often this customer used it on orders that stand
+     */
+    public function unavailable(Basket $basket, \DateTimeImmutable $now, int $customerUses): ?Text
     {
         return match (true) {
             !$this->active => new Text('This code is not valid.'),
@@ -430,7 +435,9 @@ class Coupon
         $matching = $this->matching($basket);
         if ($this->kind === CouponKind::FreeGift) {
             foreach ($this->giftLines($basket) as $line) {
-                $subtotal = $subtotal->subtract($line->total);
+                if ($line->sized) {
+                    $subtotal = $subtotal->subtract($line->total);
+                }
             }
         }
 
@@ -538,6 +545,22 @@ class Coupon
         $bought = array_sum(array_map(fn(BasketLine $line): int => $this->givesOthers() && $this->giftable(new Basket([$line], '')) !== [] ? 0 : $line->quantity, $matching));
 
         return intdiv($bought, $this->buyQuantity) * $this->getQuantity;
+    }
+
+    /**
+     * Whether what is kept of an order still meets what the coupon needs of the order's size (its least order,
+     * how many items it applies to), for what it took off going back when items it came with go back. True for a
+     * coupon that gives items, whose items given the return policy judges (earns()).
+     */
+    public function stillMet(Basket $kept): bool
+    {
+        if ($this->kind === CouponKind::FreeGift || $this->kind === CouponKind::BuyGet) {
+            return true;
+        }
+        [$subtotal, , $units] = $this->measured($kept);
+
+        return ($this->minSubtotal === null || $subtotal->compare($kept->inCurrency(Money::of($this->minSubtotal))) >= 0)
+            && ($units === 0 || $units >= max(1, $this->minQuantity));
     }
 
     /**

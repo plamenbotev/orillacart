@@ -135,8 +135,9 @@ final readonly class OrderView
      * @param (\Closure(string): string)|null $downloadUrl the link of a download token; without it, no downloads are listed
      * @param bool|null                       $shopWords   in the shop's own words, where the customer read another language
      *                                                     (design 51); null for the shop's when it is the shop's view
+     * @param \DateTimeImmutable|null         $now         for whether it can be paid now; without it a failed order cannot
      */
-    public static function fromOrder(Order $order, bool $forShop = false, ?\Closure $downloadUrl = null, ?bool $shopWords = null): self
+    public static function fromOrder(Order $order, bool $forShop = false, ?\Closure $downloadUrl = null, ?bool $shopWords = null, ?\DateTimeImmutable $now = null): self
     {
         $words = $shopWords ?? $forShop;
         $shippingAddress = $order->shippingAddress();
@@ -181,7 +182,7 @@ final readonly class OrderView
             array_map(static fn(OrderDiscount $discount): OrderDiscountView => new OrderDiscountView($discount->code, $discount->description, (string) $discount->amount, $discount->freeShipping, $discount->automatic), $order->discounts()),
             array_map(OrderFieldView::fromAnswer(...), $words ? $order->shopFields() : $order->fields()),
             $forShop ? $order->attention() : null,
-            $order->isPayable(),
+            $order->isPayable($now),
             $order->pricesIncludeTax(),
             $order->vatNumber(),
             $order->reverseCharge(),

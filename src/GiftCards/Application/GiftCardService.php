@@ -214,7 +214,7 @@ final readonly class GiftCardService
      */
     public function saveSettings(GiftCardSettingsView $command): GiftCardSettingsView
     {
-        $settings = new GiftCardSettings(array_values(array_unique($this->translations->originals($command->productIds))), $command->validMonths);
+        $settings = new GiftCardSettings(array_values(array_unique($this->translations->originals($command->productIds))), $command->validMonths, $command->paidWithMoneyOnly);
         $this->settings->save($settings);
 
         return GiftCardSettingsView::of($settings);

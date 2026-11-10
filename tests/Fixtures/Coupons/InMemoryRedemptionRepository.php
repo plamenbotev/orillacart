@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Fixtures\Coupons;
 
 use OrillaCart\Coupons\Domain\CouponRedemption;
 use OrillaCart\Coupons\Domain\RedemptionRepository;
+use OrillaCart\Shared\Domain\EmailAddress;
 
 final class InMemoryRedemptionRepository implements RedemptionRepository
 {
@@ -14,7 +15,7 @@ final class InMemoryRedemptionRepository implements RedemptionRepository
 
     public function countByCustomer(int|array $couponIds, ?int $customerId, string $email, bool $current = false): int
     {
-        $email = mb_strtolower($email);
+        $email = EmailAddress::key($email);
 
         return \count(array_filter($this->redemptions, static function (CouponRedemption $redemption) use ($couponIds, $customerId, $email): bool {
             $customer = new \ReflectionProperty(CouponRedemption::class, 'customerId');
@@ -29,7 +30,7 @@ final class InMemoryRedemptionRepository implements RedemptionRepository
 
     public function takeFirstOrderTurn(?int $customerId, string $email): void
     {
-        $this->turns[] = [$customerId, mb_strtolower($email)];
+        $this->turns[] = [$customerId, EmailAddress::key($email)];
     }
 
     public function ofOrder(int $orderId): array

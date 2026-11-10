@@ -464,7 +464,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(AssetFiles::class, UploadedAssetFiles::class);
     $services->alias(RedirectTargets::class, WordPressRedirectTargets::class);
     $services->alias(PackageArchives::class, ZipPackageArchives::class);
-    $services->alias(ObjectStore::class, DoctrineObjectStore::class);
+    $services->alias(ObjectStore::class, DoctrineObjectStore::class)->public();
     $services->alias(PackageVersions::class, DoctrinePackageVersions::class);
     $services->alias(RunLog::class, DoctrineRunLog::class);
     $services->alias(PluginTemplates::class, PluginTemplateFiles::class);
@@ -580,6 +580,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(OrderLookups::class, TaggedOrderLookups::class);
     $services->alias(WorkerRegistry::class, TableWorkerRegistry::class);
     $services->alias(JobSites::class, NetworkJobSites::class);
+    $services->alias(\OrillaCart\Shared\WordPress\OtherShops::class, \OrillaCart\Platform\WordPress\NetworkShops::class);
 
     $services->alias(Transactions::class, DoctrineTransactions::class);
     // Public for the integration tests, which forget what earlier tests loaded as a new request would.

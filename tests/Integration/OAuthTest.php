@@ -205,6 +205,39 @@ final class OAuthTest extends RestTestCase
         self::assertNotNull($server->client($fresh), 'still within its day: kept');
     }
 
+    public function testPastAThousandWaitingClientsARegistrationForgetsTheOldestAndAFloodWithinMinutesIsRefused(): void
+    {
+        $server = self::oauth();
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        $clients = "{$wpdb->prefix}orillacart_oauth_clients";
+        $waiting = static fn(): int => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$clients} WHERE id NOT IN (SELECT client FROM {$wpdb->prefix}orillacart_api_keys WHERE client IS NOT NULL)");
+        $missing = OAuthServer::MOST_UNCONNECTED - $waiting();
+        $old = gmdate('Y-m-d H:i:s', time() - 7200);
+        $rows = [];
+        for ($i = 0; $i < $missing; ++$i) {
+            $rows[] = $wpdb->prepare('(%s, %s, %s, %s)', \sprintf('ocl_flood%023d', $i), 'Flood', '["https://app.example/callback"]', $old);
+        }
+        try {
+            if ($rows !== []) {
+                $wpdb->query("INSERT INTO {$clients} (id, name, redirect_uris, created_at) VALUES " . implode(', ', $rows));
+            }
+            self::assertSame(OAuthServer::MOST_UNCONNECTED, $waiting());
+            $oldest = (string) $wpdb->get_var("SELECT id FROM {$clients} WHERE id NOT IN (SELECT client FROM {$wpdb->prefix}orillacart_api_keys WHERE client IS NOT NULL) ORDER BY created_at, id LIMIT 1");
+
+            $new = self::id($server->register(['client_name' => 'Assistant', 'redirect_uris' => [self::REDIRECT]]));
+            self::assertSame(OAuthServer::MOST_UNCONNECTED, $waiting(), 'the oldest made room');
+            self::assertNotNull($server->client($new));
+            self::assertNull($server->client($oldest), 'the oldest waiting client went');
+
+            $wpdb->query((string) $wpdb->prepare('UPDATE %i SET created_at = %s', $clients, gmdate('Y-m-d H:i:s')));
+            [$status, $answer] = $server->registrationAnswer(['client_name' => 'Assistant', 'redirect_uris' => [self::REDIRECT]]);
+            self::assertSame([429, 'slow_down'], [$status, $answer['error'] ?? null], 'a thousand in the last minutes: an owner may be saying yes to one of them');
+        } finally {
+            $wpdb->query("DELETE FROM {$clients} WHERE name IN ('Flood', 'Assistant')");
+        }
+    }
+
     /** The limiter counts in rows of its own, one statement each; every hit counts, and the window's row is swept after it. */
     public function testRegistrationsAreCountedAgainstTheLimit(): void
     {
@@ -364,6 +397,7 @@ final class OAuthTest extends RestTestCase
     {
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $token;
         $_SERVER['REQUEST_URI'] = $uri;
+        rest_get_server();
         $user = apply_filters('determine_current_user', 0);
         wp_set_current_user(\is_int($user) ? $user : 0);
     }

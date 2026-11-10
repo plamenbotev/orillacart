@@ -171,13 +171,15 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
 
     public function remove(int $id): void
     {
+        $current = get_current_user_id();
+        $reassign = $current > 0 && $current !== $id ? $current : null;
         if (is_multisite()) {
-            remove_user_from_blog($id, get_current_blog_id());
+            remove_user_from_blog($id, get_current_blog_id(), $reassign ?? 0);
 
             return;
         }
         require_once ABSPATH . 'wp-admin/includes/user.php';
-        wp_delete_user($id);
+        wp_delete_user($id, $reassign);
     }
 
     public function search(?string $text, int $offset, int $limit): array

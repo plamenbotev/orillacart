@@ -73,7 +73,7 @@ final readonly class SettingsCommand implements CliCommand
             \WP_CLI::error("{$path} is not a JSON file of the shop's settings.");
         }
         \WP_CLI::confirm('Replace the shop\'s settings with those of the file?', $options);
-        $result = $this->archive->import($file);
+        $result = $this->archive->import($file, true);
         foreach ($result['refused'] as $section => $reason) {
             \WP_CLI::log("Left as it was: {$section} ({$reason})");
         }

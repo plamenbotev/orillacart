@@ -42,4 +42,21 @@ final class OutboundRequestsTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         OutboundRequests::publicAddresses('[::1]');
     }
+
+    public function testTheAddressIsWrittenAsCurlReadsIt(): void
+    {
+        self::assertSame('http://example.com/hook?a=1', OutboundRequests::normalise('HTTP://Example.COM/hook?a=1#part'));
+        self::assertSame('https://example.com:8443/', OutboundRequests::normalise(' https://EXAMPLE.com:8443/ '));
+        self::assertSame('https://example.com', OutboundRequests::normalise('https://example.com'));
+        self::assertNull(OutboundRequests::normalise('ftp://example.com/'));
+        self::assertNull(OutboundRequests::normalise('javascript:alert(1)'));
+        self::assertNull(OutboundRequests::normalise('https:///path'));
+    }
+
+    public function testTheHostIsPinnedForThePortCurlTakes(): void
+    {
+        self::assertSame(['example.com:80:93.184.215.14', 'example.com:443:93.184.215.14'], OutboundRequests::pins('http://example.com/hook', ['93.184.215.14']), 'no port written: both, whichever the scheme makes it');
+        self::assertSame(['example.com:9200:93.184.215.14,[2606:2800:21f:cb07:6820:80da:af6b:8b2c]'], OutboundRequests::pins('https://example.com:9200/', ['93.184.215.14', '2606:2800:21f:cb07:6820:80da:af6b:8b2c']));
+        self::assertSame(['::1:443:x'], \array_slice(OutboundRequests::pins('https://[::1]/', ['x']), 1), 'an address as the host, without its brackets');
+    }
 }

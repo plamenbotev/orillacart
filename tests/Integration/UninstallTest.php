@@ -60,6 +60,7 @@ final class UninstallTest extends TestCase
         file_put_contents("{$folder}/someone-elses.pdf", 'kept');
         $previous = get_option(LocalPrivateFiles::DIRECTORY_OPTION);
         update_option(LocalPrivateFiles::DIRECTORY_OPTION, $folder);
+        LocalPrivateFiles::mark($folder);
         try {
             new LocalPrivateFiles()->uninstall();
 
@@ -88,6 +89,7 @@ final class UninstallTest extends TestCase
         $previous = [get_option(LocalPrivateFiles::DIRECTORY_OPTION), get_option(LocalPrivateFiles::CREATED_OPTION)];
         update_option(LocalPrivateFiles::DIRECTORY_OPTION, $ours);
         update_option(LocalPrivateFiles::CREATED_OPTION, $ours);
+        LocalPrivateFiles::mark($ours);
         try {
             new LocalPrivateFiles()->uninstall();
 
@@ -98,6 +100,35 @@ final class UninstallTest extends TestCase
             @rmdir($other);
             @rmdir($shared);
             @rmdir(\dirname($shared));
+            foreach ([LocalPrivateFiles::DIRECTORY_OPTION, LocalPrivateFiles::CREATED_OPTION] as $index => $option) {
+                $previous[$index] === false ? delete_option($option) : update_option($option, $previous[$index]);
+            }
+        }
+    }
+
+    public function testAClonedSiteNeitherUsesNorRemovesTheOriginalsFolder(): void
+    {
+        $original = sys_get_temp_dir() . '/orillacart-original-' . bin2hex(random_bytes(4));
+        mkdir($original);
+        $key = bin2hex(random_bytes(16));
+        file_put_contents("{$original}/{$key}", 'the original\'s guide');
+        // The original wrote its marker; the clone's options came with the copy of its database.
+        file_put_contents("{$original}/" . LocalPrivateFiles::MARKER, 'site 7 of 0123456789abcdef' . "\n");
+        $previous = [get_option(LocalPrivateFiles::DIRECTORY_OPTION), get_option(LocalPrivateFiles::CREATED_OPTION)];
+        update_option(LocalPrivateFiles::DIRECTORY_OPTION, $original);
+        update_option(LocalPrivateFiles::CREATED_OPTION, $original);
+        try {
+            self::assertNull(new LocalPrivateFiles()->path($key), 'the clone does not read the original\'s files');
+            self::assertNotSame($original, get_option(LocalPrivateFiles::DIRECTORY_OPTION), 'it chose a folder of its own');
+            update_option(LocalPrivateFiles::DIRECTORY_OPTION, $original);
+
+            new LocalPrivateFiles()->uninstall();
+
+            self::assertFileExists("{$original}/{$key}", 'removing the clone\'s data leaves the original\'s');
+        } finally {
+            $left = glob("{$original}/{,.}*[!.]*", GLOB_BRACE);
+            array_map(unlink(...), $left === false ? [] : $left);
+            @rmdir($original);
             foreach ([LocalPrivateFiles::DIRECTORY_OPTION, LocalPrivateFiles::CREATED_OPTION] as $index => $option) {
                 $previous[$index] === false ? delete_option($option) : update_option($option, $previous[$index]);
             }

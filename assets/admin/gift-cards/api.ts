@@ -66,6 +66,8 @@ export interface GiftCardSettings {
 	product_ids: number[];
 	/** Months a card lasts; null for ever. */
 	valid_months: number | null;
+	/** Orders holding gift cards are paid with money only: not with gift cards or store credit. */
+	paid_with_money_only: boolean;
 }
 
 export function fetchGiftCards( query: {

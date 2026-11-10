@@ -371,6 +371,13 @@ final class StorefrontTest extends RestTestCase
         self::assertStringContainsString('<dt>Gift note</dt><dd>Happy birthday, Grace!</dd>', $receipt, 'the answer, with its question');
         self::assertStringContainsString('1000 Sofia<br>', $receipt, 'the address in its country\'s layout');
 
+        // Opened, the link's token goes to a cookie and the address says it is kept there (KeptTokens).
+        $_GET = ['orillacart_order' => 'kept'];
+        $_COOKIE['orillacart_receipt'] = $query['orillacart_order'];
+        self::assertStringContainsString('Thank you for your order', do_blocks('<!-- wp:orillacart/checkout /-->'));
+        unset($_COOKIE['orillacart_receipt']);
+        self::assertStringContainsString('open the link in your email again', do_blocks('<!-- wp:orillacart/checkout /-->'), 'kept for an hour');
+
         // A link the shop made long ago: the page offers a new one, which goes to the order's email.
         $signatures = SiteSignatures::create();
         $number = (int) strtok($query['orillacart_order'], '-');
@@ -477,7 +484,9 @@ final class StorefrontTest extends RestTestCase
         self::assertSame('no-store, private', $session->get_headers()['Cache-Control'] ?? null);
         $nonce = $this->data($session)['nonce'];
         self::assertIsString($nonce);
-        self::assertNotFalse(wp_verify_nonce($nonce, 'wp_rest'));
+        self::assertNotFalse(wp_verify_nonce($nonce, 'wp_rest|site-' . get_current_blog_id()), 'made for this site: the sites of a subdirectory network share an origin');
+        self::assertFalse(wp_verify_nonce($nonce, 'wp_rest|site-' . (get_current_blog_id() + 1)), 'no good at a sibling site');
+        self::assertFalse(wp_verify_nonce($nonce, 'wp_rest'));
         self::assertSame(201, $this->request('POST', '/cart/items', ['product_id' => $this->lamp], nonce: $nonce)->get_status());
     }
 

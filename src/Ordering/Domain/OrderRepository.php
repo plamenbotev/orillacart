@@ -48,7 +48,14 @@ interface OrderRepository
     public function searchAfter(OrderSearch $search, ?Order $after, int $limit): array;
 
     /**
-     * Whether the customer, by account or by email, has an order that was not cancelled or did not fail.
+     * How many orders the customer, by account or by who the email reaches (EmailAddress::key()), has on hold
+     * unpaid, test orders left out: those that hold stock until the money comes.
+     */
+    public function countUnpaidOnHold(?int $customerId, string $email): int;
+
+    /**
+     * Whether the customer, by account or by who the email reaches (EmailAddress::key()), has an order that was
+     * not cancelled or did not fail.
      *
      * @param int|null $exceptOrderId an order not to count: the one being priced again
      */

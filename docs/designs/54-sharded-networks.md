@@ -59,6 +59,17 @@ routes each query itself, and may live anywhere.
 The per-site kernel, the per-site migrations with the network's walk, and the per-site queues served by
 `jobs work --network`. They switch sites and build a kernel; the kernel asks for its handle.
 
+Switches the shop did not make are followed too (2026-11-10). WordPress and other plugins call `switch_to_blog()`
+themselves: `wpmu_delete_user` deletes the user's posts on each site, and the shop's `before_delete_post` would
+have run on the booting site's container and deleted that site's product with the same id; an entity manager first
+built inside such a switch stays bound to the other site's tables. A kernel remembers the site its container was
+made for, and each `HookRegistrar` its site. A shop hook that fires while the process is on another site runs on
+that site's container (`SiteKernels::forHook()`, one kernel per site, kept for the process) when the shop is on
+there and its tables are at the files' build, and is passed over otherwise; a filter then answers with what it was
+given. A hook that fires while that container is made is passed over, so making it cannot recurse. Hooks that
+guard the process rather than a shop's data (the outbound request guard, API key sign-in) say `anySite` and run
+as before. The network's own worker serves only the shops whose plugins are its booting site's (`docs/workers.md`).
+
 ## Proof
 
 Unit tests for the connection with the shapes of core wpdb and of both drop-ins (`tests/Fixtures/Database`). The

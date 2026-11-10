@@ -16,6 +16,10 @@ use OrillaCart\Platform\WordPress\Upgrades\SiteUpgrades;
  * The network's shops for a worker: each site in a container of its own (SiteKernels), so its jobs run on its
  * tables, in its language and with its settings. A shop whose tables are behind the files' build waits until the
  * network's walk (its chores) or its own first visit brings it up: the new code does not run on old tables.
+ *
+ * The worker runs with the plugins of the site it booted as. A shop with other plugins of its own (an add-on that
+ * syncs orders with an ERP, a gateway) is not served: its jobs would run without its add-ons and with the booting
+ * site's. It needs a worker of its own (`--url`); add-ons on for the whole network are loaded for every site.
  */
 final readonly class NetworkJobSites implements JobSites
 {
@@ -33,6 +37,21 @@ final readonly class NetworkJobSites implements JobSites
     }
 
     public function sites(): array
+    {
+        $plugins = $this->upgrades->plugins(get_current_blog_id());
+
+        return array_values(array_filter($this->current(), fn(int $site): bool => $this->upgrades->plugins($site) === $plugins));
+    }
+
+    public function apart(): array
+    {
+        $plugins = $this->upgrades->plugins(get_current_blog_id());
+
+        return array_values(array_filter($this->current(), fn(int $site): bool => $this->upgrades->plugins($site) !== $plugins));
+    }
+
+    /** @return list<int> the shops at the files' build */
+    private function current(): array
     {
         return array_keys(array_filter($this->upgrades->shops(), fn(string $stored): bool => $stored === $this->context->build));
     }

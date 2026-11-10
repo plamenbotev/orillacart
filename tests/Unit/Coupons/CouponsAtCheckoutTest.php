@@ -147,7 +147,7 @@ final class CouponsAtCheckoutTest extends TestCase
             self::fail('used up');
         } catch (CheckoutRuleViolation $e) {
             // The transaction that opened it again rolls back: it stays failed, as the database keeps it.
-            self::assertSame(['orillacart_coupon_used_up', 'The code ONCE was used up since this order failed, so it cannot be paid now. Order again from the shop.'], [$e->errorCode, $e->getMessage()]);
+            self::assertSame(['orillacart_coupon_refused', 'The code ONCE no longer holds for this order: This code has been used up. Order again from the shop.'], [$e->errorCode, $e->getMessage()]);
         }
         self::assertSame(1, $this->shop->coupons->coupon(1)->uses);
     }
@@ -491,6 +491,26 @@ final class CouponsAtCheckoutTest extends TestCase
         $seen = $this->shop->checkout->summary($again, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
         $placed = $this->shop->checkout->placeOrder($again, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer', expectedTotal: $seen->total));
         self::assertSame($seen->total, $this->shop->orders->order($placed->number)->total, 'coming back, she orders at what she saw, not a "total changed" loop');
+    }
+
+    public function testAPlusAddressIsTheSameGuestForTheLimitsPerCustomer(): void
+    {
+        $this->coupon('WELCOME', 'percent', '10', firstOrderOnly: true);
+        $this->coupon('ONCE', 'percent', '5', perCustomerLimit: 1);
+        $first = $this->cart([10, 1]);
+        $this->shop->checkout->applyCoupon($first, new CouponCode('ONCE'));
+        $this->shop->checkout->placeOrder($first, $this->order());
+
+        foreach (['WELCOME' => 'This code is for a first order only.', 'ONCE' => 'You have already used this code.'] as $code => $reason) {
+            $owner = $this->cart([10, 1]);
+            $this->shop->checkout->applyCoupon($owner, new CouponCode($code));
+            try {
+                $this->shop->checkout->placeOrder($owner, new PlaceOrder('Ada+again@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'));
+                self::fail("{$code} again");
+            } catch (CheckoutRuleViolation $e) {
+                self::assertSame("The code {$code} does not apply: {$reason} Remove it to order.", $e->getMessage());
+            }
+        }
     }
 
     private function failedWithACodeUsedUpSince(): \OrillaCart\Checkout\Application\Dto\PlacedOrderView

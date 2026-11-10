@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Packages\Application;
 
+use OrillaCart\Packages\Domain\Package;
 use OrillaCart\Packages\Domain\PackageRepository;
 use OrillaCart\Packages\Domain\PackageState;
 use Psr\Log\LoggerInterface;
@@ -57,6 +58,11 @@ final class ExtensionAssets
         }
         if (!\in_array(self::PERMISSION, $package->granted(), true)) {
             $this->logger->warning('The extension "{extension}" was not granted "assets": its asset {name} is not served.', ['extension' => $extension, 'name' => $name]);
+
+            return null;
+        }
+        if (preg_match(Package::ASSET, ltrim($name, '/')) !== 1) {
+            $this->logger->warning('The extension "{extension}" asked for {name}: an asset is a script, a stylesheet or an SVG with no other dot in its name; nothing is served for it.', ['extension' => $extension, 'name' => $name]);
 
             return null;
         }

@@ -16,6 +16,11 @@ final readonly class StoreSettings
 {
     public const int MAX_SIGN_LENGTH = 8;
     public const int DEFAULT_LOW_STOCK_THRESHOLD = 2;
+    /** A week: an order on hold for a bank transfer holds its stock no longer, unless the shop says otherwise. */
+    public const int DEFAULT_UNPAID_HOLD_DAYS = 7;
+    /** Orders on hold unpaid one shopper may have at once, by default. */
+    public const int DEFAULT_UNPAID_ORDERS_EACH = 3;
+    public const int MOST_UNPAID_ORDERS_EACH = 100;
     /** A year of history by default; never less than the 30 days the EU's Omnibus directive looks back, with room. */
     public const int DEFAULT_HISTORY_DAYS = 365;
     public const int LEAST_HISTORY_DAYS = 90;
@@ -56,7 +61,7 @@ final readonly class StoreSettings
         /** The shop hears when a stockroom holds this many of an item or fewer, unless the stockroom or item says otherwise. */
         public int $lowStockThreshold = self::DEFAULT_LOW_STOCK_THRESHOLD,
         /** Orders on hold for a payment made outside the shop are cancelled after this many days unpaid; null never. */
-        public ?int $unpaidHoldDays = null,
+        public ?int $unpaidHoldDays = self::DEFAULT_UNPAID_HOLD_DAYS,
         /** Customers may ask to return items this many days after their order shipped; null takes no returns. */
         public ?int $returnDays = null,
         /** The least the items may come to, after discounts, for the customer to order; null for no least. */
@@ -67,6 +72,11 @@ final readonly class StoreSettings
         public FreeItemsOnReturn $freeItemsOnReturn = FreeItemsOnReturn::Spread,
         /** How many days the shop keeps its history: stock movements, past prices and the record of carts left at checkout. */
         public int $historyDays = self::DEFAULT_HISTORY_DAYS,
+        /**
+         * Orders on hold unpaid (a bank transfer, cash on delivery) one shopper, by account or by who their email
+         * reaches, may have at once: each holds its stock until paid; null for no limit.
+         */
+        public ?int $unpaidOrdersEach = self::DEFAULT_UNPAID_ORDERS_EACH,
     ) {
         if ($minimumOrder !== null && ($minimumOrder->isNegative() || $minimumOrder->isZero())) {
             throw new RuleViolation('A minimum order is more than nothing; leave it empty for none.', 'orillacart_invalid_minimum_order');
@@ -79,6 +89,9 @@ final readonly class StoreSettings
         }
         if ($lowStockThreshold < 0) {
             throw new RuleViolation('A low stock threshold is 0 or more.', 'orillacart_invalid_low_stock_threshold');
+        }
+        if ($unpaidOrdersEach !== null && ($unpaidOrdersEach < 1 || $unpaidOrdersEach > self::MOST_UNPAID_ORDERS_EACH)) {
+            throw new RuleViolation('A shopper may have 1 to %d unpaid orders at once, or any number.', 'orillacart_invalid_unpaid_orders', values: [self::MOST_UNPAID_ORDERS_EACH]);
         }
         if ($historyDays < self::LEAST_HISTORY_DAYS || $historyDays > self::MOST_HISTORY_DAYS) {
             throw new RuleViolation('The history is kept for %1$d to %2$d days.', 'orillacart_invalid_history_days', values: [self::LEAST_HISTORY_DAYS, self::MOST_HISTORY_DAYS]);
@@ -145,6 +158,7 @@ final readonly class StoreSettings
             && $this->minimumOrder?->toFixed() === $other->minimumOrder?->toFixed()
             && $this->reportDay === $other->reportDay
             && $this->freeItemsOnReturn === $other->freeItemsOnReturn
-            && $this->historyDays === $other->historyDays;
+            && $this->historyDays === $other->historyDays
+            && $this->unpaidOrdersEach === $other->unpaidOrdersEach;
     }
 }

@@ -14,6 +14,7 @@ use OrillaCart\Notifications\Domain\BackInStockRequests;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailRuleViolation;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
+use OrillaCart\Shared\Domain\EmailAddress;
 use OrillaCart\Shared\Http\Security\RateLimiter;
 use Psr\Clock\ClockInterface;
 
@@ -65,7 +66,7 @@ final readonly class BackInStock
         }
         $email = strtolower(trim($command->email));
         // An address typed in by anyone: so many items a day may write to it, not every item the shop has.
-        if (!$this->requests->has($item, $email) && $this->limits?->hit('back_in_stock_address', 'email:' . hash('sha256', $email)) !== null) {
+        if (!$this->requests->has($item, $email) && $this->limits?->hit('back_in_stock_address', 'email:' . hash('sha256', EmailAddress::key($email))) !== null) {
             throw new EmailRuleViolation('This email asked to hear of enough items today.', 'orillacart_back_in_stock_enough');
         }
         if (!$this->requests->has($item, $email)) {

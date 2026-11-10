@@ -33,5 +33,7 @@ final class FullTextQueryTest extends TestCase
         yield 'letters of any script' => ['Лампа за бюро', '+лампа* +бюро*', ['за']];
         yield 'repeated words once' => ['lamp lamp', '+lamp*', []];
         yield 'nothing but stopwords' => ['the', null, []];
+        yield 'the first eight words' => ['one two three four five six seven eight nine ten', '+one* +two* +three* +four* +five* +six* +seven* +eight*', []];
+        yield 'the first hundred characters' => [str_repeat('a', 98) . ' lamp', '+' . str_repeat('a', 98) . '*', ['l']];
     }
 }

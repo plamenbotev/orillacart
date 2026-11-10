@@ -7,7 +7,9 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Checkout\Application\Dto\AddressSuggestionsView;
 use OrillaCart\Checkout\Application\Dto\AddressSuggestionView;
 use OrillaCart\Checkout\Application\Dto\CheckAddresses;
+use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Extension\Checkout\CheckedAddress;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;
@@ -15,10 +17,15 @@ use Psr\Log\LoggerInterface;
 /**
  * Asks the add-ons' address checks (AddressCheck) about the addresses a customer enters: the first with something
  * to say is heard. They suggest, never refuse: the customer takes the suggestion or keeps their address, and an
- * order placed with one a check would have changed says so to the shop. A check that fails is logged and left out.
+ * order placed with one a check would have changed says so to the shop. A check that fails is logged and left out;
+ * one the shop cannot do without (FailsClosed) says the address cannot be checked right now, and the order waits
+ * until it can.
  */
 final readonly class AddressChecks
 {
+    /** What the customer is told when a check the shop cannot do without failed. */
+    public const string UNCHECKED = 'The address cannot be checked right now. Try again in a moment.';
+
     public function __construct(
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
@@ -39,15 +46,22 @@ final readonly class AddressChecks
     }
 
     /**
-     * What the shop hears of an order placed with an address a check would have changed: a note each.
+     * What the shop hears of an order placed with an address a check would have changed: a note each. Asked
+     * before the order is placed.
      *
      * @return list<string>
+     *
+     * @throws CheckoutRuleViolation when a check that fails closed failed
      */
     public function kept(AddressData $billing, ?AddressData $shippingAddress): array
     {
         $notes = [];
         foreach ([CheckedAddress::BILLING => $billing, CheckedAddress::SHIPPING => $shippingAddress] as $kind => $address) {
-            $said = $address === null ? null : $this->about($address, $kind);
+            $unchecked = false;
+            $said = $address === null ? null : $this->about($address, $kind, $unchecked);
+            if ($unchecked) {
+                throw new CheckoutRuleViolation(self::UNCHECKED, 'orillacart_address_unchecked');
+            }
             if ($said !== null) {
                 $notes[] = $said->found
                     ? \sprintf('The %s address check suggested %s; the customer kept their address.', $kind, implode(', ', array_filter([$said->street, $said->postcode, $said->city, $said->state], static fn(?string $part): bool => $part !== null && $part !== '')))
@@ -58,7 +72,8 @@ final readonly class AddressChecks
         return $notes;
     }
 
-    private function about(AddressData $address, string $kind): ?AddressSuggestionView
+    /** @param bool $unchecked set when a check that fails closed failed */
+    private function about(AddressData $address, string $kind, bool &$unchecked = false): ?AddressSuggestionView
     {
         $checked = new CheckedAddress($kind, $address->street, $address->city, $address->postcode, $address->country, $address->state);
         foreach ($this->extensions->addressChecks() as $check) {
@@ -66,6 +81,11 @@ final readonly class AddressChecks
                 $suggestion = $check->check($checked);
             } catch (\Throwable $e) {
                 $this->logger->error('The address check {check} failed: {message}', ['check' => $check->id(), 'message' => $e->getMessage(), 'exception' => $e]);
+                if ($check instanceof FailsClosed) {
+                    $unchecked = true;
+
+                    return new AddressSuggestionView(self::UNCHECKED, false);
+                }
                 continue;
             }
             if ($suggestion === null) {

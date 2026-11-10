@@ -15,4 +15,10 @@ final class ApiKeyRequest
 
     /** The key sent was not one the shop has: the request is refused, not served as a visitor's. */
     public bool $refused = false;
+
+    /**
+     * A key came, but WordPress asked who the user is before it served the REST request: the key's user is given
+     * once it does (ApiKeyAuthentication::serving()).
+     */
+    public bool $deferred = false;
 }

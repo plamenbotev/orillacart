@@ -696,9 +696,13 @@ final readonly class McpServer
         return new McpReply($status, ['jsonrpc' => '2.0', 'id' => $id, 'error' => ['code' => $code, 'message' => $message]]);
     }
 
-    /** The text with nothing in it that draws the fence: a line of its own cannot close it early. */
+    /**
+     * The text with nothing in it that draws a rule like the fence's: box drawing and block elements, every dash,
+     * minus and overline, and the combining marks that underline or overline. A line of its own, however drawn,
+     * cannot pass for the end of the fence.
+     */
     private static function fenced(string $text): string
     {
-        return str_replace('─', '-', $text);
+        return (string) preg_replace('/[\x{2500}-\x{259F}\p{Pd}\x{2212}\x{2796}\x{23AF}\x{23E4}\x{203E}\x{FE49}-\x{FE4F}\x{FFE3}\x{30FC}\x{FF70}\x{0305}\x{0332}\x{0333}\x{033F}\x{0336}]/u', '-', mb_scrub($text, 'UTF-8'));
     }
 }

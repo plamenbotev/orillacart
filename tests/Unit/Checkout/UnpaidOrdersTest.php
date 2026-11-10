@@ -10,6 +10,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Application\UnpaidOrders;
+use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
@@ -55,8 +56,21 @@ final class UnpaidOrdersTest extends TestCase
         self::assertContains("ada@example.com: [Lamp Shop] Your order #{$late->number} was cancelled", $this->shop->mail->summary());
     }
 
+    public function testUnpaidOrdersAreCancelledAfterAWeekByDefault(): void
+    {
+        $order = $this->place();
+        $this->shop->clock->modify('+6 days');
+        self::assertSame(0, $this->unpaid->expire());
+
+        $this->shop->clock->modify('+2 days');
+
+        self::assertSame(1, $this->unpaid->expire());
+        self::assertSame('cancelled', $this->shop->orders->order($order->number)->status);
+    }
+
     public function testNothingIsCancelledWhileTheShopSetsNoDays(): void
     {
+        $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, unpaidHoldDays: null));
         $order = $this->place();
         $this->shop->clock->modify('+400 days');
 
@@ -64,10 +78,26 @@ final class UnpaidOrdersTest extends TestCase
         self::assertSame('on_hold', $this->shop->orders->order($order->number)->status);
     }
 
-    private function place(): PlacedOrderView
+    public function testAShopperHoldsAFewUnpaidOrdersAtOnce(): void
+    {
+        $orders = [$this->place(), $this->place('ada+2@example.com'), $this->place('ADA+3@example.com')];
+
+        try {
+            $this->place('ada+4@example.com');
+            self::fail('three wait for the money');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame(['orillacart_too_many_unpaid_orders', 'You have 3 orders waiting for your payment. Pay for them from their receipts, or wait until they are cancelled, to order again.'], [$e->errorCode, $e->getMessage()]);
+        }
+        self::assertSame('on_hold', $this->place('grace@example.com')->status, 'another shopper orders');
+
+        $this->shop->orders->markPaid($orders[0]->number, null);
+        self::assertSame('on_hold', $this->place()->status, 'one paid makes room');
+    }
+
+    private function place(string $email = 'ada@example.com'): PlacedOrderView
     {
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
 
-        return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
+        return $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
     }
 }

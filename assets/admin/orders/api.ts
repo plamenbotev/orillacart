@@ -927,7 +927,38 @@ export async function fetchLabel( id: number ): Promise< File > {
 	const bytes = Uint8Array.from( window.atob( label.content ), ( char ) =>
 		char.charCodeAt( 0 )
 	);
-	return new File( [ bytes ], label.filename, { type: label.mime_type } );
+	return new File( [ bytes ], label.filename, {
+		type: LABEL_TYPES.includes( label.mime_type )
+			? label.mime_type
+			: 'application/octet-stream',
+	} );
+}
+
+/** The label types a browser shows to print; any other runs as the page (HTML, SVG) or is not for it (ZPL). */
+const LABEL_TYPES = [
+	'application/pdf',
+	'image/png',
+	'image/gif',
+	'image/jpeg',
+];
+
+/**
+ * Shows a label to print: a PDF or an image in a new tab, any other file downloaded, never opened.
+ * @param file The label, as fetchLabel gives it.
+ */
+export function openLabel( file: File ): void {
+	const url = URL.createObjectURL( file );
+	if ( LABEL_TYPES.includes( file.type ) ) {
+		window.open( url, '_blank' );
+	} else {
+		const link = document.createElement( 'a' );
+		link.href = url;
+		link.download = file.name;
+		document.body.appendChild( link );
+		link.click();
+		link.remove();
+	}
+	window.setTimeout( () => URL.revokeObjectURL( url ), 60_000 );
 }
 
 /**

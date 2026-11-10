@@ -6,6 +6,7 @@ namespace OrillaCart\Cart\Http;
 
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\CheckoutContact;
+use OrillaCart\Shared\Domain\EmailAddress;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
@@ -36,7 +37,7 @@ final readonly class CheckoutContactAction implements RequestHandlerInterface
     {
         $contact = $this->input->body($request, CheckoutContact::class);
         $email = strtolower(trim($contact->email ?? ''));
-        if ($contact->remind && $email !== '' && $this->limits->hit('reminder_address', 'email:' . hash('sha256', $email)) !== null) {
+        if ($contact->remind && $email !== '' && $this->limits->hit('reminder_address', 'email:' . hash('sha256', EmailAddress::key($email))) !== null) {
             $contact = new CheckoutContact($contact->email, false);
         }
         $token = $this->carts->atCheckout($this->cookie->owner($request), $contact, $this->languages->current());

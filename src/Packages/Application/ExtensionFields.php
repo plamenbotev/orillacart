@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Packages\Application;
 
+use OrillaCart\Customers\Application\Accounts;
+use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Packages\Application\Dto\FieldSection;
 use OrillaCart\Packages\Application\Dto\FieldSpec;
 use OrillaCart\Packages\Domain\PackageRuleViolation;
@@ -21,7 +23,7 @@ final readonly class ExtensionFields
     /** The REST path's plural and the owner kind it names. */
     public const array KINDS = ['products' => 'product', 'orders' => 'order', 'customers' => 'customer'];
 
-    public function __construct(private PackageService $packages, private ObjectStore $store) {}
+    public function __construct(private PackageService $packages, private ObjectStore $store, private Accounts $accounts) {}
 
     /**
      * What the enabled extensions declare on one of the shop's kinds, one section per extension that declares
@@ -98,16 +100,21 @@ final readonly class ExtensionFields
 
     /**
      * Writes the fields given, checked as a script's `fields.set` is; null clears one. A field the declaration
-     * marks readonly is the scripts' to write.
+     * marks readonly is the scripts' to write. A customer's fields are written on the shop's own customers only:
+     * not on its staff, and on a network not on another site's users.
      *
      * @param array<string, mixed> $values by field
      *
      * @return array<string, mixed> the extension's fields on the record afterwards
      *
      * @throws PackageRuleViolation
+     * @throws CustomerNotFound
      */
     public function save(string $owner, int $id, string $extension, array $values): array
     {
+        if ($owner === 'customer' && !$this->accounts->isShopCustomer($id)) {
+            throw new CustomerNotFound($id);
+        }
         $section = $this->section($owner, $extension) ?? throw new PackageRuleViolation(\sprintf('No enabled extension "%s" declares fields on %s.', $extension, $owner), 'orillacart_unknown_extension_fields');
         $checked = [];
         foreach ($values as $name => $value) {

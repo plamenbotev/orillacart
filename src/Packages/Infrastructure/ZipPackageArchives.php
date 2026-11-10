@@ -69,6 +69,8 @@ final readonly class ZipPackageArchives implements PackageArchives
                     continue;
                 }
                 if (!$isManifest) {
+                    // A package's paths are lowercase: `README.md` is kept as `readme.md`.
+                    $inner = strtolower($inner);
                     Package::checkPath($inner);
                 }
                 $stat = $zip->statIndex($index, \ZipArchive::FL_UNCHANGED);

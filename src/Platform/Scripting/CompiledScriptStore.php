@@ -20,6 +20,13 @@ use OrillaCart\Shared\Security\Signatures;
  * Nothing is included or evaluated unchecked: a file carries the site's signature of its source on its last
  * line, and the source has to pass the GeneratedCodeGate; a file that fails either (planted, edited, from
  * another site, or made by a compiler with a bug) is deleted and the class compiled again.
+ *
+ * What is included is the bytes that were checked, never the file read again: they are written to a new file
+ * of a random name (created exclusively, 0600) in the same folder, included, and that file removed, so a writer
+ * of the cache folder who swaps the file between the check and the include changes nothing. The cost is
+ * OPcache's: each include compiles the class afresh rather than from shared memory, and the removed file's
+ * entry is invalidated. Comparing the file's inode and times before and after the include was the other way,
+ * kept by OPcache; it finds a swap only after the swapped code ran.
  */
 final readonly class CompiledScriptStore implements ScriptStore
 {
@@ -41,14 +48,29 @@ final readonly class CompiledScriptStore implements ScriptStore
         }
         $file = file_get_contents($path);
         $source = $file === false ? null : $this->unsigned($file);
-        if ($source === null || GeneratedCodeGate::refuse($source, $this->site()) !== null) {
+        if ($file === false || $source === null || GeneratedCodeGate::refuse($source, $this->site()) !== null) {
             @unlink($path);
 
             return false;
         }
-        require_once $path;
 
-        return class_exists($className, false);
+        // Its class is named for its source's checksum: defined already, it is this same code, included once.
+        $declared = self::declared($source);
+        if ($declared !== null && class_exists($declared, false)) {
+            return class_exists($className, false);
+        }
+
+        return self::includeChecked(\dirname($path), $file) && class_exists($className, false);
+    }
+
+    /** The fully qualified class a compiled file declares; null when it declares none. */
+    private static function declared(string $source): ?string
+    {
+        if (preg_match('/^namespace\s+([A-Za-z0-9_\\\\]+);/m', $source, $namespace) !== 1 || preg_match('/^(?:final\s+)?class\s+([A-Za-z0-9_]+)/m', $source, $class) !== 1) {
+            return null;
+        }
+
+        return $namespace[1] . '\\' . $class[1];
     }
 
     public function put(string $key, string $className, string $source): void
@@ -59,12 +81,10 @@ final readonly class CompiledScriptStore implements ScriptStore
         }
         $path = $this->path($key);
         if ($path !== null) {
+            $signed = $this->signed($source);
             $temporary = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
-            if (file_put_contents($temporary, $this->signed($source)) !== false && rename($temporary, $path)) {
-                require_once $path;
-                if (class_exists($className, false)) {
-                    return;
-                }
+            if (file_put_contents($temporary, $signed) !== false && rename($temporary, $path) && (class_exists($className, false) || self::includeChecked(\dirname($path), $signed)) && class_exists($className, false)) {
+                return;
             }
             @unlink($temporary);
         }
@@ -82,6 +102,35 @@ final readonly class CompiledScriptStore implements ScriptStore
         foreach ($files === false ? [] : $files as $file) {
             @unlink($file);
         }
+    }
+
+    /**
+     * Includes these bytes, already checked: from a file made for this include alone, under a random name no one
+     * knew before, removed afterwards. False when the folder takes no such file.
+     */
+    public static function includeChecked(string $folder, string $bytes): bool
+    {
+        $temporary = $folder . '/.include-' . bin2hex(random_bytes(16)) . '.php';
+        $handle = @fopen($temporary, 'x');
+        if ($handle === false) {
+            return false;
+        }
+        try {
+            @chmod($temporary, 0o600);
+            $written = fwrite($handle, $bytes) === \strlen($bytes);
+            fclose($handle);
+            if (!$written) {
+                return false;
+            }
+            require $temporary;
+        } finally {
+            @unlink($temporary);
+            if (\function_exists('opcache_invalidate')) {
+                @opcache_invalidate($temporary, true);
+            }
+        }
+
+        return true;
     }
 
     /** The source with the site's signature of it as a trailing comment, which PHP ignores and load() checks. */

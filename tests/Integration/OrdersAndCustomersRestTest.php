@@ -11,6 +11,7 @@ use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Packages\Application\ObjectStore;
 use OrillaCart\Tests\Fixtures\Extension\TestAddOn;
 use Symfony\Component\PropertyInfo\Extractor\ReflectionExtractor;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
@@ -368,6 +369,32 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         $found = $this->rows($this->data($this->request('GET', '/orders?search=' . rawurlencode($creditNote)))['orders']);
         self::assertSame([$first['number']], array_column($found, 'number'), 'the orders list finds an order by its credit note\'s number');
         self::assertSame([$first['number']], array_column($this->rows($this->data($this->request('GET', '/orders?paid=partly_refunded'))['orders']), 'number'));
+    }
+
+    public function testErasingAGuestForgetsWhatExtensionsKeepOfTheirOrdersAndItsSearchWords(): void
+    {
+        $placed = $this->order([[$this->lamp, 1]]);
+        $container = self::kernel()->container();
+        $orders = $container->get(OrderService::class);
+        $store = $container->get(ObjectStore::class);
+        self::assertInstanceOf(OrderService::class, $orders);
+        self::assertInstanceOf(ObjectStore::class, $store);
+        $orders->markPaid($placed['number'], 'txn_erased_' . $placed['number']);
+        $record = $store->create('privacy-test', 'note', ['order' => ['$ref' => 'order', 'id' => $placed['number']], 'text' => 'Ada asked for gift wrap'], []);
+        $store->setField('privacy-test', 'order', $placed['number'], 'gift_for', 'Grace');
+        $this->actAs('administrator');
+        self::assertSame([$placed['number']], array_column($this->rows($this->data($this->request('GET', '/orders?search=txn_erased_' . $placed['number']))['orders']), 'number'), 'found by its transaction id');
+
+        try {
+            $erased = $this->privacyCallback('wp_privacy_personal_data_erasers')('ada@example.com', 1);
+            self::assertIsArray($erased);
+
+            self::assertNull($store->find('privacy-test', 'note', self::int($record['id'] ?? null)), 'the extension\'s record of the order');
+            self::assertSame([], $store->fieldsOf('privacy-test', 'order', $placed['number']), 'its fields on the order');
+            self::assertSame([], $this->rows($this->data($this->request('GET', '/orders?search=txn_erased_' . $placed['number']))['orders']), 'the transaction id stays, but finds no erased order');
+        } finally {
+            $store->forgetExtension('privacy-test');
+        }
     }
 
     public function testWordPressPrivacyToolsExportAndEraseAPersonsOrders(): void

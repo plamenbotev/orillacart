@@ -6,6 +6,7 @@ namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\ShopperCurrency;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepository;
 
 /**
@@ -74,6 +75,21 @@ final class WishlistTest extends RestTestCase
         self::assertIsString($cards['html']);
         self::assertSame(2, substr_count($cards['html'], '<li class="orillacart-product-card"'));
         self::assertStringNotContainsString('Secret lamp', $cards['html']);
+    }
+
+    public function testCardsInAnotherCurrencyThanTheShopsAreKeptByNoCache(): void
+    {
+        $this->actAs('administrator');
+        self::assertSame(200, $this->request('PUT', '/currencies', ['offered' => [['code' => 'USD', 'rate' => '1.1', 'rounding' => 'decimals']]], nonce: true)->get_status());
+        wp_set_current_user(0);
+        try {
+            self::assertArrayNotHasKey('Cache-Control', $this->request('GET', "/product-cards?ids={$this->lamp}")->get_headers(), 'the shop\'s own currency');
+            $_COOKIE[ShopperCurrency::COOKIE] = 'USD';
+            self::assertSame('private, no-store', $this->request('GET', "/product-cards?ids={$this->lamp}")->get_headers()['Cache-Control'] ?? null);
+        } finally {
+            unset($_COOKIE[ShopperCurrency::COOKIE]);
+            delete_option('orillacart_currencies');
+        }
     }
 
     public function testTheAccountPageHasAWishlistAsTheShopSays(): void

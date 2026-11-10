@@ -36,6 +36,66 @@ final class HookRegistrarTest extends TestCase
         self::assertSame([2], $siteB->seen, 'the site of the step hears what fires inside it');
     }
 
+    protected function tearDown(): void
+    {
+        SiteKernels::pretend(null, null);
+    }
+
+    public function testAHookFiringWhileTheProcessIsSwitchedToAnotherSiteRunsOnThatSitesShopOrNotAtAll(): void
+    {
+        $now = 1;
+        /** @var array<int, ContainerInterface> $containers */
+        $containers = [];
+        SiteKernels::pretend(static function () use (&$now): int {
+            return $now;
+        }, static function (int $site) use (&$containers): ?ContainerInterface {
+            return $containers[$site] ?? null;
+        });
+        $siteA = new SiteHookClass('A');
+        $siteB = new SiteHookClass('B');
+        $boot = new HookRegistrar([], self::locator([SiteHookClass::class => $siteA]));
+        $now = 2;
+        $containers[2] = self::locator([HookRegistrar::class => new HookRegistrar([], self::locator([SiteHookClass::class => $siteB]))]);
+
+        // WordPress deletes a network user's posts on site 2: site 1's product with that id is not touched.
+        $boot->call(SiteHookClass::class, 'changed', [7]);
+        self::assertSame([[], [7]], [$siteA->seen, $siteB->seen], 'site 2 runs the shop: its own class hears it');
+
+        $now = 3;
+        $boot->call(SiteHookClass::class, 'changed', [8]);
+        self::assertSame('as given', $boot->call(SiteHookClass::class, 'title', ['as given'], filter: true), 'a filter on a site without the shop answers with what it was given');
+        self::assertSame([[], [7]], [$siteA->seen, $siteB->seen], 'site 3 has no shop: nobody hears it');
+
+        $boot->call(SiteHookClass::class, 'changed', [9], anySite: true);
+        self::assertSame([9], $siteA->seen, 'a hook for any site runs on its own container wherever the process is');
+
+        $now = 1;
+        $boot->call(SiteHookClass::class, 'changed', [10]);
+        self::assertSame([9, 10], $siteA->seen, 'back on the booting site');
+    }
+
+    public function testAHookFiringWhileItsSitesContainerIsMadeIsPassedOver(): void
+    {
+        $now = 1;
+        $siteA = new SiteHookClass('A');
+        $boot = new HookRegistrar([], self::locator([SiteHookClass::class => $siteA]));
+        $now = 2;
+        $made = 0;
+        SiteKernels::pretend(static function () use (&$now): int {
+            return $now;
+        }, static function (int $site) use (&$boot, &$made): ?ContainerInterface {
+            ++$made;
+            // Making the container fires the hook again.
+            $boot->call(SiteHookClass::class, 'changed', [1]);
+
+            return null;
+        });
+
+        $boot->call(SiteHookClass::class, 'changed', [2]);
+
+        self::assertSame([1, []], [$made, $siteA->seen]);
+    }
+
     public function testAStepThatThrowsIsStillOver(): void
     {
         $this->expectException(\RuntimeException::class);
@@ -81,5 +141,10 @@ final class SiteHookClass
     public function changed(int $product): void
     {
         $this->seen[] = $product;
+    }
+
+    public function title(string $title): string
+    {
+        return $this->site . ': ' . $title;
     }
 }

@@ -9,7 +9,8 @@ use OrillaCart\Ordering\Application\OrderService;
 
 /**
  * The records made to try the shop out (design 62): how many there are, and their removal, test orders first
- * (an open one cancelled so its stock comes back), then the test customers' accounts.
+ * (an open one cancelled so its stock comes back), then the test customers' accounts. An account with the test mark
+ * that is no longer one of the shop's customers (made staff since, or left the site) stays.
  */
 final readonly class TestData
 {
@@ -36,6 +37,9 @@ final readonly class TestData
         } while ($batch !== []);
         $customers = 0;
         foreach ($this->accounts->testIds() as $id) {
+            if (!$this->accounts->isShopCustomer($id)) {
+                continue;
+            }
             // What the shop kept of them (addresses, notes, groups) goes with the account.
             $this->customers->forget($id);
             $this->accounts->remove($id);

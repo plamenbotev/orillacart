@@ -54,8 +54,17 @@ final readonly class DoctrineChangeRecordRepository implements ChangeRecordRepos
             $query->setParameter("path{$i}", $path)->setParameter("below{$i}", addcslashes($path, '%_\\') . '/%');
         }
         if ($mention !== null && trim($mention) !== '') {
-            $which->add('LOWER(r.values) LIKE :mention');
-            $query->setParameter('mention', '%' . addcslashes(mb_strtolower(trim($mention)), '%_\\') . '%');
+            // A whole JSON string, not a substring: "n@gmail.com" is not in "john@gmail.com". MySQL keeps JSON
+            // with its characters as they are; MariaDB keeps the text as encoded, slashes and accents escaped.
+            $email = mb_strtolower(trim($mention));
+            $forms = array_values(array_unique([
+                json_encode($email, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR),
+                json_encode($email, \JSON_THROW_ON_ERROR),
+            ]));
+            foreach ($forms as $i => $form) {
+                $which->add("LOWER(r.values) LIKE :mention{$i}");
+                $query->setParameter("mention{$i}", '%' . addcslashes($form, '%_\\') . '%');
+            }
         }
         if ($which->count() === 0) {
             return 0;

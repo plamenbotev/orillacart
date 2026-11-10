@@ -63,4 +63,18 @@ final class SiteSignaturesTest extends TestCase
         self::assertFalse($now->sealedWithCurrentKey($before->seal('paypal-secret')));
         self::assertTrue($now->sealedWithCurrentKey($now->seal('paypal-secret')));
     }
+
+    public function testAnOwnSecretsKeySealsAndWhatTheSaltsSealedStillOpens(): void
+    {
+        $salt = static fn(): string => 'salt kept in the database';
+        $site = static fn(): int => 3;
+        $salted = SiteSignatures::secrets(null, $salt, $site);
+        $own = SiteSignatures::secrets('a long random phrase', $salt, $site);
+        $sealed = $salted->seal('stripe-key');
+
+        self::assertSame('stripe-key', $own->open($sealed), 'sealed with the salts before the key was set');
+        self::assertFalse($own->sealedWithCurrentKey($sealed), 'doctor --fix seals it again');
+        self::assertNull($salted->open($own->seal('stripe-key')), 'the salts alone do not open what the own key sealed');
+        self::assertNull(SiteSignatures::secrets('a long random phrase', $salt, static fn(): int => 4)->open($own->seal('stripe-key')), 'another site of the network');
+    }
 }

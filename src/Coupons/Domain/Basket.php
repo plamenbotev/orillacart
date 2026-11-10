@@ -36,9 +36,9 @@ final readonly class Basket
         return $this->rate === '1' ? $amount : $amount->at($this->rate);
     }
 
-    /** What the items cost before any discount, as order size rules judge it. */
+    /** What the items cost before any discount, as order size rules judge it: the items given and gift cards left out. */
     public function subtotal(): Money
     {
-        return $this->itemsSubtotal ?? array_reduce($this->lines, static fn(Money $sum, BasketLine $line): Money => $sum->add($line->total), Money::zero());
+        return $this->itemsSubtotal ?? array_reduce($this->lines, static fn(Money $sum, BasketLine $line): Money => $line->sized ? $sum->add($line->total) : $sum, Money::zero());
     }
 }

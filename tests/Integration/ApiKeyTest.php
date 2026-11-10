@@ -46,6 +46,33 @@ final class ApiKeyTest extends RestTestCase
         self::assertSame('orillacart_api_key_forbidden', $this->data($this->request('GET', '/api-keys'))['code'], 'keys are a logged-in manager\'s to manage');
     }
 
+    public function testOtherPluginsSeeAVisitorUntilWordPressServesTheRestRequest(): void
+    {
+        $admin = $this->actAs('administrator');
+        $made = $this->data($this->request('POST', '/api-keys', ['name' => 'Early', 'scope' => 'read'], nonce: true));
+        self::assertIsString($made['key']);
+        wp_set_current_user(0);
+        $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $made['key'];
+        $_SERVER['REQUEST_URI'] = '/wp-json/orillacart/v1/orders';
+        // As at init, before WordPress parsed the request: the REST server is not up yet in this request.
+        global $wp_actions;
+        \assert(\is_array($wp_actions));
+        $served = $wp_actions['rest_api_init'] ?? null;
+        unset($wp_actions['rest_api_init']);
+        try {
+            $GLOBALS['current_user'] = null;
+            self::assertSame(0, get_current_user_id(), 'init and plugins_loaded handlers see a visitor');
+        } finally {
+            if ($served !== null) {
+                $wp_actions['rest_api_init'] = $served;
+            }
+        }
+
+        do_action('rest_api_init');
+
+        self::assertSame($admin, get_current_user_id(), 'the REST request runs as the key\'s user');
+    }
+
     public function testAKeyTheShopHasNotIsRefusedNotServedAsAVisitor(): void
     {
         self::assertSame(0, $this->authenticate('oc_' . str_repeat('0', 40)));
@@ -125,6 +152,45 @@ final class ApiKeyTest extends RestTestCase
         }
     }
 
+    public function testAReadOnlyKeyRunsAnExtensionsTestsWithoutWriting(): void
+    {
+        $admin = $this->actAs('administrator');
+        $source = <<<'OCS'
+            extension "tested_ro" { name: "Tested", needs: { http: ["api.example"] } }
+            object "note" { fields: { text: text } }
+
+            test "keeps a note" fn() {
+              objects.note.create({ text: "made" })
+            }
+            test "quotes" { http: { "GET https://api.example/quote": { json: { price: 5 } } } } fn() {
+              assert http.get("https://api.example/quote").json.price == 5
+            }
+            OCS;
+        $this->request('DELETE', '/extensions/tested_ro', nonce: true);
+        $this->request('POST', '/extensions', ['id' => 'tested_ro', 'name' => 'Tested', 'files' => ['main.ocs' => $source]], nonce: true);
+        $GLOBALS['wp_rest_server'] = null;
+        $made = $this->data($this->request('POST', '/api-keys', ['name' => 'Reader', 'scope' => 'read'], nonce: true));
+        self::assertIsString($made['key']);
+        wp_set_current_user(0);
+        try {
+            self::assertSame($admin, $this->authenticate($made['key'], '/wp-json/orillacart/v1/extensions/tested_ro/test'));
+            $answer = $this->request('POST', '/extensions/tested_ro/test');
+            self::assertSame(200, $answer->get_status(), (string) wp_json_encode($answer->get_data()));
+            $tests = $this->data($answer)['tests'];
+            self::assertIsArray($tests);
+            self::assertIsArray($tests[0]);
+            self::assertIsArray($tests[1]);
+            self::assertFalse($tests[0]['ok'], 'a write refuses in tests on a read-only key, as in the extension\'s runs');
+            self::assertIsString($tests[0]['message']);
+            self::assertStringContainsString('may only read', $tests[0]['message']);
+            self::assertTrue($tests[1]['ok'], 'the test\'s HTTP answers only record: ' . wp_json_encode($tests[1]));
+        } finally {
+            $this->authenticate(null);
+            $this->actAs('administrator');
+            $this->request('DELETE', '/extensions/tested_ro', nonce: true);
+        }
+    }
+
     public function testAWebhooksSecretIsShownOnceAndKeptSealed(): void
     {
         $this->actAs('administrator');
@@ -177,6 +243,8 @@ final class ApiKeyTest extends RestTestCase
             $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $key;
             $_SERVER['REQUEST_URI'] = $uri;
         }
+        // As WordPress asks once it serves the REST request: before it, a key gives no user.
+        rest_get_server();
         $user = apply_filters('determine_current_user', 0);
         wp_set_current_user(\is_int($user) ? $user : 0);
 

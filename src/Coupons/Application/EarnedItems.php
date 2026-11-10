@@ -34,6 +34,35 @@ final readonly class EarnedItems
         if ($coupon === null) {
             return null;
         }
+        return $coupon->earns(new Basket($this->lines($kept), $currency));
+    }
+
+    /**
+     * Whether what is kept of an order still meets the coupon's least order and least items (Coupon::stillMet()),
+     * by the coupon as it is now.
+     *
+     * @param list<array{product_id: int, quantity: int, total: string}> $kept the items kept, but those given:
+     *                                                                         what they cost before discounts
+     *
+     * @return bool|null null when the coupon is gone: nothing to judge by
+     */
+    public function stillMet(string $code, array $kept, string $currency): ?bool
+    {
+        $coupon = $this->coupons->findByCodes([$code])[$code] ?? null;
+        if ($coupon === null) {
+            return null;
+        }
+
+        return $coupon->stillMet(new Basket($this->lines($kept), $currency));
+    }
+
+    /**
+     * @param list<array{product_id: int, quantity: int, total: string}> $kept
+     *
+     * @return list<BasketLine>
+     */
+    private function lines(array $kept): array
+    {
         $lines = [];
         foreach ($kept as $line) {
             if ($line['quantity'] > 0) {
@@ -42,7 +71,7 @@ final readonly class EarnedItems
             }
         }
 
-        return $coupon->earns(new Basket($lines, $currency));
+        return $lines;
     }
 
     /**

@@ -52,7 +52,9 @@ final readonly class JobsCommand implements CliCommand
      * [--network]
      * : Serve every site of the network that runs the shop, a batch from each in turn, instead of the site --url
      * names: one cron line or one worker for the whole network. A site whose turn fails is left alone for a minute
-     * and the others go on; one whose database is behind the update waits until it is brought up.
+     * and the others go on; one whose database is behind the update waits until it is brought up. The worker loads
+     * the plugins of the site it starts as (--url, else the main site): a site with other plugins on is not served
+     * and is named, for a worker of its own. Turn add-ons on for the whole network for one worker to serve all.
      *
      * [--except=<sites>]
      * : With --network, leave out these sites, by id and comma-separated: a busy shop with workers of its own.
@@ -166,6 +168,8 @@ final readonly class JobsCommand implements CliCommand
         };
         $sites = [];
         $sitesAt = 0.0;
+        /** @var list<int> $warnedApart the sites the worker last said it leaves to workers of their own */
+        $warnedApart = [];
         // Why the worker stops, if it should now: the limits are looked at after every site's turn, not once a round.
         $why = function (bool $restart, int $ran) use (&$stop, &$done, $maxJobs, $maxTime, $started, $memory, $loop): string|false|null {
             return match (true) {
@@ -189,6 +193,11 @@ final readonly class JobsCommand implements CliCommand
                     // Sites come and go on a network: look again now and then.
                     if (microtime(true) - $sitesAt >= 60) {
                         $sites = array_values(array_diff($this->sites->sites(), $except));
+                        $apart = array_values(array_diff($this->sites->apart(), $except));
+                        if ($apart !== [] && $apart !== $warnedApart) {
+                            \WP_CLI::warning(\sprintf('Not served: %s, whose plugins are not this site\'s. Their add-ons would be missing from their jobs, and this site\'s would run there: give each a worker of its own (--url), or turn the add-ons on for the whole network.', implode(', ', array_map(static fn(int $site): string => '#' . $site, $apart))));
+                        }
+                        $warnedApart = $apart;
                         $sitesAt = microtime(true);
                     }
                     $this->sites->chores();

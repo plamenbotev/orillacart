@@ -555,6 +555,23 @@ function SettingsCard( {
 							} )
 						}
 					/>
+					<CheckboxControl
+						label={ __(
+							'Gift cards are bought with money only',
+							'orillacart'
+						) }
+						help={ __(
+							'Gift cards and store credit do not pay for an order holding a gift card: store credit is the customer’s own, and a card bought with it could be spent by anyone.',
+							'orillacart'
+						) }
+						checked={ settings.paid_with_money_only }
+						onChange={ ( checked ) =>
+							setSettings( {
+								...settings,
+								paid_with_money_only: checked,
+							} )
+						}
+					/>
 					<Button
 						variant="primary"
 						type="submit"

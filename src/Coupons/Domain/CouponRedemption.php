@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Coupons\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Shared\Domain\EmailAddress;
 use OrillaCart\Shared\Domain\Money;
 
 /**
@@ -39,7 +40,8 @@ class CouponRedemption
         #[ORM\Column]
         private \DateTimeImmutable $redeemedAt,
     ) {
-        $this->email = mb_strtolower($email);
+        // Who it reaches, as limits per customer count it: ada+2@ is ada@ (EmailAddress).
+        $this->email = EmailAddress::key($email);
         $this->amount = $amount->toFixed();
     }
 

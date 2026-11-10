@@ -15,7 +15,8 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Dynamic client registration (RFC 7591) for AI assistants' apps that have no client ID metadata document. Anyone
- * may register, so each address may register so many an hour; a registered client still needs the owner's yes.
+ * may register, so each address (an IPv6 /64) may register so many an hour, and past a thousand clients waiting
+ * for the owner the oldest go (OAuthServer::register()); a registered client still needs the owner's yes.
  */
 #[Route('/oauth/register', methods: ['POST'], capability: Route::PUBLIC, signed: true)]
 final readonly class RegisterOAuthClientAction implements RequestHandlerInterface
@@ -35,10 +36,6 @@ final readonly class RegisterOAuthClientAction implements RequestHandlerInterfac
         }
         if ($this->limits->hit(self::LIMIT, 'ip:' . ClientAddress::of($request->getServerParams())) !== null) {
             return $this->responder->exact(['error' => 'slow_down', 'error_description' => 'Too many registrations from this address; wait an hour.'], 429);
-        }
-        // And from everyone together: callers with addresses enough to pass the first would fill the table.
-        if ($this->limits->hit('oauth_register_any', 'site') !== null) {
-            return $this->responder->exact(['error' => 'slow_down', 'error_description' => 'Too many apps registered this hour; wait an hour.'], 429);
         }
         $body = $request->getParsedBody();
         [$status, $answer] = $this->server->registrationAnswer(\is_array($body) ? $body : []);

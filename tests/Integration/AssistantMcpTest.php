@@ -561,6 +561,7 @@ final class AssistantMcpTest extends RestTestCase
         wp_set_current_user(0);
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $key;
         $_SERVER['REQUEST_URI'] = '/wp-json/orillacart/v1/mcp';
+        rest_get_server();
         $user = apply_filters('determine_current_user', 0);
         wp_set_current_user(\is_int($user) ? $user : 0);
         self::assertGreaterThan(0, get_current_user_id());

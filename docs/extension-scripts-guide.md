@@ -337,7 +337,10 @@ payment_gateway "payfast" {
 Outcomes: `payment.completed(reference, transaction_id, amount?, currency?)` (without the amount the provider
 reported, the payment waits for the shop to look, as one of the wrong amount does), `pending`, `failed`, `cancelled`,
 `held`, `disputed`. A gateway with a `refund` handler is a refunding gateway; without it, the order screen offers
-no refund button. `fail unavailable` from `start` tells the shopper to try another method.
+no refund button. `fail unavailable` from `start` tells the shopper to try another method. `payment.redirect(url,
+reference)` sends the shopper over https to a host the extension declares under `needs.http` (the provider's
+payment page as well as its API: `http: ["api.payfast.example", "pay.payfast.example"]`); any other URL is an
+error.
 
 ### Shipping methods and couriers
 
@@ -373,7 +376,8 @@ shipping_method "post" {
 | `track(number, settings)`            | the booked number                                                                                                                                                                                                 | `shipping.tracking(status, description?)`, status `booked`, `on_the_way`, `delivered` or `returned`                                 |
 
 A method with `create_shipment` is a courier: the order screen gets Book, Label, Track and Cancel buttons, each
-offered only when its handler exists. A plain method has `quote` alone.
+offered only when its handler exists. A label that is a PDF, PNG, GIF or JPEG opens to print; any other type
+(ZPL, HTML, SVG) is downloaded as a file. A plain method has `quote` alone.
 
 ### Rules, fees and adjusters
 
@@ -521,7 +525,9 @@ mailing_list "newsletter" {
 ```
 
 - `home.tiles()` answers `home.tile(label, value, detail?, url?)` items; `needs_you()` answers
-  `home.line(text, url?, tone?)` items with tone `attention`, `warning` or `info`.
+  `home.line(text, url?, tone?)` items with tone `attention`, `warning` or `info`. A url is a Shop page
+  (`orders?status=processing`), an admin page (`admin.php?page=…`), a path or an http(s) URL of the site;
+  another scheme is an error, and an http(s) URL on another site shows without its link.
 - An `assistant_tool` becomes a tool of the shop's assistant and MCP server. `input` is a JSON schema of the
   arguments (`{ type: "object", properties: { … }, required: [ … ] }`), or the short form the object fields use
   (`{ company_id: number, items: text { required: true, help: "…" } }`), which becomes one; a client refuses a
@@ -560,7 +566,10 @@ and the change log. `who` is `public`, `account` (a logged-in customer) or `mana
 assistant's tools, `x_<extension>_<method>_<path>` (`x_payfast_post_refunds`), unless it says `tool: false`; `tool:
 "name"` names it, `title`, `description`, `input` (a JSON schema of the body) and `risk` describe it, and without
 `input` the tool takes `params`, `query` and `body` maps. The handler gets the request map a REST call would give
-it, as the manager who holds the key. Path
+it, as the manager who holds the key. On a request with a read-only key, every function that changes the shop or
+reaches outside it refuses (`fail refused`), whatever the route's method or the tool's `read_only` say: writes to
+records, fields and marks, `jobs.push`, mail, and every `http.*` call, `http.get` included, since a URL can carry
+the shop's data to another host. Path
 parameters are `{name}`.
 
 The handler receives one map: `method`, `path`, `params` (from the path), `query`, `body` (the JSON body as a
@@ -662,8 +671,9 @@ template_data "storefront/product.html.twig" fn(context) {
   `ext.<extension>`; in the template, `{{ ext.greeter.badge }}`.
 - With the permission `templates: override`, a file at `templates/storefront/product.html.twig` in the package
   replaces the shop's template of that name for the site. The theme's override still wins over the extension's.
-- **Scripts and styles of its own.** A file under `assets/` in the package (`.js`, `.css` or `.svg`) is served by
-  the web server, and a template prints it with `asset()`:
+- **Scripts and styles of its own.** A file under `assets/` in the package (`.js`, `.css` or `.svg`; its name is
+  letters, digits, `-` and `_`, then only `.min` or numbers: `portal.js`, `portal.min.js`, `lib-3.7.1.min.js`) is served by the web server, and a template prints it with
+  `asset()`:
 
   ```twig
   {{ asset('portal.css') }}
@@ -942,14 +952,15 @@ fn posted() {
 - **Tests.** An extension declares its own tests and runs them from the Console's *Run tests* button, from VS
   Code, from `POST /extensions/<id>/test` or from `wp orillacart script test file.ocs`, enabled or not. See below.
 - **Enable.** A dialog lists the permissions the `needs` ask for; granting them enables the extension. Changing
-  `needs` later asks again. An extension with templates (`*.html.twig`) or files under `assets/` prints HTML and
+  `needs` later asks again. An extension with templates (any file under `templates/`, any `.twig`) or files under `assets/` prints HTML and
   script into pages others view, so it is enabled only by a user who may publish raw HTML (`unfiltered_html`: an
   administrator, a super admin on a network); a shop manager writes and tests it, and asks one to enable it.
 - **Export and import.** An extension travels as a zip of its files, with an `extension.json` naming it and
   carrying its translations: Export downloads one, Import installs one (or the JSON file of before), as do
   `wp orillacart extension export <id>` and `wp orillacart extension install file.zip`. A zip you make yourself
   needs only the files, at its root or in one folder; the `extension` block names the extension, and files that
-  are not an extension's (a LICENSE, `package.json`) are left out and named. A new extension comes in as a draft;
+  are not an extension's (a LICENSE, `package.json`) are left out and named. A package's paths are lowercase, so a
+  zip's `README.md` comes in as `readme.md`. A new extension comes in as a draft;
   one with the same id gets its files replaced and keeps a version of the change. Records and field values are
   exported separately from `/extensions/<id>/data`.
 - **In VS Code.** The extension under `tools/vscode` (see its README) highlights `.ocs` files and runs a
@@ -1002,6 +1013,9 @@ extension is enabled, and reports the first failure with its message, file and l
   (never emailed, never invoiced) inside the same rolled-back transaction. The result's `effects` lists each such
   call with its arguments, so a test can be checked for what it would have sent.
 - Everything else, `shop.*` included, is the real shop, read-only by nature.
+- Tests run with a read-only key refuse every function that writes, as the extension's routes do on such a key:
+  `objects.*` and `fields.*` writes, marks, mail and test orders fail the test with `refused`. The `http.*`
+  answers and `jobs.push`, which only record, work as above.
 
 `assert test, message?` is the check; `fail`, an error or a budget used up also fail the test. The result lists the
 requests made and the budget used. The editor runs the tests over the files as they are on screen, saved or not,

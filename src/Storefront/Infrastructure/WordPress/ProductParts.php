@@ -16,9 +16,9 @@ use OrillaCart\Checkout\Application\ShownPrices;
 use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
-use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Reviews\Application\Dto\ReviewInvitationView;
 use OrillaCart\Reviews\Application\Reviews;
+use OrillaCart\Reviews\Application\ReviewTokens;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 
@@ -59,11 +59,12 @@ final class ProductParts
 
     /**
      * The product as the shopper is offered it now; null for one that is not a product, or not for show (a draft
-     * shows only to those who may edit it).
+     * shows only to those who may edit it, one behind a password to those who gave it: its page's content shows
+     * WordPress's form for it).
      */
     public function offer(int $id): ?ProductOffer
     {
-        if (get_post_type($id) !== ProductPostType::NAME || (get_post_status($id) !== 'publish' && !current_user_can('edit_post', $id))) {
+        if (get_post_type($id) !== ProductPostType::NAME || (get_post_status($id) !== 'publish' && !current_user_can('edit_post', $id)) || post_password_required($id)) {
             return null;
         }
         if (!\array_key_exists($id, $this->offers)) {
@@ -291,9 +292,9 @@ final class ProductParts
         if (!$this->reviews->shown() || $this->offer($id) === null) {
             return '';
         }
-        $receipt = $_GET[ReviewLinks::QUERY] ?? null;
-        $receipt = \is_string($receipt) && preg_match('/^' . ReceiptLinks::PATTERN . '$/', $receipt) === 1 ? $receipt : null;
-        $invitation = $this->reviews->invitation($id, $this->shopper->customerId(), $receipt);
+        $token = $_GET[ReviewLinks::QUERY] ?? null;
+        $token = \is_string($token) && preg_match('/^' . ReviewTokens::PATTERN . '$/', $token) === 1 ? $token : null;
+        $invitation = $this->reviews->invitation($id, $this->shopper->customerId(), $token);
         $number = $_GET['review-page'] ?? '1';
         $page = $this->reviews->page($id, \is_string($number) && ctype_digit($number) ? (int) $number : 1);
         if ($page->rating === null && !$invitation->open && \in_array($invitation->reason, [ReviewInvitationView::OFF, ReviewInvitationView::CLOSED], true)) {
@@ -312,7 +313,7 @@ final class ProductParts
             'page' => $page,
             'page_urls' => $pageUrls,
             'invitation' => $invitation,
-            'receipt' => $invitation->open ? $receipt : null,
+            'token' => $invitation->open ? $token : null,
             'account_url' => $this->links->pages()['account'] ?? '',
         ]);
     }

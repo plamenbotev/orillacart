@@ -21,10 +21,12 @@ final readonly class GiftCardSettingsView
         public array $productIds = [],
         #[Assert\Range(min: 1, max: GiftCardSettings::MAX_MONTHS)]
         public ?int $validMonths = null,
+        /** Orders holding gift cards are paid with money only: not with gift cards or store credit. */
+        public bool $paidWithMoneyOnly = true,
     ) {}
 
     public static function of(GiftCardSettings $settings): self
     {
-        return new self($settings->productIds, $settings->validMonths);
+        return new self($settings->productIds, $settings->validMonths, $settings->paidWithMoneyOnly);
     }
 }

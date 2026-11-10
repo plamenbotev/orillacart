@@ -65,7 +65,6 @@ final readonly class TransientRateLimiter implements RateLimiter
         'extension_http' => [500, 3600],
         // OAuth for AI assistants: anyone may register an app or ask for tokens.
         'oauth_register' => [20, 3600],
-        'oauth_register_any' => [200, 3600],
         'oauth_token' => [120, 600],
     ];
 

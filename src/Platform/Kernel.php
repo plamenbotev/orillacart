@@ -56,17 +56,26 @@ final class Kernel
     private const string CONTAINER_NAMESPACE = 'OrillaCart\\Generated';
 
     private ?SymfonyContainer $container = null;
+    /** The site the container was made for: its table prefix, options and language are that site's. */
+    private ?int $siteId = null;
 
     public function __construct(public readonly PluginContext $context) {}
 
     public function container(): ContainerInterface
     {
         if ($this->container === null) {
+            $this->siteId = \function_exists('get_current_blog_id') ? get_current_blog_id() : 1;
             $this->container = $this->loadContainer();
             $this->container->set(PluginContext::class, $this->context);
         }
 
         return $this->container;
+    }
+
+    /** The site the container was made for; null before it is made. */
+    public function siteId(): ?int
+    {
+        return $this->siteId;
     }
 
     /**

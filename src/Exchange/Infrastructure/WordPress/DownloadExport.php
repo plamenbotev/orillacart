@@ -22,7 +22,7 @@ use OrillaCart\Shared\WordPress\AsHook;
  * Streams an export to the shop manager's browser as it is written, so a file of any size never sits in memory:
  * admin-post.php?action=orillacart_export_orders with the Orders screen's filters and format csv or json, or
  * action=orillacart_export_products for the products file, or action=orillacart_export_subscribers for the
- * newsletter's subscribers, each with the REST nonce the admin screens hold.
+ * newsletter's subscribers, each with the nonce the admin screens hold for that action.
  */
 #[AsHook('admin_post_orillacart_export_orders', method: 'orders')]
 #[AsHook('admin_post_orillacart_export_products', method: 'products')]
@@ -41,7 +41,7 @@ final readonly class DownloadExport
 
     public function orders(): void
     {
-        $this->authorize();
+        $this->authorize('orillacart_export_orders');
         $parameters = wp_unslash($_GET);
         try {
             $query = $this->orderQuery(\is_array($parameters) ? $parameters : []);
@@ -58,7 +58,7 @@ final readonly class DownloadExport
     /** The products file, every product and variation: CSV only, as the import reads it. */
     public function products(): void
     {
-        $this->authorize();
+        $this->authorize('orillacart_export_products');
         LongExport::start();
         $this->products->export($this->file('products', csvOnly: true), LongExport::between(...));
         exit;
@@ -67,7 +67,7 @@ final readonly class DownloadExport
     /** The newsletter's subscribers: CSV or JSON. */
     public function subscribers(): void
     {
-        $this->authorize();
+        $this->authorize('orillacart_export_subscribers');
         $this->subscribers->export($this->file('subscribers'));
         exit;
     }
@@ -99,10 +99,11 @@ final readonly class DownloadExport
         return $lines === [] ? $e->getMessage() : implode(' ', $lines);
     }
 
-    private function authorize(): void
+    /** The address carries the nonce of its own action: one seen in a log downloads nothing else. */
+    private function authorize(string $action): void
     {
         $nonce = $_GET['_wpnonce'] ?? '';
-        if (!current_user_can(Capability::MANAGE_SHOP) || !\is_string($nonce) || wp_verify_nonce($nonce, 'wp_rest') === false) {
+        if (!current_user_can(Capability::MANAGE_SHOP) || !\is_string($nonce) || wp_verify_nonce($nonce, $action) === false) {
             wp_die(esc_html__('You may not export the shop\'s data.', 'orillacart'), esc_html__('Export', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
     }

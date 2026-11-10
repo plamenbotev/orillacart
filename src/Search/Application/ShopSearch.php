@@ -57,10 +57,12 @@ final readonly class ShopSearch
 
     /**
      * Looks in the query's language, else the one shown on a site in several (design 51): the request's, or the
-     * one the shop works in.
+     * one the shop works in; for no more words and brands than SearchQuery::bounded() leaves.
      */
     public function search(SearchQuery $query): SearchResult
     {
+        // Each word and brand is another condition: a search takes so many and no more.
+        $query = $query->bounded();
         if ($query->locale === null && $this->languages->multilingual()) {
             $query = $query->inLanguage($this->languages->current()?->locale);
         }

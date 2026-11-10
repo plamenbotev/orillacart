@@ -4,7 +4,8 @@
  # orders, files and addresses.
  #
  # logged_in; accounts: optional | required | disabled; login_form (HTML); lost_password_url; confirm_token: the
- # token of an emailed link to make the account, for choosing its password; section: orders |
+ # token of an emailed link to make the account, for choosing its password; link_expired: sent here from a way back
+ # to an order that expired; section: orders |
  # order | downloads | addresses | emails; urls: {orders, downloads, addresses, emails, logout}; orders (a page of them, with
  # order_urls and page_links); order (null when not theirs); downloads; customer (with its address book);
  # max_addresses; default_country: where a new address starts; countries; states; newsletter: the words of its
@@ -54,6 +55,7 @@
             {% endif %}
             <section class="orillacart-account__find">
                 <h2 class="orillacart-heading">{{ __('Find an order') }}</h2>
+                {% if link_expired ?? false %}<p class="orillacart-notice" role="status">{{ __('The way back to your order has expired. Give its number and your email, and we email you a new link to it.') }}</p>{% endif %}
                 <form data-orillacart-find-order novalidate>
                     {{ shop.input('find', 'number', __('Order number'), '', 'off', 'text') }}
                     {{ shop.input('find', 'email', __('Email the order was placed with'), '', 'email', 'email') }}

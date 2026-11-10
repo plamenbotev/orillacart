@@ -560,6 +560,35 @@ export function SettingsScreen() {
 									__next40pxDefaultSize
 									type="number"
 									min={ 1 }
+									max={ 100 }
+									label={ __(
+										'Unpaid orders a shopper may have at once',
+										'orillacart'
+									) }
+									help={ __(
+										'Orders on hold for a bank transfer, cheque or cash on delivery hold their stock. A shopper (by account, or by email however it is written) with this many waits for them to be paid or cancelled before ordering again. Empty: any number.',
+										'orillacart'
+									) }
+									value={
+										form.unpaid_orders_each === null
+											? ''
+											: String( form.unpaid_orders_each )
+									}
+									onChange={ ( value ) =>
+										update(
+											'unpaid_orders_each',
+											value === ''
+												? null
+												: Math.max( 1, Number( value ) )
+										)
+									}
+								/>
+							</Field>
+							<Field size="xs">
+								<TextControl
+									__next40pxDefaultSize
+									type="number"
+									min={ 1 }
 									max={ 365 }
 									label={ __(
 										'Customers may return items within (days)',

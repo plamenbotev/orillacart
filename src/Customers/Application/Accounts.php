@@ -83,6 +83,9 @@ interface Accounts
      */
     public function testIds(): array;
 
-    /** Removes the account from the site; on a network, from this site only. */
+    /**
+     * Removes the account from the site; on a network, from this site only. Posts the user wrote go to the user
+     * removing it.
+     */
     public function remove(int $id): void;
 }

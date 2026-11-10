@@ -17,11 +17,14 @@ interface SettingsArchive
 
     /**
      * Takes each section of the file the shop knows, as the file has it, but for secrets, which this site keeps.
-     * A section the shop cannot read is left as it was.
+     * A section the shop cannot read is left as it was. A secret is left behind too when the file changes the
+     * address or user it goes to.
      *
      * @param array<array-key, mixed> $file
+     * @param bool                    $administrator whether the site's administrator imports it, who alone points
+     *                                               the shop at a new OpenSearch server
      *
      * @return array{imported: list<string>, refused: array<string, string>} the sections taken, and why the others were not
      */
-    public function import(array $file): array;
+    public function import(array $file, bool $administrator): array;
 }

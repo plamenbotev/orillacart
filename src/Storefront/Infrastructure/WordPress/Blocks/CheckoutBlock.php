@@ -31,6 +31,8 @@ use OrillaCart\Shipping\Application\ShipmentTracking;
 use OrillaCart\Storefront\Application\LegalSettingsService;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
 use OrillaCart\Storefront\Infrastructure\WordPress\AnalyticsEvents;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\KeptTokens;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\PrivatePages;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
@@ -77,9 +79,12 @@ final readonly class CheckoutBlock implements BlockDefinition
 
     public function render(array $attributes, BlockContext $context): string
     {
-        $receipt = $_GET[StorefrontOrderLinks::RECEIPT_QUERY] ?? null;
-        if (\is_string($receipt)) {
-            return $this->receipt(sanitize_text_field(wp_unslash($receipt)));
+        // The shopper's cart, or their order: on whatever page it is, page caches keep none of it.
+        PrivatePages::markPrivate();
+        // From the receipt's link, kept in the browser since it was opened (KeptTokens).
+        $receipt = KeptTokens::token(StorefrontOrderLinks::RECEIPT_QUERY);
+        if ($receipt !== null) {
+            return $this->receipt($receipt);
         }
 
         if ($this->settings->current()->catalogOnly) {
@@ -164,6 +169,9 @@ final readonly class CheckoutBlock implements BlockDefinition
     private function receipt(string $receipt): string
     {
         $links = $this->links->pages();
+        if ($receipt === '') {
+            return $this->templates->render('storefront/checkout.html.twig', ['summary' => null, 'problem' => __('This page shows your order for an hour after you open its link: open the link in your email again.', 'orillacart'), 'links' => $links, 'states' => []]);
+        }
         try {
             $order = $this->orders->byReceipt($receipt);
         } catch (ReceiptLinkExpired) {
@@ -181,7 +189,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             'pay_methods' => $this->payNow->methods($order),
             'invoices' => $this->invoices->ofOrder($order->number),
             'returns' => $this->returns->forCustomer($order->number),
-            'review_links' => $this->reviewLinks->forOrder($order, $receipt),
+            'review_links' => $this->reviewLinks->forOrder($order),
             'newsletter_pending' => $this->newsletter->isPending($order->email),
         ]) . (\in_array($order->status, ['cancelled', 'failed'], true) ? '' : $this->analytics->purchase($order));
     }

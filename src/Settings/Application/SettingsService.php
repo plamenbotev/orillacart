@@ -73,6 +73,7 @@ final readonly class SettingsService
             ReportDay::from($command->reportDay),
             FreeItemsOnReturn::from($command->freeItemsOnReturn),
             $command->historyDays,
+            $command->unpaidOrdersEach,
         );
 
         if (!$current->equals($previous)) {
@@ -115,6 +116,7 @@ final readonly class SettingsService
             $current->reportDay,
             $current->freeItemsOnReturn,
             $current->historyDays,
+            $current->unpaidOrdersEach,
         ));
     }
 
@@ -151,6 +153,7 @@ final readonly class SettingsService
             $current->reportDay,
             $current->freeItemsOnReturn,
             $current->historyDays,
+            $current->unpaidOrdersEach,
         ));
     }
 
@@ -186,6 +189,7 @@ final readonly class SettingsService
             $current->reportDay,
             $current->freeItemsOnReturn,
             $current->historyDays,
+            $current->unpaidOrdersEach,
         ));
     }
 }

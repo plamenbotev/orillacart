@@ -8,6 +8,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { api } from './api';
 import { failure, formBody, showMessage } from './dom';
 import { refreshCartCount } from './product';
+import { isWebUrl } from './web-url';
 
 type Placed = { receipt_url: string; redirect_url: string | null };
 
@@ -32,7 +33,10 @@ export function bindPayNow( form: HTMLFormElement ): void {
 			{ payment }
 		);
 		if ( result.ok ) {
-			if ( result.data.redirect_url !== null ) {
+			if (
+				result.data.redirect_url !== null &&
+				isWebUrl( result.data.redirect_url )
+			) {
 				window.location.assign( result.data.redirect_url );
 			} else {
 				window.location.reload();

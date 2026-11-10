@@ -10,7 +10,8 @@ use OrillaCart\Shared\WordPress\AsHook;
 
 /**
  * The link that confirms a newsletter sign-up: opening it asks to confirm (mail scanners open links, and must not
- * sign anyone up), and confirming puts the email on the newsletter. A link not signed for the email does nothing.
+ * sign anyone up), and confirming puts the email on the newsletter. A link not signed for the email does nothing,
+ * nor one older than NewsletterConfirmLinks::VALID_DAYS.
  */
 #[AsHook('template_redirect', priority: 1)]
 final readonly class ConfirmFromLink
@@ -24,12 +25,17 @@ final readonly class ConfirmFromLink
     {
         $email = $_GET[NewsletterConfirmLinks::PARAMETER] ?? null;
         $signature = $_GET['sig'] ?? null;
+        $day = $_GET[NewsletterConfirmLinks::DAY_PARAMETER] ?? '';
         if (!\is_string($email) || !\is_string($signature)) {
             return;
         }
         $email = sanitize_email(rawurldecode(wp_unslash($email)));
-        if ($email === '' || !$this->links->verify($email, sanitize_text_field(wp_unslash($signature)))) {
+        $day = \is_string($day) ? sanitize_text_field(wp_unslash($day)) : '';
+        if ($email === '' || !$this->links->verify($email, $day, sanitize_text_field(wp_unslash($signature)))) {
             wp_die(esc_html__('This confirmation link does not work. Sign up again for a new one.', 'orillacart'), esc_html__('Newsletter', 'orillacart'), ['response' => 400]);
+        }
+        if ($this->links->expired($day)) {
+            wp_die(esc_html__('This confirmation link has expired. Sign up again for a new one.', 'orillacart'), esc_html__('Newsletter', 'orillacart'), ['response' => 410]);
         }
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $confirmed = $this->newsletter->confirm($email) || $this->newsletter->isSubscribed($email);

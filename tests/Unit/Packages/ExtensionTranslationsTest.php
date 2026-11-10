@@ -222,6 +222,26 @@ final class ExtensionTranslationsTest extends TestCase
         self::assertSame(['Tickets (de)', 'Greeter'], [$loaded->word('Tickets'), $loaded->word('Greeter')]);
     }
 
+    public function testTheWordsOfAnEnabledExtensionAreThoseOfTheFilesItRuns(): void
+    {
+        $at = new \DateTimeImmutable('2026-11-10');
+        $this->package->enable([], ['templates'], $at);
+        $this->package->write('main.ocs', str_replace('__("Free shipping")', '__("Edited since")', self::SCRIPT) . "\n", $at);
+        $this->package->write('templates/note.html.twig', "<p>{{ __('A new note') }}</p>\n", $at);
+        $words = new ExtensionWords($this->scripts, new TwigTemplateWords(self::twig($this->translations)));
+
+        $texts = array_map(static fn(ExtensionWord $word): string => $word->text, $words->of($this->package));
+        self::assertContains('Free shipping', $texts);
+        self::assertContains('Thanks', $texts);
+        self::assertNotContains('Edited since', $texts, 'an edit\'s words wait for it to be enabled');
+        self::assertNotContains('A new note', $texts);
+
+        $this->package->disable($at);
+        $texts = array_map(static fn(ExtensionWord $word): string => $word->text, $words->of($this->package));
+        self::assertContains('Edited since', $texts, 'switched off, it is the files as they are');
+        self::assertContains('A new note', $texts);
+    }
+
     public function testTranslationsAreSavedByWordAndLanguageWithTheirFormsAndListed(): void
     {
         $words = new ExtensionWords($this->scripts, new TwigTemplateWords(self::twig($this->translations)));

@@ -111,7 +111,8 @@ final class PersonalDataTest extends TestCase
     public function testManyOrdersAreErasedAPageAtATime(): void
     {
         for ($i = 0; $i <= PersonalData::PER_PAGE; ++$i) {
-            $this->place(new CartOwner(null));
+            // Paid, as a shopper holds only a few unpaid at once.
+            $this->shop->orders->markPaid($this->place(new CartOwner(null))->number, null);
         }
 
         self::assertFalse($this->shop->personalData->erase('ada@example.com', 1)['done']);

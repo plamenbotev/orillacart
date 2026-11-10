@@ -9,7 +9,7 @@ use OrillaCart\Platform\Doctrine\Migration;
 
 /**
  * An enabled extension keeps the files it was enabled with and runs those until enabled again (security review,
- * PLAN 389). One enabled before this keeps running its files as they are until a manager enables it again.
+ * PLAN 389). Version20261110171500 gives the ones enabled before this their files.
  */
 final class Version20261110150000 extends Migration
 {

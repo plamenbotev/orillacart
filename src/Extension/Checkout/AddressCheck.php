@@ -10,7 +10,8 @@ namespace OrillaCart\Extension\Checkout;
  * kept one the check could not find or would have corrected. Checks run in the order they were registered; the
  * first with something to say is heard. Since version 5.
  *
- * A check that throws is logged and left out: the customer is never kept from ordering by a register that is down.
+ * A check that throws is logged and left out: the customer is never kept from ordering by a register that is down,
+ * unless the check implements FailsClosed; then the order waits until the check answers.
  */
 interface AddressCheck
 {

@@ -31,7 +31,7 @@ final class ScriptedProvidersTest extends RestTestCase
         extension "scripted" {
           name: "Scripted providers"
           version: "1.0"
-          needs: { }
+          needs: { http: ["pay.example"] }
         }
 
         payment_gateway "scriptpay" {
@@ -102,7 +102,7 @@ final class ScriptedProvidersTest extends RestTestCase
             $this->packages->uninstall($existing->id);
         }
         $this->request('POST', '/extensions', ['id' => 'scripted', 'name' => 'Scripted', 'files' => ['main.ocs' => self::SCRIPT]], nonce: true);
-        $enabled = $this->request('POST', '/extensions/scripted/enable', ['grant' => []], nonce: true);
+        $enabled = $this->request('POST', '/extensions/scripted/enable', ['grant' => ['http']], nonce: true);
         self::assertSame(200, $enabled->get_status(), (string) wp_json_encode($enabled->get_data()));
     }
 
@@ -196,7 +196,7 @@ final class ScriptedProvidersTest extends RestTestCase
         self::assertStringContainsString('Division by zero', (string) $package->lastProblem);
         self::assertSame([], $this->packages->loaded(), 'a stopped extension registers nothing');
 
-        $enabled = $this->data($this->request('POST', '/extensions/scripted/enable', ['grant' => []], nonce: true));
+        $enabled = $this->data($this->request('POST', '/extensions/scripted/enable', ['grant' => ['http']], nonce: true));
         self::assertSame(['enabled', 0], [$enabled['state'], $enabled['failures']], 'a manager enables it again after reading the problem');
     }
 
@@ -268,7 +268,7 @@ final class ScriptedProvidersTest extends RestTestCase
               fn forget(email) { return null }
             }
             OCS], nonce: true);
-        $enabled = $this->request('POST', '/extensions/scripted/enable', ['grant' => []], nonce: true);
+        $enabled = $this->request('POST', '/extensions/scripted/enable', ['grant' => ['http']], nonce: true);
         self::assertSame(200, $enabled->get_status(), (string) wp_json_encode($enabled->get_data()));
 
         $rule = $this->provider('no_thirteen');

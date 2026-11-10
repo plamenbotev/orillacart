@@ -11,6 +11,7 @@ use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Http\Security\CsrfProtection;
 use OrillaCart\Shared\Http\SiteCookies;
 use OrillaCart\Shared\I18n\Translations;
 use OrillaCart\Shared\WordPress\AsHook;
@@ -19,7 +20,9 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 
 /**
  * "Add to cart" in a browser without JavaScript: the product form posts to the cart page, which adds the item
- * and shows the cart. With JavaScript the storefront script sends the same fields to the REST API instead.
+ * and shows the cart. With JavaScript the storefront script sends the same fields to the REST API instead. A form
+ * another site posts adds nothing: the browser names the page it came from (Origin, else Referer), and it must be
+ * the site's own.
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class AddToCartWithoutScript
@@ -31,12 +34,16 @@ final readonly class AddToCartWithoutScript
         private Shopper $shopper,
         private ShopLinks $links,
         private Translations $translations,
+        private CsrfProtection $csrf,
     ) {}
 
     public function __invoke(): void
     {
         if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !isset($_POST[self::FIELD])) {
             return;
+        }
+        if (!self::fromThisSite($_SERVER, $this->csrf)) {
+            wp_die(esc_html__('Add the product to your cart from its page in this shop.', 'orillacart'), esc_html__('Not added to the cart', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
         $fields = self::fields();
         try {
@@ -60,6 +67,30 @@ final readonly class AddToCartWithoutScript
         }
         wp_safe_redirect($this->links->pages()['cart'] ?? home_url('/'), 303);
         exit;
+    }
+
+    /**
+     * Whether the browser says the form was on one of the site's pages: by its Origin, else by the origin of its
+     * Referer. A request with neither is taken at its word: browsers send Origin with every form they post.
+     *
+     * @param array<array-key, mixed> $server
+     */
+    public static function fromThisSite(array $server, CsrfProtection $csrf): bool
+    {
+        $origin = $server['HTTP_ORIGIN'] ?? null;
+        if (\is_string($origin) && $origin !== '') {
+            return $origin !== 'null' && $csrf->allowsOrigin($origin);
+        }
+        $referer = $server['HTTP_REFERER'] ?? null;
+        if (!\is_string($referer) || $referer === '') {
+            return true;
+        }
+        $parts = parse_url($referer);
+        if (!\is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
+            return false;
+        }
+
+        return $csrf->allowsOrigin($parts['scheme'] . '://' . $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : ''));
     }
 
     /**

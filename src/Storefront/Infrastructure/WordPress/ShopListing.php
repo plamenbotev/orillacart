@@ -38,6 +38,8 @@ final readonly class ShopListing
     public const array FILTER_ARGUMENTS = ['brand', 'f', 'price_min', 'price_max', 'in_stock'];
     /** The page of products where the site has no pretty permalinks; older links that the shop sends on. */
     public const string PAGE_ARGUMENT = 'product-page';
+    /** The highest page number a listing takes. */
+    public const int MAX_PAGE = 10000;
     /** Results shared by the requests of a site with a persistent object cache; this request's without one. */
     private const string CACHE_GROUP = 'orillacart_listing';
     /** How long a listing's total and counts are reused: the index's generation ends it sooner. */
@@ -59,7 +61,8 @@ final readonly class ShopListing
     {
         $category = $fixedCategory !== '' ? $fixedCategory : self::query('category');
         $tag = $fixedTag !== '' ? $fixedTag : self::query('tag');
-        $search = self::query('q');
+        // As the search takes them: the first words, the first brands (SearchQuery::bounded()).
+        $search = SearchQuery::words(self::query('q'));
         $sorts = $search === '' ? self::SORTS : ['relevance', ...self::SORTS];
         $defaultSort = \in_array($defaultSort, self::SORTS, true) ? $defaultSort : 'order';
 
@@ -69,7 +72,7 @@ final readonly class ShopListing
             'tag' => $tag,
             'tag_id' => self::termId($tag, ProductTagTaxonomy::NAME),
             'search' => $search,
-            'brands' => $fixedBrand !== null ? [$fixedBrand] : self::chosenIds('brand'),
+            'brands' => $fixedBrand !== null ? [$fixedBrand] : \array_slice(self::chosenIds('brand'), 0, SearchQuery::MAX_BRANDS),
             'options' => self::chosenOptions(),
             'price_min' => self::price('price_min'),
             'price_max' => self::price('price_max'),
@@ -264,7 +267,8 @@ final readonly class ShopListing
             $page = max($page, is_numeric($value) ? (int) $value : 1);
         }
 
-        return max(1, $page);
+        // A page past any shop's last: an offset that would overflow is no page at all.
+        return max(1, min(self::MAX_PAGE, $page));
     }
 
     /**

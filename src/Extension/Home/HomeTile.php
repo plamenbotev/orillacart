@@ -15,7 +15,7 @@ final readonly class HomeTile
         public string $value,
         /** A line under the value, such as "last 7 days"; empty for none. */
         public string $detail = '',
-        /** An admin URL, or empty for none. */
+        /** A Shop page, an admin page, a path or an http(s) URL of the site (HomeUrl); empty for none. */
         public string $url = '',
     ) {}
 }

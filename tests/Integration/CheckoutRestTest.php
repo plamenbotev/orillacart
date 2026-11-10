@@ -530,7 +530,7 @@ final class CheckoutRestTest extends RestTestCase
         unset($_COOKIE[CartCookie::NAME]);
         $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
         $waiting = $this->data($this->request('POST', '/checkout', $this->order('stripe'), nonce: true));
-        $body = (string) wp_json_encode(['id' => 'evt_1', 'object' => 'event', 'type' => 'checkout.session.completed', 'data' => ['object' => self::paidSession('cs_test_2', 'pi_2')]]);
+        $body = (string) wp_json_encode(['id' => 'evt_' . bin2hex(random_bytes(6)), 'object' => 'event', 'type' => 'checkout.session.completed', 'data' => ['object' => self::paidSession('cs_test_2', 'pi_2')]]);
         $notification = new \WP_REST_Request('POST', self::NAMESPACE . '/payments/stripe/webhook');
         $notification->set_header('Content-Type', 'application/json');
         $notification->set_body($body);

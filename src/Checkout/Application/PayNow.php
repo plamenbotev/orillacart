@@ -7,9 +7,12 @@ namespace OrillaCart\Checkout\Application;
 use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Coupons\Application\Dto\AppliedCoupon;
 use OrillaCart\Coupons\Domain\CouponRuleViolation;
 use OrillaCart\Inventory\Domain\InsufficientStock;
+use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\NewOrderFee;
+use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
@@ -23,11 +26,14 @@ use OrillaCart\Payment\Application\Payments;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Domain\Text;
+use OrillaCart\Tax\Application\Dto\TaxAddress;
 
 /**
  * Paying an order later, from its receipt: one waiting for its money (an offline payment the customer would
  * rather make online, a provider page they closed) or one whose payment failed. The customer may choose any
- * method the shop offers for the billing country; the order then waits for that payment.
+ * method the shop offers for the billing country; the order then waits for that payment. A failed order is paid only
+ * within the payment window of its last try, and only as the shop would still sell it (checkStillSo()).
  */
 final readonly class PayNow
 {
@@ -38,6 +44,7 @@ final readonly class PayNow
         private OrderLinks $links,
         private OrderFees $fees,
         private Currencies $currencies,
+        private OrderPricing $pricing,
     ) {}
 
     /**
@@ -75,8 +82,8 @@ final readonly class PayNow
      * @throws OrderNotFound              for a receipt link the shop never made
      * @throws ReceiptLinkExpired         for one too old
      * @throws CheckoutRuleViolation      for an order that cannot be paid now, a method the shop does not offer
-     *                                    for it, or a failed order whose items sold out or whose coupon was
-     *                                    used up since
+     *                                    for it, or a failed order whose items sold out, whose prices
+     *                                    changed or whose coupon no longer holds since
      * @throws PaymentProviderUnavailable when the payment cannot start; the order stays as it was
      */
     public function pay(string $receipt, PayOrder $command): PlacedOrderView
@@ -89,6 +96,9 @@ final readonly class PayNow
             throw new CheckoutRuleViolation('Choose how to pay.', 'orillacart_payment_required');
         }
         $failed = $order->status === 'failed';
+        if ($failed) {
+            $this->checkStillSo($order);
+        }
         try {
             $this->orders->awaitPayment($order->number, $command->payment, $this->paymentOptions->name($command->payment), $this->paymentOptions->receiptNote($command->payment), $this->paymentOptions->shopName($command->payment));
         } catch (InsufficientStock) {
@@ -119,5 +129,55 @@ final readonly class PayNow
         $placed = $this->orders->order($order->number);
 
         return new PlacedOrderView($placed->number, $placed->status, $placed->total, $receiptUrl, $payment->redirectUrl);
+    }
+
+    /**
+     * A failed order is paid as it was placed only while the shop would still sell it so: its items priced again
+     * now come to what the order says, and each of its coupons still holds (on, not ended, a first order's still
+     * the first, the order still its least). Otherwise the customer orders again from the shop.
+     *
+     * @throws CheckoutRuleViolation
+     */
+    private function checkStillSo(OrderView $order): void
+    {
+        $items = array_map(static fn(OrderLineView $line): array => [
+            'product_id' => $line->productId,
+            'option_ids' => $line->optionIds,
+            'bundle_choices' => $line->bundleChoices,
+            'quantity' => $line->quantity,
+            'given' => $line->givenBy['code'] ?? null,
+            'add_on' => $line->addOn,
+            'personalisation' => $line->personalisation,
+            'extra' => (string) array_reduce($line->personalisation, static fn(Money $sum, array $answer): Money => $answer['price'] === null ? $sum : $sum->add(Money::of($answer['price'])), Money::zero()),
+        ], array_values($order->lines));
+        $codes = [];
+        $automatic = [];
+        foreach ($order->discounts as $discount) {
+            if ($discount->automatic) {
+                $automatic[] = $discount->code;
+            } else {
+                $codes[] = $discount->code;
+            }
+        }
+        $address = static fn(AddressData $address): TaxAddress => new TaxAddress($address->country, $address->state, $address->postcode, $address->city, $address->street);
+        $shipping = $address($order->shippingAddress ?? $order->billing);
+        try {
+            $priced = $this->pricing->price($items, $shipping, $address($order->billing), null, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, currency: $order->currency, automatic: $automatic, itemsOnly: true);
+        } catch (CheckoutRuleViolation $e) {
+            throw new CheckoutRuleViolation('Some of the items sold out or are no longer sold: this order cannot be paid any more. Order them again from the shop.', 'orillacart_out_of_stock', $e);
+        }
+        $applied = array_map(static fn(AppliedCoupon $coupon): string => $coupon->code, $priced['discounts']->coupons);
+        foreach ($order->discounts as $discount) {
+            $refused = $priced['discounts']->refused[$discount->code] ?? null;
+            if ($refused !== null || !\in_array($discount->code, $applied, true)) {
+                throw new CheckoutRuleViolation('The code %1$s no longer holds for this order: %2$s Order again from the shop.', 'orillacart_coupon_refused', values: [$discount->code, $refused ?? new Text('This code is not valid.')]);
+            }
+        }
+        $decimals = $this->currencies->decimals($order->currency);
+        $now = array_reduce($priced['lines'], static fn(Money $sum, array $line): Money => $sum->add($line['total'])->subtract($line['discount']), Money::zero());
+        $then = array_reduce($order->lines, static fn(Money $sum, OrderLineView $line): Money => $sum->add(Money::of($line->total))->subtract(Money::of($line->discount)), Money::zero());
+        if ($now->rounded($decimals)->compare($then->rounded($decimals)) !== 0) {
+            throw new CheckoutRuleViolation('The prices changed since the payment of this order failed, so it cannot be paid any more. Order again from the shop.', 'orillacart_order_not_payable');
+        }
     }
 }

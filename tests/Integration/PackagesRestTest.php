@@ -150,6 +150,21 @@ final class PackagesRestTest extends RestTestCase
         // A changed file does not run until enabled again.
         $changed = $this->data($this->request('PUT', '/extensions/greeter/files/' . rawurlencode('main.ocs'), ['content' => str_replace('Hi, ', 'Hello, ', self::SCRIPT)], nonce: true));
         self::assertTrue($changed['stale']);
+
+        // The settings follow the files it runs: an edit that makes the secret plain text shows it no sooner, and
+        // a setting only the edit declares is offered but not yet required.
+        $edit = str_replace(['token: secret { label: "Token" }', 'loud: boolean { label: "Loud" }'], ['token: text { label: "Token" }', "loud: boolean { label: \"Loud\" }\n  region: text { label: \"Region\", required: true }"], self::SCRIPT);
+        $shown = array_column($this->rows($this->data($this->request('PUT', '/extensions/greeter/files/' . rawurlencode('main.ocs'), ['content' => $edit], nonce: true))['settings']), null, 'key');
+        self::assertSame(['secret', '', true], [self::assoc($shown['token'] ?? null)['type'] ?? null, self::assoc($shown['token'] ?? null)['value'] ?? null, self::assoc($shown['token'] ?? null)['set'] ?? null], 'still the running files\' secret');
+        self::assertArrayHasKey('region', $shown);
+        $kept = $this->request('PUT', '/extensions/greeter/settings', ['settings' => ['greeting' => 'Hey']], nonce: true);
+        self::assertSame(200, $kept->get_status(), 'the edit\'s required setting waits for it to be enabled: ' . wp_json_encode($kept->get_data()));
+        $kept = array_column($this->rows($this->data($kept)['settings']), null, 'key');
+        self::assertTrue(self::assoc($kept['token'] ?? null)['set'] ?? null, 'the running files\' secret is kept');
+        $region = $this->request('PUT', '/extensions/greeter/settings', ['settings' => ['greeting' => 'Hey', 'region' => 'EU']], nonce: true);
+        self::assertSame(200, $region->get_status(), 'the edit\'s setting can be set before: ' . wp_json_encode($region->get_data()));
+        $this->request('PUT', '/extensions/greeter/files/' . rawurlencode('main.ocs'), ['content' => str_replace('Hi, ', 'Hello, ', self::SCRIPT)], nonce: true);
+
         $export = $this->data($this->request('GET', '/extensions/greeter/export'));
         self::assertSame(['greeter', 'Greeter', 'orillacart-extension/1'], [$export['id'], $export['name'], $export['format']]);
         self::assertSame(['main.ocs'], array_keys((array) $export['files']));

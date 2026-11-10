@@ -82,10 +82,11 @@ deptrac:
       collectors:
         - type: classNameRegex
           value: '#^Twig\\#'
+    # WordPress, with the HTTP library it bundles (WpOrg\Requests).
     - name: WordPress
       collectors:
         - type: classNameRegex
-          value: '#^(WP_|wpdb$)#'
+          value: '#^(WP_|wpdb$|WpOrg\\Requests\\)#'
     # PDF invoices: only the Platform's adapter (Platform\Pdf) knows the library.
     - name: Dompdf
       collectors:

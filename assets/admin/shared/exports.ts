@@ -3,8 +3,8 @@ import { addQueryArgs } from '@wordpress/url';
 
 declare global {
 	interface Window {
-		/** Where exports download from, and the nonce for it; printed by AdminScripts. */
-		orillacartExport?: { url: string; nonce: string };
+		/** Where exports and files download from, and a nonce for each action; printed by AdminScripts. */
+		orillacartExport?: { url: string; nonces: Record< string, string > };
 	}
 }
 
@@ -21,6 +21,25 @@ export interface ExportColumn {
 }
 
 const BASE = '/orillacart/v1/exports';
+
+/**
+ * The address of a download from admin-post.php, with the nonce of its own action.
+ *
+ * @param action The admin-post action.
+ * @param args   What else the address carries.
+ */
+function downloadUrl(
+	action: string,
+	args: Record< string, unknown >
+): string {
+	const target = window.orillacartExport ?? { url: '', nonces: {} };
+
+	return addQueryArgs( target.url, {
+		...args,
+		action,
+		_wpnonce: target.nonces[ action ] ?? '',
+	} );
+}
 
 /**
  * The columns, the chosen ones first in their order.
@@ -64,7 +83,6 @@ export function exportUrl(
 	format: string,
 	query: Record< string, unknown >
 ): string {
-	const target = window.orillacartExport ?? { url: '', nonce: '' };
 	const filters = Object.fromEntries(
 		Object.entries( query ).filter(
 			( [ name, value ] ) =>
@@ -76,12 +94,7 @@ export function exportUrl(
 		)
 	);
 
-	return addQueryArgs( target.url, {
-		...filters,
-		action: `orillacart_export_${ kind }`,
-		format,
-		_wpnonce: target.nonce,
-	} );
+	return downloadUrl( `orillacart_export_${ kind }`, { ...filters, format } );
 }
 
 /**
@@ -94,13 +107,9 @@ export function exemptionFileUrl(
 	customerId: number,
 	exemptionId: number
 ): string {
-	const target = window.orillacartExport ?? { url: '', nonce: '' };
-
-	return addQueryArgs( target.url, {
-		action: 'orillacart_exemption_file',
+	return downloadUrl( 'orillacart_exemption_file', {
 		customer: customerId,
 		exemption: exemptionId,
-		_wpnonce: target.nonce,
 	} );
 }
 
@@ -111,12 +120,8 @@ export function exemptionFileUrl(
  * @param uploadId The file.
  */
 export function orderUploadUrl( orderId: number, uploadId: number ): string {
-	const target = window.orillacartExport ?? { url: '', nonce: '' };
-
-	return addQueryArgs( target.url, {
-		action: 'orillacart_order_upload',
+	return downloadUrl( 'orillacart_order_upload', {
 		order: orderId,
 		upload: uploadId,
-		_wpnonce: target.nonce,
 	} );
 }

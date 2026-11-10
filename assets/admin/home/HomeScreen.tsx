@@ -373,7 +373,7 @@ export function HomeScreen() {
 										>
 											{ toneLabel( line.tone ) }
 										</Badge>
-										{ line.url ? (
+										{ adminUrl( line.url ) ? (
 											<a href={ adminUrl( line.url ) }>
 												{ lineText( line ) }
 											</a>

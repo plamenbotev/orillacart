@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use OrillaCart\Shared\Domain\Currency;
+use OrillaCart\Shared\Domain\EmailAddress;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\Text;
 
@@ -22,6 +23,7 @@ use OrillaCart\Shared\Domain\Text;
 #[ORM\Index(name: 'order_customer', columns: ['customer_id'])]
 #[ORM\Index(name: 'order_delivery', columns: ['delivery_key', 'delivery_date'])]
 #[ORM\Index(name: 'order_email', columns: ['email'])]
+#[ORM\Index(name: 'order_email_key', columns: ['email_key'])]
 #[ORM\Index(name: 'order_attention', columns: ['attention_since'])]
 #[ORM\Index(name: 'order_total', columns: ['total', 'id'])]
 #[ORM\Index(name: 'order_placed', columns: ['placed_at'])]
@@ -29,6 +31,8 @@ use OrillaCart\Shared\Domain\Text;
 class Order
 {
     public const int MAX_NOTE_LENGTH = 2000;
+    /** How long a customer has to finish paying: at a provider before the order is cancelled, or again after it failed. */
+    public const string PAYMENT_WINDOW = 'PT3H';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -43,6 +47,10 @@ class Order
 
     #[ORM\Column(length: 200)]
     private string $email;
+
+    /** Who the email reaches (EmailAddress::key()), for the limits per customer: ada+2@ is ada@. */
+    #[ORM\Column(length: 200, options: ['default' => ''])]
+    private string $emailKey = '';
 
     #[ORM\Embedded(columnPrefix: 'billing_')]
     private Address $billing;
@@ -272,6 +280,7 @@ class Order
         $this->status = OrderStatus::PendingPayment;
         $this->customerId = $draft->customerId;
         $this->email = $draft->email;
+        $this->emailKey = EmailAddress::key($draft->email);
         $this->billing = $draft->billing;
         $this->shippingAddress = $draft->shippingAddress ?? Address::none();
         $this->lines = new ArrayCollection();
@@ -1153,6 +1162,7 @@ class Order
             throw new OrderRuleViolation('The order goes to an office or locker near its old address. Change how it ships to a service to the door first, then the address, then choose an office near the new one.', 'orillacart_pickup_point_stale');
         }
         $this->email = $email;
+        $this->emailKey = EmailAddress::key($email);
         $this->billing = $billing;
         $this->shippingAddress = $shippingAddress ?? Address::none();
         $this->index();
@@ -1443,10 +1453,23 @@ class Order
         return $this->transactionId !== $transactionId;
     }
 
-    /** Whether the customer can pay it now: unpaid, and waiting for the money or failed to pay. */
-    public function isPayable(): bool
+    /**
+     * Whether the customer can pay it now: unpaid, and waiting for the money, or failed to pay within the payment
+     * window of its last try. Later, its prices and coupons are no longer the shop's to give: the customer orders
+     * again.
+     *
+     * @param \DateTimeImmutable|null $now null: a failed order is not payable
+     */
+    public function isPayable(?\DateTimeImmutable $now = null): bool
     {
-        return $this->paidAt === null && \in_array($this->status, [OrderStatus::PendingPayment, OrderStatus::OnHold, OrderStatus::Failed], true);
+        if ($this->paidAt !== null) {
+            return false;
+        }
+        if ($this->status === OrderStatus::Failed) {
+            return $now !== null && $this->awaitingPaymentSince()->add(new \DateInterval(self::PAYMENT_WINDOW)) > $now;
+        }
+
+        return \in_array($this->status, [OrderStatus::PendingPayment, OrderStatus::OnHold], true);
     }
 
     /**
@@ -1464,7 +1487,7 @@ class Order
      */
     public function awaitPayment(string $gateway, string $name, string $note, \DateTimeImmutable $at, \Closure $take, ?string $shopName = null): void
     {
-        if (!$this->isPayable()) {
+        if (!$this->isPayable($at)) {
             throw new OrderRuleViolation('Order #%1$d is %2$s and cannot be paid now.', 'orillacart_order_not_payable', values: [$this->id(), $this->status->phrase()]);
         }
         if ($this->status === OrderStatus::Failed) {
@@ -1542,6 +1565,7 @@ class Order
             $note->redact($personal);
         }
         $this->email = 'anonymised@invalid';
+        $this->emailKey = '';
         $this->billing = $this->billing->anonymised();
         $this->shippingAddress = $this->shippingAddress->isEmpty() ? $this->shippingAddress : $this->shippingAddress->anonymised();
         $this->customerId = null;
@@ -1557,10 +1581,13 @@ class Order
         return true;
     }
 
-    /** Gathers the words the shop finds the order by, whenever one of them changes. */
+    /**
+     * Gathers the words the shop finds the order by, whenever one of them changes. An order whose customer was
+     * erased keeps its VAT number and transaction id for the books, but is not found by them.
+     */
     private function index(): void
     {
-        $words = [$this->email, $this->vatNumber ?? '', $this->transactionId ?? ''];
+        $words = $this->anonymisedAt === null ? [$this->email, $this->vatNumber ?? '', $this->transactionId ?? ''] : [];
         foreach ([$this->billing, $this->shippingAddress] as $address) {
             array_push($words, $address->firstName(), $address->lastName(), $address->phone(), $address->street(), $address->city(), $address->postcode());
         }

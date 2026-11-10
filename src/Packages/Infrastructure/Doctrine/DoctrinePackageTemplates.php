@@ -8,7 +8,7 @@ use OrillaCart\Packages\Application\PackageTemplates;
 use OrillaCart\Packages\Domain\PackageRepository;
 use OrillaCart\Packages\Domain\PackageState;
 
-/** Reads the templates from the enabled packages' files, once per request. */
+/** Reads the templates from the enabled packages' files, once per request; only names ending in .html.twig. */
 final class DoctrinePackageTemplates implements PackageTemplates
 {
     /** @var array<string, array{string, string}|null> the source and the extension it is from, by name */
@@ -39,6 +39,9 @@ final class DoctrinePackageTemplates implements PackageTemplates
     /** @return array{string, string}|null */
     private function find(string $name): ?array
     {
+        if (!str_ends_with($name, '.html.twig') || $name !== strtolower($name)) {
+            return null;
+        }
         if (str_starts_with($name, self::PREFIX)) {
             $parts = explode('/', substr($name, \strlen(self::PREFIX)), 2);
             if (\count($parts) !== 2) {

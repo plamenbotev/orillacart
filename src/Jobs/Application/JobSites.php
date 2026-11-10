@@ -14,9 +14,18 @@ interface JobSites
     public function network(): bool;
 
     /**
-     * @return list<int> the ids of the sites that run the shop
+     * @return list<int> the ids of the sites that run the shop and that one worker can serve: on a network, those
+     *                   whose plugins are the ones this process loaded
      */
     public function sites(): array;
+
+    /**
+     * The sites that run the shop with other plugins than the ones this process loaded: add-ons hook into the
+     * shop's work, so a network worker leaves them to workers of their own (`--url`).
+     *
+     * @return list<int>
+     */
+    public function apart(): array;
 
     /**
      * Whether the plugin's files on disk are another build than the one this process runs: the plugin was updated,

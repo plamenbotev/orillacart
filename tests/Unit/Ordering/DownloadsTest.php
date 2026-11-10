@@ -64,13 +64,14 @@ final class DownloadsTest extends TestCase
 
         $this->shop->downloads->open($token);
         $this->shop->downloads->open($token);
+        $this->shop->downloads->sentOnly($token, 4);
         $this->shop->clock->modify('+3 hours');
-        $this->shop->downloads->open($token, resuming: true);
+        $this->shop->downloads->open($token, 'bytes=4-');
         self::assertSame(0, $this->shop->orders->order($order->number)->downloads[0]->remaining, 'the rest of the last one, uncounted');
 
         $this->shop->clock->modify('+1 day');
         $this->expectExceptionMessage('There are no downloads left for this file.');
-        $this->shop->downloads->open($token, resuming: true);
+        $this->shop->downloads->open($token, 'bytes=4-');
     }
 
     public function testOnlyWhoTheDownloadWentToResumesItAndOnlyAFewTimes(): void
@@ -82,16 +83,40 @@ final class DownloadsTest extends TestCase
         $this->shop->downloads->open($token, client: '203.0.113.5');
 
         for ($i = 0; $i < DownloadGrant::RESUMES; ++$i) {
-            $this->shop->downloads->open($token, resuming: true, client: '203.0.113.5');
+            $this->shop->downloads->sentOnly($token, 2);
+            $this->shop->downloads->open($token, 'bytes=2-', client: '203.0.113.5');
         }
+        $this->shop->downloads->sentOnly($token, 2);
         try {
-            $this->shop->downloads->open($token, resuming: true, client: '198.51.100.7');
+            $this->shop->downloads->open($token, 'bytes=2-', client: '198.51.100.7');
             self::fail('another address resumed a download it was not given');
         } catch (DownloadUnavailable $e) {
             self::assertSame('There are no downloads left for this file.', $e->getMessage());
         }
         $this->expectExceptionMessage('There are no downloads left for this file.');
-        $this->shop->downloads->open($token, resuming: true, client: '203.0.113.5');
+        $this->shop->downloads->open($token, 'bytes=2-', client: '203.0.113.5');
+    }
+
+    public function testAResumeGoesOnFromWhereTheDownloadBrokeOffNotFromTheStart(): void
+    {
+        $order = $this->place();
+        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $token = $this->token($this->shop->orders->order($order->number)->downloads[0]->url);
+        $this->shop->downloads->open($token);
+        $this->shop->downloads->open($token);
+
+        try {
+            $this->shop->downloads->open($token, 'bytes=1-');
+            self::fail('the whole file went out: all but a byte of it is a copy of its own');
+        } catch (DownloadUnavailable $e) {
+            self::assertSame('There are no downloads left for this file.', $e->getMessage());
+        }
+
+        $this->shop->downloads->sentOnly($token, 6);
+        $this->shop->downloads->open($token, 'bytes=5-');
+        // Sent to the end once more: the same resume again is another copy.
+        $this->expectException(DownloadUnavailable::class);
+        $this->shop->downloads->open($token, 'bytes=5-');
     }
 
     public function testLinksStopWorkingWhenTheyExpireOrTheOrderIsRefunded(): void
@@ -177,6 +202,20 @@ final class DownloadsTest extends TestCase
         self::assertNull($this->shop->customers->assignOrder($order->number, null, 1)->customerId);
         $this->expectException(CustomerNotFound::class);
         $this->shop->customers->assignOrder($order->number, 999, 1);
+    }
+
+    public function testAnOrderDoesNotMoveToAMemberOfStaff(): void
+    {
+        $manager = $this->shop->accounts->add('manager@example.com');
+        $this->shop->accounts->staff[] = $manager;
+        $order = $this->paid();
+
+        try {
+            $this->shop->customers->assignOrder($order->number, $manager, 1);
+            self::fail('a manager is not one of the shop\'s customers');
+        } catch (CustomerNotFound) {
+        }
+        self::assertSame([], $this->shop->downloads->ofCustomer($manager), 'the order stayed where it was');
     }
 
     private function paid(CartOwner $owner = new CartOwner(null)): PlacedOrderView

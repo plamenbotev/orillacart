@@ -36,7 +36,10 @@ describe( 'ExportDialog', () => {
 	beforeEach( () => {
 		window.orillacartExport = {
 			url: 'https://shop.test/wp-admin/admin-post.php',
-			nonce: 'n0nce',
+			nonces: {
+				orillacart_export_orders: 'n0nce',
+				orillacart_export_products: 'other',
+			},
 		};
 		mockedFetch.mockImplementation( ( options ) =>
 			Promise.resolve(
@@ -88,7 +91,7 @@ describe( 'ExportDialog', () => {
 		} );
 		await screen.findByRole( 'button', { name: 'Export' } );
 		expect( download ).toHaveBeenCalledWith(
-			'https://shop.test/wp-admin/admin-post.php?status=processing&action=orillacart_export_orders&format=json&_wpnonce=n0nce'
+			'https://shop.test/wp-admin/admin-post.php?status=processing&format=json&action=orillacart_export_orders&_wpnonce=n0nce'
 		);
 		expect( onClose ).toHaveBeenCalled();
 	} );

@@ -84,7 +84,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 final readonly class OrderService
 {
     /** How long a customer has to finish paying at a provider before the order is cancelled. */
-    public const string PAYMENT_WINDOW = 'PT3H';
+    public const string PAYMENT_WINDOW = Order::PAYMENT_WINDOW;
 
     public function __construct(
         private OrderRepository $orders,
@@ -501,11 +501,19 @@ final readonly class OrderService
      * Erases the customer from the order, as a privacy request asks; the books keep what they must (see
      * Order::anonymise()).
      *
+     * @param \DateTimeImmutable|null $openUnlessPlacedBefore by hand: an order still open (not completed,
+     *                                                      cancelled, refunded or failed) placed since then is
+     *                                                      refused, so the record of a change made on it stays
+     *
      * @throws OrderNotFound
+     * @throws OrderRuleViolation
      */
-    public function anonymise(int $id, ?int $userId): OrderView
+    public function anonymise(int $id, ?int $userId, ?\DateTimeImmutable $openUnlessPlacedBefore = null): OrderView
     {
-        return $this->changing($id, function (Order $order) use ($userId): OrderView {
+        return $this->changing($id, function (Order $order) use ($userId, $openUnlessPlacedBefore): OrderView {
+            if ($openUnlessPlacedBefore !== null && $order->anonymisedAt() === null && !self::settled($order->status()) && $order->placedAt() >= $openUnlessPlacedBefore) {
+                throw new OrderRuleViolation('Order #%d is still open: erase its customer once it is completed, cancelled, refunded or failed.', 'orillacart_order_open', values: [$order->id()]);
+            }
             $email = $order->email();
             if ($order->anonymise($this->clock->now())) {
                 $order->addNote('The customer\'s details were erased, as a privacy request asked.', $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
@@ -946,6 +954,15 @@ final readonly class OrderService
     }
 
     /**
+     * How many orders the customer, by account or by who the email reaches, has on hold unpaid: each holds its
+     * stock until the money comes or the shop cancels it.
+     */
+    public function countUnpaidOnHold(?int $customerId, string $email): int
+    {
+        return $this->orders->countUnpaidOnHold($customerId, $email);
+    }
+
+    /**
      * Whether the customer, by account or by email, ordered before: an order that stands, not cancelled or failed.
      *
      * @param int|null $exceptOrderId an order not to count: the one being priced again
@@ -1207,11 +1224,17 @@ final readonly class OrderService
 
     private function view(Order $order, bool $forShop = false, ?bool $shopWords = null): OrderView
     {
-        return OrderView::fromOrder($order, $forShop, $this->links->downloadUrl(...), $shopWords);
+        return OrderView::fromOrder($order, $forShop, $this->links->downloadUrl(...), $shopWords, $this->clock->now());
     }
 
     private function get(int $id): Order
     {
         return $this->orders->find($id) ?? throw new OrderNotFound();
+    }
+
+    /** Whether nothing more happens to an order of the status: completed, cancelled, refunded, failed. */
+    private static function settled(OrderStatus $status): bool
+    {
+        return $status === OrderStatus::Completed || $status->isClosed();
     }
 }

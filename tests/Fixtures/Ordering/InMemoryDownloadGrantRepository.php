@@ -28,7 +28,7 @@ final class InMemoryDownloadGrantRepository implements DownloadGrantRepository
         return null;
     }
 
-    public function consume(DownloadGrant $grant, \DateTimeImmutable $at, string $by = ''): bool
+    public function consume(DownloadGrant $grant, \DateTimeImmutable $at, string $by = '', int $until = 0): bool
     {
         $remaining = $grant->remaining();
         if ($remaining !== null && $remaining < 1) {
@@ -39,18 +39,27 @@ final class InMemoryDownloadGrantRepository implements DownloadGrantRepository
         new \ReflectionProperty(DownloadGrant::class, 'lastDownloadedAt')->setValue($grant, $at);
         new \ReflectionProperty(DownloadGrant::class, 'lastDownloadedBy')->setValue($grant, $by);
         new \ReflectionProperty(DownloadGrant::class, 'resumesLeft')->setValue($grant, DownloadGrant::RESUMES);
+        new \ReflectionProperty(DownloadGrant::class, 'sentUntil')->setValue($grant, $until);
 
         return true;
     }
 
-    public function resume(DownloadGrant $grant, string $by): bool
+    public function resume(DownloadGrant $grant, string $by, int $least = \PHP_INT_MAX, int $until = 0): bool
     {
-        if ($grant->resumesLeft() < 1 || $grant->lastDownloadedBy() !== $by) {
+        if ($grant->resumesLeft() < 1 || $grant->lastDownloadedBy() !== $by || $grant->sentUntil() > $least) {
             return false;
         }
         new \ReflectionProperty(DownloadGrant::class, 'resumesLeft')->setValue($grant, $grant->resumesLeft() - 1);
+        new \ReflectionProperty(DownloadGrant::class, 'sentUntil')->setValue($grant, $until);
 
         return true;
+    }
+
+    public function sentOnly(DownloadGrant $grant, int $until): void
+    {
+        if ($grant->sentUntil() > $until) {
+            new \ReflectionProperty(DownloadGrant::class, 'sentUntil')->setValue($grant, $until);
+        }
     }
 
     public function ofCustomer(int $customerId): array

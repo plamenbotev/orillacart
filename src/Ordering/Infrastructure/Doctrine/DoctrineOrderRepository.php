@@ -17,6 +17,7 @@ use OrillaCart\Ordering\Domain\OrderLine;
 use OrillaCart\Ordering\Domain\OrderRepository;
 use OrillaCart\Ordering\Domain\OrderSearch;
 use OrillaCart\Ordering\Domain\OrderStatus;
+use OrillaCart\Shared\Domain\EmailAddress;
 use OrillaCart\Shared\Persistence\FullTextQuery;
 
 final readonly class DoctrineOrderRepository implements OrderRepository
@@ -448,7 +449,25 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             return $query->getQuery()->getOneOrNullResult() !== null;
         };
 
-        return $standing('o.email = :email', 'email', $email) || ($customerId !== null && $standing('o.customerId = :customer', 'customer', $customerId));
+        return $standing('o.emailKey = :email', 'email', EmailAddress::key($email)) || ($customerId !== null && $standing('o.customerId = :customer', 'customer', $customerId));
+    }
+
+    public function countUnpaidOnHold(?int $customerId, string $email): int
+    {
+        $count = function (string $who, string $name, int|string $value): int {
+            $count = $this->entityManager->createQueryBuilder()->select('COUNT(o.id)')->from(Order::class, 'o')
+                ->where($who)->setParameter($name, $value)
+                ->andWhere('o.status = :status')->setParameter('status', OrderStatus::OnHold)
+                ->andWhere('o.paidAt IS NULL')
+                ->andWhere('o.test = false')
+                ->getQuery()->getSingleScalarResult();
+
+            return is_numeric($count) ? (int) $count : 0;
+        };
+        $key = EmailAddress::key($email);
+
+        // The larger of the two, each by its index: an order of the account under another address counts too.
+        return max($key === '' ? 0 : $count('o.emailKey = :email', 'email', $key), $customerId === null ? 0 : $count('o.customerId = :customer', 'customer', $customerId));
     }
 
     public function boughtProducts(?int $customerId, string $email, array $productIds): array
@@ -457,10 +476,10 @@ final readonly class DoctrineOrderRepository implements OrderRepository
             return [];
         }
         // The lines of the products, by the lines' product index, narrowed to the person's paid orders.
-        $person = $customerId === null ? 'o.email = :email' : '(o.email = :email OR o.customerId = :customer)';
+        $person = $customerId === null ? 'o.emailKey = :email' : '(o.emailKey = :email OR o.customerId = :customer)';
         $query = $this->entityManager->createQueryBuilder()->select('DISTINCT l.productId')->from(OrderLine::class, 'l')->join('l.order', 'o')
             ->where('l.productId IN (:products)')->setParameter('products', $productIds)
-            ->andWhere($person)->setParameter('email', $email)
+            ->andWhere($person)->setParameter('email', EmailAddress::key($email))
             ->andWhere('o.paidAt IS NOT NULL')
             ->andWhere('o.status NOT IN (:closed)')->setParameter('closed', [OrderStatus::Cancelled, OrderStatus::Failed]);
         if ($customerId !== null) {

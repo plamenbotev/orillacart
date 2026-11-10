@@ -41,6 +41,14 @@ class DownloadGrant
     #[ORM\Column(options: ['default' => 0])]
     private int $resumesLeft = 0;
 
+    /**
+     * How far into the file the last counted download, with its resumes, was sent: set to the end of what each
+     * request asks for when it starts, and lowered to what went out when it breaks off. A resume goes on from
+     * about there, so one counted download is one copy of the file.
+     */
+    #[ORM\Column(type: 'bigint', options: ['default' => 0])]
+    private int $sentUntil = 0;
+
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'grants')]
         #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
@@ -163,13 +171,31 @@ class DownloadGrant
         return $this->resumesLeft;
     }
 
+    public function sentUntil(): int
+    {
+        return $this->sentUntil;
+    }
+
+    /**
+     * What a resume may go back over of what was sent, as bytes on their way are lost when a connection breaks:
+     * a tenth of the file, at most a megabyte.
+     */
+    public static function overlap(int $size): int
+    {
+        return min(1048576, intdiv(max(0, $size), 10));
+    }
+
     /**
      * Whether the rest of the last counted download can still be fetched without counting another: by whoever it
-     * went to, soon after, a few times.
+     * went to, soon after, a few times, from about where it broke off (overlap()), not from the start again.
+     *
+     * @param int $from the byte the resume starts at
+     * @param int $size the file's
      */
-    public function resumes(\DateTimeImmutable $now, string $by): bool
+    public function resumes(\DateTimeImmutable $now, string $by, int $from = 0, int $size = 0): bool
     {
-        return $this->order->isPaid()
+        return $from + self::overlap($size) >= $this->sentUntil
+            && $this->order->isPaid()
             && $this->lastDownloadedBy !== null && hash_equals($this->lastDownloadedBy, $by)
             && $this->resumesLeft > 0
             && ($this->expiresAt === null || $this->expiresAt >= $now)

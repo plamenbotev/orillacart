@@ -27,4 +27,9 @@ final readonly class FakeOrderLinks implements OrderLinks
     {
         return "https://shop.test/?orillacart_download={$token}";
     }
+
+    public function lookupUrl(): string
+    {
+        return 'https://shop.test/account/?orillacart_find=expired';
+    }
 }

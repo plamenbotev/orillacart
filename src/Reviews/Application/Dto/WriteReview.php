@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Reviews\Application\Dto;
 
-use OrillaCart\Ordering\Application\ReceiptLinks;
+use OrillaCart\Reviews\Application\ReviewTokens;
 use OrillaCart\Reviews\Domain\NewReview;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * A review sent from the product page. A visitor who is not logged in gives a name and email, or comes from
- * their receipt, whose link says who they are and what they bought.
+ * their order's review link, whose token says who they are and what they bought.
  */
 final readonly class WriteReview
 {
@@ -25,7 +25,7 @@ final readonly class WriteReview
         #[Assert\Email]
         #[Assert\Length(max: 100)]
         public ?string $email = null,
-        #[Assert\Regex(pattern: '/^' . ReceiptLinks::PATTERN . '$/')]
-        public ?string $receipt = null,
+        #[Assert\Regex(pattern: '/^' . ReviewTokens::PATTERN . '$/')]
+        public ?string $token = null,
     ) {}
 }

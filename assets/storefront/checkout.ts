@@ -18,6 +18,7 @@ import {
 } from './dom';
 import { bindConditions } from './forms';
 import { navigate, reloadPage } from './navigation';
+import { isWebUrl } from './web-url';
 
 type PlacedOrder = { receipt_url: string; redirect_url: string | null };
 
@@ -125,7 +126,13 @@ export function bindCheckout( form: HTMLFormElement ): void {
 		}
 		const result = await api< PlacedOrder >( 'POST', '/checkout', body );
 		if ( result.ok ) {
-			navigate( result.data.redirect_url ?? result.data.receipt_url );
+			const redirect = result.data.redirect_url;
+			// The provider's page, or the receipt when the shop answers with anything a browser would run.
+			navigate(
+				redirect !== null && isWebUrl( redirect )
+					? redirect
+					: result.data.receipt_url
+			);
 			return;
 		}
 		if ( result.code === 'orillacart_cart_empty' ) {

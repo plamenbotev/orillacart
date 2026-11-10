@@ -41,6 +41,7 @@ final class HookPass implements CompilerPassInterface
                     'priority' => $hook->priority,
                     'arguments' => $hook->arguments,
                     'filter' => $hook->filter,
+                    'anySite' => $hook->anySite,
                 ];
             }
             $services[$id] = new Reference($id);

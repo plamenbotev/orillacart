@@ -166,4 +166,27 @@ describe( 'HomeScreen', () => {
 		expect( adminUrl( 'jobs' ) ).toBe( 'admin.php?page=orillacart-jobs' );
 		expect( adminUrl( '' ) ).toBe( '' );
 	} );
+
+	it( 'links only to the site, a page or an http(s) URL', () => {
+		expect( adminUrl( 'admin.php?page=acme' ) ).toBe(
+			'admin.php?page=acme'
+		);
+		expect( adminUrl( '/wp-admin/edit.php' ) ).toBe( '/wp-admin/edit.php' );
+		expect( adminUrl( 'https://shop.test/returns' ) ).toBe(
+			'https://shop.test/returns'
+		);
+		for ( const url of [
+			'javascript:alert(1)//.php',
+			'JavaScript:alert(1)',
+			'data:text/html,<script>1</script>',
+			'//evil.test/x.php',
+			'/\\evil.test',
+			'/\t/evil.test',
+			'java\nscript:alert(1)',
+			'https:/\\evil.test',
+			'x.php:alert(1)',
+		] ) {
+			expect( adminUrl( url ) ).toBe( '' );
+		}
+	} );
 } );

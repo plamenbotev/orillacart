@@ -113,6 +113,30 @@ final class ProductBlocksTest extends RestTestCase
         self::assertSame('', trim(do_blocks('<!-- wp:orillacart/product-price {"productId":' . $this->lamp . '} /-->')), 'a draft is not for visitors');
     }
 
+    public function testAProductBehindAPasswordIsForThoseWhoGaveIt(): void
+    {
+        wp_update_post(['ID' => $this->lamp, 'post_password' => 'secret']);
+        clean_post_cache($this->lamp);
+        $runner = self::kernel()->container()->get(JobRunner::class);
+        self::assertInstanceOf(JobRunner::class, $runner);
+        while ($runner->work(['search'], 100, 'test')->count() > 0);
+
+        self::assertSame('', trim(do_blocks('<!-- wp:orillacart/product-price {"productId":' . $this->lamp . '} /-->')), 'no price');
+        self::assertStringNotContainsString('Brass lamp', do_blocks('<!-- wp:orillacart/products /-->'), 'not listed');
+        $added = $this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true);
+        self::assertGreaterThanOrEqual(400, $added->get_status(), 'not sold');
+
+        // The password given: WordPress's cookie holds it, which post_password_required() reads.
+        add_filter('post_password_required', '__return_false');
+        try {
+            self::assertStringContainsString('data-orillacart-price', do_blocks('<!-- wp:orillacart/product-price {"productId":' . $this->lamp . '} /-->'));
+            self::assertSame(201, $this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true)->get_status());
+            self::assertStringNotContainsString('Brass lamp', do_blocks('<!-- wp:orillacart/products /-->'), 'still in no list, which every visitor shares');
+        } finally {
+            remove_filter('post_password_required', '__return_false');
+        }
+    }
+
     public function testTheCardTheShopDesignsShowsEachProduct(): void
     {
         $html = do_blocks(<<<'HTML'

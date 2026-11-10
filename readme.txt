@@ -47,10 +47,24 @@ that were paid are kept for the books, with their invoices: they cannot be delet
 The storefront is rendered from Twig templates in the plugin's templates/ folder. Copy one to an orillacart/
 folder in your theme, keeping its path (orillacart/storefront/cart.html.twig), and change it there.
 
+= Where does the shop send requests to addresses others choose? =
+
+Webhooks, an extension's HTTP calls, the files an AI assistant names and OAuth client documents go only to public
+addresses: never to the server itself, the private network or a cloud's metadata address. The address is looked
+up once and the connection held to it, so these requests need PHP's curl. Behind a proxy (WP_PROXY_HOST) the shop
+cannot hold the proxy to that, and refuses; when the proxy itself refuses private addresses, say so with
+`define( 'ORILLACART_PROXY_FILTERS_PRIVATE', true );` in wp-config.php.
+
 = Does it work with page caching? =
 
 Yes. Shop and product pages carry nothing personal and can be cached; the cart count in the Mini cart is
-corrected in the browser. The cart, checkout and account pages tell caches not to keep them.
+corrected in the browser. The cart, checkout and account pages, and any page with the Cart or Checkout block,
+tell caches not to keep them.
+
+A shop that offers more than one currency keeps the shopper's choice in the orillacart_currency cookie. LiteSpeed
+Cache, WP Rocket and WP Super Cache are told to keep a page apart for each currency (clear their cache once after
+offering a currency); pages in a currency other than the shop's are never cached. With Cloudflare's APO, add a
+Cache Rule that bypasses the cache when the cookie orillacart_currency is set; other caches need the same rule.
 
 == Screenshots ==
 

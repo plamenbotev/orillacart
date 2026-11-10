@@ -16,10 +16,14 @@ final readonly class GiftCardSettings
      * @param list<int> $productIds products sold as gift cards; they should be virtual and without tax, as a gift
      *                              card is money to spend, taxed when it is spent
      * @param int|null  $validMonths months a card lasts from when it is made; null for ever
+     * @param bool      $paidWithMoneyOnly an order holding gift cards is paid for with money, not with gift cards
+     *                                     or store credit: credit tied to a customer would become a card
+     *                                     anyone may spend
      */
     public function __construct(
         public array $productIds = [],
         public ?int $validMonths = null,
+        public bool $paidWithMoneyOnly = true,
     ) {
         if ($validMonths !== null && ($validMonths < 1 || $validMonths > self::MAX_MONTHS)) {
             throw new GiftCardRuleViolation('A gift card lasts 1 to %d months, or for ever.', 'orillacart_invalid_gift_card_months', values: [self::MAX_MONTHS]);

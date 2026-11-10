@@ -186,9 +186,9 @@ final readonly class PackageService
     public function saveSettings(string $slug, SavePackageSettings $command): PackageView
     {
         $package = $this->get($slug);
-        $fields = $this->manifest($package)->settings();
+        [$fields, $running] = $this->settingFields($package) ?? [[], []];
         $values = SettingValues::accept($fields, $package->settings(), $command->settings, $package->name());
-        $missing = SettingValues::missing($fields, $values);
+        $missing = SettingValues::missing($running, $values);
         if ($missing !== null) {
             throw new PackageRuleViolation('"%s" is required.', 'orillacart_extension_setting_required', values: [$missing->label]);
         }
@@ -485,6 +485,35 @@ final readonly class PackageService
         return $this->compile($package)->ok() ? $this->manifest($package)->needs() : [];
     }
 
+    /**
+     * The settings a manager sets: those the files it runs declare, as they declare them, since what runs reads
+     * them; then those only an edit since declares, to be set before it is enabled again. The required ones are
+     * the running files'. For an extension that does not run, both are its files' as they are. Null when nothing
+     * compiles.
+     *
+     * @param Compiled|null $compiled its files as they are, compiled
+     *
+     * @return array{list<Setting>, list<Setting>}|null every setting, and those of the files it runs
+     */
+    private function settingFields(Package $package, ?Compiled $compiled = null): ?array
+    {
+        $live = ($compiled ?? $this->compile($package))->ok() ? $this->manifest($package)->settings() : null;
+        $source = $package->runningSource();
+        if (!$package->state()->runs() || $source === $package->source() || !$this->scripts->compile($source, $package->slug())->ok()) {
+            return $live === null ? null : [$live, $live];
+        }
+        $running = PackageManifest::ofClass($this->scripts->load($source, $package->slug())::class)->settings();
+        $all = $running;
+        $keys = array_map(static fn(Setting $setting): string => $setting->key, $running);
+        foreach ($live ?? [] as $setting) {
+            if (!\in_array($setting->key, $keys, true)) {
+                $all[] = $setting;
+            }
+        }
+
+        return [$all, $running];
+    }
+
     private function view(Package $package, Compiled $compiled): PackageView
     {
         $settings = null;
@@ -497,8 +526,11 @@ final readonly class PackageService
             foreach ($manifest->ofKind('route') as $declaration) {
                 $routes[] = ['method' => strtoupper($declaration['words'][0] ?? 'GET'), 'path' => '/' . trim((string) $declaration['name'], '/'), 'who' => \is_string($declaration['props']['who'] ?? null) ? $declaration['props']['who'] : 'manager'];
             }
-            [$values, $secretsSet] = SettingValues::shown($manifest->settings(), $package->settings());
-            $shown = $this->words?->settings($package->slug(), ...$manifest->settings()) ?? $manifest->settings();
+        }
+        $fields = $this->settingFields($package, $compiled);
+        if ($fields !== null) {
+            [$values, $secretsSet] = SettingValues::shown($fields[0], $package->settings());
+            $shown = $this->words?->settings($package->slug(), ...$fields[0]) ?? $fields[0];
             $settings = array_map(static fn(Setting $setting): array => [
                 'key' => $setting->key,
                 'label' => $setting->label,

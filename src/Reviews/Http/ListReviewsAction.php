@@ -26,7 +26,9 @@ final readonly class ListReviewsAction implements RequestHandlerInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $page = $request->getQueryParams()['page'] ?? '1';
+        // Digits only, as many as a page number has: Reviews::page() takes up to its last page.
+        $page = \is_string($page) && ctype_digit($page) && \strlen($page) <= 9 ? (int) $page : 1;
 
-        return $this->responder->ok($this->reviews->shown() ? $this->reviews->page(PathParameter::id($request), is_numeric($page) ? (int) $page : 1) : ['rating' => null, 'reviews' => [], 'page' => 1, 'pages' => 1]);
+        return $this->responder->ok($this->reviews->shown() ? $this->reviews->page(PathParameter::id($request), $page) : ['rating' => null, 'reviews' => [], 'page' => 1, 'pages' => 1]);
     }
 }

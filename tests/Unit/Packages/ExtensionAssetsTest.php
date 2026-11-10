@@ -8,6 +8,7 @@ use OrillaCart\Packages\Application\AssetFiles;
 use OrillaCart\Packages\Application\ExtensionAssets;
 use OrillaCart\Packages\Domain\Package;
 use OrillaCart\Packages\Domain\PackageRepository;
+use OrillaCart\Packages\Infrastructure\WordPress\UploadedAssetFiles;
 use OrillaCart\Platform\Twig\ExtensionAssetsExtension;
 use OrillaCart\Platform\Twig\TwigTemplateWords;
 use PHPUnit\Framework\TestCase;
@@ -133,16 +134,47 @@ final class ExtensionAssetsTest extends TestCase
 
     public function testAFileIsNamedUnderAssetsWithAKindTheBrowserTakes(): void
     {
-        foreach (['assets/portal.js', 'assets/css/site.css', 'assets/icons/a-b_c.svg'] as $fine) {
+        foreach (['assets/portal.js', 'assets/css/site.css', 'assets/icons/a-b_c.svg', 'assets/x.min.css', 'assets/lib/jquery-3.7.1.min.js'] as $fine) {
             Package::checkPath($fine);
         }
-        foreach (['portal.js', 'templates/x.js', 'assets/x.php', 'assets/x.png', 'assets/../x.js'] as $wrong) {
+        foreach (['portal.js', 'templates/x.js', 'assets/x.php', 'assets/x.png', 'assets/../x.js', 'assets/x.php.js', 'assets/x.phtml.min.css', 'assets/a.PHP.js', 'assets/x.pht.js', 'assets/x.foo.js', 'assets/Portal.js', 'assets/portal.JS', "assets/portal.js\n"] as $wrong) {
             try {
                 Package::checkPath($wrong);
                 self::fail($wrong);
             } catch (\OrillaCart\Packages\Domain\PackageRuleViolation $e) {
                 self::assertSame('orillacart_invalid_extension_file', $e->errorCode, $wrong);
             }
+        }
+    }
+
+    public function testAssetSkipsANameThatIsNotAnAssetsEvenWhenTheFileExists(): void
+    {
+        $this->package->write('assets/notes.md', '<script>1</script>', new \DateTimeImmutable('2026-11-09'));
+        $this->package->enable(['assets'], ['assets'], new \DateTimeImmutable('2026-11-09'));
+
+        self::assertSame('', $this->assets->tag('loyalty', 'notes.md'));
+        self::assertSame([], $this->published);
+        self::assertStringContainsString('no other dot in its name', $this->warnings[0]);
+    }
+
+    public function testTheAssetsFolderTurnsOffScriptHandlers(): void
+    {
+        $folder = sys_get_temp_dir() . '/orillacart-assets-' . bin2hex(random_bytes(4));
+        mkdir($folder);
+        try {
+            UploadedAssetFiles::guard($folder);
+            $rules = (string) file_get_contents($folder . '/.htaccess');
+            self::assertStringContainsString('Require all denied', $rules);
+            self::assertStringContainsString('RemoveHandler .php', $rules);
+            self::assertStringContainsString('php_flag engine off', $rules);
+            self::assertDoesNotMatchRegularExpression('/\\b(js|css|svg)\\b/', (string) preg_replace('/^#.*$/m', '', $rules), 'scripts, stylesheets and SVGs stay served');
+
+            file_put_contents($folder . '/.htaccess', 'Options +ExecCGI');
+            UploadedAssetFiles::guard($folder);
+            self::assertSame(UploadedAssetFiles::HTACCESS, file_get_contents($folder . '/.htaccess'), 'a changed one is written again');
+        } finally {
+            @unlink($folder . '/.htaccess');
+            @rmdir($folder);
         }
     }
 }

@@ -21,8 +21,15 @@ class Package
     public const string SLUG_PATTERN = '/^[a-z][a-z0-9_]{0,39}$/';
     public const int MAX_NAME_LENGTH = 100;
     public const int MAX_FILES = 50;
-    /** What a package's file may be named: scripts, templates and notes anywhere; scripts, stylesheets and SVGs for the browser under assets/ (design 59). */
-    public const string PATH = '#^(?:(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\\.(ocs|html\\.twig|md)|assets/(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\\.(js|css|svg))$#i';
+    /**
+     * What a package's file may be named, in lowercase: scripts, templates and notes anywhere; scripts,
+     * stylesheets and SVGs for the browser under assets/ (design 59). An asset's name is allowed, not screened:
+     * letters, digits, `-` and `_`, then only `.min` or numbers (`app.min.js`, `lib-3.7.1.min.js`) before its kind,
+     * so no part of it is one a web server set up with `AddHandler` would run (`x.php.js`).
+     */
+    public const string PATH = '#^(?:(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\\.(ocs|html\\.twig|md)|assets/(?:[a-z0-9_-]+/)*[a-z0-9_-]+(?:\\.(?:min|[0-9]+))*\\.(js|css|svg))$#D';
+    /** What an asset under assets/ may be named, without the folder. */
+    public const string ASSET = '#^(?:[a-z0-9_-]+/)*[a-z0-9_-]+(?:\\.(?:min|[0-9]+))*\\.(js|css|svg)$#D';
     /** Failures in a row after which the shop stops the extension. */
     public const int FAILURES_TO_STOP = 10;
 
@@ -173,12 +180,17 @@ class Package
     /** @return list<PackageFile> by path */
     public function files(): array
     {
-        return $this->files->getValues();
+        // By path, byte for byte: the order in memory is the order written, the database's is its collation's,
+        // and the scripts' source, checksum and enabled snapshot must not depend on either.
+        $files = $this->files->getValues();
+        usort($files, static fn(PackageFile $a, PackageFile $b): int => strcmp($a->path(), $b->path()));
+
+        return $files;
     }
 
     public function file(string $path): ?PackageFile
     {
-        foreach ($this->files as $file) {
+        foreach ($this->files() as $file) {
             if ($file->path() === $path) {
                 return $file;
             }
@@ -222,7 +234,7 @@ class Package
     public function source(): string
     {
         $parts = [];
-        foreach ($this->files as $file) {
+        foreach ($this->files() as $file) {
             if ($file->isScript()) {
                 $parts[] = $file->content();
             }
@@ -238,21 +250,22 @@ class Package
     }
 
     /**
-     * The files it runs: as they stood when it was enabled while it is; the files as they are otherwise.
+     * The files it runs: as they stood when it was enabled while it is, and while the shop holds it stopped (its
+     * routes still answer, that it is stopped); the files as they are otherwise.
      *
      * @return array<string, string> path → content
      */
     public function running(): array
     {
         $files = [];
-        if ($this->state->runs() && $this->enabledFiles !== null) {
+        if (($this->state->runs() || $this->state === PackageState::Stopped) && $this->enabledFiles !== null) {
             foreach ($this->enabledFiles as [$path, $content]) {
                 $files[$path] = $content;
             }
 
             return $files;
         }
-        foreach ($this->files as $file) {
+        foreach ($this->files() as $file) {
             $files[$file->path()] = $file->content();
         }
 
@@ -272,17 +285,18 @@ class Package
     }
 
     /**
-     * The files a browser runs as the page it is on: templates (their text is HTML, `|raw` prints as it is) and
-     * scripts, stylesheets and SVGs under assets/. Whoever enables an extension that has them publishes HTML as
-     * whoever views the page, administrators included.
+     * The files a browser runs as the page it is on: every file under templates/ and every Twig file (their text
+     * is HTML, `|raw` prints as it is) and every file under assets/. Whoever enables an extension that has them
+     * publishes HTML as whoever views the page, administrators included.
      *
      * @return list<string> paths
      */
     public function browserFiles(): array
     {
         $paths = [];
-        foreach ($this->files as $file) {
-            if (str_ends_with($file->path(), '.html.twig') || str_starts_with($file->path(), 'assets/')) {
+        foreach ($this->files() as $file) {
+            $path = strtolower($file->path());
+            if (str_starts_with($path, 'templates/') || str_contains($path, '.twig') || str_starts_with($path, 'assets/')) {
                 $paths[] = $file->path();
             }
         }
@@ -321,7 +335,7 @@ class Package
         $this->state = PackageState::Enabled;
         $this->enabledChecksum = $this->checksum();
         $this->enabledFiles = [];
-        foreach ($this->files as $file) {
+        foreach ($this->files() as $file) {
             $this->enabledFiles[] = [$file->path(), $file->content()];
         }
         $this->failures = 0;
@@ -392,7 +406,7 @@ class Package
     public static function checkPath(string $path): void
     {
         if (preg_match(self::PATH, $path) !== 1 || str_contains($path, '..') || \strlen($path) > PackageFile::MAX_PATH_LENGTH) {
-            throw new PackageRuleViolation('A file is named like "main.ocs", "templates/support.html.twig" or "assets/portal.js": letters, digits, dashes, underscores and dots, in folders, ending in .ocs, .html.twig or .md; a script, a stylesheet or an SVG (.js, .css, .svg) under assets/.', 'orillacart_invalid_extension_file');
+            throw new PackageRuleViolation('A file is named like "main.ocs", "templates/support.html.twig" or "assets/portal.js": lowercase letters, digits, dashes, underscores and dots, in folders, ending in .ocs, .html.twig or .md; a script, a stylesheet or an SVG (.js, .css, .svg) under assets/, with no other dot in its name.', 'orillacart_invalid_extension_file');
         }
     }
 }

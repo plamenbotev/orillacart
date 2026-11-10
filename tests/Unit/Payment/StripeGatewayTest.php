@@ -17,6 +17,7 @@ use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Application\Stripe\StripeGateway;
+use OrillaCart\Payment\Domain\PaymentNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
@@ -62,6 +63,23 @@ final class StripeGatewayTest extends TestCase
 
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['processing', 'pi_1'], [$order->status, $order->transactionId]);
+    }
+
+    public function testTheWayBackFromStripeLeadsToTheReceiptForAWeekAndThenToFindingTheOrder(): void
+    {
+        $placed = $this->place();
+        $this->shop->stripeApi->complete('cs_test_1');
+        $back = $this->back('cs_test_1');
+
+        $this->shop->clock->modify('+7 days');
+        self::assertSame('https://shop.test/account/?orillacart_find=expired', $this->shop->outcomes->returned('stripe', $back, false), 'no new receipt link for an old address');
+        self::assertSame('pending_payment', $this->shop->orders->order($placed->number)->status, 'nor does it settle the payment: the notification does');
+
+        try {
+            $this->shop->outcomes->returned('stripe', ['day' => (string) ((int) $back['day'] + 7)] + $back, false);
+            self::fail('a day the address was not signed for was taken');
+        } catch (PaymentNotFound) {
+        }
     }
 
     public function testAWebhookSettlesTheOrderOfACustomerWhoNeverCameBack(): void

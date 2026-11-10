@@ -42,17 +42,25 @@ export function fetchHome(): Promise< Home > {
 }
 
 /**
- * The admin URL of a "needs you" line or tile: a Shop page with its query, or an add-on's own URL as it is.
+ * The admin URL of a "needs you" line or tile: a Shop page with its query, an admin page (`admin.php?…`), a path
+ * of the site, or an http(s) URL as it is. Anything else (`javascript:`, `//host`) is no link: an empty string.
  *
  * @param url The line's url.
  */
 export function adminUrl( url: string ): string {
+	// A browser drops tabs and line breaks in a URL: "/\t/host" would be "//host".
+	if ( /[\s\u0000-\u001f\u007f]/.test( url ) ) {
+		return '';
+	}
 	if (
-		url === '' ||
-		/^(https?:)?\/\//.test( url ) ||
-		url.includes( '.php' )
+		/^https?:\/\/[^/\\]/i.test( url ) ||
+		/^\/(?![/\\])/.test( url ) ||
+		/^[a-z0-9_-]+\.php(?:[?#]|$)/i.test( url )
 	) {
 		return url;
+	}
+	if ( ! /^[a-z0-9_-]+(?:\?|$)/i.test( url ) ) {
+		return '';
 	}
 	const [ page, query ] = url.split( '?' );
 

@@ -9,6 +9,7 @@ use OrillaCart\Ordering\Application\Dto\OrderDownloadView;
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\DownloadGrantRepository;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
+use OrillaCart\Shared\Files\ByteRange;
 use OrillaCart\Shared\Files\PrivateFiles;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -28,14 +29,15 @@ final readonly class Downloads
 
     /**
      * Counts a download and gives the file to send. A browser fetching the rest of one that broke off, soon after
-     * it was counted, is given it without counting another, even when that was the last.
+     * it was counted, is given it without counting another, even when that was the last: from about where it was
+     * sent to (DownloadGrant::resumes()), so `bytes=1-` after a whole download is a download of its own.
      *
-     * @param bool   $resuming the request asks for the file from past its start
-     * @param string $client   the address the request came from: only the one a download was counted for resumes it
+     * @param string $range  the Range header asked with, if any
+     * @param string $client the address the request came from: only the one a download was counted for resumes it
      *
      * @throws DownloadUnavailable for an unknown or expired link, an unpaid order, no downloads left, or a lost file
      */
-    public function open(string $token, bool $resuming = false, string $client = ''): DownloadFile
+    public function open(string $token, string $range = '', string $client = ''): DownloadFile
     {
         $grant = preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? $this->grants->findByToken($token) : null;
         if ($grant === null) {
@@ -43,22 +45,37 @@ final readonly class Downloads
         }
         $now = $this->clock->now();
         $by = substr(hash('sha256', 'orillacart-download:' . $client), 0, 16);
-        $resumes = $resuming && $grant->resumes($now, $by) && $this->grants->resume($grant, $by);
+        $path = $this->files->path($grant->storageKey());
+        $size = $path === null ? 0 : max(0, (int) @filesize($path));
+        $part = $range === '' ? null : ByteRange::of($range, $size);
+        $from = $part instanceof ByteRange ? $part->start : 0;
+        $until = $part instanceof ByteRange ? $part->end + 1 : $size;
+        $resumes = ByteRange::resumes($range) && $grant->resumes($now, $by, $from, $size) && $this->grants->resume($grant, $by, $from + DownloadGrant::overlap($size), $until);
         $refusal = $resumes ? null : $grant->refusal($now);
         if ($refusal !== null) {
             throw new DownloadUnavailable($refusal);
         }
-        $path = $this->files->path($grant->storageKey());
         if ($path === null) {
             $this->logger->error('The file of download {name} (order {order}) is missing from the store.', ['name' => $grant->name(), 'order' => $grant->order()->id()]);
 
             throw new DownloadUnavailable('The file is not available right now. Please contact the shop.');
         }
-        if (!$resumes && !$this->grants->consume($grant, $now, $by)) {
+        if (!$resumes && !$this->grants->consume($grant, $now, $by, $until)) {
             throw new DownloadUnavailable('There are no downloads left for this file.');
         }
 
         return new DownloadFile($path, $grant->name(), $grant->mimeType(), $grant->storageKey());
+    }
+
+    /**
+     * The download broke off: only this far into the file went out, so a resume may go on from there.
+     */
+    public function sentOnly(string $token, int $until): void
+    {
+        $grant = preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? $this->grants->findByToken($token) : null;
+        if ($grant !== null) {
+            $this->grants->sentOnly($grant, $until);
+        }
     }
 
     /**

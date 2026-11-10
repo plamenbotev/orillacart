@@ -161,6 +161,22 @@ final class ReverseChargeTest extends TestCase
         self::assertStringContainsString('Reverse charge', $html);
     }
 
+    public function testANumberRegisteredToAnotherNameFlagsTheOrderForTheShop(): void
+    {
+        $matching = $this->shop->checkout->placeOrder($this->owner, new PlaceOrder('max@example.com', new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));
+        self::assertNull($this->shop->orders->order($matching->number)->attention, 'Max Muster of Muster GmbH');
+
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        $byDomain = $this->shop->checkout->placeOrder($owner, new PlaceOrder('eva@muster.de', new AddressData('Eva', 'Klein', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));
+        self::assertNull($this->shop->orders->order($byDomain->number)->attention, 'the email is the business\'s');
+
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        $other = $this->shop->checkout->placeOrder($owner, new PlaceOrder('eve@example.com', new AddressData('Eve', 'Adams', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));
+
+        $order = $this->shop->orders->order($other->number);
+        self::assertSame([true, 'VIES has the VAT number DE123456789 registered to "Muster GmbH", which is not the billing name "Eve Adams". Check that the buyer is that business: the order is sold without VAT.'], [$order->reverseCharge, $order->attention], 'flagged, not refused');
+    }
+
     public function testWithPricesIncludingTaxTheBusinessPaysThemLessTheShopsVat(): void
     {
         $this->shop->taxSettings->save(new TaxSettings(TaxBasis::BillingAddress, $this->vat, true, true));

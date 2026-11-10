@@ -10,7 +10,9 @@ use OrillaCart\Inventory\Domain\Event\StockChanged;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Search\Application\DocumentBuilder;
+use OrillaCart\Search\Application\Dto\ChangeSearchEngine;
 use OrillaCart\Search\Application\IndexProducts;
+use OrillaCart\Search\Application\SearchEngines;
 use OrillaCart\Search\Application\SearchIndexing;
 use OrillaCart\Search\Application\SearchServer;
 use OrillaCart\Search\Domain\EngineSettings;
@@ -141,6 +143,25 @@ final class IndexProductsTest extends TestCase
         new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index, $this->shop->productTranslations)->queueEverything();
 
         self::assertSame([10, 11, 12], array_keys($this->index->documents));
+    }
+
+    public function testTheSavedPasswordGoesOnlyToTheAddressAndUserItWasTypedFor(): void
+    {
+        $engines = new SearchEngines($this->engine, $this->server, new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index, $this->shop->productTranslations), $this->jobs->workers);
+        $saved = fn(): EngineSettings => $this->engine->load();
+        $engines->change(new ChangeSearchEngine('opensearch', 'https://search.example.com:9200', 'shop', 'hunter2'));
+
+        $engines->change(new ChangeSearchEngine('opensearch', 'HTTPS://search.example.com:9200/', 'shop'));
+        $kept = $saved();
+        self::assertSame('hunter2', $kept->password, 'the same address, written another way');
+        $engines->change(new ChangeSearchEngine('opensearch', 'https://evil.example.net:9200', 'shop'));
+        $moved = $saved();
+        self::assertSame(['https://evil.example.net:9200', ''], [$moved->host, $moved->password], 'a new address without the password typed again');
+
+        $engines->change(new ChangeSearchEngine('opensearch', 'https://search.example.com:9200', 'shop', 'hunter2'));
+        $engines->change(new ChangeSearchEngine('opensearch', 'https://search.example.com:9200', 'admin'));
+        $otherUser = $saved();
+        self::assertSame('', $otherUser->password, 'a new user');
     }
 
     public function testStockBelowZeroIsIndexedAgainSinceTheBackorderLimitMayRunOut(): void

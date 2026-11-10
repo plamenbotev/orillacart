@@ -10,6 +10,13 @@ namespace OrillaCart\Search\Application\Dto;
  */
 final readonly class SearchQuery
 {
+    /** The most characters of words a search takes, */
+    public const int MAX_TEXT_LENGTH = 100;
+    /** and words: each one is another condition. */
+    public const int MAX_WORDS = 8;
+    /** The most brands one search is for. */
+    public const int MAX_BRANDS = 20;
+
     /**
      * @param list<int>          $categoryIds products in one of the categories or below them
      * @param list<int>          $brandIds
@@ -43,6 +50,25 @@ final readonly class SearchQuery
         public bool $untranslated = true,
         public bool $count = true,
     ) {}
+
+    /** Within what a search takes: its first MAX_WORDS words up to MAX_TEXT_LENGTH characters, its first MAX_BRANDS brands. */
+    public function bounded(): self
+    {
+        $text = $this->text === null ? null : self::words($this->text);
+        if ($text === $this->text && \count($this->brandIds) <= self::MAX_BRANDS) {
+            return $this;
+        }
+
+        return clone($this, ['text' => $text, 'brandIds' => \array_slice($this->brandIds, 0, self::MAX_BRANDS)]);
+    }
+
+    /** The first MAX_WORDS words of what a shopper typed, up to MAX_TEXT_LENGTH characters. */
+    public static function words(string $text): string
+    {
+        $words = preg_split('/\s+/u', trim(mb_substr($text, 0, self::MAX_TEXT_LENGTH)), -1, PREG_SPLIT_NO_EMPTY);
+
+        return $words === false ? '' : implode(' ', \array_slice($words, 0, self::MAX_WORDS));
+    }
 
     public function inLanguage(?string $locale): self
     {

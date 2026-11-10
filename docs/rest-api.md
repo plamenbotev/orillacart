@@ -1096,7 +1096,7 @@ Saves the values of the settings an extension declares; a secret sent empty keep
 
 ### `POST /extensions/{id}/test`
 
-Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back.
+Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back, and with a read-only key every function that writes refuses.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1222,6 +1222,7 @@ Chooses which products the shop sells as gift cards, and for how many months a c
 - Body (JSON):
   - `product_ids` (list<int>): at most 100 items; each more than 0
   - `valid_months` (int|null): 1 to 120
+  - `paid_with_money_only` (bool): default true
 
 ### `GET /gift-cards/{id}`
 
@@ -1441,7 +1442,7 @@ The MCP endpoint's protected resource metadata (RFC 9728): which OAuth server gi
 
 ### `POST /oauth/register`
 
-Dynamic client registration (RFC 7591) for AI assistants' apps that have no client ID metadata document. Anyone may register, so each address may register so many an hour; a registered client still needs the owner's yes.
+Dynamic client registration (RFC 7591) for AI assistants' apps that have no client ID metadata document. Anyone may register, so each address (an IPv6 /64) may register so many an hour, and past a thousand clients waiting for the owner the oldest go (OAuthServer::register()); a registered client still needs the owner's yes.
 
 - Who: the payment provider, signed
 
@@ -1593,7 +1594,7 @@ Takes a change to the price off an order on hold; one for the whole order goes f
 
 ### `POST /orders/{id}/anonymise`
 
-The customer asked to be forgotten: the order keeps its sums for the books, without their details.
+The customer asked to be forgotten: the order keeps its sums for the books, without their details. By hand, only once the order is completed, cancelled, refunded or failed, or older than the shop keeps its history.
 
 - Who: shop managers; needs a nonce (not with an API key)
 
@@ -1906,7 +1907,7 @@ The problems the shop logged, the latest first (?page=2), and clearing them (DEL
 
 ### `GET /product-cards`
 
-The cards of published products, by id (?ids=12,30), as the shop's lists show them: for a visitor's wishlist and the products they viewed, which their browser keeps, so the page around them can be cached.
+The cards of published products, by id (?ids=12,30), as the shop's lists show them: for a visitor's wishlist and the products they viewed, which their browser keeps, so the page around them can be cached. Priced in the currency the shopper chose: in another than the shop's, no cache keeps them for others.
 
 - Who: anyone
 
@@ -2005,7 +2006,7 @@ A visitor reviews a product, as the shop's policy and the site's discussion sett
   - `text` (string): not empty; at most 5000 characters
   - `name` (string|null): at most 100 characters
   - `email` (string|null): an email; at most 100 characters
-  - `receipt` (string|null): matches `/^[0-9]{1,10}-[0-9]{1,6}-[a-f0-9]{32}$/`
+  - `token` (string|null): matches `/^[0-9]{1,10}-[0-9]{1,20}-[0-9]{1,6}-[a-f0-9]{32}$/`
 
 ### `POST /products/{id}/variations`
 
@@ -2435,12 +2436,13 @@ Replaces all the shop's settings in one go, so every field must be sent. It can 
   - `show_lowest_price` (bool): default false
   - `remove_data_on_uninstall` (bool): default false
   - `low_stock_threshold` (int): 0 or more; default 2
-  - `unpaid_hold_days` (int|null): 1 to 365
+  - `unpaid_hold_days` (int|null): 1 to 365; default 7
   - `return_days` (int|null): 1 to 365
   - `minimum_order` (string|null): matches `/^(\d{1,11}(\.\d{1,4})?)?$/`
   - `report_day` (string): one of paid, placed; default 'paid'
   - `free_items_on_return` (string): one of spread, charged, come_back, stay_free; default 'spread'
   - `history_days` (int): 90 to 3650; default 365
+  - `unpaid_orders_each` (int|null): 1 to 100; default 3
 
 ## /settings-archive
 

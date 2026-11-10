@@ -11,8 +11,9 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The compiled-class store without a cache folder (no WordPress here): what it keeps is signed, what it reads
- * back has to carry this site's signature, and what the gate refuses is never evaluated. The files themselves
- * are tried in the integration suite (CompiledScriptStoreTest there).
+ * back has to carry this site's signature, what the gate refuses is never evaluated, and what is included is the
+ * bytes checked, from a file of its own. The cache files themselves are tried in the integration suite
+ * (CompiledScriptStoreTest there).
  */
 final class CompiledScriptStoreTest extends TestCase
 {
@@ -49,6 +50,38 @@ final class CompiledScriptStoreTest extends TestCase
         self::store('secret-a')->put('store-unit', 'OrillaCart\\Generated\\Scripts\\Site1\\Script_store_unit', self::SOURCE);
 
         self::assertTrue(class_exists('OrillaCart\\Generated\\Scripts\\Site1\\Script_store_unit', false));
+    }
+
+    public function testIncludesTheBytesCheckedFromAFileOfItsOwnAndLeavesNoneBehind(): void
+    {
+        $folder = sys_get_temp_dir() . '/oc-store-' . bin2hex(random_bytes(6));
+        mkdir($folder, 0o700);
+        try {
+            // The cache file says one thing; the bytes checked say another: the bytes are what runs.
+            file_put_contents($folder . '/k.php', str_replace('Script_store_include', 'Script_swapped_in', self::included()));
+
+            self::assertTrue(CompiledScriptStore::includeChecked($folder, self::included()));
+
+            self::assertTrue(class_exists('OrillaCart\\Generated\\Scripts\\Site1\\Script_store_include', false));
+            self::assertFalse(class_exists('OrillaCart\\Generated\\Scripts\\Site1\\Script_swapped_in', false));
+            self::assertSame(['k.php'], array_values(array_diff((array) scandir($folder), ['.', '..'])), 'the file made for the include is gone');
+        } finally {
+            $files = glob($folder . '/{,.}*.php', GLOB_BRACE);
+            foreach ($files === false ? [] : $files as $file) {
+                unlink($file);
+            }
+            rmdir($folder);
+        }
+    }
+
+    public function testIncludesNothingWhereItCannotWrite(): void
+    {
+        self::assertFalse(CompiledScriptStore::includeChecked('/nonexistent-' . bin2hex(random_bytes(4)), self::included()));
+    }
+
+    private static function included(): string
+    {
+        return str_replace('Script_store_unit', 'Script_store_include', self::SOURCE);
     }
 
     private static function store(string $secret): CompiledScriptStore

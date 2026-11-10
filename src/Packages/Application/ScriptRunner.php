@@ -37,13 +37,14 @@ final readonly class ScriptRunner
 
     /**
      * Whether a host function changes something or reaches someone: refused on a read-only request, whatever the
-     * extension says its route or tool does.
+     * extension says its route or tool does. `http.get` counts: its URL carries whatever the script puts in it to a
+     * host outside the shop.
      */
     public static function writes(HostFunction $function): bool
     {
         return $function->counts === HostFunction::EMAIL
             || ($function->needs !== null && (str_ends_with($function->needs, ':write') || str_ends_with($function->needs, ':create')))
-            || \in_array($function->name, ['jobs.push', 'fields.set', 'http.post', 'http.put', 'http.patch', 'http.delete'], true)
+            || \in_array($function->name, ['jobs.push', 'fields.set', 'http.get', 'http.post', 'http.put', 'http.patch', 'http.delete'], true)
             || preg_match('/^(objects\.\*\.(create|update|delete)|shop\.[a-z_]+\.(mark|unmark|create))$/', $function->name) === 1;
     }
 
@@ -58,7 +59,7 @@ final readonly class ScriptRunner
         $grant = new Grant($package->slug(), $package->granted(), $loaded->manifest->hosts(), $package->settings());
         $script = null;
         try {
-            $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $grant, $this->readOnly?->readOnly() === true ? $this->readingOnly() : null);
+            $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $grant, $this->readOnly?->readOnly() === true ? self::readingOnly($this->scripts->catalog()) : null);
             $result = $script->run($method, ...$args);
         } catch (ScriptFailure $e) {
             // Saying "unavailable" or "refused" is an answer, not a failure of the extension.
@@ -138,17 +139,22 @@ final readonly class ScriptRunner
         return $declaration['functions'][$function] ?? throw new HandlerFailed(HandlerFailed::ERROR, \sprintf('The extension declares no "%s" function here.', $function));
     }
 
-    /** The host with every function that writes refusing: for a request that may only read. */
-    private function readingOnly(): HostCatalog
+    /**
+     * The host with every function that writes refusing: for a request that may only read. The functions named in
+     * $keep stay as they are: a test's stand-ins that only record.
+     *
+     * @param list<string> $keep
+     */
+    public static function readingOnly(HostCatalog $catalog, array $keep = []): HostCatalog
     {
         $refusing = [];
-        foreach ($this->scripts->catalog()->all() as $function) {
-            if (self::writes($function)) {
+        foreach ($catalog->all() as $function) {
+            if (self::writes($function) && !\in_array($function->name, $keep, true)) {
                 $name = $function->name;
-                $refusing[] = new HostFunction($name, static fn(): never => throw new ScriptFailure(ScriptFailure::REFUSED, \sprintf('%s changes the shop, and this request may only read (a read-only key).', $name)), $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts);
+                $refusing[] = new HostFunction($name, static fn(): never => throw new ScriptFailure(ScriptFailure::REFUSED, \sprintf('%s changes the shop or reaches outside it, and this request may only read (a read-only key).', $name)), $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts);
             }
         }
 
-        return $this->scripts->catalog()->with($refusing);
+        return $catalog->with($refusing);
     }
 }

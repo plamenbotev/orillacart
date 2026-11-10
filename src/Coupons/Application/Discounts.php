@@ -62,8 +62,14 @@ final readonly class Discounts
         $email = $request->email ?? '';
         $firstOrder = null;
         $left = array_map(static fn(DiscountItem $item): Money => Money::of($item->total), $request->items);
-        // Order size rules look at the items as they cost, before any discount.
-        $subtotal = array_reduce($left, static fn(Money $sum, Money $total): Money => $sum->add($total), Money::zero());
+        // Order size rules look at the items as they cost, before any discount: not those coupons give, which
+        // would lift another coupon's minimum at no cost, nor gift cards, which are money (BasketLine::$sized).
+        $subtotal = Money::zero();
+        foreach ($request->items as $index => $item) {
+            if ($item->sized) {
+                $subtotal = $subtotal->add($left[$index]);
+            }
+        }
         $known = $email !== '' || $request->customerId !== null;
         $applied = [];
         $refused = [];
@@ -107,7 +113,7 @@ final readonly class Discounts
             }
             $firstOrder ??= !$known || !$this->orders->hasOrdered($request->customerId, $email, $request->orderId);
             $basket = new Basket(
-                array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons), $request->items, $left),
+                array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons, $item->sized), $request->items, $left),
                 $request->currency,
                 $request->country,
                 $request->customerId,
@@ -214,10 +220,11 @@ final readonly class Discounts
     /**
      * Counts again the uses of an order that was cancelled or failed and opened again. Paid, the customer paid the
      * discounted price, so the uses count even past a limit reached in the meantime; to be paid now, as Pay now
-     * opens a failed order, each coupon must still have a use left for it.
+     * opens a failed order, each coupon must still have a use left for it, and still hold (on, not ended, a
+     * first order's code on the customer's first).
      *
      * @throws OrderNotFound
-     * @throws CouponRuleViolation for an order to be paid now whose coupon was used up since
+     * @throws CouponRuleViolation for an order to be paid now whose coupon was used up or no longer holds since
      */
     public function reclaim(int $orderId): void
     {
@@ -226,6 +233,7 @@ final readonly class Discounts
         }
         $order = $this->orders->order($orderId);
         $locked = $this->coupons->findByCodes(array_map(static fn(OrderDiscountView $discount): string => $discount->code, $order->discounts), true);
+        $firstOrder = null;
         foreach ($order->discounts as $discount) {
             $coupon = $locked[$discount->code] ?? null;
             if ($coupon === null) {
@@ -234,6 +242,15 @@ final readonly class Discounts
             }
             if ($order->paidAt === null && $this->usedUp($coupon, $order->customerId, $order->email)) {
                 throw new CouponRuleViolation('The code %s was used up since this order failed, so it cannot be paid now. Order again from the shop.', 'orillacart_coupon_used_up', values: [$coupon->code()]);
+            }
+            if ($order->paidAt === null) {
+                // Paid now, it must hold now: on, not ended, and a first order's code for the customer's first.
+                $firstOrder ??= !$this->orders->hasOrdered($order->customerId, $order->email, $orderId);
+                $basket = new Basket([], $order->currency, null, $order->customerId, $order->email, $firstOrder);
+                $refusal = $coupon->unavailable($basket, $this->clock->now(), $this->redemptions->countByCustomer($coupon->id(), $order->customerId, $order->email, true));
+                if ($refusal !== null) {
+                    throw new CouponRuleViolation('The code %1$s no longer holds for this order: %2$s Order again from the shop.', 'orillacart_coupon_refused', values: [$coupon->code(), $refusal]);
+                }
             }
             $coupon->use();
             $this->coupons->save($coupon);

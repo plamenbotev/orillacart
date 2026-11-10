@@ -25,11 +25,13 @@ use OrillaCart\Shared\WordPress\BlockDefinition;
 use OrillaCart\Storefront\Application\StorefrontSettingsService;
 use OrillaCart\Storefront\Domain\WishlistPolicy;
 use OrillaCart\Storefront\Infrastructure\WordPress\AddressChoices;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\KeptTokens;
 use OrillaCart\Storefront\Infrastructure\WordPress\PageWindow;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
 use OrillaCart\Tax\Application\ExemptionCertificates;
 
 /**
@@ -81,7 +83,10 @@ final readonly class AccountBlock implements BlockDefinition
                 // The theme's button style for WordPress's login button, like the shop's own buttons.
                 'login_form' => str_replace('class="button button-primary"', 'class="button button-primary wp-element-button"', (string) wp_login_form(['echo' => false, 'redirect' => $here, 'form_id' => 'orillacart-login', 'remember' => true])),
                 'lost_password_url' => wp_lostpassword_url($here),
-                'confirm_token' => \is_string($_GET[StorefrontAccountLinks::CONFIRM_QUERY] ?? null) && preg_match('/^[a-f0-9]{64}$/', $_GET[StorefrontAccountLinks::CONFIRM_QUERY]) === 1 ? $_GET[StorefrontAccountLinks::CONFIRM_QUERY] : null,
+                // From the link in the email, kept in the browser since it was opened (KeptTokens).
+                'confirm_token' => self::confirmToken(),
+                // Sent here from a way back to an order that expired, such as a payment provider's long after.
+                'link_expired' => ($_GET[StorefrontOrderLinks::LOOKUP_QUERY] ?? null) === 'expired',
                 'links' => $links,
             ]);
         }
@@ -155,7 +160,7 @@ final readonly class AccountBlock implements BlockDefinition
         }
         $receipt = $this->receipts->issue($order->number);
 
-        return ['order' => $order, 'receipt' => $receipt, 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number), 'review_links' => $this->reviewLinks->forOrder($order, $receipt)];
+        return ['order' => $order, 'receipt' => $receipt, 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number), 'review_links' => $this->reviewLinks->forOrder($order)];
     }
 
     /**
@@ -207,5 +212,12 @@ final readonly class AccountBlock implements BlockDefinition
         $value = $_GET[$name] ?? null;
 
         return \is_string($value) && ctype_digit($value) ? (int) $value : 0;
+    }
+
+    private static function confirmToken(): ?string
+    {
+        $token = KeptTokens::token(StorefrontAccountLinks::CONFIRM_QUERY);
+
+        return $token !== null && preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? $token : null;
     }
 }

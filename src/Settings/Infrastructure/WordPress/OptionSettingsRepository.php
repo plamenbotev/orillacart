@@ -51,12 +51,15 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 ($stored['show_lowest_price'] ?? false) === true,
                 ($stored['remove_data_on_uninstall'] ?? false) === true,
                 self::optionalInt($stored, 'low_stock_threshold') ?? StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
-                self::optionalInt($stored, 'unpaid_hold_days'),
+                // Stored empty, the shop chose never; not stored, the default.
+                \array_key_exists('unpaid_hold_days', $stored) ? self::optionalInt($stored, 'unpaid_hold_days') : StoreSettings::DEFAULT_UNPAID_HOLD_DAYS,
                 self::optionalInt($stored, 'return_days'),
                 ($minimum = self::optionalString($stored, 'minimum_order')) === null ? null : Money::of($minimum),
                 ReportDay::tryFrom(self::optionalString($stored, 'report_day') ?? '') ?? ReportDay::Paid,
                 FreeItemsOnReturn::tryFrom(self::optionalString($stored, 'free_items_on_return') ?? '') ?? FreeItemsOnReturn::Spread,
                 self::optionalInt($stored, 'history_days') ?? StoreSettings::DEFAULT_HISTORY_DAYS,
+                // Stored empty, the shop chose no limit; not stored, the default.
+                \array_key_exists('unpaid_orders_each', $stored) ? self::optionalInt($stored, 'unpaid_orders_each') : StoreSettings::DEFAULT_UNPAID_ORDERS_EACH,
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -89,6 +92,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'report_day' => $settings->reportDay->value,
             'free_items_on_return' => $settings->freeItemsOnReturn->value,
             'history_days' => $settings->historyDays,
+            'unpaid_orders_each' => $settings->unpaidOrdersEach,
         ], true);
     }
 

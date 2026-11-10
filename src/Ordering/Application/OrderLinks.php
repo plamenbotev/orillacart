@@ -14,4 +14,10 @@ interface OrderLinks
 
     /** The link that downloads a bought file. */
     public function downloadUrl(string $token): string;
+
+    /**
+     * Where a customer whose way back to the order expired finds it by its number and email, and is told so: a
+     * payment provider's return long after the payment started.
+     */
+    public function lookupUrl(): string;
 }

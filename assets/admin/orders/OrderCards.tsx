@@ -20,6 +20,7 @@ import {
 	changeDownloadAllowance,
 	fetchLabel,
 	fetchShipments,
+	openLabel,
 	pickedUp,
 	readyForPickup,
 	sendShipment,
@@ -424,12 +425,7 @@ function ShipmentRow( {
 						disabled={ busy }
 						onClick={ () =>
 							fetchLabel( shipment.id )
-								.then( ( file ) =>
-									window.open(
-										URL.createObjectURL( file ),
-										'_blank'
-									)
-								)
+								.then( openLabel )
 								.catch( onError )
 						}
 					>

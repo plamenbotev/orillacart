@@ -29,6 +29,8 @@ final class CurrenciesTest extends TestCase
     {
         yield 'to the decimals' => [PriceRounding::Decimals, '36.663', 2, '36.66'];
         yield 'to whole units' => [PriceRounding::Whole, '36.663', 2, '37'];
+        yield 'whole units round up, never down' => [PriceRounding::Whole, '1.40', 2, '2'];
+        yield 'a whole price stays whole' => [PriceRounding::Whole, '37', 2, '37'];
         yield 'up to just under the next unit' => [PriceRounding::NinetyNine, '36.10', 2, '36.99'];
         yield 'a whole price stays under itself' => [PriceRounding::NinetyNine, '37', 2, '36.99'];
         yield 'currencies without decimals round whole' => [PriceRounding::NinetyNine, '5421.6', 0, '5422'];

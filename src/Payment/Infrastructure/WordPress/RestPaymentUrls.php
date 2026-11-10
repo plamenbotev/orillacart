@@ -8,13 +8,18 @@ use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Payment\Application\PaymentUrls;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Security\Signatures;
+use Psr\Clock\ClockInterface;
 
 /**
- * The payment routes of the plugin's REST API, as absolute addresses.
+ * The payment routes of the plugin's REST API, as absolute addresses. The return and cancel addresses carry the
+ * payment and the day, signed (PaymentOutcomes::returnQuery()).
  */
 final readonly class RestPaymentUrls implements PaymentUrls
 {
-    public function __construct(private Signatures $signatures) {}
+    public function __construct(
+        private Signatures $signatures,
+        private ClockInterface $clock,
+    ) {}
 
     public function returnUrl(string $gateway, int $paymentId): string
     {
@@ -28,7 +33,7 @@ final readonly class RestPaymentUrls implements PaymentUrls
 
     private function signed(string $url, string $gateway, int $paymentId): string
     {
-        return add_query_arg(['payment' => $paymentId, 'sig' => $this->signatures->sign(PaymentOutcomes::RETURN_SIGNATURE, "{$gateway}:{$paymentId}")], $url);
+        return add_query_arg(PaymentOutcomes::returnQuery($this->signatures, $gateway, $paymentId, $this->clock->now()), $url);
     }
 
     public function notificationUrl(string $gateway): string

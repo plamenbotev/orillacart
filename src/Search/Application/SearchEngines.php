@@ -13,7 +13,8 @@ use OrillaCart\Search\Domain\SearchEngine;
 
 /**
  * The search engine as the settings screen runs it. Switching to OpenSearch first reaches it and prepares its
- * index; the shop then builds every document there and keeps searching its database until that is done.
+ * index; the shop then builds every document there and keeps searching its database until that is done. The
+ * saved password is kept only while the address and user stay.
  */
 final readonly class SearchEngines
 {
@@ -33,7 +34,7 @@ final readonly class SearchEngines
     {
         $saved = $this->settings->load();
         if ($command->engine === SearchEngine::Database->value) {
-            $settings = new EngineSettings(SearchEngine::Database, trim($command->host), trim($command->username), $command->clearPassword ? '' : ($command->password === '' ? $saved->password : $command->password), trim($command->index));
+            $settings = new EngineSettings(SearchEngine::Database, trim($command->host), trim($command->username), self::password($command, $saved), trim($command->index));
             $this->settings->save($settings);
 
             return $this->view($settings, true, 'The shop searches its database.');
@@ -43,7 +44,7 @@ final readonly class SearchEngines
         if ($wrongHost !== null) {
             return $this->view($saved, false, $wrongHost);
         }
-        $candidate = new EngineSettings(SearchEngine::OpenSearch, trim($command->host), trim($command->username), $command->clearPassword ? '' : ($command->password === '' ? $saved->password : $command->password), trim($command->index));
+        $candidate = new EngineSettings(SearchEngine::OpenSearch, trim($command->host), trim($command->username), self::password($command, $saved), trim($command->index));
         $problem = $this->server->prepare($candidate);
         if ($problem !== null) {
             return $this->view($saved, false, $problem);
@@ -98,6 +99,28 @@ final readonly class SearchEngines
             $message,
             $this->workers->serving(IndexProducts::queue()),
         );
+    }
+
+    /**
+     * The password to save: the one typed, or the saved one while it goes to the same address and user. A saved
+     * password never goes to an address or user it was not typed for.
+     */
+    private static function password(ChangeSearchEngine $command, EngineSettings $saved): string
+    {
+        if ($command->clearPassword) {
+            return '';
+        }
+        if ($command->password !== '') {
+            return $command->password;
+        }
+        $same = self::address($command->host) === self::address($saved->host) && trim($command->username) === $saved->username;
+
+        return $same ? $saved->password : '';
+    }
+
+    private static function address(string $host): string
+    {
+        return rtrim(mb_strtolower(trim($host)), '/');
     }
 
     /** What is wrong with an OpenSearch address, for the screen; null for a good one. */

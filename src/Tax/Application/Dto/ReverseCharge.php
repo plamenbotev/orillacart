@@ -16,6 +16,8 @@ final readonly class ReverseCharge
         public ?string $number = null,
         /** Why VAT is charged although a number was given; null when there is nothing to say. */
         public ?string $message = null,
+        /** The name VIES has the number registered to, when it gives one. */
+        public ?string $registeredName = null,
     ) {}
 
     public static function none(): self

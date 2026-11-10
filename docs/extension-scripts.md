@@ -129,7 +129,7 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 ### home
 
 - home.line(text, url?, tone?): something that waits, on the Home screen; tone attention, warning or info
-- home.tile(label, value, detail?, url?): a figure on the Home screen
+- home.tile(label, value, detail?, url?): a figure on the Home screen; url a Shop page ("orders?status=processing"), an admin page, a path or an http(s) URL of the site
 
 ### html
 
@@ -170,7 +170,7 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 - payment.held(reference, transaction_id?): the provider holds it for review
 - payment.offline(): the order is placed and paid outside the shop (a transfer)
 - payment.pending(reference): nothing is known yet; the shop asks again later
-- payment.redirect(url, reference): send the customer to the provider; the reference names the payment from then on
+- payment.redirect(url, reference): send the customer to the provider, over https to a host declared under needs.http; the reference names the payment from then on
 - payment.refund_done(reference): the refund is made
 - payment.refund_pending(reference): the provider will refund; the shop checks later
 - payment.refunded(reference, refund_id, amount, currency?, transaction_id?, request?): the provider refunded this much

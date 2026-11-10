@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Jobs;
 
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
+use OrillaCart\Jobs\Application\Dto\NewJob;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Jobs\Application\JobProgress;
@@ -308,6 +309,16 @@ final class JobRunnerTest extends TestCase
         $this->push('c');
         $this->test->endRequest();
         self::assertSame([['a'], ['b', 'c']], $this->handler->batches, 'the worker serves another lane');
+    }
+
+    public function testARequestWorksOnlyTheLanesItPushedTo(): void
+    {
+        $this->test->queue->push([new NewJob('imports', RecordingHandler::type(), ['key' => 'import'], 'import', $this->test->clock->now())], $this->test->clock->now());
+        $this->push('a');
+        $this->test->endRequest();
+
+        self::assertSame([['a']], $this->handler->batches, 'the import waits for cron or a worker');
+        self::assertCount(1, $this->test->queue->jobs);
     }
 
     public function testWorkersRestartWhenAskedAfterTheyStarted(): void

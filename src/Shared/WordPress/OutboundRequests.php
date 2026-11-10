@@ -12,11 +12,19 @@ namespace OrillaCart\Shared\WordPress;
  * follows a redirect only when the caller allows, and checks its address as the first one. A site in development may call its
  * own local names (localhost, *.test, *.local) when the caller allows it. The checking and pinning happen in the
  * request's own filters (Integrations' PublicOnlyRequests), for the requests sent through here.
+ *
+ * The address is written again before it goes (scheme and host in lowercase, no fragment), so the guard reads it as
+ * curl will. The pin holds for curl alone, connecting itself: the request is refused when WordPress would send it
+ * another way (no curl) or through a proxy (WP_PROXY_HOST), which resolves the name itself. A request started here
+ * whose guard argument another plugin's filter took away is refused too, not sent unguarded.
  */
 final class OutboundRequests
 {
     /** The argument that asks the shop's request guard (PublicOnlyRequests) to check and pin the address. */
     public const string PUBLIC_ONLY = 'orillacart_public_only';
+
+    /** @var array<string, int> the addresses being sent to through here now, as written for WordPress */
+    private static array $sending = [];
 
     /**
      * As wp_remote_request(): the response, or a WP_Error, also when the address is not one to call. Redirects are
@@ -31,10 +39,22 @@ final class OutboundRequests
     {
         $args['redirection'] = 0;
         for ($hop = 0; ; ++$hop) {
+            $written = self::normalise($url);
+            if ($written === null) {
+                return new \WP_Error('orillacart_unsafe_address', \sprintf('%s is not a web address.', $url));
+            }
+            $url = $written;
             $host = strtolower((string) parse_url($url, \PHP_URL_HOST));
             $args[self::PUBLIC_ONLY] = !($allowLocal && self::local($host) && self::development());
-            // @phpstan-ignore argument.type (WordPress passes keys it does not know on to its filters, as this one is)
-            $response = wp_remote_request($url, $args);
+            self::$sending[$url] = (self::$sending[$url] ?? 0) + 1;
+            try {
+                // @phpstan-ignore argument.type (WordPress passes keys it does not know on to its filters, as this one is)
+                $response = wp_remote_request($url, $args);
+            } finally {
+                if (--self::$sending[$url] <= 0) {
+                    unset(self::$sending[$url]);
+                }
+            }
             $status = \is_array($response) ? (int) wp_remote_retrieve_response_code($response) : 0;
             $location = \is_array($response) ? wp_remote_retrieve_header($response, 'location') : '';
             if ($hop >= $redirects || $status < 300 || $status > 399 || !\is_string($location) || $location === '') {
@@ -50,6 +70,50 @@ final class OutboundRequests
             }
             $url = $next;
         }
+    }
+
+    /** Whether a request to the address was started here and is under way. */
+    public static function sending(string $url): bool
+    {
+        return isset(self::$sending[$url]);
+    }
+
+    /**
+     * The address as curl reads it: an http or https scheme and the host in lowercase, the port when one is given,
+     * the path and query as they are, no fragment; null for one that is not a web address.
+     */
+    public static function normalise(string $url): ?string
+    {
+        $parts = parse_url(trim($url));
+        if ($parts === false || !isset($parts['scheme'], $parts['host']) || $parts['host'] === '') {
+            return null;
+        }
+        $scheme = strtolower($parts['scheme']);
+        if (!\in_array($scheme, ['http', 'https'], true) || preg_match('/[\s\\\\]/', $parts['host']) === 1) {
+            return null;
+        }
+        $user = isset($parts['user']) ? $parts['user'] . (isset($parts['pass']) ? ':' . $parts['pass'] : '') . '@' : '';
+        $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+
+        return $scheme . '://' . $user . strtolower($parts['host']) . $port . ($parts['path'] ?? '') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+    }
+
+    /**
+     * What pins the address's host to the addresses it was checked at, for CURLOPT_RESOLVE: for the port the
+     * address names, and for both web ports when it names none, whichever curl takes.
+     *
+     * @param list<string> $addresses
+     *
+     * @return list<string>
+     */
+    public static function pins(string $url, array $addresses): array
+    {
+        $host = trim(strtolower((string) parse_url($url, \PHP_URL_HOST)), '[]');
+        $port = parse_url($url, \PHP_URL_PORT);
+        $ports = \is_int($port) ? [$port] : [80, 443];
+        $written = implode(',', array_map(static fn(string $address): string => str_contains($address, ':') ? '[' . $address . ']' : $address, $addresses));
+
+        return array_map(static fn(int $port): string => \sprintf('%s:%d:%s', $host, $port, $written), $ports);
     }
 
     /**

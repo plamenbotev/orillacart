@@ -22,20 +22,25 @@ use Psr\Clock\ClockInterface;
  * records instead of queuing. A function that reaches outside the shop runs as it says it does in tests (mail
  * held, an order placed as a test order) and is listed in the result's `effects`; one that says nothing, and
  * counts as email, refuses. Everything else is the shop's host; the package layer runs each test inside a
- * transaction it rolls back, so records and field values leave no trace.
+ * transaction it rolls back, so records and field values leave no trace. For a request that may only read, the
+ * package layer narrows the host so that every function that writes refuses, the recording stand-ins aside.
  */
 final readonly class ScriptTests
 {
+    /** The stand-ins that only record what a test asked for: they reach no one and change nothing. */
+    public const array RECORDED = ['http.get', 'http.post', 'http.put', 'http.patch', 'http.delete', 'jobs.push'];
+
     public function __construct(private Scripts $scripts) {}
 
     /**
      * @param (callable(callable(): TestResult): TestResult)|null $isolate runs one test so that what it wrote is undone
+     * @param (\Closure(HostCatalog): HostCatalog)|null          $narrow  the host each test runs against, from the one with its stand-ins
      *
      * @return list<TestResult>
      *
      * @throws \InvalidArgumentException when the source does not compile
      */
-    public function run(string $source, string $scope, Grant $grant, ?callable $isolate = null): array
+    public function run(string $source, string $scope, Grant $grant, ?callable $isolate = null, ?\Closure $narrow = null): array
     {
         $script = $this->scripts->load($source, $scope, new Budget(), $grant);
         $results = [];
@@ -43,7 +48,7 @@ final readonly class ScriptTests
             if ($declaration['kind'] !== 'test' || $declaration['handler'] === null) {
                 continue;
             }
-            $one = fn(): TestResult => $this->one($source, $scope, $grant, $declaration);
+            $one = fn(): TestResult => $this->one($source, $scope, $grant, $declaration, $narrow);
             $results[] = $isolate === null ? $one() : $isolate($one);
         }
 
@@ -52,8 +57,9 @@ final readonly class ScriptTests
 
     /**
      * @param array{name: ?string, props: array<string, mixed>, handler: ?string} $declaration
+     * @param (\Closure(HostCatalog): HostCatalog)|null                         $narrow
      */
-    private function one(string $source, string $scope, Grant $grant, array $declaration): TestResult
+    private function one(string $source, string $scope, Grant $grant, array $declaration, ?\Closure $narrow): TestResult
     {
         $name = $declaration['name'] ?? 'test';
         $props = $declaration['props'];
@@ -102,7 +108,8 @@ final readonly class ScriptTests
             }
         }
         $testGrant = new Grant($grant->extension, $grant->permissions, $grant->hosts, $settings);
-        $script = $this->scripts->load($source, $scope, new Budget(), $testGrant, $this->scripts->catalog()->with($fakes));
+        $host = $this->scripts->catalog()->with($fakes);
+        $script = $this->scripts->load($source, $scope, new Budget(), $testGrant, $narrow === null ? $host : $narrow($host));
         $handler = $declaration['handler'] ?? '';
         try {
             $script->run($handler);

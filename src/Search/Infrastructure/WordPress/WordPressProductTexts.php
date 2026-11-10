@@ -95,7 +95,8 @@ final readonly class WordPressProductTexts implements ProductTexts
     {
         $post = get_post($postId);
 
-        return $post instanceof \WP_Post && $post->post_type === ProductPostType::NAME && $post->post_status === 'publish' ? $post : null;
+        // A product behind a password is in no list nor search, which every visitor shares.
+        return $post instanceof \WP_Post && $post->post_type === ProductPostType::NAME && $post->post_status === 'publish' && $post->post_password === '' ? $post : null;
     }
 
     /**

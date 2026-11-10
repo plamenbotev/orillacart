@@ -76,6 +76,21 @@ interface ObjectStore
     public function forgetCustomer(int $customerId): void;
 
     /**
+     * Everything about an order, across extensions: its fields and the records that refer to it, when its customer
+     * is erased from it.
+     */
+    public function forgetOrder(int $orderId): void;
+
+    /**
+     * The extension's records that refer to one of the orders, for the personal data export.
+     *
+     * @param list<int> $orderIds
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function ofOrders(string $extension, array $orderIds): array;
+
+    /**
      * The extension's records that refer to a customer, for the personal data export.
      *
      * @return list<array<string, mixed>>

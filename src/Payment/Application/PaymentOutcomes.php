@@ -49,6 +49,8 @@ final readonly class PaymentOutcomes
 {
     /** What the return and cancel addresses' signatures are for. */
     public const string RETURN_SIGNATURE = 'payment-return';
+    /** How many days the return and cancel addresses lead to the order's receipt. */
+    public const int RETURN_VALID_DAYS = 7;
 
     /** A payment is checked once nothing final came for this long */
     private const string CHECK_AFTER = 'PT15M';
@@ -70,20 +72,39 @@ final readonly class PaymentOutcomes
     ) {}
 
     /**
-     * The customer came back from the provider, paid or not. The address carries the payment's id, signed when
-     * the payment started, so a made-up address settles nothing.
+     * What the shop signs into the return and cancel addresses of a payment: its id and the day it started.
      *
-     * @param array<string, string> $query what the provider added to the address, and the shop's payment and sig
+     * @return array{payment: string, day: string, sig: string}
+     */
+    public static function returnQuery(Signatures $signatures, string $gatewayId, int $paymentId, \DateTimeImmutable $at): array
+    {
+        $day = (string) intdiv($at->getTimestamp(), 86400);
+
+        return ['payment' => (string) $paymentId, 'day' => $day, 'sig' => $signatures->sign(self::RETURN_SIGNATURE, "{$gatewayId}:{$paymentId}:{$day}")];
+    }
+
+    /**
+     * The customer came back from the provider, paid or not. The address carries the payment's id and the day it
+     * started, signed then, so a made-up address settles nothing. For RETURN_VALID_DAYS it leads to the order's
+     * receipt, with a new link to it; an older one leads to where the customer finds the order by its number and
+     * email, and settles nothing: the provider's notification does.
      *
-     * @return string where to send the customer: the order's receipt
+     * @param array<string, string> $query what the provider added to the address, and the shop's payment, day and sig
+     *
+     * @return string where to send the customer: the order's receipt, or where to find the order
      *
      * @throws PaymentNotFound for a return that names no payment of the gateway, or not the one it was signed for
      */
     public function returned(string $gatewayId, array $query, bool $cancelled): string
     {
         $id = $query['payment'] ?? '';
-        if (preg_match('/^\d{1,18}$/', $id) !== 1 || !$this->signatures->verify(self::RETURN_SIGNATURE, "{$gatewayId}:{$id}", $query['sig'] ?? '')) {
+        $day = $query['day'] ?? '';
+        if (preg_match('/^\d{1,18}$/', $id) !== 1 || preg_match('/^\d{1,6}$/', $day) !== 1 || !$this->signatures->verify(self::RETURN_SIGNATURE, "{$gatewayId}:{$id}:{$day}", $query['sig'] ?? '')) {
             throw new PaymentNotFound();
+        }
+        $age = intdiv($this->clock->now()->getTimestamp(), 86400) - (int) $day;
+        if ($age < 0 || $age >= self::RETURN_VALID_DAYS) {
+            return $this->links->lookupUrl();
         }
         try {
             $gateway = $this->gateways->get($gatewayId);

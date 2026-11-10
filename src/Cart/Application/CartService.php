@@ -41,6 +41,7 @@ use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
 use OrillaCart\Extension\Cart\KeptCharge;
 use OrillaCart\Extension\Cart\KeptItem;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Forms\Application\Dto\GivenAnswer;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormUploads;
@@ -64,6 +65,8 @@ final readonly class CartService
 {
     /** Why a line whose answers no longer hold cannot be ordered. */
     public const string CHANGED = 'Its choices changed: remove it and add it again.';
+    /** What a cart is told when a cart rule the shop cannot do without failed to check it. */
+    public const string UNCHECKED = 'Your cart cannot be checked right now. Try again in a moment.';
 
     /** Carts nobody changed for this long are deleted. */
     public const string KEEP_FOR = 'P30D';
@@ -677,8 +680,8 @@ final readonly class CartService
         $key = $target === null ? 0 : self::lineKey($target);
         $quote = $this->quotes->quote(new QuoteRequest($productId, $optionIds, $quantity, $customerId, $bundleChoices));
         $checked[] = new CheckedLine($key, $quote->productId, $quote->variationId, $quote->sku, $quote->name, $quantity, $quote->unitPrice);
-        [$refusedLines] = $this->refusals(new CheckedCart($customerId, $checked, $this->settings->current()->currency));
-        $message = $refusedLines[$key] ?? null;
+        [$refusedLines, , $closed] = $this->refusals(new CheckedCart($customerId, $checked, $this->settings->current()->currency));
+        $message = $refusedLines[$key] ?? ($closed ? self::UNCHECKED : null);
         if ($message !== null) {
             throw new CartRuleViolation($message, 'orillacart_cart_refused');
         }
@@ -743,20 +746,27 @@ final readonly class CartService
     }
 
     /**
-     * What the add-ons' cart rules refuse: messages by line, and those about the whole cart. A rule that fails is
-     * logged and left out, so one broken add-on does not stop every cart.
+     * What the add-ons' cart rules refuse: messages by line, and those about the whole cart; and whether a rule
+     * the shop cannot do without failed. A rule that fails is logged and left out, so one broken add-on does not
+     * stop every cart; one that fails closed (FailsClosed: an age check, a licence, an export limit) refuses the
+     * whole cart for now instead.
      *
-     * @return array{array<int, string>, list<string>}
+     * @return array{array<int, string>, list<string>, bool}
      */
     private function refusals(CheckedCart $cart): array
     {
         $lines = [];
         $whole = [];
+        $closed = false;
         foreach ($this->extensions->cartRules() as $rule) {
             try {
                 $refusals = $rule->check($cart);
             } catch (\Throwable $e) {
                 $this->logger->error('The cart rule {rule} failed: {message}', ['rule' => $rule->id(), 'message' => $e->getMessage(), 'exception' => $e]);
+                if ($rule instanceof FailsClosed) {
+                    $closed = true;
+                    $whole[] = self::UNCHECKED;
+                }
                 continue;
             }
             foreach ($refusals as $refusal) {
@@ -768,7 +778,7 @@ final readonly class CartService
             }
         }
 
-        return [$lines, array_values(array_unique($whole))];
+        return [$lines, array_values(array_unique($whole)), $closed];
     }
 
     private static function checkedLine(CartLine $line, ItemQuote $quote): CheckedLine

@@ -197,9 +197,8 @@ test.describe( 'A visitor', () => {
 		await expect(
 			page.getByRole( 'heading', { name: 'Thank you for your order' } )
 		).toBeVisible();
-		await expect( page ).toHaveURL(
-			/orillacart_order=\d+-\d+-[a-f0-9]{32}/
-		);
+		// The receipt's token is swapped for a cookie: the address keeps no secret.
+		await expect( page ).toHaveURL( /orillacart_order=kept/ );
 		await expect( page.getByText( 'Pay to IBAN BG00 E2E' ) ).toBeVisible();
 		await expect(
 			page.locator( '.orillacart-receipt__facts' )
@@ -1356,7 +1355,12 @@ test.describe( 'A visitor', () => {
 		await expect( receipt ).toContainText( 'Engraving: For Ada' );
 		await expect( receipt ).toContainText( 'PO-42' );
 		const number = Number(
-			/orillacart_order=(\d+)-/.exec( page.url() )?.[ 1 ] ?? 0
+			(
+				( await page
+					.locator( '.orillacart-receipt__facts strong' )
+					.first()
+					.textContent() ) ?? ''
+			).replace( '#', '' )
 		);
 
 		// The shop manager downloads the logo, as an attachment the browser runs nothing of; a visitor cannot.
@@ -1370,8 +1374,29 @@ test.describe( 'A visitor', () => {
 		const address = `${
 			new URL( '/wp-admin/admin-post.php', shop.urls.shop ).href
 		}?action=orillacart_order_upload&order=${ number }&upload=${ upload }`;
+		// The nonce of this download, which the shop's screens hold; the REST API's lets nothing through.
+		const screen = await (
+			await requestUtils.request.get(
+				new URL(
+					'/wp-admin/admin.php?page=orillacart-orders',
+					shop.urls.shop
+				).href
+			)
+		).text();
+		const nonce =
+			/"orillacart_order_upload":"([a-f0-9]+)"/.exec( screen )?.[ 1 ] ??
+			'';
+		expect(
+			(
+				await requestUtils.request.get(
+					`${ address }&_wpnonce=${
+						requestUtils.storageState?.nonce ?? ''
+					}`
+				)
+			).status()
+		).not.toBe( 200 );
 		const file = await requestUtils.request.get(
-			`${ address }&_wpnonce=${ requestUtils.storageState?.nonce ?? '' }`
+			`${ address }&_wpnonce=${ nonce }`
 		);
 		expect( file.status() ).toBe( 200 );
 		expect( file.headers()[ 'content-disposition' ] ).toContain(

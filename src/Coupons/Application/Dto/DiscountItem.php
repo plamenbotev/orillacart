@@ -23,5 +23,7 @@ final readonly class DiscountItem
         public array $brandIds = [],
         /** Codes and automatic discounts may come off it: not when a price rule that set its price says so. */
         public bool $coupons = true,
+        /** It counts towards the order's size, as coupons' minimum and maximum judge it: not an item a coupon gives, nor a gift card. */
+        public bool $sized = true,
     ) {}
 }

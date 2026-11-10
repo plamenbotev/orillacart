@@ -8,7 +8,6 @@ use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Customers\Application\Accounts;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\OrderService;
-use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Reviews\Application\Dto\RatingView;
 use OrillaCart\Reviews\Application\Dto\ReviewInvitationView;
@@ -28,12 +27,14 @@ use OrillaCart\Reviews\Domain\ReviewStore;
 
 /**
  * Product reviews: stars and words, from whoever the shop's policy lets write, each once per product. A review
- * from someone who paid for the product (by their account, or through the link to their receipt) is marked as a
+ * from someone who paid for the product (by their account, or through the review link of their order) is marked as a
  * buyer's. The site's discussion settings decide which go out at once and which wait for the shop.
  */
 final readonly class Reviews
 {
     public const int PER_PAGE = 10;
+    /** The highest page of reviews asked for that is read: past it there are none. */
+    public const int MAX_PAGE = 10000;
 
     public function __construct(
         private ReviewStore $store,
@@ -41,6 +42,7 @@ final readonly class Reviews
         private OrderService $orders,
         private Accounts $accounts,
         private ProductTranslations $translations,
+        private ReviewTokens $tokens,
     ) {}
 
     public function settings(): ReviewSettingsView
@@ -64,9 +66,9 @@ final readonly class Reviews
     /**
      * Whether the product page offers the visitor to write a review.
      *
-     * @param string|null $receipt the token of the link to their receipt, when they came from it
+     * @param string|null $token the token of the review link of their order (ReviewTokens), when they came from it
      */
-    public function invitation(int $productId, ?int $customerId, ?string $receipt = null): ReviewInvitationView
+    public function invitation(int $productId, ?int $customerId, ?string $token = null): ReviewInvitationView
     {
         $productId = $this->translations->original($productId);
         $policy = $this->settings->load()->policy;
@@ -77,7 +79,7 @@ final readonly class Reviews
             return new ReviewInvitationView(false, ReviewInvitationView::CLOSED);
         }
         try {
-            $author = $this->author($productId, $customerId, $receipt);
+            $author = $this->author($productId, $customerId, $token);
         } catch (ReviewRuleViolation) {
             $author = $this->author($productId, $customerId, null);
         }
@@ -109,7 +111,7 @@ final readonly class Reviews
         if (!$this->store->isOpen($productId)) {
             throw new ReviewRuleViolation('This product takes no reviews.', 'orillacart_reviews_closed');
         }
-        $author = $this->author($productId, $customerId, $command->receipt);
+        $author = $this->author($productId, $customerId, $command->token);
         if ($author === null) {
             if ($policy === ReviewPolicy::Buyers || $this->store->loginRequired()) {
                 throw new ReviewRuleViolation('Log in to review the product.', 'orillacart_review_log_in');
@@ -138,7 +140,7 @@ final readonly class Reviews
     public function page(int $productId, int $page = 1): ReviewPageView
     {
         $productId = $this->translations->original($productId);
-        $page = max(1, $page);
+        $page = max(1, min(self::MAX_PAGE, $page));
         [$reviews, $total] = $this->store->published($productId, ($page - 1) * self::PER_PAGE, self::PER_PAGE);
         $rating = $this->store->ratings([$productId])[$productId] ?? null;
 
@@ -177,19 +179,25 @@ final readonly class Reviews
     }
 
     /**
-     * Who the visitor is, when the shop knows: from their receipt's link, or their account. Their name goes out
-     * as their first name and the first letter of their last.
+     * Who the visitor is, when the shop knows: from their order's review link, or their account. Their name goes
+     * out as their first name and the first letter of their last.
      *
      * @return array{name: string, email: string, customer: ?int, verified: bool}|null null for a visitor the shop does not know
      *
-     * @throws ReviewRuleViolation for a receipt link the shop never made, or one that expired
+     * @throws ReviewRuleViolation for a review link the shop never made, one for another product, or one that expired
      */
-    private function author(int $productId, ?int $customerId, ?string $receipt): ?array
+    private function author(int $productId, ?int $customerId, ?string $token): ?array
     {
-        if ($receipt !== null) {
-            try {
-                $order = $this->orders->byReceipt($receipt);
-            } catch (OrderNotFound|ReceiptLinkExpired) {
+        if ($token !== null) {
+            $link = $this->tokens->read($token);
+            $order = null;
+            if ($link !== null && !$link['expired'] && $this->translations->original($link['product']) === $productId) {
+                try {
+                    $order = $this->orders->order($link['order']);
+                } catch (OrderNotFound) {
+                }
+            }
+            if ($order === null) {
                 throw new ReviewRuleViolation('The link to your order has expired: open the order from its latest email.', 'orillacart_review_receipt');
             }
             $bought = $order->paidAt !== null && !\in_array($order->status, ['cancelled', 'failed'], true)

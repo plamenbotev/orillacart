@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Exchange;
 
+use OrillaCart\Audit\Application\ChangeLog;
+use OrillaCart\Audit\Domain\ChangeRecord;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
@@ -27,6 +29,8 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Shared\Users\UserNames;
+use OrillaCart\Tests\Fixtures\Audit\InMemoryChangeRecords;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Exchange\EnglishColumnNames;
 use OrillaCart\Tests\Fixtures\Exchange\InMemoryExportChoices;
@@ -37,6 +41,7 @@ use PHPUnit\Framework\TestCase;
 
 final class ProductImportsTest extends TestCase
 {
+    private InMemoryChangeRecords $changes;
     private TestShop $shop;
     private InMemoryProductPosts $posts;
     private InMemoryProductImports $records;
@@ -61,7 +66,12 @@ final class ProductImportsTest extends TestCase
             }
         };
         $rows = new ProductRows($this->shop->products, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->posts, $this->shop->stock, $columns, $calendar);
-        $this->imports = new ProductImports($this->records, $columns, new ColumnChoice(new InMemoryExportChoices(), new EnglishColumnNames()), $rows, $this->posts, $this->shop->files, $this->shop->jobs->jobs, $this->shop->transactions, $this->shop->clock, $this->shop->logger);
+        $this->imports = new ProductImports($this->records, $columns, new ColumnChoice(new InMemoryExportChoices(), new EnglishColumnNames()), $rows, $this->posts, $this->shop->files, $this->shop->jobs->jobs, $this->shop->transactions, $this->shop->clock, $this->shop->logger, new ChangeLog($this->changes = new InMemoryChangeRecords(), new class implements UserNames {
+            public function names(array $ids): array
+            {
+                return [7 => 'Ada'];
+            }
+        }, $this->shop->clock));
         $this->shop->jobs->with(new ImportProducts($this->imports, $this->shop->clock));
         $barcodes = &$this->barcodes;
         $this->shop->extensions->productColumns[] = new class ($barcodes) implements ImportsProductColumn {
@@ -141,6 +151,9 @@ final class ProductImportsTest extends TestCase
         self::assertSame(['Bulb', '3', 'NEW-1', '0.1'], [$this->shop->products->product($bulb)->name, $this->shop->products->product($bulb)->price, $this->shop->products->product($bulb)->sku, $this->shop->products->product($bulb)->weight]);
         self::assertSame(['123', '456'], [$this->barcodes[10], $this->barcodes[$bulb]]);
         self::assertNull($this->shop->files->path($this->records->find($view->id)?->fileKey() ?? ''), 'the file is deleted once imported');
+        $logged = $this->changes->search('imports', null, 0, 50)[0];
+        self::assertCount(4, $logged, 'each saved row is in the change log; refused rows changed nothing');
+        self::assertContains("/imports/products/{$view->id}/rows/2", array_map(static fn(ChangeRecord $record): string => $record->path(), $logged));
     }
 
     public function testAnImportStartsOnceAndAFileWithoutKnownColumnsIsRefused(): void

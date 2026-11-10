@@ -50,7 +50,7 @@ final readonly class UpdateSettings
         #[Assert\PositiveOrZero]
         public int $lowStockThreshold = StoreSettings::DEFAULT_LOW_STOCK_THRESHOLD,
         #[Assert\Range(min: 1, max: 365)]
-        public ?int $unpaidHoldDays = null,
+        public ?int $unpaidHoldDays = StoreSettings::DEFAULT_UNPAID_HOLD_DAYS,
         #[Assert\Range(min: 1, max: 365)]
         public ?int $returnDays = null,
         /** The least the items may come to, after discounts; null or empty for no least. */
@@ -69,5 +69,8 @@ final readonly class UpdateSettings
         /** How many days the shop keeps its history: stock movements, past prices, carts left at checkout. */
         #[Assert\Range(min: StoreSettings::LEAST_HISTORY_DAYS, max: StoreSettings::MOST_HISTORY_DAYS)]
         public int $historyDays = StoreSettings::DEFAULT_HISTORY_DAYS,
+        /** Orders on hold unpaid one shopper may have at once; null for no limit. */
+        #[Assert\Range(min: 1, max: StoreSettings::MOST_UNPAID_ORDERS_EACH)]
+        public ?int $unpaidOrdersEach = StoreSettings::DEFAULT_UNPAID_ORDERS_EACH,
     ) {}
 }

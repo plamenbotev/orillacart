@@ -11,15 +11,18 @@ use OrillaCart\Packages\Domain\PackageRuleViolation;
 use OrillaCart\Scripting\Application\Dto\Finding;
 use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Application\Dto\TestResult;
+use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Application\ScriptTests;
+use OrillaCart\Shared\Security\ReadOnlyRequest;
 
 /**
  * An extension's own tests, run against the shop with everything the `needs` ask for granted, whether or not the
  * extension is enabled: its records and field values are rolled back after each test, its HTTP calls answered
  * from the test's map, its jobs recorded, its mail held and its orders placed as test orders (never sent, never
  * invoiced), so files sent with the request reach no one. Files sent with the request stand in for the saved ones, so an editor
- * tests what is on screen.
+ * tests what is on screen. On a request that may only read (a read-only key), every function that writes refuses
+ * in the tests too, as in the extension's runs: the HTTP answers and the jobs, which only record, aside.
  */
 final readonly class PackageTests
 {
@@ -29,6 +32,7 @@ final readonly class PackageTests
         private ScriptTests $tests,
         private ObjectStore $objects,
         private ObjectDefinitions $definitions,
+        private ?ReadOnlyRequest $readOnly = null,
     ) {}
 
     /**
@@ -63,7 +67,8 @@ final readonly class PackageTests
         $grant = new Grant($slug, $manifest->needs(), $manifest->hosts(), $package->settings());
         $this->definitions->use($slug, $manifest);
         try {
-            $results = $this->tests->run($source, $scope, $grant, fn(callable $one): TestResult => $this->objects->isolated($one));
+            $narrow = $this->readOnly?->readOnly() === true ? static fn(HostCatalog $host): HostCatalog => ScriptRunner::readingOnly($host, ScriptTests::RECORDED) : null;
+            $results = $this->tests->run($source, $scope, $grant, fn(callable $one): TestResult => $this->objects->isolated($one), $narrow);
         } finally {
             $this->definitions->forget($slug);
         }

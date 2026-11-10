@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Cart;
 
+use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartLineView;
 use OrillaCart\Cart\Application\Dto\CartOwner;
@@ -19,6 +20,7 @@ use OrillaCart\Extension\Cart\CartRefusal;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\Domain\Event\PublicEvent;
@@ -95,6 +97,48 @@ final class CartRulesTest extends TestCase
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
         $this->expectException(CheckoutRuleViolation::class);
         $this->expectExceptionMessage('At most 3 mugs to an order. Log in to buy knives. At most 5 items to an order.');
+        $this->shop->checkout->placeOrder($owner, new PlaceOrder('bob@example.com', new AddressData('Bob', 'Smith', '1 Main St', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
+    }
+
+    public function testARuleThatFailsIsLeftOutUnlessTheShopCannotDoWithoutIt(): void
+    {
+        $owner = $this->owner(new AddToCart(10));
+        $this->shop->extensions->cartRules[] = new readonly class implements CartRule {
+            public function id(): string
+            {
+                return 'broken';
+            }
+
+            public function check(CheckedCart $cart): array
+            {
+                throw new \RuntimeException('down');
+            }
+        };
+        self::assertTrue($this->shop->carts->cart($owner)->cart->orderable, 'one broken add-on does not stop every cart');
+
+        $this->shop->extensions->cartRules[] = new readonly class implements CartRule, FailsClosed {
+            public function id(): string
+            {
+                return 'age_check';
+            }
+
+            public function check(CheckedCart $cart): array
+            {
+                throw new \RuntimeException('register down');
+            }
+        };
+        $cart = $this->shop->carts->cart($owner)->cart;
+        self::assertSame([CartService::UNCHECKED], $cart->refusals);
+        self::assertFalse($cart->orderable);
+        try {
+            $this->shop->carts->add($owner, new AddToCart(10));
+            self::fail('an addition the rule could not check');
+        } catch (CartRuleViolation $e) {
+            self::assertSame(CartService::UNCHECKED, $e->getMessage());
+        }
+        $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
+        $this->expectException(CheckoutRuleViolation::class);
+        $this->expectExceptionMessage(CartService::UNCHECKED);
         $this->shop->checkout->placeOrder($owner, new PlaceOrder('bob@example.com', new AddressData('Bob', 'Smith', '1 Main St', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
     }
 

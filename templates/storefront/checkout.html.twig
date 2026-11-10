@@ -122,7 +122,7 @@
                     <label for="orillacart-terms">
                         {%- if legal.terms -%}
                             {# translators: %s: a link to the shop's terms of sale -#}
-                            {{ __('I accept the %s.')|format('<a href="' ~ legal.terms|e('html_attr') ~ '" target="_blank">' ~ __('terms of sale')|e ~ '</a>')|raw }}
+                            {{ __('I accept the %s.')|e|format('<a href="' ~ legal.terms|e('html_attr') ~ '" target="_blank">' ~ __('terms of sale')|e ~ '</a>')|raw }}
                         {%- else -%}
                             {{ __('I accept the terms of sale.') }}
                         {%- endif -%}

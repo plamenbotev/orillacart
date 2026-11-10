@@ -20,6 +20,7 @@ use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
 use OrillaCart\Reviews\Domain\ReviewSettingsRepository;
 use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
 use OrillaCart\Search\Domain\EngineSettingsRepository;
+use OrillaCart\Search\Domain\SearchEngine;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
 use OrillaCart\Settings\Application\SettingsArchive;
 use OrillaCart\Settings\Domain\CurrencySettingsRepository;
@@ -28,6 +29,7 @@ use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionCurrencySettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Shared\Files\FileDelivery;
+use OrillaCart\Shared\Security\SecretKeys;
 use OrillaCart\Storefront\Domain\StorefrontSettingsRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepository;
 use OrillaCart\Tax\Domain\ImportRegistrationsRepository;
@@ -48,8 +50,6 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 final readonly class OptionSettingsArchive implements SettingsArchive
 {
     public const string FORMAT = 'orillacart-settings';
-    /** Keys whose values a file never carries. */
-    private const string SECRET = '/(secret|password|token|api_?key)/i';
 
     public function __construct(
         private PluginContext $context,
@@ -89,7 +89,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
         ];
     }
 
-    public function import(array $file): array
+    public function import(array $file, bool $administrator): array
     {
         if (($file['format'] ?? null) !== self::FORMAT || !\is_array($file['settings'] ?? null)) {
             return ['imported' => [], 'refused' => ['file' => 'This is not a file of the shop\'s settings.']];
@@ -104,6 +104,10 @@ final readonly class OptionSettingsArchive implements SettingsArchive
             }
             if (!\is_array($value)) {
                 $refused[$section] = 'The settings are not a list.';
+                continue;
+            }
+            if ($section === 'search' && !$administrator && $this->pointsSearchElsewhere($value)) {
+                $refused[$section] = 'Only the site\'s administrator points the shop at an OpenSearch server.';
                 continue;
             }
             [$option, $roundTrip] = $sections[$section];
@@ -132,6 +136,22 @@ final readonly class OptionSettingsArchive implements SettingsArchive
         }
 
         return ['imported' => $imported, 'refused' => $refused];
+    }
+
+    /**
+     * Whether the file's search settings send the shop's searches to an OpenSearch server it does not use now:
+     * the server may be anywhere on the network, so that is the site administrator's (as on the settings screen).
+     *
+     * @param array<array-key, mixed> $value
+     */
+    private function pointsSearchElsewhere(array $value): bool
+    {
+        if (($value['engine'] ?? null) !== SearchEngine::OpenSearch->value) {
+            return false;
+        }
+        $current = $this->search->load();
+
+        return $current->engine !== SearchEngine::OpenSearch || self::address($value['host'] ?? '') !== self::address($current->host);
     }
 
     /**
@@ -202,7 +222,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
     private static function withoutSecrets(array $value): array
     {
         foreach ($value as $key => $item) {
-            if (preg_match(self::SECRET, (string) $key) === 1) {
+            if (SecretKeys::named((string) $key)) {
                 unset($value[$key]);
             } elseif (\is_array($item)) {
                 $value[$key] = self::withoutSecrets($item);
@@ -212,8 +232,13 @@ final readonly class OptionSettingsArchive implements SettingsArchive
         return $value;
     }
 
+    private static function address(mixed $value): string
+    {
+        return \is_scalar($value) ? rtrim(mb_strtolower(trim((string) $value)), '/') : '';
+    }
+
     /**
-     * The file's settings, with this site's secrets where they were.
+     * The file's settings, with this site's secrets where they were, unless the file changes where they go.
      *
      * @param array<array-key, mixed> $value
      * @param array<array-key, mixed> $current
@@ -223,9 +248,19 @@ final readonly class OptionSettingsArchive implements SettingsArchive
     private static function keepingSecrets(array $value, array $current): array
     {
         $value = self::withoutSecrets($value);
+        $moved = false;
         foreach ($current as $key => $item) {
-            if (preg_match(self::SECRET, (string) $key) === 1) {
-                $value[$key] = $item;
+            $now = $value[$key] ?? '';
+            if (\is_scalar($item) && !SecretKeys::named((string) $key) && (SecretKeys::endpoint((string) $key, $item) || SecretKeys::endpoint((string) $key, $now)) && self::address($now) !== self::address($item)) {
+                $moved = true;
+            }
+        }
+        foreach ($current as $key => $item) {
+            if (SecretKeys::named((string) $key)) {
+                // A secret stays only for the address and user it was typed for.
+                if (!$moved) {
+                    $value[$key] = $item;
+                }
             } elseif (\is_array($item) && \is_array($value[$key] ?? null)) {
                 $value[$key] = self::keepingSecrets($value[$key], $item);
             }

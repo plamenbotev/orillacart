@@ -27,7 +27,9 @@ use Psr\Clock\ClockInterface;
  * - a code is good once for ten minutes; an access token for an hour, at the MCP endpoint only; a refresh token
  *   for thirty days, and once: it gives a new pair. The one it replaced, presented again, ends the pair: someone
  *   else has it (OAuth 2.1 §6.1);
- * - a client that registered itself and was never connected is forgotten after a day.
+ * - a client that registered itself and was never connected is forgotten after a day; past MOST_UNCONNECTED of
+ *   them, a registration first forgets the oldest, so a flood of registrations neither fills the table nor keeps
+ *   new apps out. Those registered in the last minutes stay: an owner may be saying yes to one.
  */
 final readonly class OAuthServer
 {
@@ -39,6 +41,10 @@ final readonly class OAuthServer
     private const int REFRESH_SECONDS = 30 * 86400;
     /** How long a self-registered client may wait for the owner's yes before it is forgotten. */
     private const int UNCONNECTED_CLIENT_SECONDS = 86400;
+    /** How many self-registered clients may wait for the owner's yes at once. */
+    public const int MOST_UNCONNECTED = 1000;
+    /** How long a new client is kept from being forgotten for a newer one: the time to say yes. */
+    private const int UNCONNECTED_GRACE_SECONDS = 900;
     private const string ACCESS_PREFIX = 'oat_';
     private const string REFRESH_PREFIX = 'ort_';
     /** How soon after a rotation the refresh token it replaced is refused without ending the grant: a parallel refresh. */
@@ -128,6 +134,13 @@ final readonly class OAuthServer
             throw new OAuthError('invalid_client_metadata', 'The shop takes public clients only: token_endpoint_auth_method "none", with PKCE.');
         }
         $name = \is_string($request['client_name'] ?? null) && trim($request['client_name']) !== '' ? $request['client_name'] : (string) (parse_url($redirects[0], \PHP_URL_HOST) ?? 'An app');
+        $waiting = $this->clients->countUnconnected();
+        if ($waiting >= self::MOST_UNCONNECTED) {
+            $forgotten = $this->clients->removeOldestUnconnected($waiting - self::MOST_UNCONNECTED + 1, $this->clock->now()->modify('-' . self::UNCONNECTED_GRACE_SECONDS . ' seconds'));
+            if ($waiting - $forgotten >= self::MOST_UNCONNECTED) {
+                throw new OAuthError('slow_down', 'Too many apps registered in the last minutes; try again shortly.', 429);
+            }
+        }
         $client = new OAuthClient('ocl_' . bin2hex(random_bytes(16)), $name, $redirects, $this->clock->now());
         $this->clients->save($client);
 

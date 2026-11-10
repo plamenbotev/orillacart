@@ -6,11 +6,13 @@ namespace OrillaCart\Shared\Extension;
 
 use OrillaCart\Extension\Setting;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Security\SecretKeys;
 
 /**
  * Checks what the admin screen sends for a gateway's or shipping method's settings against what it declares,
  * keeping the saved secrets the screen never receives, and shows saved values without them. A secret sent empty
- * stays as saved; sent as false, it is cleared.
+ * stays as saved, unless a setting that says where it goes (an address, a user: SecretKeys::endpoint()) changed;
+ * sent as false, it is cleared.
  */
 final class SettingValues
 {
@@ -37,12 +39,26 @@ final class SettingValues
                 throw new RuleViolation('"%1$s" is not a setting of %2$s.', 'orillacart_unknown_setting', values: [$key, $owner]);
             }
         }
+        SecretKeys::declare(...array_keys(array_filter($byKey, static fn(Setting $field): bool => $field->type === Setting::SECRET)));
         $values = [];
+        $moved = false;
         foreach ($byKey as $key => $field) {
+            if ($field->type === Setting::SECRET) {
+                continue;
+            }
             $values[$key] = self::value($field, $submitted[$key] ?? null, $saved[$key] ?? null);
+            $was = $saved[$key] ?? null;
+            if (\is_string($values[$key]) && (SecretKeys::endpoint($key, $values[$key]) || SecretKeys::endpoint($key, $was)) && self::address($values[$key]) !== self::address(\is_string($was) ? $was : '')) {
+                $moved = true;
+            }
+        }
+        $ordered = [];
+        foreach ($byKey as $key => $field) {
+            // A saved secret goes only where it was typed for: a new address or user forgets it unless typed again.
+            $ordered[$key] = $field->type === Setting::SECRET ? self::value($field, $submitted[$key] ?? null, $moved ? null : ($saved[$key] ?? null)) : $values[$key];
         }
 
-        return $values;
+        return $ordered;
     }
 
     /**
@@ -74,6 +90,7 @@ final class SettingValues
     {
         $values = [];
         $secretsSet = [];
+        SecretKeys::declare(...array_map(static fn(Setting $field): string => $field->key, array_values(array_filter($fields, static fn(Setting $field): bool => $field->type === Setting::SECRET))));
         foreach ($fields as $field) {
             $value = $saved[$field->key] ?? ($field->type === Setting::BOOLEAN ? false : '');
             if ($field->type === Setting::SECRET) {
@@ -86,6 +103,11 @@ final class SettingValues
         }
 
         return [$values, $secretsSet];
+    }
+
+    private static function address(string $value): string
+    {
+        return rtrim(mb_strtolower(trim($value)), '/');
     }
 
     private static function value(Setting $field, string|bool|null $value, string|bool|null $saved): string|bool

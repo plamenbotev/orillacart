@@ -20,9 +20,12 @@ final readonly class WordPressProductContent implements ProductContent
         return get_post_type($productId) === ProductPostType::NAME;
     }
 
+    /**
+     * A product behind a password is for show and sale only to a visitor who gave it: WordPress's cookie says so.
+     */
     public function isPublished(int $productId): bool
     {
-        return $this->exists($productId) && get_post_status($productId) === 'publish';
+        return $this->exists($productId) && get_post_status($productId) === 'publish' && !post_password_required($productId);
     }
 
     public function name(int $productId): string

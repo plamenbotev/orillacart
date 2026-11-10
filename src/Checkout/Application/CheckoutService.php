@@ -37,6 +37,7 @@ use OrillaCart\GiftCards\Application\Dto\GiftCardCodeInput;
 use OrillaCart\GiftCards\Application\Dto\GiftCardPlan;
 use OrillaCart\GiftCards\Application\Dto\GiftCardUse;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
+use OrillaCart\GiftCards\Application\GiftCardProducts;
 use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Newsletter\Domain\SignUpSource;
@@ -101,6 +102,7 @@ final readonly class CheckoutService
         private AddressChecks $addressChecks,
         private Newsletter $newsletter,
         private GiftCardPayments $giftCards,
+        private GiftCardProducts $giftCardProducts,
         private Currencies $currencies,
         private ShownPrices $shownPrices,
         private LegalSettingsService $legal,
@@ -145,7 +147,7 @@ final readonly class CheckoutService
             return $this->summary($owner, $details);
         }
         $bill = $priced['bill'];
-        $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
+        $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency, $this->giftCardProducts->refusesCards(array_map(static fn(array $line): int => $line['quote']->productId, $priced['lines'])));
         $due = $bill->total()->subtract($plan->total());
         $base = $bill->subtotal()->subtract($bill->discount())->add($bill->shipping());
         $applied = [];
@@ -210,7 +212,7 @@ final readonly class CheckoutService
             $reverse->applies,
             $reverse->message,
             $estimatedFor,
-            $priced['free_from'] === null ? null : (string) Money::of($priced['free_from'])->subtract($bill->subtotal()->subtract($bill->discount())),
+            $priced['free_from'] === null ? null : (string) Money::of($priced['free_from'])->subtract($priced['sized']),
             $due->isZero() ? null : $payment,
             array_map(static fn(int $index, BilledCharge $fee): CheckoutFeeView => new CheckoutFeeView(
                 $fee->label,
@@ -223,7 +225,7 @@ final readonly class CheckoutService
             $due->isZero() ? [] : $this->paymentFees($gateways, $base, $currency),
             $delivery = $priced['needs_shipping'] ? $this->deliveryDays->forOption($priced['chosen']?->id) : null,
             ...self::deliveryChosen($delivery, $details->deliveryDate, $details->deliverySlot),
-            ...$this->minimum($bill, $currency),
+            ...$this->minimum($priced['sized'], $currency),
             shipsFrom: $priced['ships_from'],
             giftCards: self::giftCardViews($contents->giftCards, $plan),
             giftCardTotal: (string) $plan->total(),
@@ -319,13 +321,14 @@ final readonly class CheckoutService
     /**
      * The shop's least order and how much more the items need, when they come to less after discounts.
      *
+     * @param Money $items what the items come to after discounts, gift cards left out (OrderPricing's sized)
+     *
      * @return array{minimumOrder: ?string, minimumShort: ?string}
      */
-    private function minimum(Bill $bill, string $currency): array
+    private function minimum(Money $items, string $currency): array
     {
         $least = $this->settings->current()->minimumOrder;
         $minimum = $least === null ? null : $this->currencies->amount(Money::of($least), $currency);
-        $items = $bill->subtotal()->subtract($bill->discount());
         if ($minimum === null || $items->compare($minimum) >= 0) {
             return ['minimumOrder' => null, 'minimumShort' => null];
         }
@@ -486,13 +489,15 @@ final readonly class CheckoutService
         if ($this->failures->closedSince($failed)) {
             throw new CheckoutRuleViolation('Some prices cannot be worked out right now. Try again in a moment.', 'orillacart_prices_unavailable');
         }
+        // Asked before the order is placed: a check the shop cannot do without that fails refuses it for now.
+        $addressNotes = $this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null);
         $bill = $priced['bill'];
         if ($command->expectedTotal !== null && $bill->total()->compare(Money::of($command->expectedTotal)) > 0) {
             // A price, a rule, a coupon or a rate changed since the summary: the customer never pays more than they
             // saw. Less goes through, as a first-order discount the email made hold.
             throw new CheckoutRuleViolation('The total of your order changed. Review it and place the order again.', 'orillacart_cart_changed');
         }
-        ['minimumOrder' => $minimum] = $this->minimum($bill, $currency);
+        ['minimumOrder' => $minimum] = $this->minimum($priced['sized'], $currency);
         if ($minimum !== null) {
             throw new CheckoutRuleViolation('Orders start at %1$s %2$s. Add more items to order.', 'orillacart_below_minimum_order', values: [Money::of($minimum)->format($this->currencies->decimals($currency)), $currency]);
         }
@@ -509,7 +514,7 @@ final readonly class CheckoutService
         } catch (ShippingRuleViolation $e) {
             throw new CheckoutRuleViolation($e->text, $e->errorCode, $e);
         }
-        $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency);
+        $plan = $this->giftCards->plan($contents->giftCards, $owner->customerId, $contents->useStoreCredit, $bill->total(), $currency, $this->giftCardProducts->refusesCards(array_map(static fn(array $line): int => $line['quote']->productId, $priced['lines'])));
         foreach ($plan->refused as $code => $reason) {
             throw new CheckoutRuleViolation('The gift card %1$s cannot pay: %2$s Remove it to order.', 'orillacart_gift_card_refused', values: [$code, $reason]);
         }
@@ -533,6 +538,12 @@ final readonly class CheckoutService
             } catch (CustomerNotFound) {
                 $test = false;
             }
+        }
+        // Unpaid orders on hold keep their stock: one shopper (by account, or by who their email reaches) holds no
+        // more than a few at once, so a limited run is not bought up by orders never paid.
+        $most = $this->settings->current()->unpaidOrdersEach;
+        if ($most !== null && $needsPayment && !$test && $this->orders->countUnpaidOnHold($owner->customerId, $command->email) >= $most) {
+            throw new CheckoutRuleViolation('You have %d orders waiting for your payment. Pay for them from their receipts, or wait until they are cancelled, to order again.', 'orillacart_too_many_unpaid_orders', values: [$most]);
         }
         $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,
@@ -566,11 +577,15 @@ final readonly class CheckoutService
             $shopAnswers,
             test: $test,
         )), $gateway === null)));
-        foreach ([...$this->failures->since($failed), ...$this->addressChecks->kept($billingAddress, $priced['needs_shipping'] && $command->shippingAddress !== null ? $shippingAddress : null)] as $failure) {
+        foreach ([...$this->failures->since($failed), ...$addressNotes] as $failure) {
             $this->orders->note($order->number, $failure, false);
         }
         if ($acceptsTerms) {
             $this->orders->note($order->number, 'The customer accepted the terms of sale.', false);
+        }
+        $mismatch = $this->vatNumbers->nameMismatch($reverse, trim($command->billing->firstName . ' ' . $command->billing->lastName), $command->email);
+        if ($mismatch !== null) {
+            $this->orders->needsAttention($order->number, $mismatch);
         }
         $receiptUrl = $this->links->receiptUrl($order->number);
 
@@ -722,13 +737,13 @@ final readonly class CheckoutService
      * Whether the order, priced so, can be placed as the customer saw it: every code holds, it costs no more than
      * the summary said, it reaches the minimum, and the way to ship chosen is offered.
      *
-     * @param array{bill: Bill, discounts: AppliedDiscounts, needs_shipping: bool, chosen: ?ShippingChoiceView, ...} $priced
+     * @param array{bill: Bill, discounts: AppliedDiscounts, needs_shipping: bool, chosen: ?ShippingChoiceView, sized: Money, ...} $priced
      */
     private function fits(array $priced, PlaceOrder $command, string $currency): bool
     {
         return $priced['discounts']->refused === []
             && ($command->expectedTotal === null || $priced['bill']->total()->compare(Money::of($command->expectedTotal)) <= 0)
-            && $this->minimum($priced['bill'], $currency)['minimumOrder'] === null
+            && $this->minimum($priced['sized'], $currency)['minimumOrder'] === null
             && (!$priced['needs_shipping'] || $priced['chosen']?->id === $command->shippingOption);
     }
 

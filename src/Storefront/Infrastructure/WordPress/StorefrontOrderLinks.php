@@ -12,11 +12,13 @@ use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Storefront\Application\ShopPagesService;
 
 /**
- * Receipts are on the checkout page, found by a signed link; bought files come through the home address.
+ * Receipts are on the checkout page, found by a signed link; bought files come through the home address. An order
+ * whose way back expired is found on the account page (?orillacart_find=expired), by its number and email.
  */
 final readonly class StorefrontOrderLinks implements OrderLinks
 {
     public const string RECEIPT_QUERY = 'orillacart_order';
+    public const string LOOKUP_QUERY = 'orillacart_find';
 
     public function __construct(
         private ShopPagesService $pages,
@@ -36,6 +38,11 @@ final readonly class StorefrontOrderLinks implements OrderLinks
         $url = $locale === null ? $page() : $this->locales->in($locale, $page);
 
         return add_query_arg(self::RECEIPT_QUERY, $this->receipts->issue($orderNumber), $url ?? home_url('/'));
+    }
+
+    public function lookupUrl(): string
+    {
+        return add_query_arg(self::LOOKUP_QUERY, 'expired', $this->links->pageUrl($this->pages->pages()->account) ?? home_url('/'));
     }
 
     public function downloadUrl(string $token): string
