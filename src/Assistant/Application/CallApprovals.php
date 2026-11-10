@@ -19,10 +19,17 @@ interface CallApprovals
 
     public function byToken(#[\SensitiveParameter] string $token): ?CallApproval;
 
-    /** Puts the call up for the owner's answer, for $seconds. */
-    public function ask(Caller $caller, string $call, string $title, string $risk, string $what, int $seconds): CallApproval;
+    /**
+     * Puts the call up for the owner's answer, for $seconds.
+     *
+     * @param string $tool     the tool, by name
+     * @param int    $allowFor for how many minutes the owner may let the key run the tool unasked with their yes: 0
+     *                         when the yes is for this call only
+     */
+    public function ask(Caller $caller, string $call, string $title, string $risk, string $what, int $seconds, string $tool = '', int $allowFor = 0): CallApproval;
 
-    public function answer(CallApproval $approval, bool $yes): void;
+    /** The owner's answer; $allowedUntil when their yes also lets the key run the tool unasked until then. */
+    public function answer(CallApproval $approval, bool $yes, ?int $allowedUntil = null): void;
 
     /**
      * The call runs, or is refused: its approval is spent. True for the one call that spent it; false when another

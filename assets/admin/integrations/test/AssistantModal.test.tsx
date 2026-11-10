@@ -67,8 +67,11 @@ const catalogue: AssistantCatalogue = {
 
 describe( 'AssistantModal', () => {
 	it( 'keeps what the owner leaves out and what they want to be asked about', async () => {
-		mockedFetch.mockImplementation( ( options ) =>
-			Promise.resolve(
+		mockedFetch.mockImplementation( ( options ) => {
+			if ( options.path?.endsWith( '/allowances' ) ) {
+				return Promise.resolve( { allowances: [] } );
+			}
+			return Promise.resolve(
 				options.method === 'PUT'
 					? options.data
 					: {
@@ -83,8 +86,8 @@ describe( 'AssistantModal', () => {
 								'publishing',
 							],
 						}
-			)
-		);
+			);
+		} );
 		const onClose = jest.fn();
 		render(
 			<AssistantModal
@@ -122,5 +125,61 @@ describe( 'AssistantModal', () => {
 				ask: [ 'deleting', 'customers', 'opening', 'publishing' ],
 			},
 		} );
+	} );
+
+	it( 'lists the tools not asked again and asks again for one', async () => {
+		let allowances = [
+			{ tool: 'show_tax_settings', until: '2026-11-11T10:00:00+00:00' },
+			{ tool: 'list_orders', until: '2026-11-11T11:00:00+00:00' },
+		];
+		mockedFetch.mockImplementation( ( options ) => {
+			if ( options.path === '/orillacart/v1/api-keys/3/assistant' ) {
+				return Promise.resolve( {
+					off_areas: [],
+					off: [],
+					list: 'all',
+					ask: [ 'changes' ],
+					allow_minutes: 60,
+				} );
+			}
+			if ( options.method === 'DELETE' ) {
+				allowances = allowances.filter(
+					( allowance ) =>
+						! options.path?.endsWith( '/' + allowance.tool )
+				);
+			}
+			return Promise.resolve( { allowances } );
+		} );
+		render(
+			<AssistantModal
+				apiKey={ key }
+				catalogue={ catalogue }
+				onClose={ jest.fn() }
+			/>
+		);
+
+		expect(
+			await screen.findByText( /Show tax settings, until/ )
+		).toBeTruthy();
+		expect(
+			screen.getByLabelText< HTMLSelectElement >(
+				'A yes on the shop’s page may stop the asking for that tool for'
+			).value
+		).toBe( '60' );
+		const [ first ] = screen.getAllByRole( 'button', {
+			name: 'Ask again',
+		} );
+		fireEvent.click( first as HTMLElement );
+
+		await waitFor( () =>
+			expect(
+				screen.queryByText( /Show tax settings, until/ )
+			).toBeNull()
+		);
+		expect( mockedFetch ).toHaveBeenCalledWith( {
+			path: '/orillacart/v1/api-keys/3/assistant/allowances/show_tax_settings',
+			method: 'DELETE',
+		} );
+		expect( screen.getByText( /List orders, until/ ) ).toBeTruthy();
 	} );
 } );

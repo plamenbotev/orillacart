@@ -21,6 +21,16 @@ final readonly class AssistantChoices
     public const string IN_APP = 'app';
 
     /**
+     * The risks a yes on the shop's page may cover for one tool for a while: those whose calls are much alike, such
+     * as saving one setting after another. Never money, deleting, customers or the shop opening, where each call is
+     * its own and a standing yes is what text steering the model would use.
+     */
+    public const array ALLOWABLE = [Tool::CHANGES, Tool::PUBLISHING];
+
+    /** How long such a yes may last, in minutes: 0 offers none. */
+    public const array ALLOW_MINUTES = [0, 15, 60, 240];
+
+    /**
      * @param list<string> $offAreas the areas whose tools it is not offered ("Ordering", an add-on's name): an area
      *                               that comes later, with an update or an add-on, is offered
      * @param list<string> $off      tools left out by name, such as one of an add-on's
@@ -29,6 +39,8 @@ final readonly class AssistantChoices
      *                                  later, with an update, waits too until the owner unticks it
      * @param string            $answer where the owner answers: on the shop's page (the default: an app that holds
      *                                  the key could answer its own question), or in the app's window
+     * @param int               $allowMinutes for how long a yes on the shop's page may also cover the tool's later
+     *                                  calls, for the ALLOWABLE risks (one of ALLOW_MINUTES; 0 never offers it)
      */
     public function __construct(
         #[Assert\Count(max: 100)]
@@ -43,6 +55,8 @@ final readonly class AssistantChoices
         public array $ask = Tool::RISKS,
         #[Assert\Choice(choices: [self::ON_PAGE, self::IN_APP])]
         public string $answer = self::ON_PAGE,
+        #[Assert\Choice(choices: self::ALLOW_MINUTES)]
+        public int $allowMinutes = 60,
     ) {}
 
     /**
@@ -64,17 +78,18 @@ final readonly class AssistantChoices
                 ? array_values(array_filter(Tool::RISKS, static fn(string $risk): bool => \in_array($risk, $strings($stored['ask']), true) || !\in_array($risk, $strings($stored['risks'] ?? []), true)))
                 : Tool::RISKS,
             ($stored['answer'] ?? null) === self::IN_APP ? self::IN_APP : self::ON_PAGE,
+            \in_array($stored['allowMinutes'] ?? null, self::ALLOW_MINUTES, true) ? $stored['allowMinutes'] : 60,
         );
     }
 
     /**
      * The choices to store, with the risks there were to choose from, so a later one is not taken as unticked.
      *
-     * @return array{offAreas: list<string>, off: list<string>, list: string, ask: list<string>, risks: list<string>, answer: string}
+     * @return array{offAreas: list<string>, off: list<string>, list: string, ask: list<string>, risks: list<string>, answer: string, allowMinutes: int}
      */
     public function toArray(): array
     {
-        return ['offAreas' => $this->offAreas, 'off' => $this->off, 'list' => $this->list, 'ask' => $this->ask, 'risks' => Tool::RISKS, 'answer' => $this->answer];
+        return ['offAreas' => $this->offAreas, 'off' => $this->off, 'list' => $this->list, 'ask' => $this->ask, 'risks' => Tool::RISKS, 'answer' => $this->answer, 'allowMinutes' => $this->allowMinutes];
     }
 
     public function offers(ToolDefinition $tool): bool
@@ -85,5 +100,11 @@ final readonly class AssistantChoices
     public function asksBefore(?string $risk): bool
     {
         return $risk !== null && \in_array($risk, $this->ask, true);
+    }
+
+    /** For how many minutes the owner's yes on the page may cover a tool of this risk: 0 when it covers the one call. */
+    public function allowsFor(?string $risk): int
+    {
+        return \in_array($risk, self::ALLOWABLE, true) ? $this->allowMinutes : 0;
     }
 }

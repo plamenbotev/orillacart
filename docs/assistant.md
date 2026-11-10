@@ -100,6 +100,12 @@ In Shop → Integrations, **Choose…** beside a key (each app you connected has
   elicitation) opens it for you. In the app's window, the app reports your answer, so anything that holds the key
   (the app itself, a script with the key in its settings, a model steered by text in the shop's data) could say
   yes for you: choose it only for an app you watch.
+- **Not asking again for a while**: for pages customers read and other changes (never money, deleting,
+  customers hearing of it or the shop opening), the shop's page also offers "Yes, and don't ask again for this
+  tool" for 15 minutes, an hour (the default) or 4 hours, or not at all, as you choose for the key. Until the time
+  runs out that tool runs with any arguments for whoever holds the key, unasked; the yes is in the change log, and
+  the key's Assistant settings list what is not asked again, to ask again for one or all. The app's own window
+  never offers it, since the app would be answering for you. Choosing "not at all" takes back what was given.
 - **What it may use**: the shop's areas and each add-on's tools. An area added later is offered until you untick
   it.
 - **How the tools are listed**: all of them (about 230), or three tools that find, describe and run the others,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Assistant\Application\AssistantKeys;
 use OrillaCart\Assistant\Application\AssistantTools;
 use OrillaCart\Assistant\Application\Dto\AssistantChoices;
 use OrillaCart\Assistant\Application\Dto\Caller;
@@ -11,6 +12,7 @@ use OrillaCart\Assistant\Application\Dto\ToolDefinition;
 use OrillaCart\Assistant\Application\Dto\ToolOutcome;
 use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Assistant\Infrastructure\AddOnToolSource;
+use OrillaCart\Assistant\Infrastructure\WordPress\Hooks\CallApprovalPage;
 use OrillaCart\Assistant\Infrastructure\WordPress\OnceClaims;
 use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
 use OrillaCart\Assistant\Infrastructure\WordPress\TransientCallApprovals;
@@ -404,6 +406,97 @@ final class AssistantMcpTest extends RestTestCase
         }
     }
 
+    public function testTheOwnersPageCanStopTheAskingForOneToolForAWhile(): void
+    {
+        $legal = get_option(OptionLegalSettingsRepository::OPTION);
+        $page = wp_insert_post(['post_type' => 'page', 'post_title' => 'Terms', 'post_status' => 'draft', 'post_content' => 'Old.'], true);
+        self::assertIsInt($page);
+        update_option(OptionLegalSettingsRepository::OPTION, ['terms' => $page] + (\is_array($legal) ? $legal : []));
+        $this->connect('read_write', null, 'page');
+        $owner = get_current_user_id();
+
+        $asked = $this->mcp('tools/call', ['name' => 'publish_page', 'arguments' => ['id' => $page]]);
+        $text = self::textAt($asked, 'result', 'content', 0, 'text');
+        $token = preg_match('#request=([a-f0-9]{32})#', $text, $found) === 1 ? $found[1] : '';
+        $approval = new TransientCallApprovals(new OnceClaims())->byToken($token);
+        self::assertNotNull($approval);
+        self::assertSame(['publish_page', 60], [$approval->tool, $approval->allowFor], 'a page: the owner may stop the asking for an hour');
+
+        // The owner answers on the page, logged in, with the button that also stops the asking.
+        $key = $_SERVER['HTTP_AUTHORIZATION'];
+        unset($_SERVER['HTTP_AUTHORIZATION']);
+        apply_filters('determine_current_user', 0);
+        wp_set_current_user($owner);
+        $container = self::kernel()->container();
+        $keys = $container->get(AssistantKeys::class);
+        $log = $container->get(ChangeLog::class);
+        self::assertInstanceOf(AssistantKeys::class, $keys);
+        self::assertInstanceOf(ChangeLog::class, $log);
+        $approvalPage = new CallApprovalPage(new TransientCallApprovals(new OnceClaims()), $keys, $log);
+        $_GET = ['request' => $token];
+        ob_start();
+        $approvalPage->render();
+        $html = (string) ob_get_clean();
+        $_GET = [];
+        self::assertStringContainsString('value="approve_for_a_while"', $html);
+        self::assertStringContainsString('1 hour', $html);
+        $_POST = ['request' => $token, 'decision' => 'approve_for_a_while', '_wpnonce' => wp_create_nonce(CallApprovalPage::ACTION)];
+        $_REQUEST = $_POST;
+        $redirected = static function (string $location): string {
+            // The redirect ends the request: the test stops it here instead.
+            if ($location !== '') {
+                throw new \RuntimeException('redirected');
+            }
+
+            return $location;
+        };
+        add_filter('wp_redirect', $redirected);
+        try {
+            // The plugin's own hook, as admin-post.php runs it.
+            do_action('admin_post_' . CallApprovalPage::ACTION);
+            self::fail('The answer goes back to the page.');
+        } catch (\RuntimeException $e) {
+            self::assertSame('redirected', $e->getMessage());
+        } finally {
+            remove_filter('wp_redirect', $redirected);
+            $_POST = $_REQUEST = [];
+        }
+        global $wpdb;
+        \assert($wpdb instanceof \wpdb);
+        self::assertStringContainsString('publish_page', (string) $wpdb->get_var("SELECT assistant FROM {$wpdb->prefix}orillacart_api_keys ORDER BY id DESC LIMIT 1"), 'kept with the key');
+        self::assertSame('POST /assistant/allowances', $wpdb->get_var("SELECT route FROM {$wpdb->prefix}orillacart_change_log ORDER BY id DESC LIMIT 1"), 'in the change log');
+        $_GET = ['request' => $token];
+        ob_start();
+        $approvalPage->render();
+        self::assertStringContainsString('without asking', (string) ob_get_clean());
+        $_GET = [];
+
+        $_SERVER['HTTP_AUTHORIZATION'] = $key;
+        $user = apply_filters('determine_current_user', 0);
+        wp_set_current_user(\is_int($user) ? $user : 0);
+        self::assertFalse(self::at($this->mcp('tools/call', ['name' => 'publish_page', 'arguments' => ['id' => $page]]), 'result', 'isError'), 'the call asked about runs');
+        self::assertSame('publish', get_post_status($page));
+        wp_update_post(['ID' => $page, 'post_status' => 'draft']);
+        $again = $this->mcp('tools/call', ['name' => 'publish_page', 'arguments' => ['id' => $page, 'content' => '<p>Other terms.</p>']]);
+        self::assertFalse(self::at($again, 'result', 'isError'), 'and the same tool with other arguments, unasked: ' . wp_json_encode($again));
+        self::assertSame('publish', get_post_status($page));
+
+        // Taken back in the key's settings.
+        $keyId = (int) $wpdb->get_var("SELECT id FROM {$wpdb->prefix}orillacart_api_keys ORDER BY id DESC LIMIT 1");
+        unset($_SERVER['HTTP_AUTHORIZATION']);
+        apply_filters('determine_current_user', 0);
+        wp_set_current_user($owner);
+        $listed = $this->data($this->request('GET', "/api-keys/{$keyId}/assistant/allowances"));
+        self::assertSame(['publish_page'], array_column(self::arrayOf($listed['allowances'] ?? null), 'tool'));
+        $ended = $this->data($this->request('DELETE', "/api-keys/{$keyId}/assistant/allowances/publish_page", nonce: true));
+        self::assertSame([], $ended['allowances'] ?? null);
+        // The REST request ran in a container of its own, so the key is read again from the table, as the next request does.
+        self::assertStringNotContainsString('publish_page', (string) $wpdb->get_var("SELECT assistant FROM {$wpdb->prefix}orillacart_api_keys WHERE id = {$keyId}"), 'taken back');
+
+        wp_delete_post($page, true);
+        update_option(OptionLegalSettingsRepository::OPTION, $legal);
+    }
+
     public function testAReadOnlyKeyIsOfferedOnlyWhatReads(): void
     {
         $this->connect('read');
@@ -588,13 +681,13 @@ final class AssistantMcpTest extends RestTestCase
     /**
      * @param list<string>|null $ask the risks that wait for the owner's yes, when not all
      */
-    private function connect(string $scope, ?array $ask = null): void
+    private function connect(string $scope, ?array $ask = null, string $answer = 'app'): void
     {
         $this->actAs('administrator');
         $made = $this->data($this->request('POST', '/api-keys', ['name' => 'Assistant', 'scope' => $scope], nonce: true));
         $key = self::textAt($made, 'key');
         // These tests ask in the app's window; the default, the shop's page, has tests of its own.
-        $chosen = $this->request('PUT', '/api-keys/' . self::intOf(self::at($made, 'api_key', 'id')) . '/assistant', ['answer' => 'app'] + ($ask === null ? [] : ['ask' => $ask]), nonce: true);
+        $chosen = $this->request('PUT', '/api-keys/' . self::intOf(self::at($made, 'api_key', 'id')) . '/assistant', ['answer' => $answer] + ($ask === null ? [] : ['ask' => $ask]), nonce: true);
         self::assertSame(200, $chosen->get_status(), (string) wp_json_encode($chosen->get_data()));
         wp_set_current_user(0);
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $key;

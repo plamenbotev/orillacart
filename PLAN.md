@@ -810,6 +810,15 @@ find action with and without the cookie).
 | ✅ | 518 | P3 | An invitation sent again while its link works (509) took the groups and not the names, as its docblock says it does. A name given replaces the one kept; one left empty stays. No other mail goes, and a new link once a day at most, as designed | 6548785a |
 | ➖ | 519 | P3 | Kept as it is. `PrivatePages::hold()` buffers every front-end page until the end, so a Cart or Checkout block outside the content (a sidebar, a footer, a pattern, the theme's PHP) can still send the no-cache headers; which pages have one cannot be known before they render. A classic theme loses its early flush (the first byte waits for the whole page); a block theme renders the whole template before any output anyway. To look at again if a shop measures it: hold only where a shopper's block was seen before, or a filter for themes that never place one outside the content | |
 
+## Assistant approvals (2026-11-11)
+
+The owner asked to stop being asked for each extension file and for a way to say yes to a tool for a while.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 520 | P2 | Writing or deleting an extension's file asked the owner each time (`CHANGES`), though `import_package`, `upload_package_archive` and `restore_package_version` replace the same files unasked and an enabled extension runs its enabled snapshot until enabled again (OPENING asks); the per-file yes protected nothing. Both run unasked, saying why; every write and delete is kept as a version | |
+| ✅ | 521 | P2 | "Yes, and don't ask again for this tool" on the shop's approval page, for `CHANGES` and `PUBLISHING` only (never money, deleting, customers, opening) and only for a key: the key's choices say for how long (`allow_minutes`: 0, 15, 60 by default, 240), the allowance is kept with the key (`assistant.allowed`, tool => until), written to the change log, listed in the key's Assistant settings to ask again for one or all (`GET`/`DELETE /api-keys/{id}/assistant/allowances[/{tool}]`, logged in only), and choosing 0 takes back what was given. The app's own window never offers it | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

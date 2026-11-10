@@ -296,6 +296,38 @@ final class McpServerTest extends TestCase
         self::assertCount(1, $this->calls);
     }
 
+    public function testTheOwnersPageOffersToStopAskingOnlyForAKeysChangesAndForAsLongAsItsChoicesSay(): void
+    {
+        $key = new Caller(1, 7, false);
+        $this->modern('tools/call', ['name' => 'rename_thing', 'arguments' => ['name' => 'a']], ['mcp-name' => 'rename_thing'], $key);
+        $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '5']], ['mcp-name' => 'refund_thing'], $key);
+        $this->modern('tools/call', ['name' => 'rename_thing', 'arguments' => ['name' => 'b']], ['mcp-name' => 'rename_thing'], new Caller(1, 7, false, new AssistantChoices(allowMinutes: 0)));
+        $this->modern('tools/call', ['name' => 'rename_thing', 'arguments' => ['name' => 'c']], ['mcp-name' => 'rename_thing'], new Caller(1, null, false));
+        $asked = array_values($this->approvals->approvals);
+        self::assertCount(4, $asked);
+        self::assertSame(['rename_thing', 60, true], [$asked[0]->tool, $asked[0]->allowFor, $asked[0]->mayAllow()], 'a change: the page offers an hour');
+        self::assertSame([0, false], [$asked[1]->allowFor, $asked[1]->mayAllow()], 'money: each call is its own');
+        self::assertFalse($asked[2]->mayAllow(), 'the owner turned the offer off');
+        self::assertFalse($asked[3]->mayAllow(), 'no key: a login has nothing to hold the yes');
+        self::assertSame([], $this->calls->getArrayCopy());
+    }
+
+    public function testAToolTheOwnerStoppedTheAskingForRunsUnaskedOnlyForItsChangesAndItsKey(): void
+    {
+        $allowed = new Caller(1, 7, false, new AssistantChoices(), null, ['rename_thing', 'refund_thing']);
+        $run = $this->modern('tools/call', ['name' => 'rename_thing', 'arguments' => ['name' => 'a']], ['mcp-name' => 'rename_thing'], $allowed);
+        self::assertFalse(self::at($run->body, 'result', 'isError'));
+        self::assertSame([['rename_thing', ['name' => 'a']]], $this->calls->getArrayCopy(), 'any arguments, unasked');
+
+        $money = $this->modern('tools/call', ['name' => 'refund_thing', 'arguments' => ['amount' => '5']], ['mcp-name' => 'refund_thing'], $allowed);
+        self::assertTrue(self::at($money->body, 'result', 'isError'), 'money is asked whatever was stored');
+        $off = $this->modern('tools/call', ['name' => 'rename_thing', 'arguments' => ['name' => 'b']], ['mcp-name' => 'rename_thing'], new Caller(1, 7, false, new AssistantChoices(allowMinutes: 0), null, ['rename_thing']));
+        self::assertTrue(self::at($off->body, 'result', 'isError'), 'turning the offer off takes back what it gave');
+        $login = $this->modern('tools/call', ['name' => 'rename_thing', 'arguments' => ['name' => 'c']], ['mcp-name' => 'rename_thing'], new Caller(1, null, false, new AssistantChoices(answer: AssistantChoices::IN_APP), null, ['rename_thing']));
+        self::assertTrue(self::at($login->body, 'result', 'isError'));
+        self::assertCount(1, $this->calls);
+    }
+
     public function testAKeyThatFindsOnDemandIsOfferedThreeToolsThatReachTheRest(): void
     {
         $finder = new Caller(1, 7, false, new AssistantChoices(list: AssistantChoices::FIND_ON_DEMAND));
@@ -412,8 +444,8 @@ final class McpServerTest extends TestCase
     public function testToolsAreListedInOrderAndAReadOnlyKeySeesOnlyReads(): void
     {
         $reply = $this->modern('tools/list');
-        self::assertSame(['change_thing', 'refund_thing', 'show_thing'], self::names(self::at($reply->body, 'result', 'tools')));
-        self::assertSame(['title' => 'Show thing', 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false], self::at($reply->body, 'result', 'tools', 2, 'annotations'));
+        self::assertSame(['change_thing', 'refund_thing', 'rename_thing', 'show_thing'], self::names(self::at($reply->body, 'result', 'tools')));
+        self::assertSame(['title' => 'Show thing', 'readOnlyHint' => true, 'destructiveHint' => false, 'idempotentHint' => true, 'openWorldHint' => false], self::at($reply->body, 'result', 'tools', 3, 'annotations'));
         self::assertIsInt(self::at($reply->body, 'result', 'ttlMs'));
 
         $readOnly = $this->modern('tools/list', caller: new Caller(1, 7, true));
@@ -524,6 +556,7 @@ final class McpServerTest extends TestCase
                     new ToolDefinition('show_thing', 'Show thing', 'Shows a thing.', ['type' => 'object'], true, false, true, null, 'Things', 'manage_orillacart'),
                     new ToolDefinition('change_thing', 'Change thing', 'Changes a thing.', ['type' => 'object'], false, false, true, null, 'Things', 'manage_orillacart', unasked: 'a thing of the tests\''),
                     new ToolDefinition('refund_thing', 'Refund thing', 'Gives the money back.', ['type' => 'object'], false, false, false, 'money', 'Things', 'manage_orillacart'),
+                    new ToolDefinition('rename_thing', 'Rename thing', 'Renames a thing.', ['type' => 'object'], false, false, true, null, 'Things', 'manage_orillacart'),
                     new ToolDefinition('secret_thing', 'Secret thing', 'Not for managers.', ['type' => 'object'], true, false, true, null, 'Things', 'manage_options'),
                 ];
             }

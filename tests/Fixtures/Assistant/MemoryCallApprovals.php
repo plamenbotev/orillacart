@@ -35,16 +35,16 @@ final class MemoryCallApprovals implements CallApprovals
         return $this->approvals[$token] ?? null;
     }
 
-    public function ask(Caller $caller, string $call, string $title, string $risk, string $what, int $seconds): CallApproval
+    public function ask(Caller $caller, string $call, string $title, string $risk, string $what, int $seconds, string $tool = '', int $allowFor = 0): CallApproval
     {
         $token = str_pad((string) (\count($this->approvals) + 1), 32, '0', STR_PAD_LEFT);
 
-        return $this->approvals[$token] = new CallApproval($token, $caller->userId, $caller->keyId, $call, $title, $risk, $what, CallApproval::WAITING, time() + $seconds);
+        return $this->approvals[$token] = new CallApproval($token, $caller->userId, $caller->keyId, $call, $title, $risk, $what, CallApproval::WAITING, time() + $seconds, $tool, $allowFor);
     }
 
-    public function answer(CallApproval $approval, bool $yes): void
+    public function answer(CallApproval $approval, bool $yes, ?int $allowedUntil = null): void
     {
-        $this->approvals[$approval->token] = $approval->answered($yes);
+        $this->approvals[$approval->token] = $approval->answered($yes, $allowedUntil);
     }
 
     public function spend(CallApproval $approval): bool

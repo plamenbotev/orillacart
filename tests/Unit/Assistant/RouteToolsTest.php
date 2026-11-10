@@ -112,6 +112,7 @@ final class RouteToolsTest extends TestCase
         'create_tax_group',
         'create_tax_rate',
         'create_variation',
+        'delete_package_file',
         'disable_package',
         'finish_setup',
         'import_package',
@@ -157,6 +158,7 @@ final class RouteToolsTest extends TestCase
         'upload_download',
         'upload_package_archive',
         'upload_product_import',
+        'write_package_file',
     ];
 
     public function testEveryChangeSaysWhatItRisksOrWhyItNeedNotAsk(): void

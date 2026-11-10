@@ -582,7 +582,7 @@ final readonly class McpServer
         $risk = self::RISK_WORDS[$tool->risk ?? ''] ?? '';
         if (mb_strlen($what) > self::ASK_MOST) {
             // Too long for a client's question: its start there, the whole of it on the shop's page.
-            $page ??= $this->approvals->ask($caller, $digest, $tool->title, $risk, $what, self::ASK_TTL);
+            $page ??= $this->approvals->ask($caller, $digest, $tool->title, $risk, $what, self::ASK_TTL, $tool->name, self::allowFor($tool, $caller));
             $what = mb_substr($what, 0, self::ASK_MOST) . "…\n\nThis is the start of it. The whole of it (" . mb_strlen($what) . ' characters) is on the shop\'s page, to read before answering, here or there: ' . $this->approvals->url($page);
         }
 
@@ -603,6 +603,16 @@ final readonly class McpServer
             ]],
             'requestState' => $this->states->issue(['user' => $caller->userId, 'key' => $caller->keyId, 'call' => $digest, 'what' => $whatDigest], self::ASK_TTL),
         ];
+    }
+
+    /**
+     * For how many minutes the owner's yes on the shop's page may also let the key run the tool unasked: only a
+     * key's, whose owner answers logged in, and only for the risks that allow it. The app's own window never offers
+     * it: the app would be granting itself.
+     */
+    private static function allowFor(ToolDefinition $tool, Caller $caller): int
+    {
+        return $caller->keyId === null ? 0 : $caller->choices->allowsFor($tool->risk);
     }
 
     /** What the owner read, to tell at their yes whether the call would still do that. */
@@ -641,7 +651,7 @@ final readonly class McpServer
         }
         $risk = self::RISK_WORDS[$tool->risk ?? ''] ?? '';
         $what = $this->what($tool, $arguments, $caller);
-        $approval ??= $this->approvals->ask($caller, $digest, $tool->title, $risk, $what, self::ASK_TTL);
+        $approval ??= $this->approvals->ask($caller, $digest, $tool->title, $risk, $what, self::ASK_TTL, $tool->name, self::allowFor($tool, $caller));
         if ($openLink) {
             // The app opens the page; its own "accept" only says the owner went there, and the retry reads the page.
             return [

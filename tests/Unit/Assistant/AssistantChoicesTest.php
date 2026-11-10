@@ -37,4 +37,18 @@ final class AssistantChoicesTest extends TestCase
         self::assertTrue($choices->asksBefore(Tool::PUBLISHING));
         self::assertFalse($choices->asksBefore(Tool::CUSTOMERS));
     }
+
+    public function testAYesForAWhileIsOnlyForChangesAndPagesAndAsLongAsChosen(): void
+    {
+        $choices = AssistantChoices::fromArray(null);
+        self::assertSame(60, $choices->allowMinutes, 'an hour unless the owner chooses');
+        foreach ([Tool::MONEY, Tool::DELETING, Tool::CUSTOMERS, Tool::OPENING, null] as $risk) {
+            self::assertSame(0, $choices->allowsFor($risk), (string) $risk);
+        }
+        self::assertSame(60, $choices->allowsFor(Tool::CHANGES));
+        self::assertSame(60, $choices->allowsFor(Tool::PUBLISHING));
+
+        self::assertSame(0, AssistantChoices::fromArray(new AssistantChoices(allowMinutes: 0)->toArray())->allowsFor(Tool::CHANGES));
+        self::assertSame(60, AssistantChoices::fromArray(['allowMinutes' => 100000])->allowMinutes, 'a length not offered is the default');
+    }
 }

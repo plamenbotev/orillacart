@@ -142,6 +142,14 @@ export interface AssistantChoices {
 	ask: string[];
 	/** Where the owner says yes: on the shop's page (logged in), or in the app's own window. */
 	answer?: 'page' | 'app';
+	/** For how many minutes a yes on the shop's page may cover a tool's later calls (changes and pages only); 0 never. */
+	allow_minutes?: 0 | 15 | 60 | 240;
+}
+
+/** A tool the owner let the key's assistant run without asking, until when. */
+export interface AssistantAllowance {
+	tool: string;
+	until: string;
 }
 
 /** The assistant's endpoint and its tools by area, as GET /orillacart/v1/assistant returns them. */
@@ -184,5 +192,31 @@ export function saveAssistantChoices(
 		path: `/orillacart/v1/api-keys/${ id }/assistant`,
 		method: 'PUT',
 		data: choices,
+	} );
+}
+
+export function fetchAssistantAllowances(
+	id: number
+): Promise< { allowances: AssistantAllowance[] } > {
+	return apiFetch( {
+		path: `/orillacart/v1/api-keys/${ id }/assistant/allowances`,
+	} );
+}
+
+/**
+ * The key's assistant asks again before the tool, or before every tool when none is named.
+ *
+ * @param id   The key.
+ * @param tool The tool, by name; every one when left out.
+ */
+export function endAssistantAllowance(
+	id: number,
+	tool?: string
+): Promise< { allowances: AssistantAllowance[] } > {
+	return apiFetch( {
+		path:
+			`/orillacart/v1/api-keys/${ id }/assistant/allowances` +
+			( tool === undefined ? '' : `/${ tool }` ),
+		method: 'DELETE',
 	} );
 }

@@ -5,6 +5,7 @@ import {
 	Modal,
 	Notice,
 	RadioControl,
+	SelectControl,
 } from '@wordpress/components';
 import { useEffect, useState } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
@@ -12,11 +13,21 @@ import { __, sprintf } from '@wordpress/i18n';
 import { errorMessage } from '../shared/api';
 import {
 	type ApiKey,
+	type AssistantAllowance,
 	type AssistantChoices,
 	type AssistantCatalogue,
+	endAssistantAllowance,
+	fetchAssistantAllowances,
 	fetchAssistantChoices,
 	saveAssistantChoices,
 } from './api';
+
+const ALLOW_MINUTES = [
+	{ value: '0', label: __( 'Never: each call is asked', 'orillacart' ) },
+	{ value: '15', label: __( '15 minutes', 'orillacart' ) },
+	{ value: '60', label: __( 'An hour', 'orillacart' ) },
+	{ value: '240', label: __( '4 hours', 'orillacart' ) },
+];
 
 /** The shop's areas as the owner knows them; an add-on's tools come under the add-on's own name. */
 const AREAS: Record< string, string > = {
@@ -105,12 +116,27 @@ export function AssistantModal( { apiKey, catalogue, onClose }: Props ) {
 	const [ choices, setChoices ] = useState< AssistantChoices | null >( null );
 	const [ error, setError ] = useState< string | null >( null );
 	const [ saving, setSaving ] = useState( false );
+	const [ allowances, setAllowances ] = useState< AssistantAllowance[] >(
+		[]
+	);
 
 	useEffect( () => {
 		fetchAssistantChoices( apiKey.id )
 			.then( setChoices )
 			.catch( ( failure ) => setError( errorMessage( failure ) ) );
+		fetchAssistantAllowances( apiKey.id )
+			.then( ( answer ) => setAllowances( answer.allowances ) )
+			.catch( ( failure ) => setError( errorMessage( failure ) ) );
 	}, [ apiKey.id ] );
+
+	const titleOf = ( name: string ): string =>
+		catalogue.areas
+			.flatMap( ( area ) => area.tools )
+			.find( ( tool ) => tool.name === name )?.title ?? name;
+	const askAgain = ( tool?: string ) =>
+		endAssistantAllowance( apiKey.id, tool )
+			.then( ( answer ) => setAllowances( answer.allowances ) )
+			.catch( ( failure ) => setError( errorMessage( failure ) ) );
 
 	const toggle = < T, >( list: T[], value: T, on: boolean ): T[] =>
 		on
@@ -192,6 +218,78 @@ export function AssistantModal( { apiKey, catalogue, onClose }: Props ) {
 							}
 						/>
 					) ) }
+					<SelectControl
+						__nextHasNoMarginBottom
+						__next40pxDefaultSize
+						label={ __(
+							'A yes on the shop’s page may stop the asking for that tool for',
+							'orillacart'
+						) }
+						help={ __(
+							'Only for pages customers read and other changes, never for money, deleting, customers or the shop opening. The page then offers “Yes, and don’t ask again for this tool”: until the time runs out, the tool runs with any arguments for whoever holds this key.',
+							'orillacart'
+						) }
+						value={ String( choices.allow_minutes ?? 60 ) }
+						options={ ALLOW_MINUTES }
+						onChange={ ( value ) =>
+							setChoices( {
+								...choices,
+								allow_minutes: Number( value ) as
+									0 | 15 | 60 | 240,
+							} )
+						}
+					/>
+					{ allowances.length > 0 && (
+						<div className="orillacart-assistant-allowances">
+							<p>
+								<strong>
+									{ __(
+										'Not asked again for now',
+										'orillacart'
+									) }
+								</strong>
+							</p>
+							<ul>
+								{ allowances.map( ( allowance ) => (
+									<li key={ allowance.tool }>
+										{ sprintf(
+											/* translators: 1: what a tool does, such as "Save settings", 2: a time */
+											__(
+												'%1$s, until %2$s',
+												'orillacart'
+											),
+											titleOf( allowance.tool ),
+											new Date(
+												allowance.until
+											).toLocaleTimeString( [], {
+												hour: '2-digit',
+												minute: '2-digit',
+											} )
+										) }{ ' ' }
+										<Button
+											variant="link"
+											onClick={ () =>
+												askAgain( allowance.tool )
+											}
+										>
+											{ __( 'Ask again', 'orillacart' ) }
+										</Button>
+									</li>
+								) ) }
+							</ul>
+							{ allowances.length > 1 && (
+								<Button
+									variant="secondary"
+									onClick={ () => askAgain() }
+								>
+									{ __(
+										'Ask again for all of them',
+										'orillacart'
+									) }
+								</Button>
+							) }
+						</div>
+					) }
 
 					<h3>{ __( 'What it may use', 'orillacart' ) }</h3>
 					{ apiKey.scope === 'read' && (

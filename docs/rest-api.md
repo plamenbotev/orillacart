@@ -218,6 +218,25 @@ Chooses what the AI assistant that uses a key is offered, and which risks wait f
   - `list` (string): one of all, find; default 'all'
   - `ask` (list<string>): each one of money, deleting, customers, opening, publishing, changes
   - `answer` (string): one of page, app; default 'page'
+  - `allow_minutes` (int): one of 0, 15, 60, 240; default 60
+
+### `GET /api-keys/{id}/assistant/allowances`
+
+The tools the owner let the AI assistant that uses a key run without asking, each until when, the soonest to run out first.
+
+- Who: shop managers
+
+### `DELETE /api-keys/{id}/assistant/allowances`
+
+The AI assistant that uses a key asks again before the tool named, or before every tool when none is: what it still runs unasked.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `DELETE /api-keys/{id}/assistant/allowances/{tool}`
+
+The AI assistant that uses a key asks again before the tool named, or before every tool when none is: what it still runs unasked.
+
+- Who: shop managers; needs a nonce (not with an API key)
 
 ## /assistant
 
@@ -1071,7 +1090,7 @@ An extension as a file to keep or move: its id, name, version and files. Setting
 
 ### `PUT /extensions/{id}/files/{path}`
 
-Writes one file of an extension (a script ending in .ocs, or a template under templates/), making it when it is not there. An enabled extension keeps running its old files until it is enabled again; the answer's findings are the static check of the new ones. What is written reaches no one until a manager enables it, which asks again, but it changes the extension's files, so the assistant asks.
+Writes one file of an extension (a script ending in .ocs, or a template under templates/), making it when it is not there. An enabled extension keeps running its old files until it is enabled again; the answer's findings are the static check of the new ones. What is written reaches no one until a manager enables it, which asks, so the assistant does not ask for each file (an import replaces them all unasked too); every write is kept as a version.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1079,7 +1098,7 @@ Writes one file of an extension (a script ending in .ocs, or a template under te
 
 ### `DELETE /extensions/{id}/files/{path}`
 
-Removes one file of an extension.
+Removes one file of an extension; the files before are kept as a version, and an enabled extension runs its old files until enabled again.
 
 - Who: shop managers; needs a nonce (not with an API key)
 

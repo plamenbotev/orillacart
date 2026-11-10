@@ -50,21 +50,24 @@ final readonly class TransientCallApprovals implements CallApprovals
             self::text($data, 'what'),
             self::text($data, 'state'),
             $data['expires'],
+            self::text($data, 'tool'),
+            \is_int($data['allow_for'] ?? null) ? $data['allow_for'] : 0,
+            \is_int($data['allowed_until'] ?? null) ? $data['allowed_until'] : null,
         );
     }
 
-    public function ask(Caller $caller, string $call, string $title, string $risk, string $what, int $seconds): CallApproval
+    public function ask(Caller $caller, string $call, string $title, string $risk, string $what, int $seconds, string $tool = '', int $allowFor = 0): CallApproval
     {
-        $approval = new CallApproval(bin2hex(random_bytes(16)), $caller->userId, $caller->keyId, $call, $title, $risk, $what, CallApproval::WAITING, time() + $seconds);
+        $approval = new CallApproval(bin2hex(random_bytes(16)), $caller->userId, $caller->keyId, $call, $title, $risk, $what, CallApproval::WAITING, time() + $seconds, $tool, $allowFor);
         $this->save($approval);
         set_transient(self::BY_CALL . self::callKey($caller->userId, $caller->keyId, $call), $approval->token, $seconds);
 
         return $approval;
     }
 
-    public function answer(CallApproval $approval, bool $yes): void
+    public function answer(CallApproval $approval, bool $yes, ?int $allowedUntil = null): void
     {
-        $this->save($approval->answered($yes));
+        $this->save($approval->answered($yes, $allowedUntil));
     }
 
     public function spend(CallApproval $approval): bool
@@ -92,6 +95,9 @@ final readonly class TransientCallApprovals implements CallApprovals
             'what' => $approval->what,
             'state' => $approval->state,
             'expires' => $approval->expiresAt,
+            'tool' => $approval->tool,
+            'allow_for' => $approval->allowFor,
+            'allowed_until' => $approval->allowedUntil,
         ], max(1, $approval->expiresAt - time()));
     }
 

@@ -18,11 +18,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Writes one file of an extension (a script ending in .ocs, or a template under templates/), making it when it is
  * not there. An enabled extension keeps running its old files until it is enabled again; the answer's findings are
- * the static check of the new ones. What is written reaches no one until a manager enables it, which asks again,
- * but it changes the extension's files, so the assistant asks.
+ * the static check of the new ones. What is written reaches no one until a manager enables it, which asks, so the
+ * assistant does not ask for each file (an import replaces them all unasked too); every write is kept as a version.
  */
 #[Route('/extensions/{id}/files/{path}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '[a-z][a-z0-9_]*', 'path' => '.+'])]
-#[Tool(risk: Tool::CHANGES)]
+#[Tool(unasked: 'one file of an extension, kept as a version; nothing runs until enabled, which asks')]
 final readonly class WritePackageFileAction implements RequestHandlerInterface
 {
     public function __construct(private PackageService $packages, private RequestMapper $input, private JsonResponder $responder) {}

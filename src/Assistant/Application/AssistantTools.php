@@ -109,11 +109,12 @@ final readonly class AssistantTools
     }
 
     /**
-     * Whether a call needs the owner's yes first: its risk is one the key's owner wants to be asked about.
+     * Whether a call needs the owner's yes first: its risk is one the key's owner wants to be asked about, and
+     * they did not let the key run the tool unasked for a while.
      */
     public function asksFirst(ToolDefinition $tool, Caller $caller): bool
     {
-        return $caller->choices->asksBefore($tool->risk);
+        return $caller->choices->asksBefore($tool->risk) && !$caller->allows($tool);
     }
 
     /**
