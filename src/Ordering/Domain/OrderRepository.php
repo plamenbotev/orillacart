@@ -56,6 +56,14 @@ interface OrderRepository
     public function countUnpaidOnHold(int $customerId, array $gateways): int;
 
     /**
+     * How many guests' orders placed from one place (Order::callerKey()) are on hold unpaid, waiting for a
+     * payment by one of the gateways, test orders left out.
+     *
+     * @param list<string> $gateways
+     */
+    public function countUnpaidOnHoldOfCaller(string $callerKey, array $gateways): int;
+
+    /**
      * Whether the customer, by account or by who the email reaches (EmailAddress::key()), has an order that was
      * not cancelled or did not fail.
      *

@@ -138,6 +138,12 @@ final class InMemoryOrderRepository implements OrderRepository
             && $order->customerId() === $customerId && \in_array($order->paymentGateway(), $gateways, true)));
     }
 
+    public function countUnpaidOnHoldOfCaller(string $callerKey, array $gateways): int
+    {
+        return \count(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::OnHold && $order->paidAt() === null && !$order->isTest()
+            && $order->callerKey() === $callerKey && \in_array($order->paymentGateway(), $gateways, true)));
+    }
+
     public function boughtProducts(?int $customerId, string $email, array $productIds): array
     {
         $bought = [];

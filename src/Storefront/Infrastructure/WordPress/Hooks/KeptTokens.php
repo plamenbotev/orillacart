@@ -6,6 +6,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Ordering\Application\ReceiptLinks;
+use OrillaCart\Returns\Application\WithdrawalHandles;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
@@ -16,8 +17,9 @@ use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks;
  * Opened, the token goes into a cookie of the page's own path for KEPT_FOR, which scripts cannot read, and the
  * browser goes on to the address without it (?orillacart_order=kept): the browser's history, the analytics tags on
  * the page and whatever else reads the address never see the token. The page reads it back with token().
- * A receipt's token also goes into a cookie of the receipt's REST actions (ReceiptHandles::COOKIE), so its forms
- * say only which order they are for (ReceiptHandles::of()) and the page never holds the token.
+ * A receipt's token and a withdrawal's also go into a cookie of their REST actions (ReceiptHandles::COOKIE,
+ * WithdrawalHandles::COOKIE), so their forms say only which order they are for (of()) and the page never holds
+ * the token.
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class KeptTokens
@@ -32,6 +34,12 @@ final readonly class KeptTokens
         StorefrontOrderLinks::RECEIPT_QUERY => 'orillacart_receipt',
         StorefrontAccountLinks::CONFIRM_QUERY => 'orillacart_account_link',
         StorefrontWithdrawalLinks::QUERY => 'orillacart_withdrawal',
+    ];
+
+    /** The cookie a token also goes to, and the REST actions it is sent to: their forms hold a handle, not the token. */
+    private const array ACTIONS = [
+        StorefrontOrderLinks::RECEIPT_QUERY => [ReceiptHandles::COOKIE, 'orillacart/v1/receipts/'],
+        StorefrontWithdrawalLinks::QUERY => [WithdrawalHandles::COOKIE, 'orillacart/v1/withdrawals'],
     ];
 
     /** What a token of each address looks like. */
@@ -53,9 +61,10 @@ final readonly class KeptTokens
             }
             $path = parse_url(\is_string($_SERVER['REQUEST_URI'] ?? null) ? $_SERVER['REQUEST_URI'] : '/', \PHP_URL_PATH);
             setcookie($cookie, $token, ['expires' => time() + self::KEPT_FOR, 'path' => \is_string($path) && $path !== '' ? $path : '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
-            if ($query === StorefrontOrderLinks::RECEIPT_QUERY) {
-                $actions = parse_url(rest_url('orillacart/v1/receipts/'), \PHP_URL_PATH);
-                setcookie(ReceiptHandles::COOKIE, $token, ['expires' => time() + self::KEPT_FOR, 'path' => \is_string($actions) && $actions !== '' ? $actions : '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Strict']);
+            if (isset(self::ACTIONS[$query])) {
+                [$forActions, $route] = self::ACTIONS[$query];
+                $actions = parse_url(rest_url($route), \PHP_URL_PATH);
+                setcookie($forActions, $token, ['expires' => time() + self::KEPT_FOR, 'path' => \is_string($actions) && $actions !== '' ? $actions : '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Strict']);
             }
             nocache_headers();
             header('Referrer-Policy: no-referrer');

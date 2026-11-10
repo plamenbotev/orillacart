@@ -14,6 +14,8 @@ use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
+use OrillaCart\Returns\Application\WithdrawalHandles;
+use OrillaCart\Returns\Application\WithdrawalRequests;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
 
 /**
@@ -414,6 +416,32 @@ final class StorefrontTest extends RestTestCase
         $_GET = [];
         self::assertStringContainsString('The cart is empty.', do_blocks('<!-- wp:orillacart/checkout /-->'));
         self::assertMatchesRegularExpression('#<div[^>]+data-orillacart-cart-full hidden>#', do_blocks('<!-- wp:orillacart/mini-cart {"showButtons":true} /-->'));
+
+        // The withdrawal page. A plain visit asks for the order; opened from the link emailed to the order's
+        // address (KeptTokens), its form names the order and the token stays in the cookies.
+        $withdrawals = self::kernel()->container()->get(WithdrawalRequests::class);
+        self::assertInstanceOf(WithdrawalRequests::class, $withdrawals);
+        $link = $withdrawals->token($number, 'ada@example.com', time());
+        $plain = do_blocks('<!-- wp:orillacart/withdrawal /-->');
+        self::assertStringContainsString('data-orillacart-withdrawal-ask', $plain);
+        self::assertStringNotContainsString('The link no longer works here', $plain, 'a plain visit followed no link');
+        $_GET = ['orillacart_withdrawal' => 'kept'];
+        self::assertStringContainsString('The link no longer works here', do_blocks('<!-- wp:orillacart/withdrawal /-->'), 'kept for an hour');
+        $_COOKIE['orillacart_withdrawal'] = $link;
+        $opened = do_blocks('<!-- wp:orillacart/withdrawal /-->');
+        self::assertStringContainsString('data-orillacart-withdrawal="kept-' . $number . '"', $opened);
+        self::assertStringNotContainsString($link, $opened, 'no script on the page reads the token');
+        self::assertSame(410, $this->request('POST', '/withdrawals/orders', ['token' => "kept-{$number}"], nonce: true)->get_status(), 'no token kept for the actions');
+        $_COOKIE[WithdrawalHandles::COOKIE] = $link;
+        $found = $this->request('POST', '/withdrawals/orders', ['token' => "kept-{$number}"], nonce: true);
+        self::assertSame(200, $found->get_status(), (string) wp_json_encode($found->get_data()));
+        self::assertSame($number, $this->data($found)['number']);
+        self::assertSame(410, $this->request('POST', '/withdrawals/orders', ['token' => 'kept-' . ($number + 1)], nonce: true)->get_status(), 'the page of another order');
+        $withdrawn = $this->request('POST', '/withdrawals', ['token' => "kept-{$number}", 'name' => 'Ada Lovelace', 'confirmation_email' => 'ada@example.com'], nonce: true);
+        self::assertSame(201, $withdrawn->get_status(), (string) wp_json_encode($withdrawn->get_data()));
+        self::assertSame(200, $this->request('POST', '/withdrawals/orders', ['token' => $link], nonce: true)->get_status(), 'the token itself, as a client without the page sends it');
+        unset($_COOKIE['orillacart_withdrawal'], $_COOKIE[WithdrawalHandles::COOKIE]);
+        $_GET = [];
     }
 
     public function testVisitorsMakeAccountsUnlessTheShopMakesNone(): void

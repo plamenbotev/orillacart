@@ -102,6 +102,13 @@ class PendingAccount
         $this->expiresAt = max($this->expiresAt, $this->createdAt->modify(self::INVITATION_VALID_FOR));
     }
 
+    /** The names the shop gives with an invitation; one left empty stays as it is. */
+    public function named(string $firstName, string $lastName): void
+    {
+        $this->firstName = trim($firstName) !== '' ? trim($firstName) : $this->firstName;
+        $this->lastName = trim($lastName) !== '' ? trim($lastName) : $this->lastName;
+    }
+
     /** The shop's user who invited the customer; null for a visitor's own sign-up. */
     public function inviter(): ?int
     {

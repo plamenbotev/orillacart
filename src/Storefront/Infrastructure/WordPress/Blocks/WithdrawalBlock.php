@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Returns\Application\WithdrawalHandles;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
@@ -36,11 +37,16 @@ final readonly class WithdrawalBlock implements BlockDefinition
         $customer = $id === null ? null : $this->customers->account($id);
 
         $token = KeptTokens::token(StorefrontWithdrawalLinks::QUERY);
+        if ($token !== null && $token !== '' && KeptTokens::kept(StorefrontWithdrawalLinks::QUERY)) {
+            // The browser keeps the token for the withdrawal's actions too: the form says only which order.
+            $token = WithdrawalHandles::of($token) ?? '';
+        }
 
         return $this->templates->render('storefront/withdrawal.html.twig', [
             'email' => $customer->email ?? '',
             'name' => $customer === null ? '' : trim($customer->firstName . ' ' . $customer->lastName),
-            // Opened from the link emailed to the order's address: '' once the browser no longer keeps it.
+            // Opened from the link emailed to the order's address: the order's handle, '' once the browser no
+            // longer keeps the token, or what the address itself says when it could not be taken out of it.
             'token' => $token,
         ]);
     }

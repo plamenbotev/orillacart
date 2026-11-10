@@ -81,7 +81,7 @@ final readonly class WordPressToolSource implements ToolSource
             ], [], true),
             self::tool('create_product', 'Create product', 'Makes a product as a draft, hidden from customers: its name, texts, categories, brands, tags and pictures. Then set its price, stock and shipping with update_product, and put it on sale with publish_product.', $texts, ['name'], false, unasked: 'a draft product nobody but the shop sees; publish_product, which asks, puts it on sale'),
             self::tool('change_product_content', 'Change product content', 'Changes the name, texts, categories, brands, tags or pictures of a product that is a draft, pending review or in the trash; what is left out stays. status draft restores one from the trash. A product on sale or private changes, or is taken off sale, with publish_product. Price, stock and shipping are update_product\'s.', ['id' => $id, 'status' => ['description' => 'draft keeps it hidden, or restores it from the trash; pending marks it for review.', 'enum' => self::HIDDEN]] + $texts, ['id'], false, unasked: 'a product nobody but the shop sees; publish_product, which asks, changes one customers see'),
-            self::tool('publish_product', 'Publish product', 'Puts a product on sale for customers (publish), makes it private, or takes it back to a draft, with new texts, categories, brands, tags or pictures if given. Changing what a product on sale or a private one says is this too.', ['id' => $id, 'status' => ['description' => 'publish puts it on sale; private shows it only to the shop; draft takes it off sale.', 'enum' => self::SHOWN, 'default' => 'publish']] + $texts, ['id'], false, Tool::PUBLISHING),
+            self::tool('publish_product', 'Publish product', 'Puts a product on sale for customers (publish), makes it private, or takes it back to a draft, with new texts, categories, brands, tags or pictures if given. Changing what a product on sale, a private or a scheduled one says is this too: leave status out and it stays as it is.', ['id' => $id, 'status' => ['description' => 'publish puts it on sale; private shows it only to the shop; draft takes it off sale. Left out, a draft goes on sale, and a product on sale, a private or a scheduled one keeps its state.', 'enum' => self::SHOWN]] + $texts, ['id'], false, Tool::PUBLISHING),
             self::tool('trash_product', 'Trash product', 'Moves a product to the trash: it is no longer sold or shown; placed orders keep it. It can be restored with change_product_content, status draft.', ['id' => $id], ['id'], false, Tool::DELETING),
             self::tool('list_categories', 'List categories', 'The product categories, each with its parent, order, layout, picture and how many products it has; nothing changes.', [], [], true),
             self::tool('save_category', 'Save category', 'Adds a product category, or changes one when id is given: its name, parent, description, place in the order, layout and picture.', [
@@ -242,7 +242,9 @@ final readonly class WordPressToolSource implements ToolSource
         if (!$publishing && !\in_array($current, [...self::HIDDEN, 'trash', 'auto-draft'], true)) {
             throw new \InvalidArgumentException(\sprintf('Product %d is %s: change_product_content changes only a draft, a product pending review or one in the trash. Change it with publish_product, which asks the owner first.', $id, \is_string($current) ? $current : 'not a draft'));
         }
-        if ($publishing) {
+        if ($publishing && !\in_array($current, ['publish', 'private', 'future'], true)) {
+            // A product customers do not see goes on sale; one they see, a private one and a scheduled one stay
+            // as they are when only their texts are sent: the owner said yes to those, not to a sale.
             $status ??= 'publish';
         }
         $this->posts->change($id, self::change($arguments, $status));

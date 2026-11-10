@@ -566,7 +566,7 @@ export function SettingsScreen() {
 										'orillacart'
 									) }
 									help={ __(
-										'Orders on hold for a bank transfer, cheque or cash on delivery hold their stock. A shopper (by account, or by email however it is written) with this many waits for them to be paid or cancelled before ordering again. Empty: any number.',
+										'Orders on hold for a bank transfer, cheque or cash on delivery hold their stock. A shopper (by account; a guest by where they order from) with this many waits for them to be paid or cancelled before ordering again. Empty: any number.',
 										'orillacart'
 									) }
 									value={

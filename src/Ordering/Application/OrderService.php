@@ -143,6 +143,9 @@ final readonly class OrderService
             $order->markAsTest();
             $order->addNote('A test order: it is not emailed and not counted.', NoteAuthor::System, false, $this->clock->now());
         }
+        if ($command->callerKey !== null) {
+            $order->placedByCaller($command->callerKey);
+        }
         $this->orders->save($order);
         $this->stock->record(self::takenOf($command->lines), new StockNote(StockReason::Sale, $order->id()));
         $this->events->dispatch(new OrderPlaced($order->id()));
@@ -980,6 +983,17 @@ final readonly class OrderService
     public function countUnpaidOnHold(int $customerId, array $gateways): int
     {
         return $gateways === [] ? 0 : $this->orders->countUnpaidOnHold($customerId, $gateways);
+    }
+
+    /**
+     * How many guests' orders placed from one place (NewOrder::$callerKey) are on hold unpaid, waiting for a
+     * payment by one of the gateways.
+     *
+     * @param list<string> $gateways
+     */
+    public function countUnpaidOnHoldOfCaller(string $callerKey, array $gateways): int
+    {
+        return $gateways === [] ? 0 : $this->orders->countUnpaidOnHoldOfCaller($callerKey, $gateways);
     }
 
     /**

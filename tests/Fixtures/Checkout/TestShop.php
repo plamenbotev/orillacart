@@ -63,6 +63,7 @@ use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Customers\Infrastructure\TaggedPersonalDataSources;
+use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormPackages;
@@ -84,8 +85,8 @@ use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Invoicing\Application\EInvoices;
 use OrillaCart\Invoicing\Application\InvoiceAttachments;
-use OrillaCart\Invoicing\Application\InvoiceNumbers;
 use OrillaCart\Invoicing\Application\InvoiceKeys;
+use OrillaCart\Invoicing\Application\InvoiceNumbers;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Application\SendEInvoices;
 use OrillaCart\Invoicing\Infrastructure\Events\IssueInvoices;
@@ -164,6 +165,7 @@ use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Extension\ExtensionFailures;
+use OrillaCart\Shared\Http\Security\CallerKeys;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shipping\Application\CarrierPackages;
 use OrillaCart\Shipping\Application\CarrierService;
@@ -248,9 +250,7 @@ use OrillaCart\Tests\Fixtures\Ordering\InMemoryDownloadGrantRepository;
 use OrillaCart\Tests\Fixtures\Ordering\InMemoryOrderRepository;
 use OrillaCart\Tests\Fixtures\Ordering\ListedOrderLookups;
 use OrillaCart\Tests\Fixtures\Payment\FakePaymentUrls;
-use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Tests\Fixtures\Payment\FakePayPalApi;
-use OrillaCart\Tests\Fixtures\Shared\CountingRateLimiter;
 use OrillaCart\Tests\Fixtures\Payment\FakeStripeApi;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryNotifiedEvents;
@@ -261,6 +261,7 @@ use OrillaCart\Tests\Fixtures\Returns\InMemoryReturnRepository;
 use OrillaCart\Tests\Fixtures\Settings\ChosenCurrency;
 use OrillaCart\Tests\Fixtures\Settings\InMemorySettingsRepository;
 use OrillaCart\Tests\Fixtures\Settings\MemoryCurrencySettings;
+use OrillaCart\Tests\Fixtures\Shared\CountingRateLimiter;
 use OrillaCart\Tests\Fixtures\Shared\FixedUserNames;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryCarrierRepository;
 use OrillaCart\Tests\Fixtures\Shipping\InMemoryConsignmentRepository;
@@ -619,7 +620,7 @@ final class TestShop
             $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
             $this->givenItems = new GivenItems($this->carts, $this->pricing, $quotes, $this->currencies, $this->discounts),
-            $this->rateLimiter,
+            new CallerKeys($this->signatures),
         );
         $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
         $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);

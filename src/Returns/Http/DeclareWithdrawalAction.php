@@ -25,6 +25,8 @@ final readonly class DeclareWithdrawalAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->withdrawals->withdraw($this->input->body($request, ConfirmWithdrawal::class)), 201);
+        $command = $this->input->body($request, ConfirmWithdrawal::class);
+
+        return $this->responder->ok($this->withdrawals->withdraw(new ConfirmWithdrawal(PresentedWithdrawal::of($request, $command->token), $command->name, $command->confirmationEmail, $command->items)), 201);
     }
 }

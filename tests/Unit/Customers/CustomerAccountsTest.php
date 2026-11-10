@@ -111,6 +111,21 @@ final class CustomerAccountsTest extends TestCase
         self::assertSame([$wholesale->id], $this->shop->customerGroups->groupIdsOf($customer->id));
     }
 
+    public function testInvitingAgainWhileTheLinkWorksTakesTheNewNamesAndSendsNoOtherLink(): void
+    {
+        $this->shop->accounts->network = true;
+        $this->shop->customers->invite(new CreateCustomer('ada@example.com', 'Ada', 'Lovelase'), 7);
+        $link = $this->shop->accountMail->tokenFor('ada@example.com');
+
+        $again = $this->shop->customers->invite(new CreateCustomer('ada@example.com', '', 'Lovelace'), 7);
+
+        self::assertSame(['Ada', 'Lovelace'], [$again->firstName, $again->lastName], 'the name given replaces, the one left empty stays');
+        self::assertCount(1, $this->shop->pendingAccounts->accounts);
+        self::assertSame($link, $this->shop->accountMail->tokenFor('ada@example.com'));
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($link, 'correct horse'));
+        self::assertSame('Lovelace', $customer->lastName);
+    }
+
     public function testAnInvitationGoesAgainOnceADayAtMostAndCanBeWithdrawn(): void
     {
         $this->shop->accounts->network = true;

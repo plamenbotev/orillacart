@@ -62,6 +62,17 @@ final class SettingValuesTest extends TestCase
         self::assertSame('', SettingValues::accept($fields, $saved, ['target' => 'erp-1', 'sandbox' => true], 'ERP')['pin']);
     }
 
+    public function testACheckboxNeverSavedIsNoChange(): void
+    {
+        // The update that brought "Test mode" was installed after the PIN was saved.
+        $fields = [new Setting('target', 'Where to', Setting::TEXT), new Setting('sandbox', 'Test mode', Setting::BOOLEAN), new Setting('pin', 'PIN', Setting::SECRET)];
+        $saved = ['target' => 'erp-1', 'pin' => '1234'];
+
+        self::assertSame('1234', SettingValues::accept($fields, $saved, ['target' => 'erp-1', 'sandbox' => false], 'ERP')['pin'], 'left off, as it was shown');
+        self::assertSame('1234', SettingValues::accept($fields, $saved, ['target' => 'erp-1'], 'ERP')['pin'], 'not sent at all');
+        self::assertSame('', SettingValues::accept($fields, $saved, ['target' => 'erp-1', 'sandbox' => true], 'ERP')['pin'], 'turned on: a change');
+    }
+
     public function testASecretThatGoesWithNothingStaysWhateverChanges(): void
     {
         $fields = [new Setting('sandbox', 'Test mode', Setting::BOOLEAN), new Setting('secret_key', 'Secret key', Setting::SECRET, goesWith: [])];

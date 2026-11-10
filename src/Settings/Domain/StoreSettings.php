@@ -73,8 +73,8 @@ final readonly class StoreSettings
         /** How many days the shop keeps its history: stock movements, past prices and the record of carts left at checkout. */
         public int $historyDays = self::DEFAULT_HISTORY_DAYS,
         /**
-         * Orders on hold unpaid (a bank transfer, cash on delivery) one shopper, by account or by who their email
-         * reaches, may have at once: each holds its stock until paid; null for no limit.
+         * Orders on hold unpaid (a bank transfer, cash on delivery) one shopper, by account or for a guest by where
+         * they order from, may have at once: each holds its stock until paid; null for no limit.
          */
         public ?int $unpaidOrdersEach = self::DEFAULT_UNPAID_ORDERS_EACH,
     ) {

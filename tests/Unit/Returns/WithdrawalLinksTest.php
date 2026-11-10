@@ -15,6 +15,7 @@ use OrillaCart\Returns\Application\Dto\AskToWithdraw;
 use OrillaCart\Returns\Application\Dto\ConfirmWithdrawal;
 use OrillaCart\Returns\Application\Dto\OpenWithdrawal;
 use OrillaCart\Returns\Application\Dto\ReturnItem;
+use OrillaCart\Returns\Application\WithdrawalHandles;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
@@ -85,6 +86,19 @@ final class WithdrawalLinksTest extends TestCase
         $this->shop->jobs->runAll();
 
         self::assertSame([], $this->shop->mail->ofKind('withdrawal_link'), 'ask() returns nothing either way, and only an open order\'s address hears');
+    }
+
+    public function testAPagesHandleStandsForTheTokenTheBrowserKeepsForThatOrder(): void
+    {
+        $token = $this->shop->withdrawals->token($this->order, 'ada@example.com', $this->shop->clock->now()->getTimestamp());
+        $handle = WithdrawalHandles::of($token);
+
+        self::assertSame("kept-{$this->order}", $handle);
+        self::assertSame($token, WithdrawalHandles::token($handle, $token));
+        self::assertNull(WithdrawalHandles::token($handle, null), 'kept no longer');
+        self::assertNull(WithdrawalHandles::token('kept-' . ($this->order + 1), $token), 'another order\'s link was opened since');
+        self::assertSame($token, WithdrawalHandles::token($token, null), 'a token is itself');
+        self::assertNull(WithdrawalHandles::of('kept'));
     }
 
     public function testALinkOpensOnlyItsOwnOrderAndNotForever(): void

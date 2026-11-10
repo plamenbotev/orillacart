@@ -454,11 +454,22 @@ final readonly class DoctrineOrderRepository implements OrderRepository
 
     public function countUnpaidOnHold(int $customerId, array $gateways): int
     {
+        return $this->countOnHoldUnpaid('o.customerId = :whose', $customerId, $gateways);
+    }
+
+    public function countUnpaidOnHoldOfCaller(string $callerKey, array $gateways): int
+    {
+        return $this->countOnHoldUnpaid('o.callerKey = :whose', $callerKey, $gateways);
+    }
+
+    /** @param list<string> $gateways */
+    private function countOnHoldUnpaid(string $whose, int|string $value, array $gateways): int
+    {
         if ($gateways === []) {
             return 0;
         }
         $count = $this->entityManager->createQueryBuilder()->select('COUNT(o.id)')->from(Order::class, 'o')
-            ->where('o.customerId = :customer')->setParameter('customer', $customerId)
+            ->where($whose)->setParameter('whose', $value)
             ->andWhere('o.status = :status')->setParameter('status', OrderStatus::OnHold)
             ->andWhere('o.paidAt IS NULL')
             ->andWhere('o.test = false')

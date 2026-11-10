@@ -8,6 +8,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Platform\Domain\RateLimitWindow;
+use OrillaCart\Shared\Http\Security\CallerKeys;
 use OrillaCart\Shared\Http\Security\RateLimiter;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 
@@ -78,9 +79,6 @@ final readonly class TransientRateLimiter implements RateLimiter
         // at once are a soft limit, which one provider's customer, with all of its /64s, must not fill alone.
         'oauth_register_network' => [60, 3600],
         'oauth_token' => [120, 600],
-        // A guest's orders waiting for a transfer, per caller: each holds stock until it is paid or cancelled. A
-        // signed-in customer's are counted on their account, as the shop's setting says.
-        'unpaid_orders' => [5, 86400],
         // Payment providers' webhooks, per caller: PayPal and Stripe send from few addresses, a flood from one is
         // not theirs.
         'payment_notifications' => [1200, 600],
@@ -142,35 +140,10 @@ final readonly class TransientRateLimiter implements RateLimiter
         return self::LIMITS[$guard] ?? null;
     }
 
-    /**
-     * A caller as the limits count it. `ip:` an address: an IPv6 one by its /64, since one connection is given a
-     * whole /64 to pick addresses from and counting each address would give one caller billions of tries; an
-     * IPv4 one as it is, also when it comes written as IPv6 (`::ffff:a.b.c.d`, or the NAT64 prefix `64:ff9b::/96`),
-     * which would otherwise put every IPv4 caller of a dual-stack server in one /64. `net:` an address by the
-     * network around it, for limits on what a whole provider's customer could fill: an IPv6 /48 (what a site is
-     * given), an IPv4 /24. Callers that are no address, as they are.
-     */
+    /** A caller as the limits count it: CallerKeys::network(). */
     public static function network(string $caller): string
     {
-        $wide = str_starts_with($caller, 'net:');
-        if (!$wide && !str_starts_with($caller, 'ip:')) {
-            return $caller;
-        }
-        $address = substr($caller, $wide ? 4 : 3);
-        $binary = filter_var($address, \FILTER_VALIDATE_IP) === false ? false : @inet_pton($address);
-        if ($binary === false) {
-            return $caller;
-        }
-        if (\strlen($binary) === 16 && (str_starts_with($binary, str_repeat("\0", 10) . "\xff\xff") || str_starts_with($binary, "\x00\x64\xff\x9b" . str_repeat("\0", 8)))) {
-            $binary = substr($binary, 12);
-        }
-        if (\strlen($binary) === 4) {
-            $ipv4 = (string) inet_ntop($binary);
-
-            return $wide ? 'net:' . (string) inet_ntop(substr($binary, 0, 3) . "\0") . '/24' : 'ip:' . $ipv4;
-        }
-
-        return $wide ? 'net:' . bin2hex(substr($binary, 0, 6)) . '::/48' : 'ip:' . bin2hex(substr($binary, 0, 8)) . '::/64';
+        return CallerKeys::network($caller);
     }
 
     /** The count in the external object cache, whose add and incr are atomic; null for a site without one. */

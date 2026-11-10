@@ -18,6 +18,7 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Settings\Application\Dto\UpdateSettings;
+use OrillaCart\Shared\Http\Security\CallerKeys;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -101,7 +102,7 @@ final class UnpaidOrdersTest extends TestCase
     {
         $this->stocked();
         // Someone else places transfers in Ada's email, and its variants, as a guest.
-        foreach (['ada@example.com', 'Ada+a@example.com', 'ADA+b@example.com', 'ada+c@example.com'] as $email) {
+        foreach (['ada@example.com', 'Ada+a@example.com', 'ADA+b@example.com'] as $email) {
             $this->place($email, caller: 'ip:198.51.100.9');
         }
 
@@ -109,17 +110,67 @@ final class UnpaidOrdersTest extends TestCase
         self::assertSame('on_hold', $this->place(customer: $this->shop->accounts->add('ada@example.com', 'Ada'))->status, 'and from her account');
     }
 
-    public function testAGuestHoldsAFewOrdersWaitingForATransferFromOnePlace(): void
+    public function testAGuestHoldsAsManyOrdersWaitingForATransferFromOnePlaceAsTheShopSays(): void
     {
         $this->stocked();
-        $this->shop->rateLimiter->limits['unpaid_orders'] = 3;
+        $orders = [];
         for ($i = 0; $i < 3; ++$i) {
-            $this->place("guest{$i}@example.com", caller: 'ip:198.51.100.9');
+            $orders[] = $this->place("guest{$i}@example.com", caller: 'ip:198.51.100.9');
+        }
+        $refused = function (string $why): void {
+            try {
+                $this->place('guest4@example.com', caller: 'ip:198.51.100.9');
+                self::fail($why);
+            } catch (CheckoutRuleViolation $e) {
+                self::assertSame('orillacart_too_many_unpaid_orders', $e->errorCode, $why);
+            }
+        };
+
+        $refused('three wait for the money');
+        $refused('and a try that was refused takes no room');
+        self::assertSame('on_hold', $this->place('other@example.com', caller: 'ip:203.0.113.7')->status, 'another place orders');
+
+        $this->shop->orders->markPaid($orders[0]->number, null);
+        self::assertSame('on_hold', $this->place('guest4@example.com', caller: 'ip:198.51.100.9')->status, 'one paid makes room');
+        $refused('for one');
+        $this->shop->orders->cancel($orders[1]->number);
+        self::assertSame('on_hold', $this->place('guest5@example.com', caller: 'ip:198.51.100.9')->status, 'and one cancelled');
+
+        $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, unpaidOrdersEach: 5));
+        self::assertSame('on_hold', $this->place('guest6@example.com', caller: 'ip:198.51.100.9')->status, 'the shop allows five');
+        self::assertSame('on_hold', $this->place('guest7@example.com', caller: 'ip:198.51.100.9')->status);
+        $refused('five wait');
+        $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, unpaidOrdersEach: null));
+        self::assertSame('on_hold', $this->place('guest8@example.com', caller: 'ip:198.51.100.9')->status, 'or any number');
+    }
+
+    public function testATryThatPlacedNoOrderTakesNoRoom(): void
+    {
+        $this->stocked();
+        for ($i = 0; $i < 6; ++$i) {
+            try {
+                $this->place('guest@example.com', caller: 'ip:198.51.100.9', postcode: '');
+                self::fail('no postcode');
+            } catch (CheckoutRuleViolation|\OrillaCart\Shared\Domain\RuleViolation) {
+            }
         }
 
-        $this->expectException(CheckoutRuleViolation::class);
-        $this->expectExceptionMessage('Too many orders wait for a payment like this one.');
-        $this->place('guest4@example.com', caller: 'ip:198.51.100.9');
+        self::assertSame('on_hold', $this->place('guest@example.com', caller: 'ip:198.51.100.9')->status);
+    }
+
+    public function testAnOrderKeepsWhereItWasPlacedFromOnlyWhileItWaits(): void
+    {
+        $this->stocked();
+        $key = new CallerKeys($this->shop->signatures)->of('ip:198.51.100.9');
+        $waiting = $this->place('guest@example.com', caller: 'ip:198.51.100.9');
+        $paid = $this->place('guest@example.com', caller: 'ip:198.51.100.9');
+        $ada = $this->place(customer: $this->shop->accounts->add('ada@example.com', 'Ada'), caller: 'ip:198.51.100.9');
+        $this->shop->orders->markPaid($paid->number, null);
+
+        self::assertSame(32, \strlen($key));
+        self::assertStringNotContainsString('198', $this->shop->orderRecords->find($waiting->number)?->callerKey() ?? '');
+        self::assertSame([$key, null, null], array_map(fn(PlacedOrderView $order): ?string => $this->shop->orderRecords->find($order->number)?->callerKey(), [$waiting, $paid, $ada]), 'a guest\'s that waits, not a paid one, not a customer\'s');
+        self::assertSame($key, new CallerKeys($this->shop->signatures)->of('ip:::ffff:198.51.100.9'), 'as the limits count callers');
     }
 
     public function testAnOrderPaidOnlineOrOnDeliveryIsNeverRefusedForOrdersThatWait(): void
@@ -142,10 +193,10 @@ final class UnpaidOrdersTest extends TestCase
         $this->shop->stock->setLevels(StockItemRef::product(20), new SetStockLevels([new SetStockLevel($this->room, 50)]));
     }
 
-    private function place(string $email = 'ada@example.com', ?int $customer = null, string $caller = '', string $payment = 'bank_transfer'): PlacedOrderView
+    private function place(string $email = 'ada@example.com', ?int $customer = null, string $caller = '', string $payment = 'bank_transfer', string $postcode = '1000'): PlacedOrderView
     {
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $customer), new AddToCart(20))->newToken, $customer);
 
-        return $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: $payment), $caller);
+        return $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', $postcode, 'BG', '+359 2 000 0000'), payment: $payment), $caller);
     }
 }

@@ -791,6 +791,25 @@ cookies, route capabilities, tokens and signatures, the races around stock, coup
 | ✅ | 508 | P3 | Small: store credit has no unique key per customer, so two first credits at once make two rows and one balance is lost from view; `paysInFull` takes an add-on outcome with no currency; `Refunds::retry` and `giveUp` do not take the order's lock; a request header with a control byte throws outside `ErrorMiddleware` on servers that pass it (500 for 400) | 9b4683d3 |
 | ✅ | 509 | P3 | Invitations on a network (after 484): the uniform invite answered 422 and dropped the groups, a manager had no list of whom they invited, and the network's administrators, who see every user anyway, could not make accounts. `POST /customers` answers 202 with the invitation for staff (`invite()`), keeps the groups for when the link is followed, lasts 7 days and is listed a month (`GET /customer-invitations`, resend once a day, withdraw); `manage_network_users` makes or adds the account directly; the email says the shop invites | 9b4683d3 |
 
+## Review of 9b4683d3 (2026-11-10)
+
+A review of what 9b4683d3 changed. Each finding was read in the code; 510, 514, 515 and 518 are held by unit tests,
+512, 513, 516 and 517 by integration tests, and 512 was walked over HTTP on the dev site (the link, the page, the
+find action with and without the cookie).
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 510 | P1 | A return gives back more than its line cost: for the last of a line, a refund made without a return counted as its items' share, not what it gave. Of two items that cost 100, one refunded by hand with 80, the other returned got 50 (130 back). What such a refund gave beyond its items' worth comes off the line (`givenBeyondWorth`), the items before the last never get more than what is left, and a line's refunds never add up to more than it cost | |
+| ✅ | 511 | P2 | A saved secret is forgotten when an update adds a checkbox: a boolean never saved compared `false` with `''` and counted as changed, so the next save, with nothing touched, cleared every secret that goes with it or says nothing. One never saved compares as off (`SettingValues`) | |
+| ✅ | 512 | P2 | The withdrawal page printed the emailed link's token into `data-orillacart-withdrawal` (after 484), where any script on the page reads it, though the cookie keeps it from them. The form holds `kept-NUMBER` (`WithdrawalHandles`, as a receipt's); the token also goes into an HttpOnly, SameSite=Strict cookie of `/withdrawals`, which the find and declare actions read (`PresentedWithdrawal`); another order's handle, or none kept, answers 410 | |
+| ✅ | 513 | P2 | `publish_product` puts a private or scheduled product on sale: a call with texts only took `publish` as the status. A private, scheduled or published product stays as it is; only a draft goes on sale | |
+| ✅ | 514 | P2 | A guest's unpaid orders (466) were a fixed 5 a day whatever `unpaid_orders_each` says, taken before the order was placed and never given back: a refused try and a paid order counted. A guest's order waiting for a transfer keeps a key of where it was placed from (`caller_key`, the site's secret over the caller's network, `CallerKeys`), forgotten once paid, closed or anonymised, and guests are counted as customers are: orders that still wait, against the setting. The `unpaid_orders` limit is gone; the setting's help says so | |
+| ✅ | 515 | P2 | A subscriber who changes their email (481) while the shop no longer offers the newsletter stays pending for good: no confirmation was sent. It is sent whatever the offer, which is for new sign-ups | |
+| ✅ | 516 | P2 | "The link no longer works here" showed on every plain visit of the withdrawal page: `token == ''` holds for null in Twig. `is same as('')` | |
+| ✅ | 517 | P3 | The unique key of store credit (508) fails where a customer has two rows already, the race it is for, and the migration stops. It first moves the entries to the customer's first credit, works its balance out from them and removes the others; a run cut off repeats without harm | |
+| ✅ | 518 | P3 | An invitation sent again while its link works (509) took the groups and not the names, as its docblock says it does. A name given replaces the one kept; one left empty stays. No other mail goes, and a new link once a day at most, as designed | |
+| ➖ | 519 | P3 | Kept as it is. `PrivatePages::hold()` buffers every front-end page until the end, so a Cart or Checkout block outside the content (a sidebar, a footer, a pattern, the theme's PHP) can still send the no-cache headers; which pages have one cannot be known before they render. A classic theme loses its early flush (the first byte waits for the whole page); a block theme renders the whole template before any output anyway. To look at again if a shop measures it: hold only where a shopper's block was seen before, or a filter for themes that never place one outside the content | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

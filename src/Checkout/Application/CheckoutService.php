@@ -58,7 +58,7 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\Extension\ExtensionFailures;
-use OrillaCart\Shared\Http\Security\RateLimiter;
+use OrillaCart\Shared\Http\Security\CallerKeys;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\DeliveryDays;
@@ -109,7 +109,7 @@ final readonly class CheckoutService
         private LegalSettingsService $legal,
         private ShopOpening $opening,
         private GivenItems $given,
-        private RateLimiter $limits,
+        private CallerKeys $callers,
     ) {}
 
     /**
@@ -438,7 +438,7 @@ final readonly class CheckoutService
      *                                    country the shop does not sell to, a shop that only shows its catalog,
      *                                    or a price an add-on that fails closed could not set
      * @param string $caller who places it, as the rate limits count callers ("ip:203.0.113.7"): a guest's orders
-     *                       waiting for a transfer are counted by it
+     *                       waiting for a transfer are counted by a key of it, up to the shop's setting
      *
      * @throws PaymentProviderUnavailable when the payment cannot start; the order is then cancelled
      */
@@ -545,14 +545,17 @@ final readonly class CheckoutService
             }
         }
         // Orders waiting for a transfer keep their stock: one shopper holds no more than a few at once, so a limited
-        // run is not bought up by orders never paid. Counted by account, or for a guest by where they order from,
-        // never by email, which anyone can type to lock its owner out. An order paid online now, or on delivery,
-        // holds nothing unpaid, and is never refused. The words tell nothing of anyone's orders.
+        // run is not bought up by orders never paid. Counted by account, or for a guest by where they order from
+        // (the order keeps a key of it while it waits), never by email, which anyone can type to lock its owner
+        // out. Only orders that were placed and still wait count: one paid or cancelled makes room, a try that
+        // was refused takes none. An order paid online now, or on delivery, holds nothing unpaid, and is never
+        // refused. The words tell nothing of anyone's orders.
         $most = $this->settings->current()->unpaidOrdersEach;
         $offline = $gateway !== null && \in_array($gateway, $this->paymentOptions->paidOffline(), true);
+        $callerKey = $offline && !$test && $owner->customerId === null && $caller !== '' ? $this->callers->of($caller) : null;
         if ($most !== null && $offline && !$test && ($owner->customerId !== null
             ? $this->orders->countUnpaidOnHold($owner->customerId, $this->paymentOptions->paidOffline()) >= $most
-            : $caller !== '' && $this->limits->hit('unpaid_orders', $caller) !== null)) {
+            : $callerKey !== null && $this->orders->countUnpaidOnHoldOfCaller($callerKey, $this->paymentOptions->paidOffline()) >= $most)) {
             throw new CheckoutRuleViolation('Too many orders wait for a payment like this one. Choose another way to pay, or pay for the orders that wait first.', 'orillacart_too_many_unpaid_orders');
         }
         $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
@@ -586,6 +589,7 @@ final readonly class CheckoutService
             $gateway === null ? null : $this->paymentOptions->shopName($gateway),
             $shopAnswers,
             test: $test,
+            callerKey: $callerKey,
         )), $gateway === null)));
         foreach ([...$this->failures->since($failed), ...$addressNotes] as $failure) {
             $this->orders->note($order->number, $failure, false);

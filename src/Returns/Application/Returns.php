@@ -523,8 +523,9 @@ final readonly class Returns
      *
      * Each line's part is in the currency's decimals. The items that take the last of a line get what is left of
      * its worth once the earlier returns took what they gave back of it, items refunded without a return their
-     * share, and the returns still to be refunded theirs: a line's returns add up to it, whatever the coupons kept
-     * back on the way or how the refunds were booked as money.
+     * share (and what such a refund gave beyond it, givenBeyondWorth()), and the returns still to be refunded
+     * theirs; the items before the last never get more than that. A line's returns add up to it, whatever the
+     * coupons kept back on the way, and its refunds never to more than it cost.
      *
      * @param array<int, int> $items quantities by line position
      *
@@ -536,6 +537,7 @@ final readonly class Returns
         $pending = [];
         $given = [];
         $givenQuantity = [];
+        $ofReturns = [];
         foreach ($this->returns->forOrder($order->number) as $other) {
             if ($other->id() === $returnId) {
                 continue;
@@ -552,6 +554,9 @@ final readonly class Returns
             if ($values === null) {
                 // Recorded with no worths: its items count as refunded without a return.
                 continue;
+            }
+            if ($other->refundId() !== null) {
+                $ofReturns[] = $other->refundId();
             }
             foreach ($other->items() as $position => $quantity) {
                 $givenQuantity[$position] = ($givenQuantity[$position] ?? 0) + $quantity;
@@ -586,22 +591,38 @@ final readonly class Returns
                 $amount = $amount->subtract($order->pricesIncludeTax ? $price : $price->add($price->percent((string) $percent)));
             }
         }
+        $worth = static function (int $position, int $units) use ($order, $shares, $decimals): ?Money {
+            $line = self::lineAt($order, $position);
+            if ($line === null || $line->quantity < 1) {
+                return null;
+            }
+
+            return ($shares[$position] ?? self::paid($order, $line))->proportion(Money::of((string) $units), Money::of((string) $line->quantity))->rounded($decimals);
+        };
+        $beyond = null;
         $values = [];
         foreach ($items as $position => $quantity) {
             $line = self::lineAt($order, $position);
-            if ($line === null || $line->quantity < 1) {
+            $whole = $line === null ? null : $worth($position, $line->quantity);
+            if ($line === null || $whole === null) {
                 continue;
             }
-            $whole = $shares[$position] ?? self::paid($order, $line);
-            $part = static fn(int $units): Money => $whole->proportion(Money::of((string) $units), Money::of((string) $line->quantity))->rounded($decimals);
             $others = $pending[$position] ?? 0;
             $returned = $givenQuantity[$position] ?? 0;
             $outside = max(0, $line->refundedQuantity - $returned);
-            if (!$refunding && $outside + $returned + $others + $quantity >= $line->quantity) {
-                // The last of the line: what is left of it once the refunds made and those to come took theirs.
-                $values[$position] = $whole->subtract($given[$position] ?? Money::zero())->subtract($part($outside))->subtract($part($others))->atLeastZero();
+            if ($refunding) {
+                $values[$position] = $worth($position, $quantity) ?? Money::zero();
             } else {
-                $values[$position] = $part($quantity);
+                // What is left of the line once the refunds made and those to come took theirs. The last of its
+                // items get all of that; the others their share, and never more than it.
+                $left = $whole->subtract($given[$position] ?? Money::zero())->subtract($worth($position, $others) ?? Money::zero());
+                if ($outside > 0) {
+                    $beyond ??= $this->givenBeyondWorth($order, $ofReturns, $worth, $decimals);
+                    $left = $left->subtract($worth($position, $outside) ?? Money::zero())->subtract($beyond[$position] ?? Money::zero());
+                }
+                $left = $left->atLeastZero();
+                $share = $worth($position, $quantity) ?? Money::zero();
+                $values[$position] = $outside + $returned + $others + $quantity >= $line->quantity || $share->compare($left) > 0 ? $left : $share;
             }
             $amount = $amount->add($values[$position]);
         }
@@ -625,6 +646,46 @@ final readonly class Returns
         }
 
         return [$amount->subtract($taken)->atLeastZero(), $taken, $values];
+    }
+
+    /**
+     * What the refunds made without a return gave back beyond their items' worth, by line position: of two items
+     * that cost 100, one refunded by hand with 80 leaves 20 for the other to give back, not its half. A refund's
+     * money counts for its items, and its shipping, by what they are worth; one that names no item is no line's,
+     * and one that failed gave nothing.
+     *
+     * @param list<int>                  $ofReturns the refunds of the returns whose worths are counted themselves
+     * @param \Closure(int, int): ?Money $worth     what so many items of the line at a position are worth
+     *
+     * @return array<int, Money>
+     */
+    private function givenBeyondWorth(OrderView $order, array $ofReturns, \Closure $worth, int $decimals): array
+    {
+        $shipping = Money::of($order->shippingTotal)->add($order->pricesIncludeTax ? Money::zero() : Money::of($order->shippingTax));
+        $beyond = [];
+        foreach ($this->refunds->forOrder($order->number)->refunds as $refund) {
+            if ($refund->status === 'failed' || $refund->lines === [] || \in_array($refund->id, $ofReturns, true)) {
+                continue;
+            }
+            $worths = [];
+            $all = $refund->shipping ? $shipping : Money::zero();
+            foreach ($refund->lines as $line) {
+                $part = $worth($line['line'], $line['quantity']);
+                if ($part !== null) {
+                    $worths[$line['line']] = ($worths[$line['line']] ?? Money::zero())->add($part);
+                    $all = $all->add($part);
+                }
+            }
+            $over = Money::of($refund->amount)->subtract($all);
+            if ($all->isZero() || $over->compare(Money::zero()) <= 0) {
+                continue;
+            }
+            foreach ($worths as $position => $part) {
+                $beyond[$position] = ($beyond[$position] ?? Money::zero())->add($over->proportion($part, $all)->rounded($decimals));
+            }
+        }
+
+        return $beyond;
     }
 
     /**

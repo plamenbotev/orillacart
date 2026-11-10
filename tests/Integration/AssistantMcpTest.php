@@ -464,6 +464,28 @@ final class AssistantMcpTest extends RestTestCase
         self::assertSame('Logged in', self::at($answer, 'result', 'structuredContent', 'name'));
     }
 
+    public function testNewTextsForAPrivateOrScheduledProductDoNotPutItOnSale(): void
+    {
+        $this->actAs('administrator');
+        $tools = self::kernel()->container()->get(AssistantTools::class);
+        self::assertInstanceOf(AssistantTools::class, $tools);
+        $caller = new Caller(get_current_user_id(), null, false, new AssistantChoices());
+        $states = [];
+        foreach (['private', 'future', 'publish', 'draft'] as $state) {
+            $id = wp_insert_post(['post_type' => 'orillacart_product', 'post_title' => 'Lamp', 'post_status' => $state, 'post_date' => $state === 'future' ? gmdate('Y-m-d H:i:s', time() + 86400) : ''], true);
+            self::assertIsInt($id);
+            self::assertSame($state, get_post_field('post_status', $id), 'as made');
+
+            $outcome = $tools->call('publish_product', ['id' => $id, 'short_description' => 'Bright.'], $caller);
+
+            self::assertFalse($outcome?->isError(), $state);
+            self::assertSame('Bright.', get_post_field('post_excerpt', $id));
+            $states[$state] = get_post_status($id);
+        }
+
+        self::assertSame(['private' => 'private', 'future' => 'future', 'publish' => 'publish', 'draft' => 'publish'], $states, 'only a draft goes on sale unasked for');
+    }
+
     public function testEveryAreaAnswersACallOfOneOfItsReadingTools(): void
     {
         $this->actAs('administrator');

@@ -210,7 +210,9 @@ final readonly class Newsletter
         $subscriber->moveTo($to);
         $this->subscribers->save($subscriber);
         $this->sync(Subscriber::normalize($from));
-        if ($subscriber->isPending() && $this->offer() !== null) {
+        // Asked also by a shop that no longer offers the newsletter: those on it stay on it, and one nobody asks
+        // would wait for good.
+        if ($subscriber->isPending()) {
             $this->jobs->push(self::CONFIRM_JOB, ['email' => $subscriber->email(), 'locale' => $this->languages->current()], "confirm:{$subscriber->email()}");
         }
     }

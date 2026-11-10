@@ -160,6 +160,24 @@ final class NewsletterTest extends TestCase
         self::assertSame(['ada@new.example'], array_keys($this->list->members), 'on the list once confirmed');
     }
 
+    public function testAChangedEmailIsAskedToConfirmAlsoWhenTheShopNoLongerOffersTheNewsletter(): void
+    {
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
+        $this->order('ada@example.com');
+        $this->shop->jobs->runAll();
+        $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(false, 'News.', ['test_list'], confirmNew: false));
+        self::assertTrue($this->shop->newsletter->isSubscribed('ada@example.com'), 'those on it stay on it');
+
+        $this->shop->newsletter->changeEmail('ada@example.com', 'ada@new.example');
+        $this->shop->jobs->runAll();
+
+        $asked = array_values(array_filter($this->shop->mail->emails, static fn($email): bool => $email->kind === 'newsletter_confirm'));
+        self::assertSame(['ada@new.example'], array_map(static fn($email): string => $email->to, $asked), 'or the sign-up would wait for good');
+        self::assertTrue($this->shop->newsletter->confirm('ada@new.example'));
+        $this->shop->jobs->runAll();
+        self::assertSame(['ada@new.example'], array_keys($this->list->members));
+    }
+
     public function testANewSignUpWaitsForItsOwnerToConfirmItFromTheEmailBeforeAnyListHears(): void
     {
         $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list']));

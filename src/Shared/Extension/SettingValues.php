@@ -48,7 +48,8 @@ final class SettingValues
                 continue;
             }
             $values[$key] = self::value($field, $submitted[$key] ?? null, $saved[$key] ?? null);
-            if (self::comparable($values[$key]) !== self::comparable($saved[$key] ?? null)) {
+            // One never saved is as the screen showed it: off, or empty. A checkbox an update added is no change.
+            if (self::comparable($values[$key]) !== self::comparable($saved[$key] ?? ($field->type === Setting::BOOLEAN ? false : ''))) {
                 $changed[$key] = true;
             }
         }
@@ -111,10 +112,10 @@ final class SettingValues
         return [$values, $secretsSet];
     }
 
-    /** A value as compared for a change: text without case, space or a trailing slash; unset as empty. */
-    private static function comparable(string|bool|null $value): string|bool
+    /** A value as compared for a change: text without case, space or a trailing slash. */
+    private static function comparable(string|bool $value): string|bool
     {
-        return \is_bool($value) ? $value : rtrim(mb_strtolower(trim($value ?? '')), '/');
+        return \is_bool($value) ? $value : rtrim(mb_strtolower(trim($value)), '/');
     }
 
     private static function value(Setting $field, string|bool|null $value, string|bool|null $saved): string|bool

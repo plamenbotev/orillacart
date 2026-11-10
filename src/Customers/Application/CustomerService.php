@@ -404,6 +404,7 @@ final readonly class CustomerService
         $pending = $this->pending->findByEmail($email);
         if ($pending !== null && !$pending->isExpired($now)) {
             $pending->invitedBy($by, $command->groupIds);
+            $pending->named($command->firstName, $command->lastName);
             $this->pending->save($pending);
 
             return $this->invitationView($pending);

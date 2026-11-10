@@ -27,6 +27,7 @@ use OrillaCart\Shared\Domain\Text;
 #[ORM\Index(name: 'order_attention', columns: ['attention_since'])]
 #[ORM\Index(name: 'order_total', columns: ['total', 'id'])]
 #[ORM\Index(name: 'order_placed', columns: ['placed_at'])]
+#[ORM\Index(name: 'order_caller_key', columns: ['caller_key'])]
 #[ORM\Index(name: 'order_words', columns: ['words'], flags: ['fulltext'])]
 class Order
 {
@@ -156,6 +157,13 @@ class Order
      */
     #[ORM\Column(options: ['default' => false])]
     private bool $test = false;
+
+    /**
+     * Where a guest placed it from, while it waits unpaid for a transfer: a key of the caller (CallerKeys), not an
+     * address, by which the orders one place holds at once are counted. Forgotten once it is paid or closed.
+     */
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $callerKey = null;
 
     /** The language the customer ordered in (a WordPress locale such as de_DE), for what the shop writes them. */
     #[ORM\Column(length: 20, nullable: true)]
@@ -1329,6 +1337,7 @@ class Order
         $this->transactionId = $transactionId;
         $this->index();
         $this->paidAt = $at;
+        $this->callerKey = null;
         // What a provider took, and what gift cards paid besides.
         $this->paidAmount = ($amount === null ? $this->total() : $amount->add($this->giftCardTotal()))->toFixed();
 
@@ -1403,6 +1412,7 @@ class Order
                 $this->status = OrderStatus::Completed;
                 if ($this->paidAt === null) {
                     $this->paidAt = $at;
+                    $this->callerKey = null;
                     $this->paidAmount = $this->total()->toFixed();
                 }
                 $this->fulfilledAt ??= $at;
@@ -1426,6 +1436,7 @@ class Order
     private function close(OrderStatus $status): array
     {
         $this->status = $status;
+        $this->callerKey = null;
         $this->grants->clear();
         $taken = [];
         foreach ($this->lines as $line) {
@@ -1538,6 +1549,7 @@ class Order
         $this->transactionId = $transactionId;
         $this->index();
         $this->paidAt = $at;
+        $this->callerKey = null;
         // What a provider took, and what gift cards paid besides.
         $this->paidAmount = ($amount === null ? $this->total() : $amount->add($this->giftCardTotal()))->toFixed();
     }
@@ -1575,6 +1587,7 @@ class Order
         $this->billing = $this->billing->anonymised();
         $this->shippingAddress = $this->shippingAddress->isEmpty() ? $this->shippingAddress : $this->shippingAddress->anonymised();
         $this->customerId = null;
+        $this->callerKey = null;
         $this->note = '';
         $this->fields = [];
         foreach ($this->lines as $line) {
@@ -1627,6 +1640,20 @@ class Order
     public function isTest(): bool
     {
         return $this->test;
+    }
+
+    /**
+     * Keeps where a guest placed it from, as a key of the caller; only as it is placed, for an order that waits
+     * for a transfer.
+     */
+    public function placedByCaller(string $caller): void
+    {
+        $this->callerKey = $this->paidAt === null && !$this->status->isClosed() ? mb_substr($caller, 0, 32) : null;
+    }
+
+    public function callerKey(): ?string
+    {
+        return $this->callerKey;
     }
 
     /** The customer's language; null for the site's. */

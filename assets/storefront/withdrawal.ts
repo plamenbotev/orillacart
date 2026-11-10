@@ -68,7 +68,8 @@ export function bindWithdrawalAsk( form: HTMLFormElement ): void {
 /**
  * Binds the second step, opened from the emailed link: the items, the name, and the confirmation.
  *
- * @param form The form, with data-orillacart-withdrawal holding the link's token.
+ * @param form The form, with data-orillacart-withdrawal holding the order's handle: the link's token stays in a
+ *             cookie the browser sends with the calls, where no script reads it.
  */
 export function bindWithdrawal( form: HTMLFormElement ): void {
 	const token = form.dataset.orillacartWithdrawal ?? '';

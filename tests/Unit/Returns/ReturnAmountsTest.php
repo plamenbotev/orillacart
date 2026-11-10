@@ -13,6 +13,8 @@ use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\GiftCards\Domain\GiftCardSettings;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
+use OrillaCart\Ordering\Application\Dto\RefundLine;
+use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Returns\Application\Dto\AnswerReturn;
 use OrillaCart\Returns\Application\Dto\RefundReturn;
@@ -118,6 +120,41 @@ final class ReturnAmountsTest extends TestCase
 
         self::assertSame(['6.67', '6.67', '6.66'], $amounts, 'three candles paid 20 together');
         self::assertSame('20', $this->shop->orders->order($this->number)->refundedTotal);
+    }
+
+    public function testAnItemRefundedByHandForMoreThanItsShareLeavesTheRestOfTheLineForTheNext(): void
+    {
+        $receipt = $this->shipped($this->cart([40, 2], [50, 1]));
+        // One bulb of two that cost 80, refunded by hand with 70.
+        $this->shop->refunds->refund($this->number, new MakeRefund('70', [new RefundLine(0, 1)], outside: true), 7);
+
+        $bulb = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));
+
+        self::assertSame('10', $bulb->amount, 'the line cost 80 and 70 went back: 10 is left of it, not the bulb\'s 40');
+        self::assertSame('80', $this->shop->orders->order($this->number)->refundedTotal);
+    }
+
+    public function testAnItemRefundedByHandForLessThanItsShareLeavesTheNextItsOwn(): void
+    {
+        $receipt = $this->shipped($this->cart([40, 2], [50, 1]));
+        $this->shop->refunds->refund($this->number, new MakeRefund('15', [new RefundLine(0, 1)], outside: true), 7);
+
+        $bulb = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));
+
+        self::assertSame('40', $bulb->amount, 'what the shop kept of the first bulb is not the second one\'s');
+    }
+
+    public function testMoneyGivenBeyondAnItemsWorthCountsBeforeTheLastOfTheLineToo(): void
+    {
+        $receipt = $this->shipped($this->cart([40, 3], [50, 1]));
+        // One bulb of three that cost 120, refunded by hand with 100.
+        $this->shop->refunds->refund($this->number, new MakeRefund('100', [new RefundLine(0, 1)], outside: true), 7);
+
+        $second = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));
+        $third = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));
+
+        self::assertSame(['20', '0'], [$second->amount, $third->amount], '20 was left of the line');
+        self::assertSame('120', $this->shop->orders->order($this->number)->refundedTotal);
     }
 
     public function testACodesShareTakenBackOnTheFirstItemIsGivenBackOnceOnTheLast(): void

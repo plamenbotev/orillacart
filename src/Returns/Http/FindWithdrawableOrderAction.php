@@ -25,6 +25,8 @@ final readonly class FindWithdrawableOrderAction implements RequestHandlerInterf
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->withdrawals->withdrawable($this->input->body($request, OpenWithdrawal::class)));
+        $command = $this->input->body($request, OpenWithdrawal::class);
+
+        return $this->responder->ok($this->withdrawals->withdrawable(new OpenWithdrawal(PresentedWithdrawal::of($request, $command->token))));
     }
 }
