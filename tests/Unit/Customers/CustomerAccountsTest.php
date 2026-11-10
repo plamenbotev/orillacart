@@ -14,11 +14,13 @@ use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\Dto\ConfirmAccount;
 use OrillaCart\Customers\Application\Dto\CreateCustomer;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
+use OrillaCart\Customers\Application\Dto\CustomerRecord;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Customers\Application\Dto\SaveAddress;
 use OrillaCart\Customers\Application\Dto\SaveCustomerGroup;
 use OrillaCart\Customers\Application\Dto\SetCustomerGroups;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
+use OrillaCart\Customers\Domain\InvitationNotFound;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Domain\OrderNotFound;
@@ -41,17 +43,145 @@ final class CustomerAccountsTest extends TestCase
         $this->address = new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000');
     }
 
-    public function testTheShopCannotEnrolAUserOfAnotherSiteItOnlyInvitesThem(): void
+    public function testOnANetworkTheStaffInviteRatherThanMakeAccounts(): void
     {
-        $this->shop->accounts->elsewhere[501] = new \OrillaCart\Customers\Application\Dto\CustomerRecord(501, 'boss@example.com', 'Grace', 'Hopper', '2025-01-01T00:00:00+00:00');
+        $this->shop->accounts->elsewhere[501] = new CustomerRecord(501, 'boss@example.com', 'Grace', 'Hopper', '2025-01-01T00:00:00+00:00');
+        self::assertTrue($this->shop->customers->invites(false));
+        self::assertFalse($this->shop->customers->invites(true), 'the network\'s administrators see its users anyway');
         try {
-            $this->shop->customers->create(new \OrillaCart\Customers\Application\Dto\CreateCustomer('boss@example.com', 'Grace', 'Hopper'));
+            $this->shop->customers->create(new CreateCustomer('boss@example.com', 'Grace', 'Hopper'));
             self::fail('a user of another site was made one of this shop\'s');
-        } catch (\OrillaCart\Shared\Domain\RuleViolation $e) {
-            self::assertSame('orillacart_account_invited', $e->errorCode);
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_invite_instead', $e->errorCode);
         }
+        self::assertFalse($this->shop->accounts->isRegistered('boss@example.com'));
+        self::assertSame([], $this->shop->accountMail->sent, 'nothing went');
+    }
+
+    public function testOnANetworkTheShopInvitesEveryEmailAlikeAndMailsItOnceWhileTheLinkIsGood(): void
+    {
+        $this->shop->accounts->elsewhere[501] = new CustomerRecord(501, 'boss@example.com', 'Grace', 'Hopper', '2025-01-01T00:00:00+00:00');
+        $answers = [];
+        foreach (['boss@example.com', 'nobody@example.com', 'boss@example.com', 'nobody@example.com'] as $email) {
+            $invitation = $this->shop->customers->invite(new CreateCustomer($email, 'Grace', 'Hopper'), 7);
+            $answers[] = [$invitation->firstName, $invitation->lastName, $invitation->groupIds, $invitation->invitedBy, $invitation->expired, $invitation->sentAt, $invitation->expiresAt];
+        }
+        self::assertCount(1, array_unique(array_map(serialize(...), $answers)), 'the same answer whether another site has the email or nobody does');
+        self::assertSame([['invite', 'boss@example.com'], ['invite', 'nobody@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent), 'one link each while it is good');
         self::assertFalse($this->shop->accounts->isRegistered('boss@example.com'), 'they join when they follow the link');
-        self::assertSame([['confirm', 'boss@example.com']], array_map(static fn(array $mail): array => [$mail['kind'], $mail['to']], $this->shop->accountMail->sent));
+        self::assertSame(['nobody@example.com', 'boss@example.com'], array_map(static fn($invitation): string => $invitation->email, $this->shop->customers->invitations()));
+
+        $this->shop->clock->modify('+8 days');
+        $this->shop->customers->invite(new CreateCustomer('nobody@example.com'), 7);
+        self::assertCount(3, $this->shop->accountMail->sent, 'a new link once the last stopped working');
+
+        $tester = $this->shop->customers->create(new CreateCustomer('tester@shop.test', 'Test', 'Buyer', test: true));
+        self::assertTrue($tester->test, 'a test customer is made, of a domain kept for tests');
+        try {
+            $this->shop->customers->create(new CreateCustomer('tester@gmail.com', test: true));
+            self::fail('a test customer of a real domain on a network');
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_test_email', $e->errorCode);
+        }
+    }
+
+    public function testAnInvitedCustomerJoinsTheGroupsTheShopChoseWhenTheyFollowTheLink(): void
+    {
+        $this->shop->accounts->network = true;
+        $wholesale = $this->shop->customerGroups->create(new SaveCustomerGroup('Wholesale'));
+        $gone = $this->shop->customerGroups->create(new SaveCustomerGroup('Gone'));
+        $this->shop->customers->invite(new CreateCustomer('ada@example.com', 'Ada', 'Lovelace', groupIds: [$wholesale->id, $gone->id]), 7);
+        $this->shop->customerGroups->delete($gone->id);
+
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($this->shop->accountMail->tokenFor('ada@example.com'), 'correct horse'));
+
+        self::assertSame([$wholesale->id], $this->shop->customerGroups->groupIdsOf($customer->id), 'the groups still there');
+        self::assertSame([], $this->shop->customers->invitations(), 'followed, it is done');
+    }
+
+    public function testAVisitorWhoSignsUpThemselvesKeepsTheGroupsTheShopInvitedThemInto(): void
+    {
+        $this->shop->accounts->network = true;
+        $wholesale = $this->shop->customerGroups->create(new SaveCustomerGroup('Wholesale'));
+        $this->shop->customers->invite(new CreateCustomer('ada@example.com', 'Ada', 'Lovelace', groupIds: [$wholesale->id]), 7);
+
+        $this->shop->customers->requestAccount(new RegisterAccount('ada@example.com', 'Ada', 'Lovelace'));
+        $customer = $this->shop->customers->confirmAccount(new ConfirmAccount($this->shop->accountMail->tokenFor('ada@example.com'), 'correct horse'));
+
+        self::assertSame([$wholesale->id], $this->shop->customerGroups->groupIdsOf($customer->id));
+    }
+
+    public function testAnInvitationGoesAgainOnceADayAtMostAndCanBeWithdrawn(): void
+    {
+        $this->shop->accounts->network = true;
+        $invitation = $this->shop->customers->invite(new CreateCustomer('ada@example.com', 'Ada'), 7);
+        self::assertFalse($invitation->mayResend);
+        try {
+            $this->shop->customers->resendInvitation($invitation->id);
+            self::fail('sent again within the hour');
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_invitation_recent', $e->errorCode);
+        }
+        $first = $this->shop->accountMail->tokenFor('ada@example.com');
+
+        $this->shop->clock->modify('+25 hours');
+        $again = $this->shop->customers->resendInvitation($invitation->id);
+        $second = $this->shop->accountMail->tokenFor('ada@example.com');
+        self::assertNotSame($first, $second);
+        self::assertFalse($again->mayResend, 'the next once another day went');
+        try {
+            $this->shop->customers->confirmAccount(new ConfirmAccount($first, 'correct horse'));
+            self::fail('the old link still works');
+        } catch (RuleViolation $e) {
+            self::assertSame('orillacart_invalid_link', $e->errorCode);
+        }
+
+        $this->shop->customers->withdrawInvitation($invitation->id);
+        self::assertSame([], $this->shop->customers->invitations());
+        $this->expectException(InvitationNotFound::class);
+        $this->shop->customers->resendInvitation($invitation->id);
+    }
+
+    public function testAnExpiredInvitationIsKeptAMonthForTheShopToSendAgain(): void
+    {
+        $this->shop->accounts->network = true;
+        $this->shop->customers->invite(new CreateCustomer('ada@example.com'), 7);
+        $this->shop->customers->requestAccount(new RegisterAccount('grace@example.com', 'Grace', 'Hopper'));
+
+        $this->shop->clock->modify('+10 days');
+        $this->shop->customers->forgetUnconfirmed();
+        self::assertSame(['ada@example.com'], array_map(static fn($account): string => $account->email(), $this->shop->pendingAccounts->accounts), 'a visitor\'s sign-up goes; the invitation waits');
+        self::assertTrue($this->shop->customers->invitations()[0]->mayResend);
+
+        $this->shop->clock->modify('+30 days');
+        $this->shop->customers->forgetUnconfirmed();
+        self::assertSame([], $this->shop->pendingAccounts->accounts);
+    }
+
+    public function testTheNetworksAdministratorsMakeAccountsAndAddUsersOfOtherSites(): void
+    {
+        $this->shop->accounts->elsewhere[501] = new CustomerRecord(501, 'boss@example.com', 'Grace', 'Hopper', '2025-01-01T00:00:00+00:00');
+
+        $joined = $this->shop->customers->create(new CreateCustomer('boss@example.com', 'Someone', 'Else'), seesNetwork: true);
+        $made = $this->shop->customers->create(new CreateCustomer('nobody@example.com', 'Ada', 'Lovelace'), seesNetwork: true);
+
+        self::assertSame([501, 'Grace'], [$joined->id, $joined->firstName], 'the user of another site joins as they are');
+        self::assertArrayNotHasKey(501, $this->shop->accounts->passwords, 'their password is not changed');
+        self::assertTrue($this->shop->accounts->isRegistered('nobody@example.com'));
+        self::assertSame('Ada', $made->firstName);
+        self::assertSame([], $this->shop->accountMail->sent, 'nobody is emailed');
+
+        $this->shop->accounts->network = true;
+        $this->shop->accounts->elsewhere[502] = new CustomerRecord(502, 'other@example.com', 'Alan', 'Turing', '2025-01-01T00:00:00+00:00');
+        foreach (['tester@gmail.com', 'other@example.com'] as $email) {
+            try {
+                $this->shop->customers->create(new CreateCustomer($email, test: true), seesNetwork: true);
+                self::fail("{$email} made a test customer");
+            } catch (RuleViolation $e) {
+                self::assertSame('orillacart_test_email', $e->errorCode, 'a real address, or a user of another site, is no test customer even for the network\'s administrators');
+            }
+        }
+        self::assertTrue($this->shop->customers->create(new CreateCustomer('tester@shop.test', test: true), seesNetwork: true)->test);
     }
 
     public function testOnANetworkACustomerOfAnotherShopBecomesOneOfThisShopAfterConfirming(): void
@@ -314,4 +444,56 @@ final class CustomerAccountsTest extends TestCase
         }
     }
 
+    public function testAUserWhoIsNotTheShopsCustomerIsNotFoundAsOneButHasTheirOwnAccount(): void
+    {
+        $staff = $this->shop->accounts->add('boss@example.com', 'Grace', 'Hopper');
+        $this->shop->accounts->staff[] = $staff;
+        $summaries = new \OrillaCart\Customers\Application\CustomerSummaries($this->shop->customers);
+
+        self::assertNull($summaries->find($staff), 'a script asking by number learns nothing');
+        foreach ([
+            fn() => $this->shop->customers->customer($staff),
+            fn() => $this->shop->customers->welcome($staff),
+            fn() => $this->shop->customers->saveAddressOf($staff, null, new SaveAddress($this->address)),
+            fn() => $this->shop->customers->removeAddressOf($staff, 'none'),
+            fn() => $this->shop->customerGroups->setGroupsOf($staff, new SetCustomerGroups([])),
+            fn() => $this->shop->customers->assignOrder(1, $staff, 7),
+        ] as $reach) {
+            try {
+                $reach();
+                self::fail('staff reached as a customer');
+            } catch (\OrillaCart\Customers\Domain\CustomerNotFound) {
+            }
+        }
+        self::assertSame([], $this->shop->accountMail->sent);
+
+        // Logged in, they order at their own shop like anyone: their account is theirs to read and fill.
+        self::assertSame('boss@example.com', $this->shop->customers->account($staff)->email);
+        self::assertCount(1, $this->shop->customers->saveAddress($staff, null, new SaveAddress($this->address))->addresses);
+
+        $customer = $this->shop->accounts->add('ada@example.com');
+        self::assertSame('ada@example.com', $summaries->find($customer)?->email);
+    }
+
+    public function testACustomerIsAUserWhoseEveryRoleIsACustomersRole(): void
+    {
+        $roles = new \OrillaCart\Customers\Domain\CustomerSettings()->roles;
+        self::assertSame(['orillacart_customer', 'subscriber'], $roles);
+        self::assertTrue(\OrillaCart\Customers\Domain\CustomerSettings::areCustomers(['orillacart_customer'], $roles));
+        self::assertTrue(\OrillaCart\Customers\Domain\CustomerSettings::areCustomers(['subscriber', 'orillacart_customer'], $roles));
+        self::assertFalse(\OrillaCart\Customers\Domain\CustomerSettings::areCustomers(['editor'], $roles), 'another job on the site');
+        self::assertFalse(\OrillaCart\Customers\Domain\CustomerSettings::areCustomers(['orillacart_customer', 'editor'], $roles), 'a customer given another job');
+        self::assertFalse(\OrillaCart\Customers\Domain\CustomerSettings::areCustomers([], $roles), 'no role on this site');
+    }
+
+    public function testTheShopChoosesTheCustomersRolesAmongThoseTheSiteOffers(): void
+    {
+        $settings = $this->shop->customers->settings();
+        self::assertSame(['orillacart_customer', 'subscriber'], $settings->roles);
+        self::assertSame(['orillacart_customer', 'subscriber', 'author'], array_column($settings->availableRoles, 'name'));
+
+        $saved = $this->shop->customers->updateSettings(new UpdateCustomerSettings('optional', roles: ['author', 'administrator']));
+        self::assertSame(['orillacart_customer', 'author'], $saved->roles, 'the shop\'s own role stays, and a role the site does not offer is not taken');
+        self::assertSame(['orillacart_customer', 'author'], $this->shop->customers->updateSettings(new UpdateCustomerSettings('required'))->roles, 'left as they are when not named');
+    }
 }

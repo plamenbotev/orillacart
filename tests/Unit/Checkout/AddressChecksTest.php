@@ -104,6 +104,7 @@ final class AddressChecksTest extends TestCase
         $said = $this->shop->addressChecks->suggest(new CheckAddresses(self::address('1 Vitosha')));
         self::assertNotNull($said->billing);
         self::assertSame([false, AddressChecks::UNCHECKED], [$said->billing->found, $said->billing->message]);
+        self::assertSame(['address_check:required_register'], array_column($this->shop->closedFailures->since(new \DateTimeImmutable('-1 hour')), 'id'), 'the shop manager hears of a check that stops every order');
 
         $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]))->rates[0]->id;
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);

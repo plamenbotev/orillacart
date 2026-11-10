@@ -4,6 +4,9 @@
  * Visitors' pages carry no nonce, since a page cache would serve one that has expired: the first change asks
  * GET /session for one, keeps it, and asks again once when the server refuses it. Logged-in users' pages,
  * which caches do not keep, carry theirs, which every call sends: without it WordPress answers as to a visitor.
+ *
+ * The two travel in different headers. WordPress checks X-WP-Nonce itself, for its own action, before the shop's
+ * route runs, and a visitor's nonce is the shop's (made for this site), so it goes in the shop's header.
  */
 
 import { __ } from '@wordpress/i18n';
@@ -66,6 +69,16 @@ async function currentNonce(): Promise< string > {
 	return nonce ?? freshNonce();
 }
 
+/**
+ * A page that carries a nonce is a logged-in user's: theirs goes to WordPress. When it has expired the fresh one
+ * is a visitor's, which WordPress refuses there, and the shopper is told to reload rather than go on as a visitor.
+ */
+function nonceHeader(): string {
+	return window.orillacartStorefront?.nonce
+		? 'X-WP-Nonce'
+		: 'X-OrillaCart-Nonce';
+}
+
 /** Forgets the nonce: the next change reads the page's again, or asks for one. */
 export function forgetNonce(): void {
 	nonce = undefined;
@@ -119,7 +132,7 @@ async function call< T >(
 			headers[ 'Content-Type' ] = 'application/json';
 		}
 		if ( token !== null ) {
-			headers[ 'X-WP-Nonce' ] = token;
+			headers[ nonceHeader() ] = token;
 		}
 		// The page's language: the call is answered in it (the names, the order's emails).
 		const locale = window.orillacartStorefront?.locale;

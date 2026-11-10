@@ -36,7 +36,7 @@ final readonly class JobFunctions implements HostNamespace
                 $this->jobs->push(ExtensionJobHandler::TYPE, ['extension' => $c->grant->extension, 'method' => $method, 'arguments' => [Ops::plain($payload)], 'what' => 'job ' . $name], null, $when);
 
                 return null;
-            }, 1, 3, 'jobs.push(name, payload?, at?): runs the extension\'s job of that name later, in the background, with the payload; at a moment when given'),
+            }, 1, 3, 'jobs.push(name, payload?, at?): runs the extension\'s job of that name later, in the background, with the payload; at a moment when given', writes: true),
         ];
     }
 

@@ -13,8 +13,10 @@ use OrillaCart\Shared\WordPress\AsHook;
 /**
  * The assistant's tools as WordPress abilities (WordPress 6.9 and later), in the category "orillacart", so that
  * WordPress's own AI features and its MCP Adapter reach the shop too: list_orders is orillacart/list-orders.
- * Abilities cannot ask the owner before a call, so a tool with a risk stays the MCP server's, where it can. A
- * call runs as the tool does through MCP: the same checks, the same change log.
+ * Abilities cannot ask the owner before a call, and an API key's choices of what its assistant may do do not
+ * reach them, so only the tools that only read are abilities; every tool that changes something stays the MCP
+ * server's, where the key's choices hold and the owner is asked. A call runs as the tool does through MCP: the
+ * same checks, the same change log.
  */
 #[AsHook('wp_abilities_api_categories_init', method: 'category')]
 #[AsHook('wp_abilities_api_init', method: 'abilities')]
@@ -40,7 +42,7 @@ final readonly class RegisterAbilities
             return;
         }
         foreach ($this->tools->all() as $tool) {
-            if ($tool->risk !== null) {
+            if (!$tool->readOnly) {
                 continue;
             }
             wp_register_ability(self::name($tool->name), [

@@ -21,13 +21,13 @@ final readonly class Basket
     public function __construct(
         public array $lines,
         public string $currency,
+        /** Units of the basket's currency for one of the shop's: what coupons take off, and order sizes, are the shop's. */
+        public string $rate,
         public ?string $country = null,
         public ?int $customerId = null,
         public ?string $email = null,
         public bool $firstOrder = true,
         public ?Money $itemsSubtotal = null,
-        /** Units of the basket's currency for one of the shop's: what coupons take off, and order sizes, are the shop's. */
-        public string $rate = '1',
     ) {}
 
     /** An amount of the shop's, in the basket's currency. */

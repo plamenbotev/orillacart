@@ -34,6 +34,30 @@ final readonly class DownloadsHealth implements HealthCheck
     public function check(): HealthStatus
     {
         $storage = $this->downloads->storage();
+        if ($storage->claim === StorageCheck::ELSEWHERE) {
+            return HealthStatus::critical(
+                __('The shop does not know the downloads folder as its own', 'orillacart'),
+                \sprintf(
+                    /* translators: %s: the folder */
+                    __('The folder of the files customers bought (%s) is marked as another site’s or another copy of WordPress’s: this site was moved or restored, or it is a copy. Until you say which on the Status screen, no file is downloaded, stored or deleted.', 'orillacart'),
+                    $storage->directory,
+                ),
+                admin_url('admin.php?page=orillacart-status'),
+                __('Answer on the Status screen', 'orillacart'),
+            );
+        }
+        if ($storage->claim === StorageCheck::MISSING) {
+            return HealthStatus::critical(
+                __('The downloads folder is gone', 'orillacart'),
+                \sprintf(
+                    /* translators: %s: the folder */
+                    __('The folder of the files customers bought (%s) is not there. Put it back, or start a new, empty folder on the Status screen and upload the files again. Until then no file is downloaded or stored.', 'orillacart'),
+                    $storage->directory,
+                ),
+                admin_url('admin.php?page=orillacart-status'),
+                __('Answer on the Status screen', 'orillacart'),
+            );
+        }
         if ($storage->reachable === true) {
             return HealthStatus::critical(
                 __('The web server hands out the shop’s download files', 'orillacart'),

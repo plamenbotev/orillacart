@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
+use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks;
 
 /**
- * A receipt's link, and the one that finishes a new account, carry a token that opens the order or the account.
+ * A receipt's link, the one that finishes a new account, and the one that opens an order's withdrawal carry a token that opens the order or the account.
  * Opened, the token goes into a cookie of the page's own path for KEPT_FOR, which scripts cannot read, and the
  * browser goes on to the address without it (?orillacart_order=kept): the browser's history, the analytics tags on
  * the page and whatever else reads the address never see the token. The page reads it back with token().
+ * A receipt's token also goes into a cookie of the receipt's REST actions (ReceiptHandles::COOKIE), so its forms
+ * say only which order they are for (ReceiptHandles::of()) and the page never holds the token.
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class KeptTokens
@@ -27,12 +31,14 @@ final readonly class KeptTokens
     private const array COOKIES = [
         StorefrontOrderLinks::RECEIPT_QUERY => 'orillacart_receipt',
         StorefrontAccountLinks::CONFIRM_QUERY => 'orillacart_account_link',
+        StorefrontWithdrawalLinks::QUERY => 'orillacart_withdrawal',
     ];
 
     /** What a token of each address looks like. */
     private const array PATTERNS = [
         StorefrontOrderLinks::RECEIPT_QUERY => ReceiptLinks::PATTERN,
         StorefrontAccountLinks::CONFIRM_QUERY => '[a-f0-9]{64}',
+        StorefrontWithdrawalLinks::QUERY => '\\d{1,18}\\.\\d{1,12}\\.[a-f0-9]{32}',
     ];
 
     public function __invoke(): void
@@ -47,11 +53,21 @@ final readonly class KeptTokens
             }
             $path = parse_url(\is_string($_SERVER['REQUEST_URI'] ?? null) ? $_SERVER['REQUEST_URI'] : '/', \PHP_URL_PATH);
             setcookie($cookie, $token, ['expires' => time() + self::KEPT_FOR, 'path' => \is_string($path) && $path !== '' ? $path : '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+            if ($query === StorefrontOrderLinks::RECEIPT_QUERY) {
+                $actions = parse_url(rest_url('orillacart/v1/receipts/'), \PHP_URL_PATH);
+                setcookie(ReceiptHandles::COOKIE, $token, ['expires' => time() + self::KEPT_FOR, 'path' => \is_string($actions) && $actions !== '' ? $actions : '/', 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Strict']);
+            }
             nocache_headers();
             header('Referrer-Policy: no-referrer');
             wp_safe_redirect(add_query_arg($query, self::KEPT), 303);
             exit;
         }
+    }
+
+    /** Whether the address says KEPT: its token came from the browser's cookie, after the redirect. */
+    public static function kept(string $query): bool
+    {
+        return ($_GET[$query] ?? null) === self::KEPT;
     }
 
     /**

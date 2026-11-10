@@ -39,6 +39,8 @@ final readonly class ProductImports
     private const int BATCH = 50;
     /** Seconds a batch may take before it stops early, however many rows are left. */
     private const int BUDGET = 20;
+    /** How many of an import's refused rows its record in the change log names. */
+    private const int LOGGED_ERRORS = 20;
     /** Columns that name the row's product, read but not changed. */
     private const array NAMING = ['id', 'variation_id'];
 
@@ -204,6 +206,7 @@ final readonly class ProductImports
         $this->imports->progress($import);
         if ($finished) {
             $this->files->delete($import->fileKey());
+            $this->logged($import);
         }
 
         return !$finished;
@@ -226,6 +229,28 @@ final readonly class ProductImports
         $import->fail($why, $this->clock->now());
         $this->imports->progress($import);
         $this->files->delete($import->fileKey());
+        $this->logged($import);
+    }
+
+    /**
+     * An import that ended is one change the importing manager made: the change log has it once, with the file's
+     * name, what the rows did, and the first of what was refused. The log never stands in its way.
+     */
+    private function logged(ProductImport $import): void
+    {
+        try {
+            $this->changeLog?->record($import->userId(), 'POST', '/imports/products/{id}', "/imports/products/{$import->id()}", [
+                'file' => $import->filename(),
+                'status' => $import->status()->value,
+                'rows' => $import->done(),
+                'created' => $import->created(),
+                'updated' => $import->updated(),
+                'failed' => $import->failed(),
+                'errors' => \array_slice($import->errors(), 0, self::LOGGED_ERRORS),
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->error('The change log could not record products import {import}: {message}', ['import' => $import->id(), 'message' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -291,13 +316,6 @@ final readonly class ProductImports
         try {
             $this->posts->asUser($import->userId(), fn() => $this->transactions->run(function () use ($counted, $row, $all, $line): void {
                 [$created, $refused] = $this->rows->import($row, $counted->userId(), $all);
-                // Each saved row is a change the importing manager made, kept with the row as the file had it; the
-                // log never stands in its way.
-                try {
-                    $this->changeLog?->record($counted->userId(), 'PUT', '/imports/products/{id}/rows/{line}', "/imports/products/{$counted->id()}/rows/{$line}", $row);
-                } catch (\Throwable $e) {
-                    $this->logger->error('The change log could not record row {line} of products import {import}: {message}', ['line' => $line, 'import' => $counted->id(), 'message' => $e->getMessage()]);
-                }
                 match (true) {
                     $refused !== null => $counted->failedRow($line, $refused),
                     $created => $counted->createdRow(),

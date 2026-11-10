@@ -15,9 +15,9 @@ final class RecordingAccountMail implements AccountMail, AccountLinks
     /** @var list<array{kind: string, to: string, link: ?string}> */
     public array $sent = [];
 
-    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until, bool $guestOrders = true): void
+    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until, bool $guestOrders = true, bool $invited = false): void
     {
-        $this->sent[] = ['kind' => 'confirm', 'to' => $email, 'link' => $link];
+        $this->sent[] = ['kind' => $invited ? 'invite' : 'confirm', 'to' => $email, 'link' => $link];
     }
 
     public function exists(string $email, string $loginUrl, string $lostPasswordUrl): void

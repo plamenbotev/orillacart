@@ -10,12 +10,14 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Renders one of an enabled extension's views as the shop would show it (a page, an admin page, a slot, or a route answering HTML) and answers the HTML with the handler's data: for seeing a screen without a browser. The handler runs as a manager opening it would. */
+#[Tool(unasked: 'one of an extension\'s views rendered, as a manager opening it would; the handler is the extension\'s own')]
 #[Route('/extensions/{id}/preview', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '[a-z][a-z0-9_]*'])]
 final readonly class PreviewPackageAction implements RequestHandlerInterface
 {

@@ -9,12 +9,14 @@ use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Installs a new extension as a draft: its id, name and files, or no files to write them one by one. It runs nothing until enabled. */
+#[Tool(unasked: 'a new extension as a draft; nothing runs until enabled, which asks')]
 #[Route('/extensions', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class InstallPackageAction implements RequestHandlerInterface
 {

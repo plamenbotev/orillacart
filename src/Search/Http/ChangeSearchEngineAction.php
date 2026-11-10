@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -20,8 +21,9 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Switches the search engine after checking OpenSearch answers; the view says what the check found. Pointing the
  * shop at an OpenSearch server is the site administrator's (`manage_options`): its address may be anywhere on the
  * server's network, and the shop sends it requests and reads the answers. A shop manager switches back to the
- * database search.
+ * database search, which keeps the administrator's connection (address, user, password) as it was.
  */
+#[Tool(unasked: 'which search engine the shop uses')]
 #[Route('/search-engine', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class ChangeSearchEngineAction implements RequestHandlerInterface
 {
@@ -35,10 +37,11 @@ final readonly class ChangeSearchEngineAction implements RequestHandlerInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $command = $this->input->body($request, ChangeSearchEngine::class);
-        if ($command->engine === 'opensearch' && !$this->authorization->isGranted('manage_options')) {
+        $connects = $this->authorization->isGranted('manage_options');
+        if ($command->engine === 'opensearch' && !$connects) {
             throw new HttpException(403, 'orillacart_search_engine_forbidden', 'Only the site\'s administrator points the shop at an OpenSearch server.');
         }
 
-        return $this->responder->ok($this->engines->change($command));
+        return $this->responder->ok($this->engines->change($command, $connects));
     }
 }

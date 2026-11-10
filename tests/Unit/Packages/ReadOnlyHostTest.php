@@ -10,6 +10,7 @@ use OrillaCart\Scripting\Application\Context;
 use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Application\Dto\HostFunction;
 use OrillaCart\Scripting\Application\Host\Builtins;
+use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Application\ScriptTests;
@@ -23,26 +24,51 @@ use PHPUnit\Framework\TestCase;
  */
 final class ReadOnlyHostTest extends TestCase
 {
-    public function testWhatCountsAsAWrite(): void
+    public function testWhatCountsAsAWriteIsWhatTheFunctionDeclares(): void
     {
         $noop = static fn(): null => null;
 
-        self::assertTrue(ScriptRunner::writes(new HostFunction('http.get', $noop, 1, 2, '', 'http', HostFunction::HTTP)), 'a GET carries data out in its URL');
-        self::assertTrue(ScriptRunner::writes(new HostFunction('http.post', $noop, 1, 2, '', 'http', HostFunction::HTTP)));
-        self::assertTrue(ScriptRunner::writes(new HostFunction('shop.orders.mark', $noop, 2, 2, '', 'orders:read')));
-        self::assertTrue(ScriptRunner::writes(new HostFunction('shop.products.save', $noop, 1, 1, '', 'products:write')));
-        self::assertTrue(ScriptRunner::writes(new HostFunction('objects.*.create', $noop, 1, 1, '')));
-        self::assertTrue(ScriptRunner::writes(new HostFunction('shop.email.send', $noop, 3, 3, '', 'email:send', HostFunction::EMAIL)));
-        self::assertFalse(ScriptRunner::writes(new HostFunction('shop.orders.find', $noop, 1, 1, '', 'orders:read')));
-        self::assertFalse(ScriptRunner::writes(new HostFunction('objects.*.find', $noop, 1, 1, '')));
+        self::assertTrue(ScriptRunner::writes(new HostFunction('shop.orders.mark', $noop, 2, 2, '', 'orders:read', writes: true)), 'declared, whatever its permission says');
+        self::assertFalse(ScriptRunner::writes(new HostFunction('shop.orders.find', $noop, 1, 1, '', 'orders:write', writes: false)));
+        self::assertTrue(ScriptRunner::writes(new HostFunction('shop.orders.look', $noop, 1, 1, '', 'orders:read')), 'one that says nothing is taken to write');
+    }
+
+    public function testEveryFunctionOfTheShopsHostSaysWhetherItWrites(): void
+    {
+        $classes = [];
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(\dirname(__DIR__, 3) . '/src', \FilesystemIterator::SKIP_DOTS));
+        foreach ($files as $file) {
+            if ($file instanceof \SplFileInfo && str_ends_with($file->getFilename(), '.php') && str_contains((string) file_get_contents($file->getPathname()), 'implements HostNamespace')) {
+                $source = (string) file_get_contents($file->getPathname());
+                if (preg_match('/^namespace ([^;]+);/m', $source, $namespace) === 1 && preg_match('/^final (?:readonly )?class (\w+)/m', $source, $class) === 1) {
+                    $classes[] = $namespace[1] . '\\' . $class[1];
+                }
+            }
+        }
+        self::assertGreaterThan(8, \count($classes));
+        $writing = [];
+        foreach ($classes as $class) {
+            \assert(class_exists($class));
+            $host = new \ReflectionClass($class)->newInstanceWithoutConstructor();
+            \assert($host instanceof HostNamespace);
+            foreach ($host->functions() as $function) {
+                self::assertNotNull($function->writes, \sprintf('%s says whether it writes', $function->name));
+                if ($function->writes) {
+                    $writing[] = $function->name;
+                }
+            }
+        }
+        sort($writing);
+
+        self::assertSame(['fields.set', 'http.delete', 'http.get', 'http.patch', 'http.post', 'http.put', 'jobs.push', 'objects.*.create', 'objects.*.delete', 'objects.*.update', 'shop.email.send', 'shop.orders.create', 'shop.orders.mark', 'shop.orders.unmark', 'shop.products.mark', 'shop.products.unmark'], $writing);
     }
 
     public function testTheReadingHostRefusesWritesAndKeepsWhatItIsTold(): void
     {
         $catalog = HostCatalog::of([
-            new HostFunction('http.get', static fn(): string => 'real', 1, 2, '', 'http', HostFunction::HTTP),
-            new HostFunction('jobs.push', static fn(): string => 'real', 1, 3, ''),
-            new HostFunction('shop.orders.find', static fn(): string => 'real', 1, 1, '', 'orders:read'),
+            new HostFunction('http.get', static fn(): string => 'real', 1, 2, '', 'http', HostFunction::HTTP, writes: true),
+            new HostFunction('jobs.push', static fn(): string => 'real', 1, 3, '', writes: true),
+            new HostFunction('shop.orders.find', static fn(): string => 'real', 1, 1, '', 'orders:read', writes: false),
         ]);
 
         $reading = ScriptRunner::readingOnly($catalog, ['jobs.push']);
@@ -62,13 +88,13 @@ final class ReadOnlyHostTest extends TestCase
                 $marked[] = $id;
 
                 return true;
-            }, 1, 1, '', 'orders:read'),
+            }, 1, 1, '', 'orders:read', writes: true),
             new HostFunction('shop.orders.create', static fn(Context $c): int => 1, 0, 0, '', 'orders:write', HostFunction::CALL, static function (Context $c) use (&$placed): int {
                 $placed[] = 'test order';
 
                 return 7;
-            }),
-            new HostFunction('http.get', static fn(Context $c): array => ['status' => 500, 'headers' => [], 'body' => 'real', 'json' => null], 1, 2, '', 'http', HostFunction::HTTP),
+            }, writes: true),
+            new HostFunction('http.get', static fn(Context $c): array => ['status' => 500, 'headers' => [], 'body' => 'real', 'json' => null], 1, 2, '', 'http', HostFunction::HTTP, writes: true),
         ]);
         $scripts = new Scripts(new Compiler($catalog), $catalog, new InMemoryScriptStore());
         $source = <<<'OCS'

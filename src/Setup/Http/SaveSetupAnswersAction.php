@@ -18,7 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /** Keeps one step's answers, as its questions ask for them; nothing in the shop changes until the plan is applied. */
 #[Tool(leftOut: 'Each step takes its own answers: the assistant has a tool per step, setup_answer_<step>, with that step\'s questions.')]
-#[Route('/setup/answers/{step}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['step' => '[a-z][a-z_]{0,39}'])]
+#[Route('/setup/answers/{step}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['step' => '[a-z][a-z_]{0,39}'], keys: true)]
 final readonly class SaveSetupAnswersAction implements RequestHandlerInterface
 {
     public function __construct(

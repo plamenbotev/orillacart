@@ -148,7 +148,7 @@ final readonly class GiftCardService
     public function adjustStoreCredit(int $customerId, AdjustBalance $command, ?int $userId): GiftCardDetailView
     {
         return $this->detail($this->transactions->run(function () use ($customerId, $command, $userId): GiftCard {
-            $card = $this->cards->storeCreditOf($customerId, true) ?? GiftCard::storeCredit($customerId, $this->shop->current()->currency, $this->clock->now());
+            $card = $this->cards->storeCreditFor($customerId, $this->shop->current()->currency, $this->clock->now());
             if (Money::of($command->amount)->isNegative() && $card->balance()->isZero()) {
                 throw new GiftCardRuleViolation('The customer has no store credit to take off.', 'orillacart_gift_card_balance');
             }
@@ -169,7 +169,7 @@ final readonly class GiftCardService
         $now = $this->clock->now();
         $note = \sprintf('Refund of order #%d', $orderId);
         if ($customerId !== null) {
-            $card = $this->cards->storeCreditOf($customerId, true) ?? GiftCard::storeCredit($customerId, $currency, $now);
+            $card = $this->cards->storeCreditFor($customerId, $currency, $now);
             if ($card->currency() !== $currency) {
                 // Store credit is kept in one currency: a refund in another would count its amount as that one's.
                 throw new GiftCardRuleViolation('The customer\'s store credit is in %1$s; a refund in %2$s cannot be added to it. Refund it another way.', 'orillacart_store_credit_currency', values: [$card->currency(), $currency]);

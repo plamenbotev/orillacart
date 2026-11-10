@@ -30,12 +30,18 @@ use OrillaCart\Payment\Application\Dto\PayPalCapture;
 use OrillaCart\Payment\Application\Dto\PayPalNotification;
 use OrillaCart\Payment\Application\Dto\PayPalOrderRequest;
 use OrillaCart\Payment\Application\Dto\PayPalRefund;
+use OrillaCart\Payment\Application\PaymentUrls;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Http\Security\RateLimiter;
+use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * PayPal Checkout through the Orders API v2: the shop creates a PayPal order for the amount, the customer
- * approves it at PayPal and comes back, and the shop captures it. A verified webhook settles payments whose
+ * approves it at PayPal and comes back, and the shop captures it. The ids PayPal keeps (the request ids it takes
+ * a call once for, the invoice id it refuses twice) carry the site's mark, so a staging copy on the same account
+ * never collides with the shop. A webhook verified against PayPal's certificate settles payments whose
  * customer never came back, and tells of refunds made in PayPal's own dashboard. Refunds go back to the capture. Built on the extension API, as an add-on's gateway would be.
  */
 final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, HandlesReturns, NamesNotifiedPayments, NamesNotifiedEvents, ChecksPayments, ChecksRefunds, TestsSettings
@@ -49,7 +55,13 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
         'GBP' => 2, 'SGD' => 2, 'SEK' => 2, 'CHF' => 2, 'THB' => 2, 'USD' => 2,
     ];
 
-    public function __construct(private PayPalApi $api) {}
+    public function __construct(
+        private PayPalApi $api,
+        private PaymentUrls $urls,
+        private RateLimiter $limits,
+        private ClockInterface $clock,
+        private LoggerInterface $logger,
+    ) {}
 
     public function id(): string
     {
@@ -65,7 +77,7 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
     {
         return [
             new Setting('client_id', 'Client ID', required: true, help: 'From your REST app at developer.paypal.com.'),
-            new Setting('client_secret', 'Secret', Setting::SECRET, required: true),
+            new Setting('client_secret', 'Secret', Setting::SECRET, required: true, goesWith: ['client_id']),
             new Setting('sandbox', 'Sandbox', Setting::BOOLEAN, help: 'Take test payments with sandbox credentials.'),
             new Setting('webhook_id', 'Webhook ID', help: 'Needed for live payments. PayPal tells the shop of payments of customers who close the window before coming back, of reviews, refunds made at PayPal, reversals and disputes. Subscribe the webhook to the shop\'s webhook address with all events.'),
         ];
@@ -100,9 +112,10 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
         }
         // The shop's decimals are never more than PayPal's (notReady), but an add-on's session might be.
         $fits = array_all($parts, static fn(string $part): bool => Money::of($part)->rounded($decimals)->equals(Money::of($part)));
+        $site = $this->site();
         $order = $this->call(fn() => $this->api->createOrder(self::credentials($settings), new PayPalOrderRequest(
-            "orillacart-payment-{$session->paymentId}",
-            "orillacart-{$session->orderNumber}-{$session->paymentId}",
+            "orillacart-{$site}-payment-{$session->paymentId}",
+            "orillacart-{$site}-{$session->orderNumber}-{$session->paymentId}",
             (string) $session->orderNumber,
             "Order #{$session->orderNumber}",
             $amount->format($decimals),
@@ -141,7 +154,7 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
      * Coming back to the cancel address cancels only what PayPal says was never approved: one who approved in
      * another tab, then came back from the first, has paid.
      */
-    public function returned(string $token, PaymentReturn $return, Settings $settings): PaymentOutcome
+    public function returned(#[\SensitiveParameter] string $token, PaymentReturn $return, Settings $settings): PaymentOutcome
     {
         if ($return->cancelled) {
             try {
@@ -156,7 +169,7 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
             };
         }
         try {
-            return self::outcome($token, $this->api->captureOrder(self::credentials($settings), $token));
+            return self::outcome($token, $this->capture(self::credentials($settings), $token));
         } catch (PaymentProviderUnavailable) {
             return PaymentOutcome::pending($token);
         }
@@ -191,7 +204,7 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
         return match (true) {
             // Never approved, and expired since.
             $order === null, $order['status'] === 'VOIDED' => PaymentOutcome::cancelled($reference),
-            $order['status'] === 'APPROVED' => self::outcome($reference, $this->call(fn(): PayPalCapture => $this->api->captureOrder($account, $reference))),
+            $order['status'] === 'APPROVED' => self::outcome($reference, $this->call(fn(): PayPalCapture => $this->capture($account, $reference))),
             $order['capture'] !== null => self::outcome($reference, $order['capture']),
             default => PaymentOutcome::pending($reference),
         };
@@ -231,10 +244,7 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
     public function notified(Notification $notification, Settings $settings): ?PaymentOutcome
     {
         $account = self::credentials($settings);
-        $verified = $account->webhookId !== '' && $this->call(fn(): bool => $this->api->verifyNotification($account, new PayPalNotification($notification->headers, $notification->body)));
-        if (!$verified) {
-            throw new InvalidNotification('The notification is not signed by PayPal for this shop.');
-        }
+        $this->verify($notification, $account);
         $event = json_decode($notification->body, true);
         $type = \is_array($event) && \is_string($event['event_type'] ?? null) ? $event['event_type'] : '';
         $resource = \is_array($event) && \is_array($event['resource'] ?? null) ? $event['resource'] : [];
@@ -242,7 +252,7 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
         if ($type === 'CHECKOUT.ORDER.APPROVED') {
             $orderId = self::text($resource, 'id');
 
-            return $orderId === '' ? null : self::outcome($orderId, $this->call(fn(): PayPalCapture => $this->api->captureOrder($account, $orderId)));
+            return $orderId === '' ? null : self::outcome($orderId, $this->call(fn(): PayPalCapture => $this->capture($account, $orderId)));
         }
         if ($type === 'PAYMENT.CAPTURE.REVERSED') {
             $supplementary = \is_array($resource['supplementary_data'] ?? null) ? $resource['supplementary_data'] : [];
@@ -339,6 +349,64 @@ final readonly class PayPalGateway implements PaymentGateway, NamesAccounts, Han
     public static function decimals(string $currency): ?int
     {
         return self::CURRENCIES[$currency] ?? null;
+    }
+
+    /**
+     * Whether PayPal sent the webhook for this shop's webhook id. Headers not in PayPal's shape are refused before
+     * anything is asked; the signature is verified against PayPal's certificate, kept a day, so a webhook costs no
+     * call to PayPal. Only a certificate that does not look like PayPal's has the shop ask PayPal to verify, a
+     * few dozen times an hour for the whole site; past that the webhook waits, and PayPal sends it again.
+     *
+     * @throws InvalidNotification when PayPal did not send it
+     * @throws ProviderUnavailable when it cannot be told now
+     */
+    private function verify(Notification $notification, PayPalAccount $account): void
+    {
+        $now = $this->clock->now();
+        $signature = $account->webhookId === '' ? null : PayPalWebhookSignature::of($notification->headers, $now, $account->sandbox);
+        if ($signature === null) {
+            $this->refuse($account->webhookId === '' ? 'no webhook ID is set' : 'its headers are not as PayPal sends them');
+        }
+        try {
+            $verified = $signature->verify($this->api->certificate($signature->certificateUrl), $account->webhookId, $notification->body, $now, $account->sandbox);
+        } catch (PaymentProviderUnavailable) {
+            $verified = null;
+        }
+        if ($verified === null) {
+            if ($this->limits->hit('paypal_verifications', 'site') !== null) {
+                throw new ProviderUnavailable('PayPal', 'Too many webhooks were sent to PayPal to verify lately; PayPal sends this one again.');
+            }
+            $verified = $this->call(fn(): bool => $this->api->verifyNotification($account, new PayPalNotification($notification->headers, $notification->body)));
+        }
+        if (!$verified) {
+            $this->refuse('PayPal did not sign it for this shop\'s webhook ID');
+        }
+    }
+
+    /**
+     * Refuses a webhook, telling the log why in the same few words each time, and not past a few an hour.
+     *
+     * @throws InvalidNotification always
+     */
+    private function refuse(string $why): never
+    {
+        if ($this->limits->hit('paypal_refused_notifications', 'site') === null) {
+            $this->logger->warning('A PayPal webhook was refused: {why}.', ['why' => $why]);
+        }
+
+        throw new InvalidNotification('The notification is not signed by PayPal for this shop.');
+    }
+
+    /** Captures once: the customer's return and the webhook together take the money once. */
+    private function capture(PayPalAccount $account, string $orderId): PayPalCapture
+    {
+        return $this->api->captureOrder($account, $orderId, "orillacart-{$this->site()}-capture-{$orderId}");
+    }
+
+    /** The site's mark: its webhook address, which differs between the shop and a copy of it, hashed. */
+    private function site(): string
+    {
+        return substr(hash('sha256', $this->urls->notificationUrl(self::ID)), 0, 12);
     }
 
     private static function outcome(string $orderId, PayPalCapture $capture): PaymentOutcome

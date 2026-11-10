@@ -168,7 +168,7 @@ final readonly class JobsCommand implements CliCommand
         };
         $sites = [];
         $sitesAt = 0.0;
-        /** @var list<int> $warnedApart the sites the worker last said it leaves to workers of their own */
+        /** @var array<int, string> $warnedApart the sites the worker last said it leaves to workers of their own */
         $warnedApart = [];
         // Why the worker stops, if it should now: the limits are looked at after every site's turn, not once a round.
         $why = function (bool $restart, int $ran) use (&$stop, &$done, $maxJobs, $maxTime, $started, $memory, $loop): string|false|null {
@@ -193,11 +193,17 @@ final readonly class JobsCommand implements CliCommand
                     // Sites come and go on a network: look again now and then.
                     if (microtime(true) - $sitesAt >= 60) {
                         $sites = array_values(array_diff($this->sites->sites(), $except));
-                        $apart = array_values(array_diff($this->sites->apart(), $except));
+                        $apart = array_diff_key($this->sites->apart(), array_flip($except));
                         if ($apart !== [] && $apart !== $warnedApart) {
-                            \WP_CLI::warning(\sprintf('Not served: %s, whose plugins are not this site\'s. Their add-ons would be missing from their jobs, and this site\'s would run there: give each a worker of its own (--url), or turn the add-ons on for the whole network.', implode(', ', array_map(static fn(int $site): string => '#' . $site, $apart))));
+                            \WP_CLI::warning(\sprintf('Not served: %s. Their add-ons or theme would be missing from their jobs, and this site\'s would run there: give each a worker of its own (--url), or turn the add-ons on for the whole network. Each one\'s Jobs screen says so too.', self::leftOutList($apart)));
                         }
                         $warnedApart = $apart;
+                        // Told on each one, for its Jobs screen and `jobs status` there, while this worker runs.
+                        if ($loop) {
+                            foreach ($apart as $site => $because) {
+                                $this->turns->on($site, static fn(JobRunner $runner, JobWorkers $workers) => $workers->leftOut($name, $because));
+                            }
+                        }
                         $sitesAt = microtime(true);
                     }
                     $this->sites->chores();
@@ -306,6 +312,25 @@ final readonly class JobsCommand implements CliCommand
         }
         $cron = $this->workers->cronRanAt();
         \WP_CLI::log('WP-Cron last ran: ' . ($cron === null ? 'never' : $cron->format('Y-m-d H:i:s') . ' UTC'));
+        $left = $this->workers->leftOutBy();
+        if ($left !== null) {
+            \WP_CLI::warning(\sprintf('The network worker %s leaves this site out: its %s are not the ones the worker loaded. Give it a worker of its own (--url).', $left->worker, $left->reason === JobSites::THEME ? 'theme is' : 'plugins'));
+        }
+        if ($this->sites->network()) {
+            $apart = $this->sites->apart();
+            \WP_CLI::log('A network worker started on this site leaves out: ' . ($apart === [] ? 'no site' : self::leftOutList($apart)));
+        }
+    }
+
+    /** @param array<int, string> $apart why each site is left out, by id */
+    private static function leftOutList(array $apart): string
+    {
+        $list = [];
+        foreach ($apart as $site => $why) {
+            $list[] = \sprintf('#%d (%s)', $site, $why === JobSites::THEME ? 'another theme' : 'plugins of its own');
+        }
+
+        return implode(', ', $list);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Rest;
 
+use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\HttpKernel;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
@@ -29,10 +30,38 @@ final readonly class RestBridge
 
     public function handle(RouteDefinition $route, \WP_REST_Request $request): \WP_REST_Response
     {
-        return $this->toWordPress($this->kernel->handle($this->toPsr($route, $request)));
+        $psr = $this->toPsr($route, $request);
+        try {
+            $psr = self::withHeaders($psr, $request->get_headers());
+        } catch (HttpException $refused) {
+            return $this->toWordPress($this->kernel->refuse($psr, $refused));
+        }
+
+        return $this->toWordPress($this->kernel->handle($psr));
     }
 
-    public function toPsr(RouteDefinition $route, \WP_REST_Request $request): ServerRequestInterface
+    /**
+     * Copies WordPress's headers onto the request. A value PSR-7 refuses (a control byte some servers pass on) is the
+     * caller's mistake: a 400, not an error of the shop.
+     *
+     * @param array<array-key, mixed> $headers as WordPress stores them, lower-cased with underscores: x_wp_nonce
+     */
+    public static function withHeaders(ServerRequestInterface $psr, array $headers): ServerRequestInterface
+    {
+        foreach ($headers as $name => $values) {
+            $values = array_values(array_filter(\is_array($values) ? $values : [$values], \is_string(...)));
+            try {
+                $psr = $psr->withHeader(str_replace('_', '-', (string) $name), $values);
+            } catch (\InvalidArgumentException) {
+                throw HttpException::badRequest('A request header holds characters a header cannot hold.');
+            }
+        }
+
+        return $psr;
+    }
+
+    /** The request without its headers, which withHeaders() adds. */
+    private function toPsr(RouteDefinition $route, \WP_REST_Request $request): ServerRequestInterface
     {
         $query = $request->get_query_params();
         // get_body() is documented as a string but returns null when the request has no body.
@@ -66,11 +95,6 @@ final readonly class RestBridge
         }
         $psr = $psr->withUploadedFiles($files);
 
-        // WordPress stores header names lower-cased with underscores: x_wp_nonce
-        foreach ($request->get_headers() as $name => $values) {
-            $values = array_values(array_filter(\is_array($values) ? $values : [$values], \is_string(...)));
-            $psr = $psr->withHeader(str_replace('_', '-', (string) $name), $values);
-        }
         foreach ($request->get_url_params() as $name => $value) {
             $psr = $psr->withAttribute((string) $name, $value);
         }

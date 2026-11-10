@@ -29,6 +29,14 @@ final class FakePayPalApi implements PayPalApi
     public string $captureStatus = 'COMPLETED';
     public ?string $capturedAmount = null;
     public bool $signed = true;
+    /** @var array<string, string> the certificates PayPal serves, as PEM, by address */
+    public array $certificates = [];
+    /** @var list<string> the request ids of the captures asked for */
+    public array $captureRequests = [];
+    /** @var list<string> the certificates the shop fetched */
+    public array $fetchedCertificates = [];
+    /** How many times the shop asked PayPal to verify a notification. */
+    public int $verifications = 0;
     /** @var array<string, array{capture: string, amount: string, currency: string}> refunds taken, by request id */
     public array $refunds = [];
     /** Why PayPal refuses the next refunds; null: it takes them. */
@@ -58,9 +66,10 @@ final class FakePayPalApi implements PayPalApi
         return new PayPalOrder($id, $this->approveUrl ?? "https://www.sandbox.paypal.com/checkoutnow?token={$id}");
     }
 
-    public function captureOrder(PayPalAccount $account, string $orderId): PayPalCapture
+    public function captureOrder(PayPalAccount $account, string $orderId, string $requestId): PayPalCapture
     {
         $this->reach();
+        $this->captureRequests[] = $requestId;
         if ($this->whileCapturing !== null) {
             $while = $this->whileCapturing;
             $this->whileCapturing = null;
@@ -126,8 +135,17 @@ final class FakePayPalApi implements PayPalApi
     public function verifyNotification(PayPalAccount $account, PayPalNotification $notification): bool
     {
         $this->reach();
+        ++$this->verifications;
 
         return $this->signed;
+    }
+
+    public function certificate(string $url): string
+    {
+        $this->reach();
+        $this->fetchedCertificates[] = $url;
+
+        return $this->certificates[$url] ?? throw new PaymentProviderUnavailable('PayPal', 'no certificate there');
     }
 
     private function reach(): void

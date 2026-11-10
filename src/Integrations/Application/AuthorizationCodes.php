@@ -19,7 +19,7 @@ interface AuthorizationCodes
      *
      * @return array<string, mixed>|null
      */
-    public function redeem(string $code): ?array;
+    public function redeem(#[\SensitiveParameter] string $code): ?array;
 
     /**
      * What a code that was redeemed already granted, until it would have run out: a code that comes back has
@@ -27,5 +27,5 @@ interface AuthorizationCodes
      *
      * @return array<string, mixed>|null
      */
-    public function spent(string $code): ?array;
+    public function spent(#[\SensitiveParameter] string $code): ?array;
 }

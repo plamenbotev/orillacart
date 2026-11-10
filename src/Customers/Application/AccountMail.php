@@ -12,8 +12,9 @@ interface AccountMail
 {
     /**
      * @param bool $guestOrders whether the account takes the orders placed with the email before, as the email says
+     * @param bool $invited     the shop invited the customer, rather than they asked
      */
-    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until, bool $guestOrders = true): void;
+    public function confirm(string $email, string $firstName, string $link, \DateTimeImmutable $until, bool $guestOrders = true, bool $invited = false): void;
 
     public function exists(string $email, string $loginUrl, string $lostPasswordUrl): void;
 

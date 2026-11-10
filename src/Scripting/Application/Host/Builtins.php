@@ -20,7 +20,8 @@ final readonly class Builtins implements HostNamespace
 {
     public function functions(): array
     {
-        return [
+        // Each only works a value out: none changes the shop or reaches outside it.
+        return HostFunction::reading([
             new HostFunction('money', static function (Context $c, mixed $amount, mixed $currency = null): Money {
                 if ($currency !== null && preg_match('/^[A-Z]{3}$/', Ops::text($currency)) !== 1) {
                     throw new ScriptError(\sprintf('"%s" is not a currency code such as EUR', Ops::text($currency)));
@@ -62,7 +63,7 @@ final readonly class Builtins implements HostNamespace
                 return $c->grant->settings[Ops::text($key)] ?? null;
             }, 1, 1, 'settings.get(key): the value of one of the extension\'s settings, as the manager saved it; null when none'),
             new HostFunction('json.text', static fn(Context $c, mixed $value): string => $c->text((string) json_encode(Ops::plain($value, $c->room()), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)), 1, 1, 'json.text(value): the value as JSON'),
-        ];
+        ]);
     }
 
     private static function errorValue(string $kind): \Closure

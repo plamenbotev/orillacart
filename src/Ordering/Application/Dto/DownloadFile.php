@@ -15,5 +15,7 @@ final readonly class DownloadFile
         public string $filename,
         public string $mimeType,
         public string $key = '',
+        /** How far the download was sent before this request, when it is a resume: sentOnly() goes no lower. */
+        public int $sentBefore = 0,
     ) {}
 }

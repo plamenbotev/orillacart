@@ -61,7 +61,7 @@ final readonly class WebServerFileDelivery implements FileDelivery, LifecycleLis
      *
      * @internal for DeliveryProbe
      */
-    public function probe(string $token): ?string
+    public function probe(#[\SensitiveParameter] string $token): ?string
     {
         $probe = preg_match('/^[a-f0-9]{32}$/', $token) === 1 ? get_transient(self::PROBE_TRANSIENT . $token) : false;
         if (!\is_array($probe) || !\is_string($probe['method'] ?? null) || !\is_string($probe['prefix'] ?? null) || !\is_string($probe['key'] ?? null)) {

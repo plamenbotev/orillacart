@@ -863,8 +863,8 @@ class Order
     }
 
     /**
-     * Whether the refund fits the order: it is paid, the amount is no more than is left, and the items and the
-     * shipping were not refunded before. Checked before any money moves.
+     * Whether the refund fits the order: it is paid, the amount is more than nothing unless it names items and no
+     * more than is left, and the items and the shipping were not refunded before. Checked before any money moves.
      *
      * @throws OrderRuleViolation
      */
@@ -873,7 +873,8 @@ class Order
         if (!$this->isPaid()) {
             throw new OrderRuleViolation('Order #%d is not paid; only paid orders are refunded.', 'orillacart_order_not_refundable', values: [$this->id()]);
         }
-        if ($refund->amount->isNegative() || $refund->amount->isZero()) {
+        // Items that cost nothing, such as a free item sent back, come back with no money.
+        if ($refund->amount->isNegative() || $refund->amount->isZero() && $refund->quantities === []) {
             throw new OrderRuleViolation('A refund is for more than nothing.', 'orillacart_invalid_refund_amount');
         }
         if ($refund->amount->compare($this->refundable()) > 0) {
@@ -1473,8 +1474,8 @@ class Order
     }
 
     /**
-     * The customer pays the order now, with the method chosen: it waits for that payment from now. A failed
-     * order takes again the stock it gave back.
+     * The customer pays the order now, with the method chosen: it waits for that payment, within the window of
+     * its first wait online. A failed order takes again the stock it gave back.
      *
      * @param \Closure(array<int, array<string, int>>): array<int, list<TakenItem>> $take takes, for each line by its
      *                                                                                 index, the quantity of each
@@ -1497,11 +1498,16 @@ class Order
                 $line->retake($taken[$index] ?? []);
             }
         }
+        // The payment window counts from the first wait for a payment online: paying again, or after a failed
+        // try, does not start it over, so an unpaid order does not keep its prices and its stock for days. One
+        // that waited for an offline payment, with no window, starts it now.
+        if ($this->status === OrderStatus::OnHold) {
+            $this->awaitingPaymentSince = $at;
+        }
         $this->status = OrderStatus::PendingPayment;
         $this->paymentGateway = $gateway;
         $this->paymentName = mb_substr($name, 0, 100);
         $this->paymentNote = $note;
-        $this->awaitingPaymentSince = $at;
         $this->shopWord('payment_name', $shopName === null || $shopName === $this->paymentName ? null : mb_substr($shopName, 0, 100));
     }
 

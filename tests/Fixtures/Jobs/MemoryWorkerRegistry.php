@@ -14,6 +14,18 @@ final class MemoryWorkerRegistry implements WorkerRegistry
     public array $workers = [];
     public ?\DateTimeImmutable $restart = null;
     public ?\DateTimeImmutable $cron = null;
+    /** @var array{worker: string, reason: string, at: \DateTimeImmutable}|null */
+    public ?array $leftOut = null;
+
+    public function leftOut(string $worker, string $reason, \DateTimeImmutable $at): void
+    {
+        $this->leftOut = ['worker' => $worker, 'reason' => $reason, 'at' => $at];
+    }
+
+    public function leftOutBy(): ?array
+    {
+        return $this->leftOut;
+    }
 
     public function heartbeat(string $worker, array $queues, \DateTimeImmutable $startedAt, \DateTimeImmutable $now, ?string $working, int $jobsDone, int $memory): void
     {

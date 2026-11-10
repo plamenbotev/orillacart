@@ -9,6 +9,7 @@ use OrillaCart\Jobs\Application\JobOverview;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -18,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Runs failed background jobs again, chosen by id or all of them; answers with how many. Each does what it failed to
  * do, such as sending an email.
  */
+#[Tool(unasked: 'jobs that failed run as they would have')]
 #[Route('/jobs/failed/retry', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class RetryFailedJobsAction implements RequestHandlerInterface
 {

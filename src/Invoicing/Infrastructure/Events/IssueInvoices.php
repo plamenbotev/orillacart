@@ -8,6 +8,7 @@ use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Application\SendEInvoices;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
+use OrillaCart\Shared\Domain\Money;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
@@ -34,6 +35,10 @@ final readonly class IssueInvoices
     #[AsEventListener(priority: 10)]
     public function refunded(OrderRefunded $event): void
     {
+        if (Money::of($event->amount)->isZero()) {
+            // Free items that came back: no money went back, so nothing to credit.
+            return;
+        }
         $number = $this->invoices->creditNote($event->orderId, $event->amount, array_map(static fn(int $line, int $quantity): array => ['line' => $line, 'quantity' => $quantity], array_keys($event->quantities), array_values($event->quantities)), $event->taxes);
         if ($number !== null) {
             $this->send->forDocument($number);

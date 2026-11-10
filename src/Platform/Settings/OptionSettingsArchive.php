@@ -43,13 +43,37 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 /**
  * The settings each screen saves, as their options hold them: the shop's, tax, emails, invoices, customers, the
  * newsletter, reviews, the storefront, export columns, downloads and the search engine. The shop's pages and
- * download folder are this site's own and stay out; so do secrets (the search engine's password), which an
- * import leaves as this site has them. Payment methods, carriers and tax rates are the shop's records, made on
- * their screens; they are not settings here.
+ * download folder are this site's own and stay out; so do secrets, which an import leaves as this site has them.
+ * Each section declares its secrets in SECRETS, with the settings that say where each goes or whose it is (a
+ * file that changes one of those forgets the secret rather than send it there); a section that declares nothing
+ * is neither exported nor imported. A key named as a secret that no section declares stays out as well.
+ * Payment methods, carriers and tax rates are the shop's records, made on their screens; they are not settings
+ * here.
  */
 final readonly class OptionSettingsArchive implements SettingsArchive
 {
     public const string FORMAT = 'orillacart-settings';
+    /**
+     * Each section's secrets: secret key => the keys that say where it goes or whose it is.
+     *
+     * @var array<string, array<string, list<string>>>
+     */
+    public const array SECRETS = [
+        'shop' => [],
+        'tax' => [],
+        'nexus' => [],
+        'import_schemes' => [],
+        'emails' => [],
+        'invoices' => [],
+        'customers' => [],
+        'newsletter' => [],
+        'reviews' => [],
+        'storefront' => [],
+        'currencies' => [],
+        'export_columns' => [],
+        'downloads' => [],
+        'search' => ['password' => ['engine', 'host', 'username']],
+    ];
 
     public function __construct(
         private PluginContext $context,
@@ -76,7 +100,7 @@ final readonly class OptionSettingsArchive implements SettingsArchive
         foreach ($this->sections() as $section => [$option]) {
             $value = get_option($option);
             if (\is_array($value)) {
-                $settings[$section] = self::withoutSecrets($value);
+                $settings[$section] = self::withoutSecrets(self::secretsOf($section), $value);
             }
         }
 
@@ -115,10 +139,10 @@ final readonly class OptionSettingsArchive implements SettingsArchive
             // What changing the shop's settings sets off (weights converted to a new unit, the catalog indexed
             // again) follows an import as it follows the settings screen.
             $previousShop = $section === 'shop' ? $this->shop->load() : null;
-            update_option($option, self::keepingSecrets($value, \is_array($before) ? $before : []), true);
+            update_option($option, self::keepingSecrets(self::secretsOf($section), $value, \is_array($before) ? $before : []), true);
             try {
                 $roundTrip();
-                $changed = self::changed($value, get_option($option));
+                $changed = self::changed(self::secretsOf($section), $value, get_option($option));
                 $problem = $changed === [] ? null : 'These are not values the shop can use: ' . implode(', ', $changed) . '.';
             } catch (\Throwable $e) {
                 $problem = $e->getMessage();
@@ -194,18 +218,30 @@ final readonly class OptionSettingsArchive implements SettingsArchive
     }
 
     /**
+     * The secrets a section declares; one that declares nothing is refused, so no section's secrets go out by
+     * being left undeclared.
+     *
+     * @return array<string, list<string>>
+     */
+    private static function secretsOf(string $section): array
+    {
+        return self::SECRETS[$section] ?? throw new \LogicException(\sprintf('The settings section "%s" does not declare its secrets.', $section));
+    }
+
+    /**
      * The keys whose values the shop kept otherwise than written; keys it does not keep at all (left from an
      * older version) are passed over.
      *
-     * @param array<array-key, mixed> $written
+     * @param array<string, list<string>> $secrets
+     * @param array<array-key, mixed>     $written
      *
      * @return list<string>
      */
-    private static function changed(array $written, mixed $kept): array
+    private static function changed(array $secrets, array $written, mixed $kept): array
     {
-        $kept = \is_array($kept) ? self::withoutSecrets($kept) : [];
+        $kept = \is_array($kept) ? self::withoutSecrets($secrets, $kept) : [];
         $changed = [];
-        foreach (self::withoutSecrets($written) as $key => $value) {
+        foreach (self::withoutSecrets($secrets, $written) as $key => $value) {
             if (\array_key_exists($key, $kept) && $kept[$key] !== $value) {
                 $changed[] = (string) $key;
             }
@@ -215,17 +251,20 @@ final readonly class OptionSettingsArchive implements SettingsArchive
     }
 
     /**
-     * @param array<array-key, mixed> $value
+     * A section's settings without its declared secrets, nor any key named as one.
+     *
+     * @param array<string, list<string>> $secrets
+     * @param array<array-key, mixed>     $value
      *
      * @return array<array-key, mixed>
      */
-    private static function withoutSecrets(array $value): array
+    public static function withoutSecrets(array $secrets, array $value): array
     {
         foreach ($value as $key => $item) {
-            if (SecretKeys::named((string) $key)) {
+            if (isset($secrets[(string) $key]) || SecretKeys::named((string) $key)) {
                 unset($value[$key]);
             } elseif (\is_array($item)) {
-                $value[$key] = self::withoutSecrets($item);
+                $value[$key] = self::withoutSecrets([], $item);
             }
         }
 
@@ -238,31 +277,29 @@ final readonly class OptionSettingsArchive implements SettingsArchive
     }
 
     /**
-     * The file's settings, with this site's secrets where they were, unless the file changes where they go.
+     * The file's settings, with this site's secrets where they were: a declared secret stays unless the file
+     * changes a setting that says where it goes or whose it is; a key named as a secret stays as this site has it.
      *
-     * @param array<array-key, mixed> $value
-     * @param array<array-key, mixed> $current
+     * @param array<string, list<string>> $secrets
+     * @param array<array-key, mixed>     $value
+     * @param array<array-key, mixed>     $current
      *
      * @return array<array-key, mixed>
      */
-    private static function keepingSecrets(array $value, array $current): array
+    public static function keepingSecrets(array $secrets, array $value, array $current): array
     {
-        $value = self::withoutSecrets($value);
-        $moved = false;
-        foreach ($current as $key => $item) {
-            $now = $value[$key] ?? '';
-            if (\is_scalar($item) && !SecretKeys::named((string) $key) && (SecretKeys::endpoint((string) $key, $item) || SecretKeys::endpoint((string) $key, $now)) && self::address($now) !== self::address($item)) {
-                $moved = true;
+        $value = self::withoutSecrets($secrets, $value);
+        foreach ($secrets as $secret => $goesWith) {
+            $moved = array_any($goesWith, static fn(string $key): bool => self::address($value[$key] ?? '') !== self::address($current[$key] ?? ''));
+            if (!$moved && \array_key_exists($secret, $current)) {
+                $value[$secret] = $current[$secret];
             }
         }
         foreach ($current as $key => $item) {
-            if (SecretKeys::named((string) $key)) {
-                // A secret stays only for the address and user it was typed for.
-                if (!$moved) {
-                    $value[$key] = $item;
-                }
+            if (!isset($secrets[(string) $key]) && SecretKeys::named((string) $key)) {
+                $value[$key] = $item;
             } elseif (\is_array($item) && \is_array($value[$key] ?? null)) {
-                $value[$key] = self::keepingSecrets($value[$key], $item);
+                $value[$key] = self::keepingSecrets([], $value[$key], $item);
             }
         }
 

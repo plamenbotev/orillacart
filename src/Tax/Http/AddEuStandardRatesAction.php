@@ -7,6 +7,7 @@ namespace OrillaCart\Tax\Http;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Tax\Application\TaxGroupService;
 use Psr\Http\Message\ResponseInterface;
@@ -16,6 +17,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Fills a tax group with the standard VAT rate of every EU country it has none for: the group, as it is then.
  */
+#[Tool(unasked: 'tax rates added to a group')]
 #[Route('/tax/groups/{id}/eu-standard-rates', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class AddEuStandardRatesAction implements RequestHandlerInterface
 {

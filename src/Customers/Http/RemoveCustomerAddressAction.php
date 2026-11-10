@@ -25,6 +25,6 @@ final readonly class RemoveCustomerAddressAction implements RequestHandlerInterf
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->customers->removeAddress(PathParameter::id($request), PathParameter::string($request, 'address')));
+        return $this->responder->ok($this->customers->removeAddressOf(PathParameter::id($request), PathParameter::string($request, 'address')));
     }
 }

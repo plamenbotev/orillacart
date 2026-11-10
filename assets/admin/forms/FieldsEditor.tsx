@@ -449,6 +449,23 @@ function FieldForm( {
 							} )
 						}
 					/>
+					{ field.types.includes( 'application/pdf' ) && (
+						<CheckboxControl
+							__nextHasNoMarginBottom
+							label={ __(
+								'PDFs may hold links to web addresses',
+								'orillacart'
+							) }
+							help={ __(
+								'Off, a PDF with a link is refused. Many CVs and brochures have links; a link opens only when clicked.',
+								'orillacart'
+							) }
+							checked={ field.pdf_links }
+							onChange={ ( pdfLinks ) =>
+								set( { pdf_links: pdfLinks } )
+							}
+						/>
+					) }
 					<p>
 						{ __(
 							'Pictures are written again as new files and PDFs that run anything are refused. Only shop managers can download what shoppers send, from the order.',

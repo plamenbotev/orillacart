@@ -46,6 +46,7 @@ final readonly class SetupToolSource implements ToolSource
                 null,
                 'Setup',
                 Capability::MANAGE_SHOP,
+                unasked: 'keeps one step\'s answers; nothing in the shop changes until apply_setup, which asks',
             );
         }
 

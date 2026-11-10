@@ -12,6 +12,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class GiftCardCodeInput
 {
     public function __construct(
+        #[\SensitiveParameter]
         #[Assert\NotBlank(message: 'Enter the code.')]
         #[Assert\Length(max: 40)]
         public string $code,

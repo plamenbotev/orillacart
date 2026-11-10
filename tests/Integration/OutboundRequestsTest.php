@@ -78,4 +78,64 @@ final class OutboundRequestsTest extends TestCase
         self::assertSame('orillacart_unsafe_address', $response->get_error_code());
         self::assertFalse(OutboundRequests::sending('https://127.0.0.1:9200/'), 'no longer under way');
     }
+
+    public function testARequestWhoseGuardAFilterTurnedOffIsRefused(): void
+    {
+        $off = static function (array $args): array {
+            $args[OutboundRequests::PUBLIC_ONLY] = false;
+
+            return $args;
+        };
+        add_filter('http_request_args', $off, 10, 1);
+        try {
+            $response = OutboundRequests::send('https://127.0.0.1:9200/', ['timeout' => 1.0]);
+        } finally {
+            remove_filter('http_request_args', $off, 10);
+        }
+
+        self::assertInstanceOf(\WP_Error::class, $response);
+        self::assertSame('orillacart_unsafe_address', $response->get_error_code());
+        self::assertNull(OutboundRequests::expected('https://127.0.0.1:9200/'), 'no longer under way');
+    }
+
+    public function testAHostWrittenInEscapesNeverReachesWordPress(): void
+    {
+        $asked = [];
+        $watch = static function (mixed $pre, mixed $args, mixed $url) use (&$asked): mixed {
+            $asked[] = $url;
+
+            return $pre;
+        };
+        add_filter('pre_http_request', $watch, 1, 3);
+        try {
+            foreach (['http://a%2Db.example.com/', 'http://%31%32%37.0.0.1/', 'http://2130706433/', "http://\u{FF11}27.0.0.1/"] as $url) {
+                $response = OutboundRequests::send($url, ['timeout' => 1.0]);
+                self::assertInstanceOf(\WP_Error::class, $response, $url);
+                self::assertSame('orillacart_unsafe_address', $response->get_error_code(), $url);
+            }
+        } finally {
+            remove_filter('pre_http_request', $watch, 1);
+        }
+
+        self::assertSame([], $asked);
+    }
+
+    public function testCurlGivenAnotherHostThanTheOneCheckedConnectsNowhere(): void
+    {
+        $args = [OutboundRequests::PUBLIC_ONLY => true];
+        $url = 'http://93.184.215.14/hook';
+        // The two steps of the guard as WordPress runs them, with what a library in between does to the host.
+        $given = static function (string $to) use ($args, $url): string {
+            self::assertFalse(apply_filters('pre_http_request', false, $args, $url), 'checked, and left to connect');
+            $handle = curl_init($to);
+            self::assertInstanceOf(\CurlHandle::class, $handle);
+            do_action_ref_array('http_api_curl', [&$handle, $args, $url]);
+
+            return (string) curl_getinfo($handle, \CURLINFO_EFFECTIVE_URL);
+        };
+
+        self::assertSame('http://93.184.215.14/hook', $given('http://93.184.215.14/hook'), 'the host that was checked: pinned and sent');
+        self::assertSame('http://0.0.0.0:0/', $given('http://other.example.org/hook'), 'another host: looked up by no one, so nowhere');
+        self::assertSame('http://0.0.0.0:0/', $given('http://93.184.215.14.example.org/hook'));
+    }
 }

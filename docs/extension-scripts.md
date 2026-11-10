@@ -116,6 +116,11 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 - cart.refuse(message): the cart cannot be ordered as it is; the message says why
 - cart.refuse_line(line_id, message): one line cannot be ordered as it is
 
+### crypto
+
+- crypto.equals(expected, given): whether two strings are the same, in a time that tells nothing of where they differ: compare signatures with it, never with ==
+- crypto.hmac("sha256", data, key, "hex"?): the HMAC of the data with the key (sha256, sha384 or sha512), written as hex or base64
+
 ### fee
 
 - fee.of(label, amount, taxable?, tax_group_id?, as_line?): a fee added to the order

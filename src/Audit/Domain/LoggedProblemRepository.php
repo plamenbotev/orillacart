@@ -17,4 +17,11 @@ interface LoggedProblemRepository
     public function clear(): void;
 
     public function forgetBefore(\DateTimeImmutable $at): void;
+
+    /**
+     * Removes the problems about one person: those marked with their mark, and any whose message has their email.
+     *
+     * @return int how many went
+     */
+    public function forgetAbout(string $email, ?string $mark): int;
 }

@@ -9,6 +9,8 @@ use Twig\Environment;
 use Twig\Error\SyntaxError;
 use Twig\Node\Expression\AbstractExpression;
 use Twig\Node\Expression\ArrowFunctionExpression;
+use Twig\Node\BlockNode;
+use Twig\Node\Expression\Binary\ConcatBinary;
 use Twig\Node\Expression\Binary\RangeBinary;
 use Twig\Node\Expression\FilterExpression;
 use Twig\Node\Expression\FunctionExpression;
@@ -17,17 +19,19 @@ use Twig\Node\MacroNode;
 use Twig\Node\ModuleNode;
 use Twig\Node\Node;
 use Twig\Node\Nodes;
+use Twig\Node\SetNode;
 use Twig\NodeVisitor\NodeVisitorInterface;
 
 /**
- * In an extension's template, `range` and `..`, `number_format` and `format` become TemplateBudgetExtension's
- * capped ones, and every `for` turn, macro call and arrow function call counts against the render's budget. It
+ * In an extension's template, `range` and `..`, `number_format`, `format`, `replace` and `~` become
+ * TemplateBudgetExtension's capped ones, every `for` turn, macro call and arrow function call counts against the
+ * render's budget, every `set` checks the memory, and the template's body and each block nest. It
  * runs after the sandbox has seen the names, so the policy allows them as the template wrote them. The plugin's
  * and the theme's templates are left alone.
  */
 final class TemplateBudgetVisitor implements NodeVisitorInterface
 {
-    private const array FILTERS = ['number_format', 'format'];
+    private const array FILTERS = ['number_format', 'format', 'replace'];
 
     private bool $extension = false;
 
@@ -58,6 +62,15 @@ final class TemplateBudgetVisitor implements NodeVisitorInterface
 
             return new FilterExpression($value, $filter, $node->getNode('arguments'), $line);
         }
+        if ($node instanceof ConcatBinary) {
+            return self::concat($node->getNode('left'), $node->getNode('right'), $line);
+        }
+        if ($node instanceof SetNode) {
+            return new Nodes([$node, self::statement('memory()', $line)]);
+        }
+        if ($node instanceof BlockNode || $node instanceof ModuleNode) {
+            $node->setNode('body', new Nodes([self::statement('nest();' . "\n" . 'try {', $line), $node->getNode('body'), self::raw('} finally { $this->env->getExtension(' . var_export(TemplateBudgetExtension::class, true) . ')->unnest(); }', $line)]));
+        }
         if ($node instanceof ForNode || $node instanceof MacroNode) {
             $node->setNode('body', new Nodes([self::tick($line), $node->getNode('body')]));
         }
@@ -82,15 +95,43 @@ final class TemplateBudgetVisitor implements NodeVisitorInterface
     /** A statement counting one turn. */
     private static function tick(int $line): Node
     {
-        return new class ($line) extends Node {
-            public function __construct(int $line)
+        return self::statement('tick();', $line);
+    }
+
+    /** A statement calling the budget: `$this->env->getExtension(…)->` and then $call. */
+    private static function statement(string $call, int $line): Node
+    {
+        return self::raw('$this->env->getExtension(' . var_export(TemplateBudgetExtension::class, true) . ')->' . (str_ends_with($call, '{') || str_ends_with($call, ';') ? $call : $call . ';'), $line);
+    }
+
+    /** A line of PHP of this class's own making, never of a template's. */
+    private static function raw(string $code, int $line): Node
+    {
+        return new class ($code, $line) extends Node {
+            public function __construct(private readonly string $code, int $line)
             {
                 parent::__construct([], [], $line);
             }
 
             public function compile(Compiler $compiler): void
             {
-                $compiler->write('$this->env->getExtension(')->repr(TemplateBudgetExtension::class)->raw(")->tick();\n");
+                $compiler->write($this->code . "\n");
+            }
+        };
+    }
+
+    /** `left ~ right`, by the budget's concat. */
+    private static function concat(Node $left, Node $right, int $line): AbstractExpression
+    {
+        return new class ($left, $right, $line) extends AbstractExpression {
+            public function __construct(Node $left, Node $right, int $line)
+            {
+                parent::__construct(['left' => $left, 'right' => $right], [], $line);
+            }
+
+            public function compile(Compiler $compiler): void
+            {
+                $compiler->raw('$this->env->getExtension(')->repr(TemplateBudgetExtension::class)->raw(')->concat(')->subcompile($this->getNode('left'))->raw(', ')->subcompile($this->getNode('right'))->raw(')');
             }
         };
     }

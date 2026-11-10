@@ -19,6 +19,9 @@ final class InMemoryGiftCards implements GiftCardRepository
     /** @var list<GiftCardEntry> */
     public array $entries = [];
 
+    /** @var (\Closure(): void)|null what another request does just before the next store credit is made */
+    public ?\Closure $beforeStoreCredit = null;
+
     private int $nextId = 1;
     private int $nextEntry = 1;
 
@@ -46,6 +49,14 @@ final class InMemoryGiftCards implements GiftCardRepository
         return array_find($this->cards, static fn(GiftCard $card): bool => $card->kind() === GiftCardKind::StoreCredit && $card->customerId() === $customerId);
     }
 
+    public function storeCreditFor(int $customerId, string $currency, \DateTimeImmutable $now): GiftCard
+    {
+        $this->locking(true);
+        $this->concurrently();
+
+        return $this->storeCreditOf($customerId) ?? $this->made(GiftCard::storeCredit($customerId, $currency, $now));
+    }
+
     public function page(string $search, int $page, int $perPage): array
     {
         $found = array_values(array_filter(array_reverse($this->cards), static fn(GiftCard $card): bool => $card->kind() === GiftCardKind::GiftCard && ($search === '' || str_contains($card->recipientEmail(), $search) || $card->codeEnd() === strtoupper($search))));
@@ -66,6 +77,13 @@ final class InMemoryGiftCards implements GiftCardRepository
     public function save(GiftCard $card): void
     {
         $id = new \ReflectionProperty(GiftCard::class, 'id');
+        if ($id->getValue($card) === null && $card->kind() === GiftCardKind::StoreCredit) {
+            $this->concurrently();
+            if ($this->storeCreditOf((int) $card->customerId()) !== null) {
+                // As the unique key on customer and kind refuses it.
+                throw new \RuntimeException("Duplicate entry for the store credit of customer {$card->customerId()}.");
+            }
+        }
         if ($id->getValue($card) === null) {
             $id->setValue($card, $this->nextId++);
         }
@@ -86,6 +104,22 @@ final class InMemoryGiftCards implements GiftCardRepository
     public function entriesOfOrder(int $orderId): array
     {
         return array_values(array_filter($this->entries, static fn(GiftCardEntry $entry): bool => $entry->orderId() === $orderId));
+    }
+
+    private function made(GiftCard $card): GiftCard
+    {
+        $this->save($card);
+
+        return $card;
+    }
+
+    private function concurrently(): void
+    {
+        $before = $this->beforeStoreCredit;
+        $this->beforeStoreCredit = null;
+        if ($before !== null) {
+            $before();
+        }
     }
 
     private function locking(bool $lock): void

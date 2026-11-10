@@ -22,7 +22,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * route it runs, so this call itself is not.
  */
 #[Tool(leftOut: 'The assistant\'s own endpoint.')]
-#[Route('/mcp', methods: ['POST'], capability: Capability::MANAGE_SHOP, changes: false)]
+#[Route('/mcp', methods: ['POST'], capability: Capability::MANAGE_SHOP, changes: false, keys: true)]
 final readonly class McpEndpointAction implements RequestHandlerInterface
 {
     /** Keys whose value is a JSON object wherever it is, empty or not. */

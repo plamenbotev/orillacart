@@ -35,7 +35,7 @@ final readonly class ReviewTokens
      *
      * @return array{order: int, product: int, expired: bool}|null null for a token the shop never made
      */
-    public function read(string $token): ?array
+    public function read(#[\SensitiveParameter] string $token): ?array
     {
         if (preg_match('/^(\d{1,10})-(\d{1,20})-(\d{1,6})-([a-f0-9]{32})$/', $token, $parts) !== 1 || !$this->signatures->verify(self::PURPOSE, "{$parts[1]}-{$parts[2]}-{$parts[3]}", $parts[4])) {
             return null;

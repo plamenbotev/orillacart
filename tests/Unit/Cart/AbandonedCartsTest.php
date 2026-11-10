@@ -101,6 +101,51 @@ final class AbandonedCartsTest extends TestCase
         self::assertNull($report['latest'][0]->email, 'the email is not kept without the ask');
     }
 
+    public function testTheReminderLinkKeepsAFilledCartInTheBrowserAndAddsTheRemindedItems(): void
+    {
+        $this->atCheckout('ada@example.com', true);
+        $this->shop->clock->modify('+5 hours');
+        self::assertSame(1, $this->shop->cartReminders->run());
+        self::assertSame(1, preg_match('#cart=([a-f0-9]{64})#', $this->shop->mail->emails[0]->html, $link));
+
+        // This browser has a cart of its own, filled since.
+        $here = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20, quantity: 2))->newToken);
+        $token = $this->shop->carts->recover($link[1], $here);
+        self::assertNotNull($token);
+        self::assertSame(3, $this->shop->carts->cart(new CartOwner($token))->cart->items, 'its two, and the reminded one');
+        self::assertNull($this->shop->carts->recover($link[1], $here), 'the link works once');
+
+        $order = $this->shop->checkout->placeOrder(new CartOwner($token), new PlaceOrder('ada@example.com', $this->address(), payment: 'bank_transfer'));
+        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        [$from, $until] = $this->today();
+        self::assertSame(1, $this->shop->abandonedCarts->report($from, $until, 'EUR', 10)['totals']['recovered'], 'the reminded cart counts as won back');
+    }
+
+    public function testTheReminderCapCountsCartsNotTheTimesACartComesBackToCheckout(): void
+    {
+        $asked = [];
+        $cap = static function (string $email) use (&$asked): bool {
+            $asked[] = $email;
+
+            return \count($asked) <= 3;
+        };
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        foreach (range(1, 5) as $visit) {
+            $this->shop->carts->atCheckout($owner, new CheckoutContact('Ada@Example.com', true), null, $cap);
+        }
+        self::assertSame(['ada@example.com'], $asked, 'one cart, counted once however often its checkout is opened');
+        $this->shop->clock->modify('+8 hours');
+        self::assertSame(1, $this->shop->cartReminders->run(), 'and it is reminded');
+
+        foreach (range(1, 3) as $cart) {
+            $other = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+            $this->shop->carts->atCheckout($other, new CheckoutContact('ada@example.com', true), null, $cap);
+        }
+        self::assertCount(4, $asked);
+        $this->shop->clock->modify('+8 hours');
+        self::assertSame(2, $this->shop->cartReminders->run(), 'the fourth cart of the day is past the cap');
+    }
+
     public function testACartChangedOrBackAtCheckoutWaitsAgain(): void
     {
         $owner = $this->atCheckout('ada@example.com', true);

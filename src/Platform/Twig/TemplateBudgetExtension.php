@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Twig;
 
+use Twig\Error\RuntimeError;
 use Twig\Extension\AbstractExtension;
 use Twig\Extension\CoreExtension;
 use Twig\TwigFilter;
@@ -11,10 +12,12 @@ use Twig\TwigFunction;
 
 /**
  * The budget of an extension's templates, which run on the shop's pages: TemplateBudgetVisitor makes their
- * `range` and `..`, `number_format` and `format` these capped ones, and counts every loop turn, macro call and
- * arrow function call here. One render (TwigRenderer's, with whatever it includes and the slots it reaches) has
- * 100 000 turns and 32 MB more memory; past either it stops with TemplateBudgetExceeded. The shop's and the
- * theme's templates are left alone.
+ * `range` and `..`, `number_format`, `format`, `replace` and `~` these capped ones, counts every loop turn, macro
+ * call and arrow function call here, checks the memory after every `set`, and nests every template and block it
+ * renders. One render (TwigRenderer's, with whatever it includes and the slots it reaches) has 100 000 turns,
+ * 32 MB more memory and templates and blocks nested 32 deep; past any it stops with TemplateBudgetExceeded. What
+ * `~` and `replace` would make is predicted, so a string doubled without a loop stops before the memory is spent.
+ * The shop's and the theme's templates are left alone.
  */
 final class TemplateBudgetExtension extends AbstractExtension
 {
@@ -29,9 +32,12 @@ final class TemplateBudgetExtension extends AbstractExtension
     public const int DECIMALS = 20;
     /** The widest field or precision `format` takes. */
     public const int WIDTH = 1000;
+    /** How deep templates (included, embedded, extended) and blocks nest in one render. */
+    public const int NESTING = 32;
 
     private int $depth = 0;
     private int $turns = 0;
+    private int $nesting = 0;
     private int $memory;
 
     public function __construct()
@@ -49,6 +55,7 @@ final class TemplateBudgetExtension extends AbstractExtension
         return [
             new TwigFilter(self::PREFIX . 'number_format', $this->numberFormat(...), ['needs_environment' => true]),
             new TwigFilter(self::PREFIX . 'format', self::format(...)),
+            new TwigFilter(self::PREFIX . 'replace', $this->replace(...)),
         ];
     }
 
@@ -57,6 +64,7 @@ final class TemplateBudgetExtension extends AbstractExtension
     {
         if ($this->depth++ === 0) {
             $this->turns = 0;
+            $this->nesting = 0;
             $this->memory = memory_get_usage();
         }
     }
@@ -72,11 +80,74 @@ final class TemplateBudgetExtension extends AbstractExtension
         if (++$this->turns > self::TURNS) {
             throw new TemplateBudgetExceeded(\sprintf('The extension\'s template ran more than %d loop turns', self::TURNS));
         }
-        if (memory_get_usage() - $this->memory > self::MEMORY) {
+        return $this->memory();
+    }
+
+    /** The memory check alone, after a `set`; null, as tick(). */
+    public function memory(int $more = 0): null
+    {
+        if (memory_get_usage() - $this->memory + $more > self::MEMORY) {
             throw new TemplateBudgetExceeded(\sprintf('The extension\'s template took more than %d MB', self::MEMORY / 1024 / 1024));
         }
 
         return null;
+    }
+
+    /** A template or block of an extension's begins rendering inside the others: at most NESTING deep. */
+    public function nest(): void
+    {
+        if ($this->nesting >= self::NESTING) {
+            throw new TemplateBudgetExceeded(\sprintf('The extension\'s templates and blocks nest more than %d deep', self::NESTING));
+        }
+        ++$this->nesting;
+        $this->memory();
+    }
+
+    public function unnest(): void
+    {
+        $this->nesting = max(0, $this->nesting - 1);
+    }
+
+    /** Twig's `~`, refused before it is made when the text would not fit in the memory left. */
+    public function concat(mixed $left, mixed $right): string
+    {
+        $left = self::text($left);
+        $right = self::text($right);
+        $this->memory(\strlen($left) + \strlen($right));
+
+        return $left . $right;
+    }
+
+    /**
+     * Twig's replace, refused before it is made when the text would not fit in the memory left: each key may be
+     * found as often as it occurs, and each time grow the text by what its replacement adds.
+     */
+    public function replace(mixed $text, mixed $from): string
+    {
+        $text = self::text($text);
+        if (!is_iterable($from)) {
+            throw new RuntimeError(\sprintf('The "replace" filter expects a sequence or a mapping, got "%s".', get_debug_type($from)));
+        }
+        $grows = 0;
+        foreach ($from as $key => $to) {
+            $key = self::text($key);
+            if ($key !== '') {
+                $grows += substr_count($text, $key) * max(0, \strlen(self::text($to)) - \strlen($key));
+            }
+        }
+        $this->memory(\strlen($text) + $grows);
+
+        return CoreExtension::replace($text, $from);
+    }
+
+    /** As PHP's `.` makes a text of a value. */
+    private static function text(mixed $value): string
+    {
+        return match (true) {
+            \is_array($value) => 'Array',
+            \is_scalar($value), $value === null, $value instanceof \Stringable => (string) $value,
+            default => throw new TemplateBudgetExceeded(\sprintf('A %s is not text', get_debug_type($value))),
+        };
     }
 
     /**

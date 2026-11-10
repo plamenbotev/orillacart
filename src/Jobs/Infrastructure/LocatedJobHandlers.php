@@ -16,10 +16,10 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 final readonly class LocatedJobHandlers implements JobHandlers
 {
     /**
-     * @param ServiceLocator<JobHandler> $handlers by type
+     * @param ServiceLocator<JobHandler> $handlers by type, the key the container build wrote on each tag
      */
     public function __construct(
-        #[AutowireLocator(JobHandler::TAG, defaultIndexMethod: 'type')]
+        #[AutowireLocator(JobHandler::TAG, indexAttribute: 'key')]
         private ServiceLocator $handlers,
     ) {}
 

@@ -99,7 +99,7 @@ through it: ask the owner about the business, save each answer, show the plan, a
 **Asking before.** Some tools carry a risk class:
 - **Money**: refunds, marking an order paid, gift card balances and new cards, store credit, a payment's capture,
   an order's price changed, a refund given up, a payment method's settings (where the money goes).
-- **Deleting**: anything a DELETE route does, unless it only clears a flag (`#[Tool(risk: Tool::NONE)]`: an order
+- **Deleting**: anything a DELETE route does, unless it only clears a flag (`#[Tool(unasked: 'why')]`: an order
   off the attention list, the problems list cleared); an order's customer forgotten.
 - **Customers hear of it**: emails sent to customers, a return approved or refused, a shipment sent or arrived,
   an order ready for pickup or picked up, a gift card's new code, a tax exemption decided.
@@ -108,8 +108,12 @@ through it: ask the owner about the business, save each answer, show the plan, a
   legal settings name other pages. It is not "customers hear of it": the owner who lets the assistant email
   customers has not let it publish terms.
 
-Every other tool that changes something is in a list a unit test keeps (`RouteToolsTest::UNASKED`), with why it
-need not ask: a new changing route fails that test until it is given a risk or added there.
+- **Something else changes**: every other change whose route says neither a risk nor why it need not ask, and
+  every add-on's tool or extension route that changes something and names no risk. A new route asks.
+
+A tool that changes something and runs unasked says why on its action (`#[Tool(unasked: 'a note for the shop
+only')]`) and is listed in a unit test (`RouteToolsTest::UNASKED`); a changing route that says neither fails
+that test, and asks as a change until it does.
 
 Each key says which classes need the owner's yes; by default all five do. A class added later is asked about on keys whose choices were saved before it, until the owner unticks it. A login, or an application password,
 has the defaults. A client that can ask its user (MCP
@@ -178,7 +182,8 @@ new add-on) is offered until the owner unticks it; its risky tools still wait fo
 **WordPress's Abilities API.** On WordPress 6.9 and later the same catalogue is also registered as abilities
 (category `orillacart`, `list_orders` as `orillacart/list-orders`), with the same schemas and permission checks.
 WordPress validates an ability's input itself and follows no `$ref`, so the schemas are written out for it.
-Abilities cannot ask the owner first, so a tool with a risk stays the MCP server's. WordPress's own MCP Adapter and its AI
+Abilities cannot ask the owner first and a key's choices do not reach them, so only the tools that only read
+are abilities; every tool that changes something stays the MCP server's. WordPress's own MCP Adapter and its AI
 features then see the shop too. The plugin's endpoint does not depend on it, because the plugin supports
 WordPress 6.7.
 

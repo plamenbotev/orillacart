@@ -7,6 +7,7 @@ namespace OrillaCart\Platform\Health;
 use OrillaCart\Shared\Container\LocatedServices;
 use OrillaCart\Shared\WordPress\HealthCheck;
 use OrillaCart\Shared\WordPress\HealthStatus;
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -20,7 +21,7 @@ final readonly class ShopHealth
      * @param ServiceLocator<HealthCheck> $checks by id
      */
     public function __construct(
-        #[AutowireLocator(HealthCheck::TAG, defaultIndexMethod: 'id')]
+        #[AutowireLocator(HealthCheck::TAG, indexAttribute: TaggedKeyPass::KEY)]
         private ServiceLocator $checks,
     ) {}
 

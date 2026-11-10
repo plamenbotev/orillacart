@@ -206,7 +206,7 @@ which adds the shop's currency.
 
 ```
 settings {
-  api_key: secret  { label: "API key", required: true }
+  api_key: secret  { label: "API key", required: true, goes_with: ["mode"] }
   mode:    choice  { label: "Mode", of: { live: "Live", test: "Test" }, required: true }
   markup:  number  { label: "Markup %", help: "0 for none" }
   notify:  boolean { label: "Email the shop on every refund" }
@@ -215,7 +215,10 @@ settings {
 ```
 
 Kinds: `text`, `secret`, `boolean`, `number`, `choice` (with `of`, a list or a map of value → label). Each takes
-`label`, `required` and `help`. The manager fills them on the Extensions screen; a secret is sealed in the
+`label`, `required` and `help`. A secret takes `goes_with`, the settings that say where it goes or whose it is
+(an address, a user, live or test): when the manager changes one of them, the saved secret is forgotten unless
+typed again. `goes_with: []` keeps it whatever changes, for a secret that goes to the one host the `needs` name;
+a secret without `goes_with` goes with every other setting, so any change asks for it again. The manager fills them on the Extensions screen; a secret is sealed in the
 database and shown as dots. A script reads them with `settings.get("api_key")`. Provider handlers also receive
 the whole map as their last parameter (`fn quote(shipment, settings)`), and a provider's own `settings { … }`
 block inside its declaration adds settings that only it sees. A provider whose required settings are empty is
@@ -289,7 +292,11 @@ well-formed values. A handler the contract does not require may be left out.
 ```
 payment_gateway "payfast" {
   name: "Pay with PayFast"
-  settings { merchant: text { label: "Merchant id", required: true } }
+  settings {
+    merchant: text { label: "Merchant id", required: true }
+    api_key: secret { label: "API key", required: true }
+    webhook_secret: secret { label: "Webhook signing secret", required: true }
+  }
 
   fn start(session, settings) {
     let answer = http.post("https://api.payfast.example/sessions", {
@@ -306,6 +313,10 @@ payment_gateway "payfast" {
     return payment.pending(reference)
   }
   fn notified(notification, settings) {
+    # PayFast signs "timestamp.body" with the webhook secret: check it before reading anything.
+    let signed = notification.headers["payfast-timestamp"] ~ "." ~ notification.body
+    let expected = crypto.hmac("sha256", signed, settings.webhook_secret)
+    if not crypto.equals(expected, notification.headers["payfast-signature"]) { fail refused("not signed by PayFast") }
     let event = notification.json
     if event == null or event.type != "payment.succeeded" { return null }
     return payment.completed(event.session, event.transaction, money(event.amount), event.currency)
@@ -334,8 +345,16 @@ payment_gateway "payfast" {
 | `check(reference, transaction_id, settings)` | what the shop knows                                                                                                                                                                                                                                                | a `payment.*` outcome                                                          |
 | `refund(request, settings)`                  | `request`: id, order_number, reference, transaction_id, amount, currency, reason                                                                                                                                                                                   | `payment.refunded(…)`, `payment.refund_pending(…)` or `payment.refund_done(…)` |
 
-Outcomes: `payment.completed(reference, transaction_id, amount?, currency?)` (without the amount the provider
-reported, the payment waits for the shop to look, as one of the wrong amount does), `pending`, `failed`, `cancelled`,
+A scripted gateway's notifications are not taken at their word. The `notification_url` the shop hands `start`
+carries a key of the shop's for the gateway (`?key=…`); give the provider that address exactly, as the payment
+method's screen shows it: a call without the key is refused before `notified` runs. `notified` then checks the
+provider's signature itself, with `crypto.hmac` and `crypto.equals` (never `==`, whose time tells where two strings
+differ). And when it answers `payment.completed`, the shop asks `check` about the payment, under its own reference,
+before anything settles: only what `check` answers pays the order, so a gateway that takes notifications writes
+`check`, asking the provider's API.
+
+Outcomes: `payment.completed(reference, transaction_id, amount?, currency?)` (without the amount and the currency
+the provider reported, the payment waits for the shop to look, as one of the wrong amount does), `pending`, `failed`, `cancelled`,
 `held`, `disputed`. A gateway with a `refund` handler is a refunding gateway; without it, the order screen offers
 no refund button. `fail unavailable` from `start` tells the shopper to try another method. `payment.redirect(url,
 reference)` sends the shopper over https to a host the extension declares under `needs.http` (the provider's
@@ -501,7 +520,7 @@ assistant_tool "open_ticket" {
   description: "Records a ticket for the shop's team"
   input: { subject: text, priority: number }
   read_only: false
-  risk: writing
+  risk: customers
   fn run(arguments, call) {
     return objects.ticket.create({ subject: arguments.subject, priority: arguments.priority ?? 1, state: "open" })
   }
@@ -532,7 +551,8 @@ mailing_list "newsletter" {
   arguments (`{ type: "object", properties: { … }, required: [ … ] }`), or the short form the object fields use
   (`{ company_id: number, items: text { required: true, help: "…" } }`), which becomes one; a client refuses a
   tool whose schema is not one, so write one or the other. `read_only` and `risk` (`money`, `deleting`,
-  `customers`, `opening`, `publishing`; anything else is no risk) tell the assistant how careful to be. `run(arguments, call)` gets the arguments and `call: { user_id, key_name }`; a `fail refused`
+  `customers`, `opening`, `publishing`, `changes`) tell the assistant how careful to be: a tool that is not
+  `read_only` and names none of these waits for the owner's yes as `changes`. `run(arguments, call)` gets the arguments and `call: { user_id, key_name }`; a `fail refused`
   is shown to the assistant as the tool's refusal.
 - A `product_block` is a block the editor can place on product pages. `render(product, settings)` answers HTML,
   which the shop cleans (tags and attributes a post may hold) before printing. Escape text with `html.escape`.
@@ -620,9 +640,10 @@ An extension's templates are files under `templates/` in the package, addressed 
 `x/<extension>/<file>`. They are Twig, sandboxed: the tags `if for set include extends block macro import from
 with apply autoescape`, the storefront's filters and functions (`__`, `_x`, `_n`, `_nx`, `slot`, `date`, `range`, the price
 helpers), no raw PHP objects. A template that compiles against the sandbox passes the static check. One render
-has 100 000 loop turns (each `for` turn, macro call and arrow function call) and 32 MB of memory; `range` and `..`
-make at most 10 000 numbers, `number_format` takes 0 to 20 decimals and `format` fields of at most 1 000
-characters. Past any of them the render fails.
+has 100 000 loop turns (each `for` turn, macro call and arrow function call) and 32 MB of memory, checked after
+every `set` and before every `~` and `replace` makes its text; templates (included, embedded, extended) and blocks
+nest at most 32 deep; `range` and `..` make at most 10 000 numbers, `number_format` takes 0 to 20 decimals and
+`format` fields of at most 1 000 characters. Past any of them the render fails.
 
 ```
 slot "product_after_details" { template: "note.html.twig" } fn(context) {
@@ -876,7 +897,8 @@ postcode, country, state, phone }, shipping_address, items: [{ product_id, quant
 shipping_option, payment, paid, note, fields, email_customer, test })` places it as the shop does by hand:
 priced as checkout prices it (a `unit_price` as agreed, else the catalogue's, with the extension's own adjusters
 applying), its stock taken, the checkout's questions answered with `fields`, on hold until paid unless `paid`
-says so. The customer is emailed only when `email_customer` is true. `test: true` makes it a test order: never
+says so. The customer is emailed only when `email_customer` is true, which is mail as `shop.email.send` is: it
+needs `email: send` as well and counts against the run's emails and the extension's emails an hour. `test: true` makes it a test order: never
 emailed, no invoice number, not counted, removed with the shop's test data; an order of a test customer is one
 anyway. The order map's `test` says which an order is, so an `on order_paid` handler can leave test orders out. It answers the order map; what the shop refuses (an item out of stock, a way to pay
 it does not offer) is a refusal the script may catch or pass on.
@@ -936,14 +958,16 @@ fn posted() {
   the extension cannot be enabled until they are gone. The check refuses unknown names and functions, wrong
   argument counts, unknown filters and tests, a host function the `needs` do not cover, a handler a contract
   requires that is missing, and templates that do not compile.
-- **Console.** The Extensions screen runs any top-level function with arguments you type, under the granted
-  permissions, and shows the result or the failure plus the budget used. Write small helpers (`api(...)`,
+- **Console.** The Extensions screen runs any top-level function with arguments you type and shows the result or
+  the failure plus the budget used. An enabled extension runs the files it was enabled with, under the permissions,
+  hosts and settings granted then; a draft or a disabled extension runs its saved files with nothing granted (no
+  permissions, no hosts, no settings). Disabling an extension forgets its grant, so enabling it again asks again. Write small helpers (`api(...)`,
   `site_of(...)`) and try them there before wiring them into handlers.
 - **Versions.** Every save, delete, import and restore keeps the files as they stood; the last thirty show on the
   screen with what changed, and any can be restored. An enabled extension keeps running the files it was enabled
   with (scripts, templates and assets, and the hosts they declared) until it is enabled again, so a restore is safe
-  to try and an edit reaches shoppers only once a manager approves it. The console runs the files as saved, but
-  with the hosts the extension was enabled with.
+  to try and an edit reaches shoppers only once a manager approves it. The console of an enabled extension runs
+  those files too.
 - **Recent runs.** Each handler call and console run is logged with how it ended and the budget it used, kept
   as long as the shop keeps its history; the screen shows the latest.
 - **Overrides.** A `templates/<name>` file that replaces one of the shop's templates says so, compares against
@@ -998,21 +1022,24 @@ test "a provider that is down is unavailable" {
 }
 ```
 
-A `test "name" { … } fn() { … }` runs its body with everything the `needs` ask for granted, whether or not the
-extension is enabled, and reports the first failure with its message, file and line. Inside a test:
+A `test "name" { … } fn() { … }` runs its body whether or not the extension is enabled, and reports the first
+failure with its message, file and line. The shop's own functions (`shop.*` reads and marks) have only what a manager
+granted when enabling the extension, so a draft's or a disabled extension's tests reach none of them; the stand-ins
+below answer for whatever the `needs` declare, granted or not, since they reach no one. With a read-only API key the
+saved files are tested; files sent with the request are refused. Inside a test:
 
 - `http.*` answer from the test's `http` map and nothing leaves the shop. A key is `"METHOD url"`, `"url"` for any
   method, or a prefix ending in `*`. The answer is `{ status, json | body, headers }`, status 200 when absent. A
   request the map does not answer fails the test and says what key to add.
 - `time.*` stand at `now` when given, so dates in the output are stable.
-- `settings.get` reads the test's `settings` over the extension's saved ones.
+- `settings.get` reads the test's `settings` only: the saved settings, secrets among them, are never read in a test.
 - `jobs.push` records the job instead of queuing it; the result lists what was pushed.
 - `objects.*` and `fields.*` work on the shop's database inside a transaction rolled back after the test, so a test
   may create records and read them back and leaves none behind.
 - `shop.email.send` holds the mail: it answers true and sends nothing. `shop.orders.create` places a test order
   (never emailed, never invoiced) inside the same rolled-back transaction. The result's `effects` lists each such
   call with its arguments, so a test can be checked for what it would have sent.
-- Everything else, `shop.*` included, is the real shop, read-only by nature.
+- Everything else, `shop.*` included, is the real shop, held to what was granted.
 - Tests run with a read-only key refuse every function that writes, as the extension's routes do on such a key:
   `objects.*` and `fields.*` writes, marks, mail and test orders fail the test with `refused`. The `http.*`
   answers and `jobs.push`, which only record, work as above.
@@ -1040,7 +1067,7 @@ extension "dpd" {
 
 settings {
   username:  text   { label: "DPD user name", required: true }
-  password:  secret { label: "DPD password", required: true }
+  password:  secret { label: "DPD password", required: true, goes_with: ["username"] }
   sender_id: text   { label: "Sender client id", required: true }
   markup:    number { label: "Added to every quote", help: "In the shop's currency; 0 for none" }
 }

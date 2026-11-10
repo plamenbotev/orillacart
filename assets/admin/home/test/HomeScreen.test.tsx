@@ -86,7 +86,19 @@ describe( 'HomeScreen', () => {
 	afterAll( () => {
 		delete window.orillacartMoney;
 	} );
-	afterEach( () => mockedFetch.mockReset() );
+	// The site's own hosts, as AdminPageRegistrar prints them: full links go only there.
+	beforeEach( () => {
+		window.orillacartAdmin = {
+			page: 'home',
+			group: 'Home',
+			tabs: [],
+			hosts: [ 'shop.test' ],
+		};
+	} );
+	afterEach( () => {
+		mockedFetch.mockReset();
+		delete window.orillacartAdmin;
+	} );
 
 	it( 'shows the figures, what needs the shop manager, the setup and the latest orders', async () => {
 		mockedFetch.mockResolvedValue( home );
@@ -185,8 +197,15 @@ describe( 'HomeScreen', () => {
 			'java\nscript:alert(1)',
 			'https:/\\evil.test',
 			'x.php:alert(1)',
+			'https://evil.test/returns',
+			'https://shop.test.evil.test/',
+			'https://shop.test@evil.test/',
+			'http://user@shop.test/',
 		] ) {
 			expect( adminUrl( url ) ).toBe( '' );
 		}
+		expect( adminUrl( 'HTTP://Shop.Test:8080/x' ) ).toBe(
+			'HTTP://Shop.Test:8080/x'
+		);
 	} );
 } );

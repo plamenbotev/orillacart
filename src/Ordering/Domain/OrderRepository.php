@@ -48,10 +48,12 @@ interface OrderRepository
     public function searchAfter(OrderSearch $search, ?Order $after, int $limit): array;
 
     /**
-     * How many orders the customer, by account or by who the email reaches (EmailAddress::key()), has on hold
-     * unpaid, test orders left out: those that hold stock until the money comes.
+     * How many orders of the customer's account are on hold unpaid, waiting for a payment by one of the gateways,
+     * test orders left out: those that hold stock until the money comes.
+     *
+     * @param list<string> $gateways
      */
-    public function countUnpaidOnHold(?int $customerId, string $email): int;
+    public function countUnpaidOnHold(int $customerId, array $gateways): int;
 
     /**
      * Whether the customer, by account or by who the email reaches (EmailAddress::key()), has an order that was

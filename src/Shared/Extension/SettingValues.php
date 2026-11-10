@@ -11,8 +11,8 @@ use OrillaCart\Shared\Security\SecretKeys;
 /**
  * Checks what the admin screen sends for a gateway's or shipping method's settings against what it declares,
  * keeping the saved secrets the screen never receives, and shows saved values without them. A secret sent empty
- * stays as saved, unless a setting that says where it goes (an address, a user: SecretKeys::endpoint()) changed;
- * sent as false, it is cleared.
+ * stays as saved, unless a setting it goes with (Setting::$goesWith, every other setting when it declares none)
+ * changed; sent as false, it is cleared.
  */
 final class SettingValues
 {
@@ -40,22 +40,28 @@ final class SettingValues
             }
         }
         SecretKeys::declare(...array_keys(array_filter($byKey, static fn(Setting $field): bool => $field->type === Setting::SECRET)));
+        SecretKeys::declarePlain(...array_keys(array_filter($byKey, static fn(Setting $field): bool => $field->type !== Setting::SECRET)));
         $values = [];
-        $moved = false;
+        $changed = [];
         foreach ($byKey as $key => $field) {
             if ($field->type === Setting::SECRET) {
                 continue;
             }
             $values[$key] = self::value($field, $submitted[$key] ?? null, $saved[$key] ?? null);
-            $was = $saved[$key] ?? null;
-            if (\is_string($values[$key]) && (SecretKeys::endpoint($key, $values[$key]) || SecretKeys::endpoint($key, $was)) && self::address($values[$key]) !== self::address(\is_string($was) ? $was : '')) {
-                $moved = true;
+            if (self::comparable($values[$key]) !== self::comparable($saved[$key] ?? null)) {
+                $changed[$key] = true;
             }
         }
         $ordered = [];
         foreach ($byKey as $key => $field) {
-            // A saved secret goes only where it was typed for: a new address or user forgets it unless typed again.
-            $ordered[$key] = $field->type === Setting::SECRET ? self::value($field, $submitted[$key] ?? null, $moved ? null : ($saved[$key] ?? null)) : $values[$key];
+            if ($field->type !== Setting::SECRET) {
+                $ordered[$key] = $values[$key];
+                continue;
+            }
+            // A saved secret goes only where it was typed for: a change to what it goes with forgets it unless
+            // typed again. One that declares nothing goes with every other setting.
+            $moved = array_any($field->goesWith ?? array_keys($values), static fn(string $other): bool => isset($changed[$other]));
+            $ordered[$key] = self::value($field, $submitted[$key] ?? null, $moved ? null : ($saved[$key] ?? null));
         }
 
         return $ordered;
@@ -105,9 +111,10 @@ final class SettingValues
         return [$values, $secretsSet];
     }
 
-    private static function address(string $value): string
+    /** A value as compared for a change: text without case, space or a trailing slash; unset as empty. */
+    private static function comparable(string|bool|null $value): string|bool
     {
-        return rtrim(mb_strtolower(trim($value)), '/');
+        return \is_bool($value) ? $value : rtrim(mb_strtolower(trim($value ?? '')), '/');
     }
 
     private static function value(Setting $field, string|bool|null $value, string|bool|null $saved): string|bool

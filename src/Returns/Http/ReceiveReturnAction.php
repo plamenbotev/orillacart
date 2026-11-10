@@ -8,6 +8,7 @@ use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -17,6 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * The returned items came back to the shop.
  */
+#[Tool(unasked: 'notes that returned items came back; the customer is not told')]
 #[Route('/returns/{id}/receive', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class ReceiveReturnAction implements RequestHandlerInterface
 {

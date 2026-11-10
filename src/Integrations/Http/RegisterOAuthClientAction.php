@@ -22,6 +22,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class RegisterOAuthClientAction implements RequestHandlerInterface
 {
     public const string LIMIT = 'oauth_register';
+    public const string NETWORK_LIMIT = 'oauth_register_network';
 
     public function __construct(
         private OAuthServer $server,
@@ -34,8 +35,12 @@ final readonly class RegisterOAuthClientAction implements RequestHandlerInterfac
         if (!$this->server->available()) {
             return $this->responder->exact(['error' => 'temporarily_unavailable', 'error_description' => 'The site offers no OAuth: turn on pretty permalinks, and https.'], 503);
         }
-        if ($this->limits->hit(self::LIMIT, 'ip:' . ClientAddress::of($request->getServerParams())) !== null) {
-            return $this->responder->exact(['error' => 'slow_down', 'error_description' => 'Too many registrations from this address; wait an hour.'], 429);
+        $address = ClientAddress::of($request->getServerParams());
+        // Both counted on every registration: by the caller, and by the network around it.
+        $caller = $this->limits->hit(self::LIMIT, 'ip:' . $address);
+        $network = $this->limits->hit(self::NETWORK_LIMIT, 'net:' . $address);
+        if ($caller !== null || $network !== null) {
+            return $this->responder->exact(['error' => 'slow_down', 'error_description' => 'Too many registrations from this address or its network; wait an hour.'], 429);
         }
         $body = $request->getParsedBody();
         [$status, $answer] = $this->server->registrationAnswer(\is_array($body) ? $body : []);

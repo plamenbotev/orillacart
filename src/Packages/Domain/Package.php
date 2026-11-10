@@ -310,10 +310,27 @@ class Package
         return substr(hash('sha256', $this->source()), 0, 16);
     }
 
-    /** Whether the files changed since it was enabled: it then runs the old files until enabled again. */
+    /**
+     * Whether the files changed since it was enabled, any of them (a script, a template, an asset, one added or
+     * removed): it then runs the old files until enabled again.
+     */
     public function isStale(): bool
     {
-        return $this->state->runs() && $this->enabledChecksum !== $this->checksum();
+        if (!$this->state->runs()) {
+            return false;
+        }
+        if ($this->enabledFiles === null) {
+            return $this->enabledChecksum !== $this->checksum();
+        }
+        $now = [];
+        foreach ($this->files() as $file) {
+            $now[$file->path()] = $file->content();
+        }
+        $then = $this->running();
+        ksort($now, SORT_STRING);
+        ksort($then, SORT_STRING);
+
+        return $now !== $then;
     }
 
     /**
@@ -343,11 +360,13 @@ class Package
         $this->updatedAt = $at;
     }
 
+    /** Disabled, it keeps nothing of what was granted: enabling again asks a manager again. */
     public function disable(\DateTimeImmutable $at): void
     {
         if ($this->state !== PackageState::Draft) {
             $this->state = PackageState::Disabled;
         }
+        $this->granted = [];
         $this->updatedAt = $at;
     }
 

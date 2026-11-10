@@ -30,7 +30,7 @@ final readonly class TransientCallApprovals implements CallApprovals
         return $approval !== null && $approval->userId === $caller->userId && $approval->keyId === $caller->keyId && $approval->call === $call ? $approval : null;
     }
 
-    public function byToken(string $token): ?CallApproval
+    public function byToken(#[\SensitiveParameter] string $token): ?CallApproval
     {
         if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
             return null;

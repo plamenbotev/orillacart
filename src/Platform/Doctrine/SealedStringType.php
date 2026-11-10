@@ -29,12 +29,12 @@ final class SealedStringType extends StringType
         self::$unreadable = $unreadable;
     }
 
-    public function convertToDatabaseValue(mixed $value, AbstractPlatform $platform): ?string
+    public function convertToDatabaseValue(#[\SensitiveParameter] mixed $value, AbstractPlatform $platform): ?string
     {
         return \is_string($value) ? self::secrets()->seal($value) : null;
     }
 
-    public function convertToPHPValue(mixed $value, AbstractPlatform $platform): ?string
+    public function convertToPHPValue(#[\SensitiveParameter] mixed $value, AbstractPlatform $platform): ?string
     {
         if (!\is_string($value)) {
             return null;

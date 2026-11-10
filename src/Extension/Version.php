@@ -31,7 +31,10 @@ final class Version
      * (Cart\CartLineType), and each OrderLine's type. 19: the customer's email in a PaymentSession. 20: figures and "Needs you" lines on the Home screen
      * (Home\HomeContributor). 21: the checkout answers in an AdjustmentQuery, and each OrderLine's adjustments. 22: reading products
      * (Products::find) and customers (Customers), sending email (Notifications\Emails), placing orders
-     * (Order\CreatesOrders).
+     * (Order\CreatesOrders). 23: gateways whose notifications the shop confirms with them before taking the money
+     * (Payment\ConfirmsNotifications), when an unpaid order's payment must be made by (payBy on StartPayment and
+     * PaymentSession), the settings a secret goes with (Setting::$goesWith), and the risk of a tool that changes
+     * something else in the shop (AssistantTool::CHANGES).
      */
-    public const int CURRENT = 22;
+    public const int CURRENT = 23;
 }

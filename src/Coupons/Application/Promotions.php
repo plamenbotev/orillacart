@@ -55,16 +55,15 @@ final readonly class Promotions
             return [];
         }
         $known = ($request->email ?? '') !== '' || $request->customerId !== null;
-        $lines = array_map(static fn(DiscountItem $item): BasketLine => new BasketLine($item->productId, $item->quantity, Money::of($item->total), $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons, $item->sized), $request->items);
+        $lines = array_map(static fn(DiscountItem $item): BasketLine => new BasketLine($item->productId, $item->quantity, Money::of($item->total), $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons, $item->sized, $item->givenBy), $request->items);
         $basket = new Basket(
             $lines,
             $request->currency,
+            $request->rate,
             $request->country,
             $request->customerId,
             $request->email,
             $this->firstOrder($advertised, $known, $request->customerId, $request->email ?? '', $request->orderId),
-            null,
-            $request->rate,
         );
         $got = [];
         foreach ($applied->coupons as $coupon) {
@@ -122,7 +121,7 @@ final readonly class Promotions
         }
         $line = new BasketLine($item->productId, 1, Money::of($item->total), $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons);
         $known = $customerId !== null;
-        $basket = new Basket([$line], $currency, $country, $customerId, null, $this->firstOrder($advertised, $known, $customerId, ''), null, $rate);
+        $basket = new Basket([$line], $currency, $rate, $country, $customerId, null, $this->firstOrder($advertised, $known, $customerId, ''));
         $words = $this->descriptions($advertised);
         $now = $this->clock->now();
         $views = [];

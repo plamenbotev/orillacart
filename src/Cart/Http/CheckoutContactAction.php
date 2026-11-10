@@ -36,11 +36,9 @@ final readonly class CheckoutContactAction implements RequestHandlerInterface
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $contact = $this->input->body($request, CheckoutContact::class);
-        $email = strtolower(trim($contact->email ?? ''));
-        if ($contact->remind && $email !== '' && $this->limits->hit('reminder_address', 'email:' . hash('sha256', EmailAddress::key($email))) !== null) {
-            $contact = new CheckoutContact($contact->email, false);
-        }
-        $token = $this->carts->atCheckout($this->cookie->owner($request), $contact, $this->languages->current());
+        // Counted once a cart: the page sends its answer again as the shopper comes back to checkout.
+        $mayRemind = fn(string $email): bool => $this->limits->hit('reminder_address', 'email:' . hash('sha256', EmailAddress::key($email))) === null;
+        $token = $this->carts->atCheckout($this->cookie->owner($request), $contact, $this->languages->current(), $mayRemind);
 
         return $this->cookie->give($this->responder->noContent(), $token, $request);
     }

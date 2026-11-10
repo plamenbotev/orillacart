@@ -19,12 +19,14 @@ final readonly class OptionCustomerSettingsRepository implements CustomerSetting
         $stored = get_option(self::OPTION);
         $mode = \is_array($stored) && \is_string($stored['accounts'] ?? null) ? AccountMode::tryFrom($stored['accounts']) : null;
 
-        return new CustomerSettings($mode ?? AccountMode::Optional, !\is_array($stored) || ($stored['guest_orders'] ?? true) !== false);
+        $roles = \is_array($stored) && \is_array($stored['roles'] ?? null) ? array_values(array_filter($stored['roles'], \is_string(...))) : null;
+
+        return new CustomerSettings($mode ?? AccountMode::Optional, !\is_array($stored) || ($stored['guest_orders'] ?? true) !== false, $roles);
     }
 
     public function save(CustomerSettings $settings): void
     {
-        update_option(self::OPTION, ['accounts' => $settings->accounts->value, 'guest_orders' => $settings->guestOrders], true);
+        update_option(self::OPTION, ['accounts' => $settings->accounts->value, 'guest_orders' => $settings->guestOrders, 'roles' => $settings->roles], true);
     }
 
     public function activate(): void {}

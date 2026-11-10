@@ -106,6 +106,8 @@ final readonly class PackageManifest
                     }
                     $choices[\is_int($value) ? (string) $label : $value] = (string) $label;
                 }
+                // A secret's `goes_with` names the settings that say where it goes; without one, every setting does.
+                $goesWith = $type === Setting::SECRET && \is_array($spec['goes_with'] ?? null) ? array_values(array_filter($spec['goes_with'], static fn(mixed $other): bool => \is_string($other) && $other !== (string) $key && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $other) === 1)) : null;
                 $settings[] = new Setting(
                     (string) $key,
                     \is_string($spec['label'] ?? null) ? $spec['label'] : ucfirst(str_replace('_', ' ', (string) $key)),
@@ -113,6 +115,7 @@ final readonly class PackageManifest
                     ($spec['required'] ?? false) === true,
                     \is_string($spec['help'] ?? null) ? $spec['help'] : '',
                     $choices,
+                    $goesWith,
                 );
             }
         }

@@ -41,7 +41,9 @@ final readonly class TaxExemptions
      */
     public function add(int $customerId, SaveTaxExemption $command): TaxExemptionView
     {
-        $this->accounts->find($customerId) ?? throw new CustomerNotFound($customerId);
+        if (!$this->accounts->isShopCustomer($customerId)) {
+            throw new CustomerNotFound($customerId);
+        }
         $exemption = new TaxExemption(
             $customerId,
             ExemptionReason::from($command->reason),

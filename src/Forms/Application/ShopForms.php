@@ -144,6 +144,7 @@ final readonly class ShopForms
             $field->condition === null ? null : ['field' => $form->fieldId($field->condition->field), 'values' => $field->condition->values],
             $field->types,
             $field->largest,
+            $field->pdfLinks,
         );
     }
 }

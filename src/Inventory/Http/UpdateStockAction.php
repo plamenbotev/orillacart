@@ -16,6 +16,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -29,6 +30,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * sale moves it, refuses the save with 409 orillacart_stock_changed, naming each such level as it is now. When it
  * comes back in stock, customers who asked are emailed.
  */
+#[Tool(unasked: 'stock counts')]
 #[Route('/stock/{kind}/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['kind' => 'product|variation|option', 'id' => '\d+'])]
 final readonly class UpdateStockAction implements RequestHandlerInterface
 {

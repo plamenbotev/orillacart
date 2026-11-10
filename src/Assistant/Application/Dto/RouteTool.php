@@ -17,6 +17,7 @@ final readonly class RouteTool
      * @param string|null           $risk         one of Tool::RISKS
      * @param bool                  $file         the route takes an uploaded file in "file"
      * @param string|null           $wholeBody    the argument that is the whole body, when the action reads it without a DTO
+     * @param string|null           $unasked      why the route changes something without the owner's yes
      */
     public function __construct(
         public string $name,
@@ -35,10 +36,11 @@ final readonly class RouteTool
         public string $capability,
         public bool $file = false,
         public ?string $wholeBody = null,
+        public ?string $unasked = null,
     ) {}
 
     /**
-     * @param array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file?: bool, wholeBody?: ?string} $data
+     * @param array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file?: bool, wholeBody?: ?string, unasked?: ?string} $data
      */
     public static function fromArray(array $data): self
     {
@@ -46,7 +48,7 @@ final readonly class RouteTool
     }
 
     /**
-     * @return array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file: bool, wholeBody: ?string}
+     * @return array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file: bool, wholeBody: ?string, unasked: ?string}
      */
     public function toArray(): array
     {
@@ -67,6 +69,7 @@ final readonly class RouteTool
             'capability' => $this->capability,
             'file' => $this->file,
             'wholeBody' => $this->wholeBody,
+            'unasked' => $this->unasked,
         ];
     }
 }

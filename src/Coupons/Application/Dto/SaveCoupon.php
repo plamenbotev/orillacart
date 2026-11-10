@@ -53,14 +53,19 @@ final readonly class SaveCoupon
         #[Assert\Count(max: 300)]
         public array $countries = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $productIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $categoryIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $brandIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $excludedProductIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $excludedCategoryIds = [],
         public bool $excludeSaleItems = false,
         public bool $combines = false,
@@ -76,8 +81,10 @@ final readonly class SaveCoupon
         #[Assert\Range(min: 0, max: 1000)]
         public int $getQuantity = 0,
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $getProductIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $getCategoryIds = [],
         /** A free gift: the product given, one without variations or options. */
         #[Assert\Positive]

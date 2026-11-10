@@ -56,6 +56,11 @@ final class TemporaryPrivateFiles implements PrivateFiles
         return new StorageCheck(StorageCheck::OUTSIDE_WEB_ROOT, $this->directory, null, '');
     }
 
+    public function answer(string $answer): StorageCheck
+    {
+        return $this->check();
+    }
+
     /** A file at a temporary path, as an upload arrives. */
     public static function upload(string $content): string
     {

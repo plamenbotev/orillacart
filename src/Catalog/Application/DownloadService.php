@@ -84,6 +84,20 @@ final readonly class DownloadService
         return $this->files->check($fresh);
     }
 
+    /**
+     * The shop manager says whose a folder the shop no longer knows as its own is (PrivateFiles::answer()).
+     *
+     * @throws CatalogRuleViolation when the answer does not fit, such as adopting a folder that is gone
+     */
+    public function answerStorage(string $answer): StorageCheck
+    {
+        try {
+            return $this->files->answer($answer);
+        } catch (\DomainException $e) {
+            throw new CatalogRuleViolation($e->getMessage(), 'orillacart_download_storage_answer', $e);
+        }
+    }
+
     private function product(int $id): Product
     {
         return $this->products->find($id) ?? throw new ProductNotFound($id);

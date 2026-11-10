@@ -164,6 +164,19 @@ final class IndexProductsTest extends TestCase
         self::assertSame('', $otherUser->password, 'a new user');
     }
 
+    public function testAShopManagerTurningOpenSearchOffKeepsTheAdministratorsConnection(): void
+    {
+        $engines = new SearchEngines($this->engine, $this->server, new SearchIndexing($this->jobs->jobs, new ProductLookup($this->shop->productRecords, $this->shop->content), $this->handler, $this->index, $this->shop->productTranslations), $this->jobs->workers);
+        $engines->change(new ChangeSearchEngine('opensearch', 'https://search.example.com:9200', 'shop', 'hunter2', 'products'));
+
+        $engines->change(new ChangeSearchEngine('database', clearPassword: true), connects: false);
+        $off = $this->engine->load();
+        self::assertSame([SearchEngine::Database, 'https://search.example.com:9200', 'shop', 'hunter2', 'products'], [$off->engine, $off->host, $off->username, $off->password, $off->index], 'the administrator switches it back without typing the password again');
+
+        $engines->change(new ChangeSearchEngine('database', 'https://search.example.com:9200', 'shop', clearPassword: true));
+        self::assertSame('', $this->engine->load()->password, 'the administrator may forget it');
+    }
+
     public function testStockBelowZeroIsIndexedAgainSinceTheBackorderLimitMayRunOut(): void
     {
         $this->jobs->runner->work([], 10, 'test');

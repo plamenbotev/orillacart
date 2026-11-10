@@ -35,6 +35,11 @@ final readonly class Route
      *                                            and add-ons' captcha checks (GuardMiddleware)
      * @param bool                  $changes      false for an unsafe method that only works something out (a quote,
      *                                            a preview): it is not written into the change log
+     * @param bool|null             $keys         whether a request made with an API key may call it. Left out, a
+     *                                            shop manager's route is a key's as it is the AI assistant's: one
+     *                                            its action leaves out of the assistant (#[Tool(leftOut: …)]) is
+     *                                            only for a manager logged in, so a route with secrets that is kept
+     *                                            from the assistant is kept from keys too, unless it says true
      */
     public function __construct(
         public string $path,
@@ -45,5 +50,6 @@ final readonly class Route
         public bool $signed = false,
         public ?string $guard = null,
         public bool $changes = true,
+        public ?bool $keys = null,
     ) {}
 }

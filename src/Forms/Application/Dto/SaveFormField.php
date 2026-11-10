@@ -53,6 +53,8 @@ final readonly class SaveFormField
         public array $types = FormField::FILE_TYPES,
         #[Assert\Range(min: 1, max: FormField::MAX_MEGABYTES)]
         public int $largest = 10,
+        /** A PDF it takes may hold links to web addresses; off, a PDF with one is refused. */
+        public bool $pdfLinks = false,
         /**
          * Its label, help and placeholder in the site's other languages, by part and locale; null leaves them as
          * they are.

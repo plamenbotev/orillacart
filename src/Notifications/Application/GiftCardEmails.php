@@ -24,7 +24,7 @@ final readonly class GiftCardEmails implements GiftCardMail
         private LoggerInterface $logger,
     ) {}
 
-    public function send(string $to, string $code, string $amount, string $currency, ?string $expiresOn, string $recipientName, string $message, ?string $locale = null): bool
+    public function send(string $to, #[\SensitiveParameter] string $code, string $amount, string $currency, ?string $expiresOn, string $recipientName, string $message, ?string $locale = null): bool
     {
         if (!$this->settings->load()->sends(EmailKind::GiftCard)) {
             return false;

@@ -42,6 +42,8 @@ final readonly class RouteDefinition
         public ?string $guard = null,
         /** False when an unsafe method only works something out: not a change to log. */
         public bool $changes = true,
+        /** Whether a request made with an API key may call it; false: only a user logged in. */
+        public bool $keys = true,
     ) {
         if (!str_starts_with($path, '/')) {
             throw new \InvalidArgumentException(\sprintf('Route path "%s" of %s must start with "/".', $path, $action));
@@ -76,9 +78,12 @@ final readonly class RouteDefinition
         $this->methods = array_values(array_unique($methods));
     }
 
-    public static function fromAttribute(string $action, Route $route): self
+    /**
+     * @param bool|null $keys whether keys may call it, when the attribute does not say
+     */
+    public static function fromAttribute(string $action, Route $route, ?bool $keys = null): self
     {
-        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements, $route->signed, $route->guard, $route->changes);
+        return new self($action, $route->path, $route->methods, $route->capability, $route->nonce, $route->requirements, $route->signed, $route->guard, $route->changes, $route->keys ?? $keys ?? true);
     }
 
     /**
@@ -130,7 +135,7 @@ final readonly class RouteDefinition
     }
 
     /**
-     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string, changes: bool}
+     * @return array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string, changes: bool, keys: bool}
      */
     public function toArray(): array
     {
@@ -144,14 +149,15 @@ final readonly class RouteDefinition
             'signed' => $this->signed,
             'guard' => $this->guard,
             'changes' => $this->changes,
+            'keys' => $this->keys,
         ];
     }
 
     /**
-     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string, changes: bool} $data
+     * @param array{action: string, path: string, methods: list<string>, capability: string, nonce: string, requirements: array<string, string>, signed: bool, guard: ?string, changes: bool, keys: bool} $data
      */
     public static function fromArray(array $data): self
     {
-        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements'], $data['signed'], $data['guard'], $data['changes']);
+        return new self($data['action'], $data['path'], $data['methods'], $data['capability'], $data['nonce'], $data['requirements'], $data['signed'], $data['guard'], $data['changes'], $data['keys']);
     }
 }

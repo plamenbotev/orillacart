@@ -27,12 +27,16 @@ final readonly class SavePriceRule
         #[Assert\Valid]
         public array $tiers,
         #[Assert\Count(max: 100)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $groupIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $productIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $categoryIds = [],
         #[Assert\Count(max: 1000)]
+        #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]
         public array $brandIds = [],
         #[Assert\DateTime(format: \DATE_ATOM)]
         public ?string $startsAt = null,

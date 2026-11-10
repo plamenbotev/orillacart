@@ -9,6 +9,7 @@ use OrillaCart\Jobs\Application\Dto\NewJob;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Jobs\Application\JobHandler;
 use OrillaCart\Jobs\Application\JobProgress;
+use OrillaCart\Jobs\Application\JobWorkers;
 use OrillaCart\Tests\Fixtures\Jobs\RecordingHandler;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
 use PHPUnit\Framework\TestCase;
@@ -319,6 +320,73 @@ final class JobRunnerTest extends TestCase
 
         self::assertSame([['a']], $this->handler->batches, 'the import waits for cron or a worker');
         self::assertCount(1, $this->test->queue->jobs);
+    }
+
+    public function testARequestThatPushedToManyLanesRunsNoMoreInAllThanOneThatPushedToOne(): void
+    {
+        $mail = new class implements JobHandler {
+            public int $ran = 0;
+
+            public static function type(): string
+            {
+                return 'test.mail';
+            }
+
+            public static function queue(): string
+            {
+                return 'mail';
+            }
+
+            public function maxAttempts(): int
+            {
+                return 3;
+            }
+
+            public function retryAfter(int $attempt): int
+            {
+                return 10;
+            }
+
+            public function lockSeconds(): int
+            {
+                return 60;
+            }
+
+            public function handle(array $jobs, JobProgress $progress): array
+            {
+                $this->ran += \count($jobs);
+
+                return [];
+            }
+
+            public function describe(array $payload, ?string $uniqueKey): string
+            {
+                return 'Mail';
+            }
+        };
+        $this->test->with($mail);
+        $this->push(...array_map(static fn(int $i): string => "job-{$i}", range(1, 15)));
+        foreach (range(1, 15) as $i) {
+            $this->test->jobs->push($mail::type(), [], "mail-{$i}");
+        }
+
+        self::assertCount(1, $this->test->deferred, 'one piece of work for both lanes');
+        $this->test->endRequest();
+
+        self::assertSame(20, \count(array_merge(...$this->handler->batches)) + $mail->ran, 'twenty in all, not twenty a lane');
+        self::assertCount(10, $this->test->queue->jobs, 'the rest wait for cron or a worker');
+    }
+
+    public function testASiteANetworkWorkerLeavesOutSaysSoWhileTheWorkerRuns(): void
+    {
+        self::assertNull($this->test->workers->leftOutBy());
+        $this->test->workers->leftOut('host:42', 'theme');
+
+        $left = $this->test->workers->leftOutBy();
+        self::assertNotNull($left);
+        self::assertSame(['host:42', 'theme'], [$left->worker, $left->reason]);
+        $this->test->clock->sleep(JobWorkers::LEFT_OUT_SECONDS + 1);
+        self::assertNull($this->test->workers->leftOutBy(), 'a worker silent since stopped, or serves it now');
     }
 
     public function testWorkersRestartWhenAskedAfterTheyStarted(): void

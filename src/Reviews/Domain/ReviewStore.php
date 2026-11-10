@@ -10,8 +10,19 @@ namespace OrillaCart\Reviews\Domain;
  */
 interface ReviewStore
 {
-    /** Whether the product is published and takes reviews (its discussion is open). */
+    /**
+     * Whether the product is published, asks the visitor for no password, and takes reviews (its discussion is
+     * open).
+     */
     public function isOpen(int $productId): bool;
+
+    /**
+     * Whether the product's reviews may be read: it is published and, where it has a password, the visitor gave
+     * it.
+     *
+     * @param bool $byAnyone only a product without a password, whose reviews are everyone's to read
+     */
+    public function isReadable(int $productId, bool $byAnyone = false): bool;
 
     /** Whether the site lets only logged-in users write (Settings → Discussion). */
     public function loginRequired(): bool;

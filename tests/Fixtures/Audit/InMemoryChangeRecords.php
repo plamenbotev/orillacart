@@ -33,8 +33,7 @@ final class InMemoryChangeRecords implements ChangeRecordRepository
         $changed = 0;
         foreach ($this->records as $record) {
             $below = array_filter($paths, static fn(string $path): bool => $record->path() === $path || str_starts_with($record->path(), "{$path}/"));
-            // The whole JSON string, as the database matches it: "n@gmail.com" is not in "john@gmail.com".
-            $mentions = $mention !== null && $mention !== '' && stripos((string) json_encode($record->values()), (string) json_encode(mb_strtolower(trim($mention)))) !== false;
+            $mentions = $mention !== null && ChangeRecord::mentions($record->values(), $mention);
             if ($below !== [] || $mentions) {
                 new \ReflectionProperty(ChangeRecord::class, 'values')->setValue($record, $values);
                 ++$changed;

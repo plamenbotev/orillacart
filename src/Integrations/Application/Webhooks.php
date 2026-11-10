@@ -11,11 +11,15 @@ use OrillaCart\Integrations\Domain\IntegrationRuleViolation;
 use OrillaCart\Integrations\Domain\Webhook;
 use OrillaCart\Integrations\Domain\WebhookRepository;
 use OrillaCart\Jobs\Application\Jobs;
+use OrillaCart\Shared\Users\ShopManagers;
+use OrillaCart\Shared\Users\UserNames;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Webhooks: addresses the shop tells of its events. Each event a webhook listens to becomes a job
- * (DeliverWebhook), so a slow or broken receiver never holds up the shop; it is tried again when it fails.
+ * (DeliverWebhook), so a slow or broken receiver never holds up the shop; it is tried again when it fails. Each
+ * is in the name of the shop manager who saved it last, and stops when they no longer manage the shop.
  */
 final readonly class Webhooks
 {
@@ -24,12 +28,18 @@ final readonly class Webhooks
         private WebhookTopics $topics,
         private Jobs $jobs,
         private ClockInterface $clock,
+        private UserNames $users,
+        private ShopManagers $managers,
+        private LoggerInterface $logger,
     ) {}
 
     /** @return list<WebhookView> by name */
     public function all(): array
     {
-        return array_map(fn(Webhook $webhook): WebhookView => $this->view($webhook), $this->webhooks->all());
+        $webhooks = $this->webhooks->all();
+        $names = $this->users->names(array_values(array_unique(array_filter(array_map(static fn(Webhook $webhook): ?int => $webhook->ownerId(), $webhooks), \is_int(...)))));
+
+        return array_map(fn(Webhook $webhook): WebhookView => $this->view($webhook, names: $names), $webhooks);
     }
 
     /** @return array<string, string> what webhooks can tell of, by topic */
@@ -41,10 +51,10 @@ final readonly class Webhooks
     /**
      * @throws IntegrationRuleViolation
      */
-    public function create(SaveWebhook $command): WebhookView
+    public function create(SaveWebhook $command, ?int $by): WebhookView
     {
         $this->knownTopics($command->topics);
-        $webhook = new Webhook($command->name, $command->url, $command->topics, $command->active, self::secret(), $this->clock->now());
+        $webhook = new Webhook($command->name, $command->url, $command->topics, $command->active, self::secret(), $this->clock->now(), $by, $command->failureLimit);
         $this->webhooks->save($webhook);
 
         return $this->view($webhook, withSecret: true);
@@ -53,11 +63,11 @@ final readonly class Webhooks
     /**
      * @throws IntegrationRuleViolation
      */
-    public function update(int $id, SaveWebhook $command): WebhookView
+    public function update(int $id, SaveWebhook $command, ?int $by): WebhookView
     {
         $webhook = $this->get($id);
         $this->knownTopics($command->topics);
-        $webhook->change($command->name, $command->url, $command->topics, $command->active);
+        $webhook->change($command->name, $command->url, $command->topics, $command->active, $by, $command->failureLimit);
         $this->webhooks->save($webhook);
 
         return $this->view($webhook);
@@ -111,6 +121,41 @@ final readonly class Webhooks
     }
 
     /**
+     * The user's account was deleted, their role changed, or they were taken off the site: the webhooks in their
+     * name are switched off while they no longer manage the shop, and the shop is told.
+     *
+     * @param bool $leaving they are being taken off the site, and still have its roles while that is told
+     *
+     * @return int how many were switched off
+     */
+    public function ownerChanged(int $userId, bool $leaving = false): int
+    {
+        if (!$leaving && $this->managers->manages($userId)) {
+            return 0;
+        }
+        $off = 0;
+        foreach ($this->webhooks->all() as $webhook) {
+            if ($webhook->ownerId() === $userId && $this->switchOff($webhook)) {
+                ++$off;
+            }
+        }
+
+        return $off;
+    }
+
+    /** @return bool whether it was switched off now */
+    private function switchOff(Webhook $webhook): bool
+    {
+        if (!$webhook->ownerLeft($this->clock->now())) {
+            return false;
+        }
+        $this->webhooks->save($webhook);
+        $this->logger->warning('Webhook "{name}" (#{id}) was switched off: the shop manager it was saved by no longer manages the shop. A manager who switches it on again answers for it.', ['name' => $webhook->name(), 'id' => $webhook->id()]);
+
+        return true;
+    }
+
+    /**
      * @param array<string, mixed> $arguments
      */
     private function queue(Webhook $webhook, string $topic, array $arguments): void
@@ -129,11 +174,16 @@ final readonly class Webhooks
         return $this->webhooks->find($id) ?? throw new IntegrationRuleViolation('There is no such webhook.', 'orillacart_unknown_webhook');
     }
 
-    private function view(Webhook $webhook, bool $withSecret = false): WebhookView
+    /**
+     * @param array<int, string>|null $names the owners' names, when they were read for a list
+     */
+    private function view(Webhook $webhook, bool $withSecret = false, ?array $names = null): WebhookView
     {
         $last = $this->webhooks->deliveries($webhook->id(), 1)[0] ?? null;
+        $owner = $webhook->ownerId();
+        $names ??= $owner === null ? [] : $this->users->names([$owner]);
 
-        return WebhookView::of($webhook, $last === null ? null : WebhookDeliveryView::of($last), $withSecret);
+        return WebhookView::of($webhook, $last === null ? null : WebhookDeliveryView::of($last), $withSecret, $owner === null ? '' : ($names[$owner] ?? ''));
     }
 
     /**

@@ -11,6 +11,7 @@ import { __ } from '@wordpress/i18n';
 import { errorMessage } from '../shared/api';
 import { type Check, fetchStatus, reportText, type Status } from './api';
 import { ChangeLogCard } from './ChangeLogCard';
+import { DownloadsFolderAnswer } from './DownloadsFolderAnswer';
 import { ProblemsCard } from './ProblemsCard';
 import { Page, Skeleton } from '../shared/ui';
 
@@ -29,12 +30,15 @@ export function StatusScreen() {
 	const [ error, setError ] = useState< string | null >( null );
 	const [ copied, setCopied ] = useState( false );
 
-	useEffect( () => {
+	const load = () =>
 		fetchStatus()
 			.then( setStatus )
 			.catch( ( failure: unknown ) =>
 				setError( errorMessage( failure ) )
 			);
+
+	useEffect( () => {
+		void load();
 	}, [] );
 
 	const copy = () => {
@@ -85,6 +89,14 @@ export function StatusScreen() {
 										{ check.description !== '' && (
 											<p>{ check.description }</p>
 										) }
+										{ check.id === 'downloads' &&
+											check.status === 'critical' && (
+												<DownloadsFolderAnswer
+													onAnswer={ () =>
+														void load()
+													}
+												/>
+											) }
 										{ check.action_url !== '' && (
 											<a href={ check.action_url }>
 												{ check.action_label }

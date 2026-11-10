@@ -115,6 +115,7 @@ final class CartRulesTest extends TestCase
             }
         };
         self::assertTrue($this->shop->carts->cart($owner)->cart->orderable, 'one broken add-on does not stop every cart');
+        self::assertSame([], $this->shop->closedFailures->failed, 'and is a line of the log only');
 
         $this->shop->extensions->cartRules[] = new readonly class implements CartRule, FailsClosed {
             public function id(): string
@@ -130,6 +131,9 @@ final class CartRulesTest extends TestCase
         $cart = $this->shop->carts->cart($owner)->cart;
         self::assertSame([CartService::UNCHECKED], $cart->refusals);
         self::assertFalse($cart->orderable);
+        $heard = $this->shop->closedFailures->since(new \DateTimeImmutable('-1 hour'));
+        self::assertSame(['cart_rule:age_check'], array_column($heard, 'id'), 'the shop manager hears of a rule that stops every cart');
+        self::assertStringContainsString('register down', $heard[0]['what'] ?? '');
         try {
             $this->shop->carts->add($owner, new AddToCart(10));
             self::fail('an addition the rule could not check');

@@ -7,6 +7,7 @@ namespace OrillaCart\Reports\Http;
 use OrillaCart\Reports\Application\Reports;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -15,6 +16,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Counts every order again, in the background.
  */
+#[Tool(unasked: 'reports worked out again')]
 #[Route('/reports/rebuild', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class RebuildReportsAction implements RequestHandlerInterface
 {

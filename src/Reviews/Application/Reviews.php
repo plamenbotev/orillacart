@@ -68,7 +68,7 @@ final readonly class Reviews
      *
      * @param string|null $token the token of the review link of their order (ReviewTokens), when they came from it
      */
-    public function invitation(int $productId, ?int $customerId, ?string $token = null): ReviewInvitationView
+    public function invitation(int $productId, ?int $customerId, #[\SensitiveParameter] ?string $token = null): ReviewInvitationView
     {
         $productId = $this->translations->original($productId);
         $policy = $this->settings->load()->policy;
@@ -117,9 +117,11 @@ final readonly class Reviews
                 throw new ReviewRuleViolation('Log in to review the product.', 'orillacart_review_log_in');
             }
             $author = ['name' => trim($command->name ?? ''), 'email' => trim($command->email ?? ''), 'customer' => null, 'verified' => false];
-            // Under an account's email, a guest's review would pass as the customer's, and keep them from writing theirs.
-            if ($this->store->isAccountEmail($author['email'])) {
-                throw new ReviewRuleViolation('This email has an account: log in to review the product.', 'orillacart_review_log_in');
+            // Under an account's email, a guest's review would pass as the customer's, and keep them from writing
+            // theirs; one email reviews a product once. Neither is taken, and the guest is answered as any guest
+            // whose review waits for the shop: the answer must not tell whose email has an account, or reviewed.
+            if ($this->store->isAccountEmail($author['email']) || $this->store->hasReviewed($productId, null, $author['email'])) {
+                return new WrittenReviewView(ReviewStatus::Held->value, null);
             }
         }
         if ($this->store->hasReviewed($productId, $author['customer'], $author['email'])) {
@@ -135,11 +137,18 @@ final readonly class Reviews
     }
 
     /**
-     * A page of the product's published reviews, newest first, with its stars.
+     * A page of the product's published reviews, newest first, with its stars: an empty one for a product that
+     * is not published, or that asks the visitor for its password.
+     *
+     * @param bool $forAnyone for whoever asks, with no page of the product shown to them: a product with a
+     *                        password gives none, whether or not this visitor has given it
      */
-    public function page(int $productId, int $page = 1): ReviewPageView
+    public function page(int $productId, int $page = 1, bool $forAnyone = false): ReviewPageView
     {
         $productId = $this->translations->original($productId);
+        if (!$this->store->isReadable($productId, $forAnyone)) {
+            return new ReviewPageView(null, [], 1, 1);
+        }
         $page = max(1, min(self::MAX_PAGE, $page));
         [$reviews, $total] = $this->store->published($productId, ($page - 1) * self::PER_PAGE, self::PER_PAGE);
         $rating = $this->store->ratings([$productId])[$productId] ?? null;
@@ -186,7 +195,7 @@ final readonly class Reviews
      *
      * @throws ReviewRuleViolation for a review link the shop never made, one for another product, or one that expired
      */
-    private function author(int $productId, ?int $customerId, ?string $token): ?array
+    private function author(int $productId, ?int $customerId, #[\SensitiveParameter] ?string $token): ?array
     {
         if ($token !== null) {
             $link = $this->tokens->read($token);

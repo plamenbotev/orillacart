@@ -19,6 +19,7 @@ final readonly class EngineSettings
         public SearchEngine $engine = SearchEngine::Database,
         public string $host = '',
         public string $username = '',
+        #[\SensitiveParameter]
         public string $password = '',
         public string $index = 'orillacart',
         public bool $ready = false,

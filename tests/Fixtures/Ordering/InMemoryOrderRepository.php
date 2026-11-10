@@ -132,12 +132,10 @@ final class InMemoryOrderRepository implements OrderRepository
         return false;
     }
 
-    public function countUnpaidOnHold(?int $customerId, string $email): int
+    public function countUnpaidOnHold(int $customerId, array $gateways): int
     {
-        $key = EmailAddress::key($email);
-
         return \count(array_filter($this->orders, static fn(Order $order): bool => $order->status() === OrderStatus::OnHold && $order->paidAt() === null && !$order->isTest()
-            && (($key !== '' && EmailAddress::key($order->email()) === $key) || ($customerId !== null && $order->customerId() === $customerId))));
+            && $order->customerId() === $customerId && \in_array($order->paymentGateway(), $gateways, true)));
     }
 
     public function boughtProducts(?int $customerId, string $email, array $productIds): array

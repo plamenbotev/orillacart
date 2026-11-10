@@ -26,9 +26,11 @@ namespaces. The compiler turns a package into one PHP class per tenant and check
 handlers: every operation goes through the runtime's helpers (`Ops::add`, `Ops::get`, `$c->call('http.post', …)`),
 every loop iteration and call counts a step, and nothing in the generated code names a PHP class, function or
 global of its own, which the compiler and a test over the generated source guarantee. The class is a cache: written
-under the shop's cache folder per site, build and checksum, loaded by `require` when present, compiled again when
-missing, and evaluated in memory when the folder is not writable. Generated PHP runs at PHP's speed with OPcache,
-which an interpreter in PHP could not, and the shop's tooling (phpstan on a sample, Xdebug) reads it.
+under the shop's cache folder per site, build and the source's whole SHA-256, signed over its build, key and
+source, and checked against the generated-code gate when read; the checked bytes are evaluated in memory, never the
+file included, so a writer of the cache folder has nothing to swap. The cache saves compiling the script, not PHP's
+parse of the class (OPcache does not keep evaluated code). Generated PHP runs at PHP's speed, which an interpreter
+in PHP could not, and the shop's tooling (phpstan on a sample, Xdebug) reads it.
 
 **Everything already in the extension API comes for free.** Design 56 adds no second way to be a payment gateway.
 A scripted provider is an adapter class that implements the existing `OrillaCart\Extension` contracts and calls the
@@ -240,10 +242,11 @@ arguments against the method's before calling, so a function called with too few
 An extension carries its own tests: `test "name" { http, now, settings } fn() { … assert … }` declarations.
 `ScriptTests` runs each in a fresh instance whose catalogue is the shop's with fakes in place (`HostCatalog::with`):
 `http.*` answer from the test's map and refuse what is not in it, `time.*` stand at `now`, `settings.get` reads the
-test's settings over the saved ones, `jobs.push` records. `PackageTests` wraps each run in `ObjectStore::isolated`,
+test's settings only (never the saved ones, so no stored secret reaches a test), `jobs.push` records. `PackageTests` wraps each run in `ObjectStore::isolated`,
 a transaction rolled back afterwards, and takes the object declarations from the manifest under test, so a draft's
-tests run against the real objects and fields and leave nothing. Everything the `needs` ask for is granted during a
-test. `POST /extensions/{id}/test` runs the saved files or the `files` sent, for the editor's buffers and VS Code;
+tests run against the real objects and fields and leave nothing. The shop's functions hold to what was granted at
+enabling (nothing for a draft or a disabled extension); the stand-ins answer for what the `needs` declare. A read-only
+caller tests the saved files only. `POST /extensions/{id}/test` runs the saved files or the `files` sent, for the editor's buffers and VS Code;
 `wp orillacart script test` runs a file. The language gained `assert test, message?` (kind `assertion`, the line in
 its data), `fail` as a value, and line ends as separators in lists and maps.
 

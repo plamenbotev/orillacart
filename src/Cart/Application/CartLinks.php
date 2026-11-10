@@ -10,5 +10,5 @@ namespace OrillaCart\Cart\Application;
  */
 interface CartLinks
 {
-    public function reminderUrl(?string $recoverToken, ?string $coupon): string;
+    public function reminderUrl(#[\SensitiveParameter] ?string $recoverToken, ?string $coupon): string;
 }

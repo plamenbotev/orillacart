@@ -7,6 +7,7 @@ namespace OrillaCart\Tax\Http;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Tax\Application\Dto\SaveTaxGroup;
 use OrillaCart\Tax\Application\TaxGroupService;
@@ -15,6 +16,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Adds a tax group, which products and shipping are taxed by, with its tax service code. */
+#[Tool(unasked: 'tax setup')]
 #[Route('/tax/groups', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateTaxGroupAction implements RequestHandlerInterface
 {

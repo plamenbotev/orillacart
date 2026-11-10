@@ -32,7 +32,8 @@ final readonly class RouteDocumentation
         ## Who may call a route
 
         - **Anyone**: the storefront's routes (the cart, checkout, receipts, reviews). Changes need a nonce:
-          `GET /session` gives a visitor one, never cached; send it as `X-WP-Nonce`.
+          `GET /session` gives a visitor one, never cached; send it as `X-OrillaCart-Nonce` (not `X-WP-Nonce`,
+          which WordPress checks for its own).
         - **Logged-in customers** and **shop managers**: with WordPress's login cookie and a nonce
           (`X-WP-Nonce`, `wp_create_nonce('wp_rest')`), as the shop's screens do.
         - **Integrations**: with an API key from Shop → Integrations, `Authorization: Bearer oc_…` (or

@@ -32,7 +32,8 @@ can connect no other way.
 
 A client or script that cannot log in, or a site that cannot offer it, connects with an API key. In Shop →
 Integrations, make one. A **read** key lets the assistant look at everything and change nothing; a **read and
-write** key lets it do what its manager can. Send it with each request:
+write** key lets it do what its manager can. A key is its maker's: a shop manager sees, chooses for and revokes
+only their own keys, and an administrator all of them. Send it with each request:
 
 ```
 Authorization: Bearer oc_…
@@ -82,7 +83,9 @@ that checks the shop's host passes the `Authorization` header on.
 
 In Shop → Integrations, **Choose…** beside a key (each app you connected has one) sets, for the assistant that uses it:
 - **Ask me first when**: money moves, something is deleted, customers hear of it, the shop opens or closes, or
-  a page customers read (the terms, shipping and payment) goes live, changes or comes down. All five are ticked to start. A client that can ask you (MCP elicitation, revision 2026-07-28) shows the
+  a page customers read (the terms, shipping and payment) goes live, changes or comes down, or something else in
+  the shop changes (any other change that is not plainly harmless: a currency rate, a gift card's dates, an
+  add-on's tool or route that names no risk). All six are ticked to start. A client that can ask you (MCP elicitation, revision 2026-07-28) shows the
   question in its own window, and the tool runs only on your yes: accepting the question is the yes, and
   declining it, or unticking its box before accepting, stops the call. The question says what the call would do,
   with the shop's own names: a refund with its amount, the order and customer, how the money goes back and
@@ -111,10 +114,15 @@ coupons, reports, emails, settings and the setup, one tool per step. Products' n
 pictures, the categories themselves, the media library's pictures and the shop's own pages (the shop, cart,
 checkout and account pages, and the legal pages) have their own tools. The site's other pages are not the
 assistant's. Publishing one of the shop's pages, changing one that is published, or taking one down asks
-you first, under its own tick: "a page customers read goes live, changes or comes down".
+you first, under its own tick: "a page customers read goes live, changes or comes down". Products are the same:
+`create_product` makes a draft and `change_product_content` changes only one customers do not see, while
+`publish_product` puts one on sale, changes one on sale, or takes it off, and asks.
 Add-ons can add theirs (docs/extensions.md, "Tools for the AI assistant"). A tool runs the same request the admin's screen sends, with
 the same checks, so it can do nothing the manager could not. Some parts are left out on purpose: API keys and
-webhooks are managed by a manager logged in, never with a key.
+webhooks are managed by a manager logged in, never with a key. A key reaches what its assistant may: a route
+the assistant is kept from answers a key only when it says it may (`#[Route(keys: true)]`), as the
+assistant's own endpoint does. Only the tools that only read are also WordPress abilities, since abilities
+cannot ask you first.
 
 For products, a file (an import, a download) is sent as base64 or as an address the shop fetches. The shop
 fetches only public addresses, up to 100 MB.

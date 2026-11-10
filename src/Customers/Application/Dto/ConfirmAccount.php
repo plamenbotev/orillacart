@@ -12,8 +12,10 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class ConfirmAccount
 {
     public function __construct(
+        #[\SensitiveParameter]
         #[Assert\Regex(pattern: '/^[a-f0-9]{64}$/')]
         public string $token,
+        #[\SensitiveParameter]
         #[Assert\NotBlank]
         #[Assert\Length(max: 200)]
         public string $password,

@@ -113,14 +113,14 @@ final readonly class Discounts
             }
             $firstOrder ??= !$known || !$this->orders->hasOrdered($request->customerId, $email, $request->orderId);
             $basket = new Basket(
-                array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons, $item->sized), $request->items, $left),
+                array_map(static fn(DiscountItem $item, Money $total): BasketLine => new BasketLine($item->productId, $item->quantity, $total, $item->onSale, $item->categoryIds, $item->brandIds, $item->coupons, $item->sized, $item->givenBy), $request->items, $left),
                 $request->currency,
+                $request->rate,
                 $request->country,
                 $request->customerId,
                 $request->email,
                 $firstOrder,
                 $subtotal,
-                $request->rate,
             );
             $refusal = $coupon->refusal($basket, $now, $known ? $this->redemptions->countByCustomer($coupon->id(), $request->customerId, $email) : 0);
             if ($refusal !== null) {
@@ -246,7 +246,7 @@ final readonly class Discounts
             if ($order->paidAt === null) {
                 // Paid now, it must hold now: on, not ended, and a first order's code for the customer's first.
                 $firstOrder ??= !$this->orders->hasOrdered($order->customerId, $order->email, $orderId);
-                $basket = new Basket([], $order->currency, null, $order->customerId, $order->email, $firstOrder);
+                $basket = new Basket([], $order->currency, $order->exchangeRate ?? '1', null, $order->customerId, $order->email, $firstOrder);
                 $refusal = $coupon->unavailable($basket, $this->clock->now(), $this->redemptions->countByCustomer($coupon->id(), $order->customerId, $order->email, true));
                 if ($refusal !== null) {
                     throw new CouponRuleViolation('The code %1$s no longer holds for this order: %2$s Order again from the shop.', 'orillacart_coupon_refused', values: [$coupon->code(), $refusal]);

@@ -22,7 +22,7 @@ interface ChangeRecordRepository
 
     /**
      * Replaces what was sent with $values in the records made on any of $paths or below them, and in those whose
-     * values mention $mention (any case).
+     * values mention $mention, any case, as ChangeRecord::mentions() reads it.
      *
      * @param list<string>         $paths  "/orders/12": that route and those below it
      * @param array<string, mixed> $values

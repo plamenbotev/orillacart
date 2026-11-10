@@ -8,7 +8,7 @@ interface FormUploadRepository
 {
     public function find(int $id): ?FormUpload;
 
-    public function withToken(string $token): ?FormUpload;
+    public function withToken(#[\SensitiveParameter] string $token): ?FormUpload;
 
     public function withTokenHash(string $hash): ?FormUpload;
 

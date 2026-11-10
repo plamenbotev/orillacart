@@ -20,6 +20,8 @@ final readonly class JobsOverview
      * @param list<JobCounts>        $days   the last 30 days, per type
      * @param bool                   $cronDisabled WP-Cron does not run on visits: a server's cron or workers have to
      *                                              run the jobs
+     * @param LeftOutView|null       $leftOut  a network worker leaves this site out
+     * @param array<int, string>     $leavesOut the sites a network worker started on this one leaves out, by id: why
      */
     public function __construct(
         public array $lanes,
@@ -33,5 +35,7 @@ final readonly class JobsOverview
         public array $days,
         public string $now,
         public bool $cronDisabled = false,
+        public ?LeftOutView $leftOut = null,
+        public array $leavesOut = [],
     ) {}
 }

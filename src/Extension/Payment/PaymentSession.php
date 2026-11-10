@@ -32,5 +32,10 @@ final readonly class PaymentSession
         public ?PaymentAddress $shipTo = null,
         /** The customer's email, for a provider that sends its own receipt or fills in its form. Since version 19. */
         public ?string $email = null,
+        /**
+         * When the shop stops waiting for the payment and cancels the order; null when it waits on. A provider
+         * whose sessions can expire ends this one then, so no money comes for an order the shop closed.
+         */
+        public ?\DateTimeImmutable $payBy = null,
     ) {}
 }

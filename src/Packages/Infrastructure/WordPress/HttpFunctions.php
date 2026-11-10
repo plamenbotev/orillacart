@@ -39,6 +39,7 @@ final readonly class HttpFunctions implements HostNamespace
                 \sprintf('http.%s(url, { json?, body?, form?, headers?, timeout? }): a %s to a declared host; answers { status, headers, body, json }', $method, strtoupper($method)),
                 'http',
                 HostFunction::HTTP,
+                writes: true,
             );
         }
 

@@ -28,7 +28,7 @@ final readonly class FakePaymentUrls implements PaymentUrls
 
     public function notificationUrl(string $gateway): string
     {
-        return "https://shop.test/payments/{$gateway}/webhook";
+        return "https://shop.test/payments/{$gateway}/webhook?key=" . PaymentOutcomes::notificationKey($this->signatures, $gateway);
     }
 
     /**

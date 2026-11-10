@@ -56,4 +56,25 @@ final class PackageRunningFilesTest extends TestCase
         self::assertSame(PackageState::Stopped, $package->state());
         self::assertSame('route GET "/a" fn(request) { return 1 }', $package->runningSource(), 'its routes are the ones it ran, to answer that it is stopped');
     }
+
+    public function testAnEditToATemplateOrAnAssetMakesItStaleAsAScriptsDoes(): void
+    {
+        $at = new \DateTimeImmutable('2026-11-10 12:00:00');
+        $package = new Package('trade', 'Trade', $at);
+        $package->write('main.ocs', 'extension "trade" { name: "Trade" }', $at);
+        $package->write('templates/box.html.twig', '<p>1</p>', $at);
+        $package->enable([], ['assets'], $at);
+        self::assertFalse($package->isStale());
+
+        $package->write('templates/box.html.twig', '<p>2</p>', $at);
+        self::assertTrue($package->isStale(), 'a template edit waits for enabling and says so');
+        $package->write('templates/box.html.twig', '<p>1</p>', $at);
+        self::assertFalse($package->isStale(), 'back as enabled');
+
+        $package->write('assets/app.js', 'console.log(1)', $at);
+        self::assertTrue($package->isStale(), 'an added asset');
+        $package->removeFile('assets/app.js', $at);
+        $package->removeFile('templates/box.html.twig', $at);
+        self::assertTrue($package->isStale(), 'a removed template');
+    }
 }

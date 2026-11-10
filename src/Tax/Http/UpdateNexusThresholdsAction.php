@@ -7,6 +7,7 @@ namespace OrillaCart\Tax\Http;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Tax\Application\Dto\SaveNexusThresholds;
 use OrillaCart\Tax\Application\NexusThresholdSettings;
@@ -15,6 +16,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Saves the economic nexus thresholds: for every US state, and for those whose own differ. */
+#[Tool(unasked: 'tax setup')]
 #[Route('/tax/nexus-thresholds', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateNexusThresholdsAction implements RequestHandlerInterface
 {

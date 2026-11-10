@@ -14,6 +14,7 @@ use OrillaCart\Payment\Application\Dto\PayPalRefund;
 use OrillaCart\Payment\Application\PayPal\PayPalApi;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use OrillaCart\Shared\Security\Secrets;
 use Psr\Log\LoggerInterface;
 
@@ -31,6 +32,7 @@ final readonly class WordPressPayPalApi implements PayPalApi
     public function __construct(
         private LoggerInterface $logger,
         private Secrets $secrets,
+        private RateLimiter $limits,
     ) {}
 
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder
@@ -116,10 +118,10 @@ final readonly class WordPressPayPalApi implements PayPalApi
         ];
     }
 
-    public function captureOrder(PayPalAccount $account, string $orderId): PayPalCapture
+    public function captureOrder(PayPalAccount $account, string $orderId, string $requestId): PayPalCapture
     {
         $path = '/v2/checkout/orders/' . rawurlencode($orderId);
-        $response = $this->send($account, 'POST', $path . '/capture', new \stdClass(), ['PayPal-Request-Id' => "orillacart-capture-{$orderId}"]);
+        $response = $this->send($account, 'POST', $path . '/capture', new \stdClass(), ['PayPal-Request-Id' => $requestId]);
         if ($response['status'] === 422 && self::issue($response['body']) === 'ORDER_ALREADY_CAPTURED') {
             $response = $this->send($account, 'GET', $path);
         }
@@ -249,6 +251,31 @@ final readonly class WordPressPayPalApi implements PayPalApi
         }
 
         return ($response['body']['verification_status'] ?? null) === 'SUCCESS';
+    }
+
+    public function certificate(string $url): string
+    {
+        $key = 'orillacart_paypal_cert_' . substr(hash('sha256', $url), 0, 32);
+        $cached = get_transient($key);
+        if (\is_string($cached) && $cached !== '') {
+            return $cached;
+        }
+        // Fetched a few times an hour at most, whoever names a certificate: PayPal has few, and keeps them years.
+        if ($this->limits->hit('paypal_certificates', 'site') !== null) {
+            throw new PaymentProviderUnavailable('PayPal', 'Too many of PayPal\'s webhook certificates were fetched lately.');
+        }
+        // No redirects: the address was checked to be PayPal's, and where it leads was not.
+        $response = wp_remote_get($url, ['timeout' => 10, 'redirection' => 0, 'limit_response_size' => 65536]);
+        if ($response instanceof \WP_Error || (int) wp_remote_retrieve_response_code($response) !== 200) {
+            throw new PaymentProviderUnavailable('PayPal', 'PayPal\'s webhook certificate could not be fetched.');
+        }
+        $pem = wp_remote_retrieve_body($response);
+        if (!str_starts_with(ltrim($pem), '-----BEGIN CERTIFICATE-----') || !\function_exists('openssl_x509_read') || openssl_x509_read($pem) === false) {
+            throw new PaymentProviderUnavailable('PayPal', 'PayPal\'s webhook certificate could not be read.');
+        }
+        set_transient($key, $pem, DAY_IN_SECONDS);
+
+        return $pem;
     }
 
     /**

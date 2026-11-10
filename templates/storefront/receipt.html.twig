@@ -1,7 +1,8 @@
 {#
  # An order as its customer sees it: after checkout (by a link to it) and in their account.
  #
- # order: the order; receipt: a link's token for it, which paying it now needs; heading: whether to thank the
+ # order: the order; receipt: what its forms say they are for, the order's handle (kept-NUMBER) whose token the
+ # browser keeps where scripts cannot read it, or a link's token when the address still carried one; heading: whether to thank the
  # customer for ordering;
  # links: the shop's pages; pay_methods: the ways an unpaid order can be paid now, if any; invoices: its
  # invoices and credit notes, if any; returns: its returns, and what may still go back, if the shop takes returns;

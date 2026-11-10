@@ -24,12 +24,12 @@ final readonly class DoctrineCartRepository implements CartRepository
         return $cart;
     }
 
-    public function findByToken(string $token): ?Cart
+    public function findByToken(#[\SensitiveParameter] string $token): ?Cart
     {
         return $this->entityManager->getRepository(Cart::class)->findOneBy(['tokenHash' => Cart::hash($token)]);
     }
 
-    public function findByRecoverToken(string $token): ?Cart
+    public function findByRecoverToken(#[\SensitiveParameter] string $token): ?Cart
     {
         return $this->entityManager->getRepository(Cart::class)->findOneBy(['recoverHash' => Cart::hash($token)]);
     }

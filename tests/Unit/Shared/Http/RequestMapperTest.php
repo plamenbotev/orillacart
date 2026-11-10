@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Shared\Http;
 
 use Nyholm\Psr7\ServerRequest;
+use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Platform\I18n\GettextTranslations;
 use OrillaCart\Platform\Serialization\SerializerFactory;
@@ -49,6 +50,19 @@ final class RequestMapperTest extends TestCase
 
         // Fewer decimals may go unsaid: the currency's own.
         self::assertSame(['weight_unit', 'dimension_unit'], array_column($violations, 'field'));
+    }
+
+    public function testAListOfIdsTakesOnlyIds(): void
+    {
+        foreach ([[\INF], ['7'], [1.5], [0], [[1]]] as $ids) {
+            try {
+                $this->mapper()->map(['code' => 'SPRING', 'kind' => 'percent', 'amount' => '5', 'product_ids' => $ids], SaveCoupon::class);
+                self::fail('Expected ' . var_export($ids, true) . ' to be refused.');
+            } catch (HttpException $e) {
+                self::assertSame(['product_ids[0]'], array_column(\is_array($e->details['violations'] ?? null) ? $e->details['violations'] : [], 'field'));
+            }
+        }
+        self::assertSame([3, 4], $this->mapper()->map(['code' => 'SPRING', 'kind' => 'percent', 'amount' => '5', 'product_ids' => [3, 4]], SaveCoupon::class)->productIds);
     }
 
     public function testUnexpectedFieldsAreRefused(): void

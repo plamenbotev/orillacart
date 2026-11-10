@@ -9,6 +9,7 @@ use OrillaCart\Audit\Application\Dto\ChangeLogQuery;
 use OrillaCart\Audit\Domain\ChangeRecord;
 use OrillaCart\Extension\Setting;
 use OrillaCart\Shared\Extension\SettingValues;
+use OrillaCart\Shared\Security\SecretKeys;
 use OrillaCart\Shared\Users\UserNames;
 use OrillaCart\Tests\Fixtures\Audit\InMemoryChangeRecords;
 use PHPUnit\Framework\TestCase;
@@ -25,6 +26,8 @@ final class ChangeLogTest extends TestCase
                 return [1 => 'Ada'];
             }
         }, new MockClock('2026-10-21 08:00:00 UTC'));
+        // The gateway's settings were checked against what it declares while the request was handled.
+        SettingValues::accept([new Setting('client_id', 'Client ID'), new Setting('client_secret', 'Secret', Setting::SECRET), new Setting('webhook_id', 'Webhook ID'), new Setting('api_key', 'Key')], [], [], 'PayPal');
 
         $log->record(1, 'PUT', '/payment-methods/{gateway}', '/payment-methods/paypal', [
             'name' => 'PayPal',
@@ -53,6 +56,22 @@ final class ChangeLogTest extends TestCase
         $log->record(1, 'PUT', '/extensions/{id}/settings', '/extensions/erp/settings', ['settings' => ['merchant_pin' => '1234', 'signing_salt' => 'NaCl', 'shop_id' => '7']]);
 
         self::assertSame(['settings' => ['merchant_pin' => '••••', 'signing_salt' => '••••', 'shop_id' => '7']], $log->page(new ChangeLogQuery())->records[0]->values);
+    }
+
+    public function testASettingTheRequestDidNotDeclareIsBlankedOut(): void
+    {
+        SecretKeys::reset();
+        $records = new InMemoryChangeRecords();
+        $log = new ChangeLog($records, new class implements UserNames {
+            public function names(array $ids): array
+            {
+                return [];
+            }
+        }, new MockClock('2026-10-21 08:00:00 UTC'));
+
+        $log->record(1, 'PUT', '/extensions/{id}/settings', '/extensions/erp/settings', ['note' => 'kept', 'settings' => ['access_code' => '1234', 'empty' => '', 'off' => false]]);
+
+        self::assertSame(['note' => 'kept', 'settings' => ['access_code' => '••••', 'empty' => '', 'off' => false]], $log->page(new ChangeLogQuery())->records[0]->values, 'no declaration read: a value could be a secret, whatever its name');
     }
 
     public function testWhatIsTooLongIsNotKeptButTheChangeIs(): void
@@ -108,5 +127,28 @@ final class ChangeLogTest extends TestCase
 
         self::assertSame(1, $log->forget([], 'n@gmail.com'));
         self::assertSame(['recipient_email' => 'john@gmail.com'], $records->records[0]->values());
+    }
+
+    public function testAnEmailWithinALongerValueIsFoundButNotAsPartOfAnotherAddress(): void
+    {
+        $records = new InMemoryChangeRecords();
+        $log = new ChangeLog($records, new class implements UserNames {
+            public function names(array $ids): array
+            {
+                return [];
+            }
+        }, new MockClock());
+        $log->record(1, 'POST', '/orders/{id}/notes', '/orders/7/notes', ['text' => 'Customer asked to write to Ada@Example.com instead.']);
+        $log->record(1, 'POST', '/orders/{id}/notes', '/orders/8/notes', ['text' => 'Sent to <ada@example.com>, twice']);
+        $log->record(1, 'POST', '/orders/{id}/notes', '/orders/9/notes', ['text' => 'Sent to lada@example.com and ada@example.community']);
+        $log->record(1, 'POST', '/orders/{id}/notes', '/orders/10/notes', ['text' => 'Sent to ada@example.com.au']);
+
+        self::assertSame(2, $log->forget([], 'ada@example.com'));
+        self::assertSame([
+            ['_' => 'Erased, as a privacy request asked.'],
+            ['_' => 'Erased, as a privacy request asked.'],
+            ['text' => 'Sent to lada@example.com and ada@example.community'],
+            ['text' => 'Sent to ada@example.com.au'],
+        ], array_map(static fn(ChangeRecord $record): array => $record->values(), $records->records));
     }
 }

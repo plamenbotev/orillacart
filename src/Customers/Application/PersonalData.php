@@ -43,7 +43,7 @@ final readonly class PersonalData
         $items = [];
         if ($page === 1) {
             $id = $this->customers->customerIdOf($email);
-            $customer = $id === null ? null : $this->customers->customer($id);
+            $customer = $id === null ? null : $this->customers->account($id);
             foreach ($customer->addresses ?? [] as $saved) {
                 $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-address-' . $saved->id, 'data' => [['name' => 'Saved address', 'value' => self::address($saved->address)]]];
             }

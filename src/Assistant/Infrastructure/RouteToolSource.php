@@ -34,6 +34,7 @@ final readonly class RouteToolSource implements ToolSource
             $tool->risk,
             $tool->area,
             $tool->capability,
+            unasked: $tool->unasked,
         ), $this->routeTools->all());
     }
 

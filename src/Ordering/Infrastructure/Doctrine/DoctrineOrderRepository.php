@@ -452,22 +452,20 @@ final readonly class DoctrineOrderRepository implements OrderRepository
         return $standing('o.emailKey = :email', 'email', EmailAddress::key($email)) || ($customerId !== null && $standing('o.customerId = :customer', 'customer', $customerId));
     }
 
-    public function countUnpaidOnHold(?int $customerId, string $email): int
+    public function countUnpaidOnHold(int $customerId, array $gateways): int
     {
-        $count = function (string $who, string $name, int|string $value): int {
-            $count = $this->entityManager->createQueryBuilder()->select('COUNT(o.id)')->from(Order::class, 'o')
-                ->where($who)->setParameter($name, $value)
-                ->andWhere('o.status = :status')->setParameter('status', OrderStatus::OnHold)
-                ->andWhere('o.paidAt IS NULL')
-                ->andWhere('o.test = false')
-                ->getQuery()->getSingleScalarResult();
+        if ($gateways === []) {
+            return 0;
+        }
+        $count = $this->entityManager->createQueryBuilder()->select('COUNT(o.id)')->from(Order::class, 'o')
+            ->where('o.customerId = :customer')->setParameter('customer', $customerId)
+            ->andWhere('o.status = :status')->setParameter('status', OrderStatus::OnHold)
+            ->andWhere('o.paidAt IS NULL')
+            ->andWhere('o.test = false')
+            ->andWhere('o.paymentGateway IN (:gateways)')->setParameter('gateways', $gateways)
+            ->getQuery()->getSingleScalarResult();
 
-            return is_numeric($count) ? (int) $count : 0;
-        };
-        $key = EmailAddress::key($email);
-
-        // The larger of the two, each by its index: an order of the account under another address counts too.
-        return max($key === '' ? 0 : $count('o.emailKey = :email', 'email', $key), $customerId === null ? 0 : $count('o.customerId = :customer', 'customer', $customerId));
+        return is_numeric($count) ? (int) $count : 0;
     }
 
     public function boughtProducts(?int $customerId, string $email, array $productIds): array

@@ -11,6 +11,7 @@ use OrillaCart\Customers\Application\Dto\CustomerPageView;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Application\Dto\CustomerSettingsView;
 use OrillaCart\Customers\Application\Dto\CustomerView;
+use OrillaCart\Customers\Application\Dto\InvitationView;
 use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Customers\Application\Dto\SaveAddress;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
@@ -23,6 +24,7 @@ use OrillaCart\Customers\Domain\CustomerSettings;
 use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Customers\Domain\Event\CustomerErased;
+use OrillaCart\Customers\Domain\InvitationNotFound;
 use OrillaCart\Customers\Domain\PendingAccount;
 use OrillaCart\Customers\Domain\PendingAccountRepository;
 use OrillaCart\Newsletter\Application\Newsletter;
@@ -132,12 +134,24 @@ final readonly class CustomerService
     {
         $settings = $this->settings->load();
 
-        return new CustomerSettingsView($settings->accounts->value, AccountMode::values(), $settings->guestOrders);
+        $available = $this->accounts->availableRoles();
+
+        return new CustomerSettingsView(
+            $settings->accounts->value,
+            AccountMode::values(),
+            $settings->guestOrders,
+            array_values(array_filter($settings->roles, static fn(string $role): bool => isset($available[$role]))),
+            array_map(static fn(string $name, string $label): array => ['name' => $name, 'label' => $label], array_keys($available), array_values($available)),
+        );
     }
 
     public function updateSettings(UpdateCustomerSettings $command): CustomerSettingsView
     {
-        $this->settings->save(new CustomerSettings(AccountMode::from($command->accounts), $command->guestOrders ?? $this->settings->load()->guestOrders));
+        $current = $this->settings->load();
+        // Only roles the site has and that manage nothing can be customers' roles.
+        $available = $this->accounts->availableRoles();
+        $roles = $command->roles === null ? $current->roles : array_values(array_filter($command->roles, static fn(string $role): bool => isset($available[$role])));
+        $this->settings->save(new CustomerSettings(AccountMode::from($command->accounts), $command->guestOrders ?? $current->guestOrders, $roles));
 
         return $this->settings();
     }
@@ -159,9 +173,34 @@ final readonly class CustomerService
     }
 
     /**
+     * One of the shop's customers, as its managers and add-ons read them. Whoever is not one (the site's staff, a
+     * user with another job on it, on a network a user of another site) is not found, wherever the number came
+     * from: a path, an order being made, a script.
+     *
      * @throws CustomerNotFound
      */
     public function customer(int $id): CustomerView
+    {
+        if (!$this->accounts->isShopCustomer($id)) {
+            throw new CustomerNotFound($id);
+        }
+
+        return $this->account($id);
+    }
+
+    /** Whether the user is one of the shop's customers: see customer(). */
+    public function isCustomer(int $id): bool
+    {
+        return $this->accounts->isShopCustomer($id);
+    }
+
+    /**
+     * The account of a logged-in user as they see it themselves: anyone who logs in has one, an administrator
+     * ordering at their own shop too. Never for a number someone else gave: customer() is.
+     *
+     * @throws CustomerNotFound
+     */
+    public function account(int $id): CustomerView
     {
         $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
 
@@ -205,7 +244,7 @@ final readonly class CustomerService
     }
 
     /**
-     * Saves an address in the customer's address book: a new one, or in place of the one of the id.
+     * Saves an address in a logged-in user's own address book: a new one, or in place of the one of the id.
      *
      * @throws CustomerNotFound
      * @throws CustomerRuleViolation for an id the book does not have, or a full book
@@ -216,7 +255,33 @@ final readonly class CustomerService
         [$book] = $record->addresses->with($addressId, $command->address, $command->billing, $command->shipping);
         $this->accounts->saveAddresses($id, $book);
 
-        return $this->customer($id);
+        return $this->account($id);
+    }
+
+    /**
+     * The shop saves an address in one of its customers' address books.
+     *
+     * @throws CustomerNotFound      for a user who is not one of the shop's customers
+     * @throws CustomerRuleViolation for an id the book does not have, or a full book
+     */
+    public function saveAddressOf(int $customerId, ?string $addressId, SaveAddress $command): CustomerView
+    {
+        $this->customer($customerId);
+
+        return $this->saveAddress($customerId, $addressId, $command);
+    }
+
+    /**
+     * The shop removes an address from one of its customers' address books.
+     *
+     * @throws CustomerNotFound      for a user who is not one of the shop's customers
+     * @throws CustomerRuleViolation for an id the book does not have
+     */
+    public function removeAddressOf(int $customerId, string $addressId): CustomerView
+    {
+        $this->customer($customerId);
+
+        return $this->removeAddress($customerId, $addressId);
     }
 
     /**
@@ -228,7 +293,7 @@ final readonly class CustomerService
         $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
         $this->accounts->saveAddresses($id, $record->addresses->without($addressId));
 
-        return $this->customer($id);
+        return $this->account($id);
     }
 
     /**
@@ -256,6 +321,11 @@ final readonly class CustomerService
             $this->pending->remove($earlier);
         }
         [$account, $token] = PendingAccount::start($command->email, $command->firstName, $command->lastName, $orderIds, $this->clock->now());
+        $inviter = $earlier?->inviter();
+        if ($earlier !== null && $inviter !== null) {
+            // The customer the shop invited signs up themselves: the shop's groups still come with the account.
+            $account->invitedBy($inviter, $earlier->groupIds());
+        }
         $this->pending->save($account);
         $this->accountMail->confirm($account->email(), $account->firstName(), $this->links->confirmUrl($token), $account->expiresAt(), $this->settings->load()->guestOrders);
     }
@@ -271,29 +341,152 @@ final readonly class CustomerService
      */
     /**
      * The shop makes a customer's account itself, without the sign-up emails and without telling the customer
-     * (welcome() does): on a network, a customer of another of its shops joins this one as they are.
+     * (welcome() does). On a network only someone who sees every user of the network ($seesNetwork: the network's
+     * administrators) does so, a user of another of its sites joining this one as they are; the shop's other staff
+     * invite the customer instead (invite()), so they do not learn which emails the network's other sites have. A
+     * test customer (design 62) is never emailed, so on a network, whoever makes it, it is made with an address of a
+     * domain kept for tests (example.com, .test, .invalid, .example) that no other site's user has.
      *
-     * @throws RuleViolation for an email that has an account here
+     * @throws RuleViolation for an email that has an account here; on a network, for staff who invite instead
      */
-    public function create(CreateCustomer $command): CustomerView
+    public function create(CreateCustomer $command, bool $seesNetwork = false): CustomerView
     {
         $email = mb_strtolower(trim($command->email));
         if ($this->accounts->isRegistered($email)) {
             throw new RuleViolation('This email has an account already.', 'orillacart_account_exists');
         }
-        if ($this->accounts->elsewhere($email) !== null) {
-            // A user of another site of the network joins only by their own choice: they are sent the link to.
-            $this->requestAccount(new RegisterAccount($email, trim($command->firstName), trim($command->lastName)));
-
-            throw new RuleViolation('This email has an account elsewhere on the network: it was sent a link to join this shop, which makes the account once followed.', 'orillacart_account_invited');
+        if ($this->accounts->onNetwork() && !$seesNetwork && !$command->test) {
+            throw new RuleViolation('On a network of sites, invite the customer: they make their account from the link the shop sends.', 'orillacart_invite_instead');
         }
-        // No password given: one nobody knows, until the customer sets theirs through the lost-password link.
-        $id = $this->accounts->register($email, $command->password ?? bin2hex(random_bytes(24)), trim($command->firstName), trim($command->lastName));
+        // A test customer on a network, whoever makes it, has an address nobody has: of a domain kept for tests,
+        // and no user of another site, who would become a test customer here.
+        if ($this->accounts->onNetwork() && $command->test) {
+            if (!self::isTestDomain($email)) {
+                throw new RuleViolation('On a network of sites, a test customer\'s email is of a domain kept for tests, such as tester@example.com or buyer@shop.test.', 'orillacart_test_email');
+            }
+            if ($this->accounts->elsewhere($email) !== null) {
+                throw new RuleViolation('Choose another email for the test customer.', 'orillacart_test_email');
+            }
+        }
+        $elsewhere = $this->accounts->onNetwork() ? $this->accounts->elsewhere($email) : null;
+        if ($elsewhere !== null) {
+            // A user of another of the network's sites joins this one, their password and details as they are.
+            $this->accounts->join($elsewhere);
+            $id = $elsewhere;
+        } else {
+            // No password given: one nobody knows, until the customer sets theirs through the lost-password link.
+            $id = $this->accounts->register($email, $command->password ?? bin2hex(random_bytes(24)), trim($command->firstName), trim($command->lastName));
+        }
         if ($command->test) {
             $this->accounts->markTest($id);
         }
 
         return $this->customer($id);
+    }
+
+    /**
+     * The shop invites a customer to make their account: the link goes to the email, whoever has it elsewhere on
+     * the network or nobody yet, and the account joins the groups chosen once made. The answer is the same either
+     * way. While the link sent is still good no other goes: the invitation takes the new names and groups.
+     *
+     * @throws RuleViolation for an email that has an account here, or a shop that makes no accounts
+     */
+    public function invite(CreateCustomer $command, int $by): InvitationView
+    {
+        $email = mb_strtolower(trim($command->email));
+        if ($this->accounts->isRegistered($email)) {
+            throw new RuleViolation('This email has an account already.', 'orillacart_account_exists');
+        }
+        if (!$this->accountsOffered()) {
+            throw new RuleViolation('The shop does not make accounts.', 'orillacart_accounts_disabled');
+        }
+        $now = $this->clock->now();
+        $pending = $this->pending->findByEmail($email);
+        if ($pending !== null && !$pending->isExpired($now)) {
+            $pending->invitedBy($by, $command->groupIds);
+            $this->pending->save($pending);
+
+            return $this->invitationView($pending);
+        }
+        if ($pending !== null) {
+            $this->pending->remove($pending);
+        }
+        [$account, $token] = PendingAccount::start($email, $command->firstName, $command->lastName, $pending?->orderIds() ?? [], $now);
+        $account->invitedBy($by, $command->groupIds);
+        $this->pending->save($account);
+        $this->accountMail->confirm($account->email(), $account->firstName(), $this->links->confirmUrl($token), $account->expiresAt(), $this->settings->load()->guestOrders, true);
+
+        return $this->invitationView($account);
+    }
+
+    /**
+     * Whether the shop's staff invite customers rather than make their accounts: on a network, unless they see
+     * every user of it.
+     */
+    public function invites(bool $seesNetwork): bool
+    {
+        return $this->accounts->onNetwork() && !$seesNetwork;
+    }
+
+    /** @return list<InvitationView> the shop's invitations not yet followed, the newest first */
+    public function invitations(): array
+    {
+        return array_map($this->invitationView(...), $this->pending->invitations());
+    }
+
+    /**
+     * The invitation's link again, as a new one: once a day at most, or once the last stopped working.
+     *
+     * @throws InvitationNotFound
+     * @throws RuleViolation for one sent less than a day ago whose link still works
+     */
+    public function resendInvitation(int $id): InvitationView
+    {
+        $invitation = $this->invitation($id);
+        $now = $this->clock->now();
+        if (!$invitation->mayResend($now)) {
+            throw new RuleViolation('The invitation went less than a day ago and its link still works.', 'orillacart_invitation_recent');
+        }
+        $token = $invitation->renew($now);
+        $this->pending->save($invitation);
+        $this->accountMail->confirm($invitation->email(), $invitation->firstName(), $this->links->confirmUrl($token), $invitation->expiresAt(), $this->settings->load()->guestOrders, true);
+
+        return $this->invitationView($invitation);
+    }
+
+    /**
+     * The invitation is withdrawn: its link stops working.
+     *
+     * @throws InvitationNotFound
+     */
+    public function withdrawInvitation(int $id): void
+    {
+        $this->pending->remove($this->invitation($id));
+    }
+
+    /** @throws InvitationNotFound */
+    private function invitation(int $id): PendingAccount
+    {
+        $invitation = $this->pending->find($id);
+        if ($invitation === null || !$invitation->isInvitation()) {
+            throw new InvitationNotFound($id);
+        }
+
+        return $invitation;
+    }
+
+    private function invitationView(PendingAccount $account): InvitationView
+    {
+        $now = $this->clock->now();
+
+        return new InvitationView($account->id(), $account->email(), $account->firstName(), $account->lastName(), $account->groupIds(), $account->inviter(), $account->sentAt()->format(\DATE_ATOM), $account->expiresAt()->format(\DATE_ATOM), $account->isExpired($now), $account->mayResend($now));
+    }
+
+    private static function isTestDomain(string $email): bool
+    {
+        $domain = substr($email, (int) strrpos($email, '@') + 1);
+
+        return \in_array($domain, ['example.com', 'example.net', 'example.org'], true) || preg_match('/(^|\.)(test|invalid|example|localhost)$/', $domain) === 1;
     }
 
     /**
@@ -350,6 +543,14 @@ final readonly class CustomerService
                 $addressed = true;
             }
         }
+        // The groups the shop invited the customer into, those still there.
+        foreach ($account->groupIds() as $groupId) {
+            $group = $this->groups->find($groupId);
+            if ($group !== null) {
+                $group->add($id);
+                $this->groups->save($group);
+            }
+        }
         $this->pending->remove($account);
         // A new account is logged in; one that joined from elsewhere on the network logs in as it always does,
         // with its own password and whatever else the network asks (two factors), not on an emailed link alone.
@@ -358,7 +559,7 @@ final readonly class CustomerService
         }
         $this->accountMail->welcome($account->email(), $account->firstName(), $this->links->accountUrl());
 
-        return $this->customer($id);
+        return $this->account($id);
     }
 
     /** Forgets the accounts asked for whose links stopped working, daily. */
@@ -383,7 +584,7 @@ final readonly class CustomerService
             $this->newsletter->unsubscribe($record->email);
         }
 
-        return $this->customer($id);
+        return $this->account($id);
     }
 
     /**

@@ -10,7 +10,8 @@ use OrillaCart\Shared\Domain\References;
 
 /**
  * One attempt to pay for an order through a gateway, with what the provider calls it. A payment ends once:
- * completed, failed or cancelled, and never changes after that.
+ * completed, failed or cancelled, and never changes after that, but for one that failed or was given up whose
+ * money came all the same: it is completed late, so the money has a payment to be refunded from.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'payments')]
@@ -154,7 +155,37 @@ class Payment
         return $this->settle(PaymentStatus::Cancelled, null, $at);
     }
 
+    /**
+     * The money came for a payment that had failed or been given up, as when the customer went back to the
+     * provider's page and paid there after all.
+     *
+     * @return bool false for a payment that still waits, or that was completed before
+     */
+    public function completeLate(?string $transactionId, \DateTimeImmutable $at): bool
+    {
+        if (!$this->endedUnpaid()) {
+            return false;
+        }
+        $this->status = PaymentStatus::Completed;
+        $this->transactionId = $transactionId ?? $this->transactionId;
+        $this->settledAt = $at;
+
+        return true;
+    }
+
+    /** Whether the payment ended without its money: it failed, or the customer gave it up. */
+    public function endedUnpaid(): bool
+    {
+        return $this->status === PaymentStatus::Failed || $this->status === PaymentStatus::Cancelled;
+    }
+
     /** The provider holds the money for review; the payment stays pending with its transaction known. */
+    /** Whether it waits for the shop: the provider holds it for review, or it did not match the order. */
+    public function isHeld(): bool
+    {
+        return $this->status === PaymentStatus::Pending && $this->transactionId !== null;
+    }
+
     public function hold(string $transactionId): void
     {
         if (!$this->isSettled()) {

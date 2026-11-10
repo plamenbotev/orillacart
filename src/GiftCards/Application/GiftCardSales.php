@@ -142,9 +142,11 @@ final readonly class GiftCardSales
             }
         }
         if ($count < 1) {
-            // Money went back without naming the items: the cards bought still spend, which may be what was paid
-            // back. The shop decides, so the order says so.
-            $this->flagCards($orderId, $cards, 'Part of the order was refunded without naming items, and it bought gift cards that still spend (%s): disable them on the gift card screen if the refund was for them.');
+            // Money went back without naming the cards: they still spend, which may be what was paid back. The shop
+            // decides, so the order says so, as the refund was made: naming no items, or only other ones.
+            $this->flagCards($orderId, $cards, $quantities === []
+                ? 'Part of the order was refunded without naming items, and it bought gift cards that still spend (%s): disable them on the gift card screen if the refund was for them.'
+                : 'Part of the order was refunded naming other items than its gift cards, and the cards still spend (%s): disable them on the gift card screen if the refund was for them too.');
 
             return;
         }

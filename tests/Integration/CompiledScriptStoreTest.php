@@ -39,6 +39,12 @@ final class CompiledScriptStoreTest extends RestTestCase
         self::assertMatchesRegularExpression('/\n\/\/ signed [0-9a-f]{32}\n$/', $file);
         self::assertTrue($store->load($key, $namespace . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . Scripts::checksum($source)));
 
+        // Signed for another key: moved to this one, it is refused as an edited file is.
+        $other = Scripts::key($site, $scope, "fn g() { return 1 }\n");
+        file_put_contents($folder . '/' . $other . '.php', $file);
+        self::assertFalse($store->load($other, $namespace . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . Scripts::checksum($source)));
+        self::assertFileDoesNotExist($folder . '/' . $other . '.php');
+
         // Edited after signing: the signature no longer matches, the file goes, and the class is not defined by it.
         file_put_contents($path, str_replace("'signed'", "'edited'", $file));
         self::assertFalse($store->load($key, $namespace . '\\Script_not_this'));
@@ -51,7 +57,7 @@ final class CompiledScriptStoreTest extends RestTestCase
         self::assertFileDoesNotExist('/tmp/pwned');
 
         // Signed, but the code is outside the compiler's grammar: refused by the gate as well.
-        file_put_contents($path, $store->signed("<?php\nnamespace {$namespace};\nfile_put_contents('/tmp/pwned', '1');\n"));
+        file_put_contents($path, $store->signed($key, "<?php\nnamespace {$namespace};\nfile_put_contents('/tmp/pwned', '1');\n"));
         self::assertFalse($store->load($key, $namespace . '\\Script_not_this'));
         self::assertFileDoesNotExist($path);
         self::assertFileDoesNotExist('/tmp/pwned');

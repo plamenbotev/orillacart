@@ -7,12 +7,14 @@ namespace OrillaCart\Packages\Http;
 use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Switches an extension off: its files, settings and data stay; nothing of it runs until enabled again. */
+#[Tool(unasked: 'an extension switched off: its files, settings and data stay')]
 #[Route('/extensions/{id}/disable', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '[a-z][a-z0-9_]*'])]
 final readonly class DisablePackageAction implements RequestHandlerInterface
 {

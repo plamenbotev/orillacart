@@ -203,7 +203,39 @@ final class ManualOrdersTest extends TestCase
         self::assertNotNull($this->shop->accounts->find($made->id), 'no longer a customer, so not the test data\'s to remove');
     }
 
-    public function testAnOpenOrderIsAnonymisedByHandOnlyOnceSettledOrOld(): void
+    public function testTheTestDataCountsOnlyTheAccountsRemovalTakes(): void
+    {
+        $kept = $this->shop->customers->create(new \OrillaCart\Customers\Application\Dto\CreateCustomer('editor@shop.dev', 'Test', 'Editor', test: true));
+        $this->shop->customers->create(new \OrillaCart\Customers\Application\Dto\CreateCustomer('tester@shop.dev', 'Test', 'Buyer', test: true));
+        $this->shop->accounts->staff[] = $kept->id;
+        $data = new TestData($this->shop->orders, $this->shop->accounts, $this->shop->customers);
+
+        self::assertSame(1, $data->count()->customers, 'the one given another job stays, so it is not counted');
+        self::assertSame(1, $data->remove()->customers);
+        self::assertSame(0, $data->count()->customers);
+    }
+
+    public function testNoOrderIsMadeOrPricedInTheNameOfAUserWhoIsNotTheShopsCustomer(): void
+    {
+        $staff = $this->shop->accounts->register('boss@shop.dev', 'secret12', 'Grace', 'Hopper');
+        $this->shop->accounts->staff[] = $staff;
+
+        foreach ([$staff, 987654] as $id) {
+            try {
+                $this->shop->manualOrders->create(new CreateOrder('boss@shop.dev', self::address('BG'), [new EditedItem(20, 1)], customerId: $id), 7);
+                self::fail('an order made for a user who is not a customer');
+            } catch (\OrillaCart\Customers\Domain\CustomerNotFound) {
+            }
+            try {
+                $this->shop->manualOrders->quote(new \OrillaCart\Checkout\Application\Dto\QuoteOrder([new EditedItem(20, 1)], customerId: $id));
+                self::fail('an order priced as a user who is not a customer');
+            } catch (\OrillaCart\Customers\Domain\CustomerNotFound) {
+            }
+        }
+        self::assertSame(0, $this->shop->orders->orders(new \OrillaCart\Ordering\Application\Dto\OrderQuery())->total);
+    }
+
+    public function testAnOrderIsAnonymisedByHandOnlyOnceSettledOrOldAndLeftAsItIsForAMonth(): void
     {
         $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer'), 7);
         $yearAgo = $this->shop->clock->now()->modify('-365 days');
@@ -213,11 +245,26 @@ final class ManualOrdersTest extends TestCase
         } catch (\OrillaCart\Ordering\Domain\OrderRuleViolation $e) {
             self::assertSame('orillacart_order_open', $e->errorCode);
         }
-        self::assertTrue($this->shop->orders->anonymise($order->number, 7, $this->shop->clock->now()->modify('+1 day'))->anonymised, 'older than the history');
-
         $other = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer'), 7);
         $this->shop->orders->changeStatus($other->number, new \OrillaCart\Ordering\Application\Dto\ChangeOrderStatus('cancelled'), 7);
-        self::assertTrue($this->shop->orders->anonymise($other->number, 7, $yearAgo)->anonymised, 'cancelled');
+        try {
+            $this->shop->orders->anonymise($other->number, 7, $yearAgo);
+            self::fail('cancelled just now, and erased at once: the record of what was changed before would go');
+        } catch (\OrillaCart\Ordering\Domain\OrderRuleViolation $e) {
+            self::assertSame('orillacart_order_recent', $e->errorCode);
+        }
+
+        $this->shop->clock->modify('+31 days');
+        self::assertTrue($this->shop->orders->anonymise($order->number, 7, $this->shop->clock->now()->modify('+1 day'))->anonymised, 'older than the history, and left as it is');
+        self::assertTrue($this->shop->orders->anonymise($other->number, 7, $yearAgo)->anonymised, 'cancelled, and left as it is');
+        self::assertTrue($this->shop->orders->anonymise($other->number, 7, $yearAgo)->anonymised, 'erased before: its own note does not stand in the way');
+    }
+
+    public function testAPrivacyRequestErasesAnOrderAtOnce(): void
+    {
+        $order = $this->shop->manualOrders->create(new CreateOrder('ada@example.com', self::address('BG'), [new EditedItem(20, 1)], payment: 'bank_transfer'), 7);
+
+        self::assertTrue($this->shop->orders->anonymise($order->number, null)->anonymised);
     }
 
     public function testAPaidOrderStartsProcessing(): void

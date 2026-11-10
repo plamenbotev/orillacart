@@ -7,6 +7,7 @@ namespace OrillaCart\Shipping\Http;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -18,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Adds a carrier checkout offers: with its own rates, priced by an add-on's shipping method, or as pickup at the
  * shop's places.
  */
+#[Tool(unasked: 'shipping setup')]
 #[Route('/carriers', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateCarrierAction implements RequestHandlerInterface
 {

@@ -95,7 +95,7 @@ final readonly class RequestMapper
         } catch (PartialDenormalizationException $e) {
             throw HttpException::invalidInput(array_map(
                 fn(NotNormalizableValueException $error): array => $this->violation((string) $error->getPath(), $this->translations->text(self::typeMessage($error))),
-                array_values($e->getErrors()),
+                array_values($e->getNotNormalizableValueErrors()),
             ));
         } catch (ExtraAttributesException $e) {
             throw HttpException::invalidInput(array_map(

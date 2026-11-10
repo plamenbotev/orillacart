@@ -7,12 +7,14 @@ namespace OrillaCart\Audit\Application;
 use OrillaCart\Audit\Application\Dto\ProblemPage;
 use OrillaCart\Audit\Application\Dto\ProblemView;
 use OrillaCart\Audit\Domain\LoggedProblemRepository;
+use OrillaCart\Shared\Security\LoggedText;
+use OrillaCart\Shared\Security\Signatures;
 use Psr\Clock\ClockInterface;
 
 /**
  * What went wrong that the shop should hear of, as the Status screen and Site Health show it: payments and
  * refunds the shop could not record, emails that did not go, couriers and add-ons that failed, settings that
- * could not be read. Kept a month.
+ * could not be read. Kept a month, and what was about a person until a privacy request erases them.
  */
 final readonly class ShopProblems
 {
@@ -22,6 +24,7 @@ final readonly class ShopProblems
     public function __construct(
         private LoggedProblemRepository $problems,
         private ClockInterface $clock,
+        private ?Signatures $signatures = null,
     ) {}
 
     public function page(int $page = 1): ProblemPage
@@ -47,5 +50,16 @@ final readonly class ShopProblems
     public function forgetOld(): void
     {
         $this->problems->forgetBefore($this->clock->now()->sub(new \DateInterval(self::KEPT)));
+    }
+
+    /**
+     * A privacy request erased this person: the problems about them go, which may hold what a mail server or a
+     * provider said of them. The count of how often such a problem happened goes with them.
+     *
+     * @return int how many went
+     */
+    public function forgetPerson(string $email): int
+    {
+        return $this->problems->forgetAbout($email, LoggedText::aboutMark($this->signatures, $email));
     }
 }

@@ -18,12 +18,18 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
  * The link in a cart reminder: brings the visitor's cart back to this browser (?orillacart_cart_link=its token),
  * puts the coupon the reminder offered in the cart (?orillacart_coupon=its code), and shows the cart without them.
  * A customer's cart is theirs after logging in, which the link leads through.
+ *
+ * Opening the link asks first, with a button that posts back to it: the link works once, and a mail scanner or a
+ * preview that opens every link must not use it up before its owner does. A browser that holds a filled cart keeps
+ * it, with the reminded cart's items added (CartService::recover()).
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class CartFromReminder implements CartLinks
 {
     public const string RECOVER = 'orillacart_cart_link';
     public const string COUPON = 'orillacart_coupon';
+    /** The field of the button that confirms bringing the cart back. */
+    public const string CONFIRM = 'orillacart_bring_back';
 
     public function __construct(
         private CartService $carts,
@@ -32,7 +38,7 @@ final readonly class CartFromReminder implements CartLinks
         private RateLimiter $limits,
     ) {}
 
-    public function reminderUrl(?string $recoverToken, ?string $coupon): string
+    public function reminderUrl(#[\SensitiveParameter] ?string $recoverToken, ?string $coupon): string
     {
         $cart = $this->links->pages()['cart'] ?? home_url('/');
         $args = array_filter([self::RECOVER => $recoverToken, self::COUPON => $coupon], static fn(?string $value): bool => $value !== null);
@@ -49,7 +55,10 @@ final readonly class CartFromReminder implements CartLinks
             return;
         }
         if (\is_string($token) && preg_match('/^[a-f0-9]{64}$/', $token) === 1) {
-            $this->give($this->carts->recover($token));
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST' || ($_POST[self::CONFIRM] ?? null) !== '1') {
+                $this->ask();
+            }
+            $this->give($this->carts->recover($token, $this->shopper->cart()));
         }
         // Counted as codes typed at checkout are: the cart shows whether a code holds, so the link must not be a
         // way to try codes without end.
@@ -61,8 +70,23 @@ final readonly class CartFromReminder implements CartLinks
         exit;
     }
 
+    /** The page that asks before the link is used: one button, posting back to the same address. */
+    private function ask(): never
+    {
+        nocache_headers();
+        header('X-Robots-Tag: noindex');
+        header('Referrer-Policy: no-referrer');
+        $form = \sprintf(
+            '<p>%s</p><form method="post"><input type="hidden" name="%s" value="1"><p><button type="submit" class="button">%s</button></p></form>',
+            esc_html__('Bring back the cart you left at checkout to this browser? Items already in your cart here stay, and the reminded ones join them. The link works once.', 'orillacart'),
+            esc_attr(self::CONFIRM),
+            esc_html__('Bring back my cart', 'orillacart'),
+        );
+        wp_die($form, esc_html__('Your cart', 'orillacart'), ['response' => 200]);
+    }
+
     /** The cart's token to the browser, and to the rest of this request. */
-    private function give(?string $token): void
+    private function give(#[\SensitiveParameter] ?string $token): void
     {
         if ($token === null) {
             return;

@@ -9,12 +9,14 @@ use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Adds a stockroom, a place that holds stock, with its delivery times and when it warns of low stock. */
+#[Tool(unasked: 'inventory setup')]
 #[Route('/stockrooms', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateStockroomAction implements RequestHandlerInterface
 {

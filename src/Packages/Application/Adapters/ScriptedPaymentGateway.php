@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Packages\Application\Adapters;
 
-use OrillaCart\Extension\Payment\ChecksPayments;
-use OrillaCart\Extension\Payment\HandlesNotifications;
+use OrillaCart\Extension\Payment\ConfirmsNotifications;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
 use OrillaCart\Extension\Payment\Notification;
@@ -22,9 +21,11 @@ use OrillaCart\Packages\Domain\HandlerFailed;
  * A `payment_gateway "id" { … }` declaration as the shop's payment contract. Its functions: `start(session,
  * settings)` (required), `not_ready(settings, currency, decimals)`, `reference(return)`, `returned(reference,
  * return, settings)`, `notified(notification, settings)`, `check(reference, transaction_id, settings)`; with a
- * `refund` function it is a ScriptedRefundingGateway.
+ * `refund` function it is a ScriptedRefundingGateway. Its notifications are not taken at their word
+ * (ConfirmsNotifications): they come to an address with the shop's key, and money they tell of is asked about
+ * with `check` before it settles the payment.
  */
-class ScriptedPaymentGateway extends ScriptedProvider implements PaymentGateway, HandlesReturns, HandlesNotifications, ChecksPayments
+class ScriptedPaymentGateway extends ScriptedProvider implements PaymentGateway, HandlesReturns, ConfirmsNotifications
 {
     public function defaultName(): string
     {

@@ -9,6 +9,7 @@ use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\Container\LocatedServices;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -22,7 +23,7 @@ final readonly class BlockRegistrar implements Registrar
      * @param ServiceLocator<BlockDefinition> $blocks by name
      */
     public function __construct(
-        #[AutowireLocator(BlockDefinition::TAG, defaultIndexMethod: 'name')]
+        #[AutowireLocator(BlockDefinition::TAG, indexAttribute: TaggedKeyPass::KEY)]
         private ServiceLocator $blocks,
         private PluginContext $context,
     ) {}

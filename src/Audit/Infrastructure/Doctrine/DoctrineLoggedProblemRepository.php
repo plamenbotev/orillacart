@@ -43,4 +43,26 @@ final readonly class DoctrineLoggedProblemRepository implements LoggedProblemRep
         $this->entityManager->createQuery('DELETE FROM ' . LoggedProblem::class . ' p WHERE p.lastAt < :at')
             ->setParameter('at', $at)->execute();
     }
+
+    public function forgetAbout(string $email, ?string $mark): int
+    {
+        $like = static fn(string $text): string => '%' . addcslashes($text, '\\%_') . '%';
+        $query = $this->entityManager->createQueryBuilder()->delete(LoggedProblem::class, 'p');
+        $conditions = [];
+        if (trim($email) !== '') {
+            $conditions[] = 'p.message LIKE :email';
+            $query->setParameter('email', $like(trim($email)));
+        }
+        if ($mark !== null && $mark !== '') {
+            $conditions[] = 'p.about LIKE :mark';
+            $query->setParameter('mark', $like($mark));
+        }
+        if ($conditions === []) {
+            return 0;
+        }
+
+        $removed = $query->where(implode(' OR ', $conditions))->getQuery()->execute();
+
+        return \is_int($removed) ? $removed : 0;
+    }
 }

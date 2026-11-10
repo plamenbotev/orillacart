@@ -19,6 +19,7 @@ final readonly class DatabaseConfig
         public ?int $port,
         public ?string $socket,
         public string $user,
+        #[\SensitiveParameter]
         public string $password,
         public string $name,
         public string $charset,

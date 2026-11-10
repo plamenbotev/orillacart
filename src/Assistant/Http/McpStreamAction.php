@@ -16,7 +16,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * The MCP endpoint keeps no stream open: a client that asks for one is told to POST (405).
  */
 #[Tool(leftOut: 'The assistant\'s own endpoint.')]
-#[Route('/mcp', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
+#[Route('/mcp', methods: ['GET'], capability: Capability::MANAGE_SHOP, keys: true)]
 final readonly class McpStreamAction implements RequestHandlerInterface
 {
     public function __construct(private ResponseFactoryInterface $responses) {}

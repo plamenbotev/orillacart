@@ -25,5 +25,7 @@ final readonly class DiscountItem
         public bool $coupons = true,
         /** It counts towards the order's size, as coupons' minimum and maximum judge it: not an item a coupon gives, nor a gift card. */
         public bool $sized = true,
+        /** The code of the coupon that gave it: no other coupon counts it, takes money off it or gives it. */
+        public ?string $givenBy = null,
     ) {}
 }

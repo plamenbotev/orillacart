@@ -141,11 +141,30 @@ final readonly class OrderMoneyDescription implements CallDescription
         foreach (\is_array($arguments['items'] ?? null) ? $arguments['items'] : [] as $item) {
             if (\is_array($item) && \is_int($item['product_id'] ?? null)) {
                 $quantity = \is_int($item['quantity'] ?? null) ? $item['quantity'] : 1;
-                $items[] = "{$quantity} × " . $this->products->name($item['product_id']);
+                $price = \is_string($item['unit_price'] ?? null) ? Words::plain($item['unit_price']) : '';
+                $items[] = "{$quantity} × " . Words::plain($this->products->name($item['product_id'])) . ($price === '' ? ' at the catalog\'s price' : " at {$price} each, the shop's own price");
             }
         }
+        $billing = \is_array($arguments['billing'] ?? null) ? Words::address($arguments['billing']) : '';
+        $shipping = \is_array($arguments['shipping_address'] ?? null) ? Words::address($arguments['shipping_address']) : '';
+        $customer = Words::int($arguments, 'customer_id');
+        $option = Words::string($arguments, 'shipping_option');
+        $payment = Words::string($arguments, 'payment');
         $lines = ['Places an order for ' . Words::string($arguments, 'email') . ': ' . ($items === [] ? 'no items' : implode(', ', $items)) . '.'];
-        $lines[] = Words::yes($arguments, 'paid') ? 'It is recorded as paid already.' : 'It waits for the customer to pay.';
+        $lines[] = 'Billed to: ' . ($billing === '' ? 'no address' : $billing) . '.';
+        $lines[] = 'Shipped to: ' . ($shipping === '' ? 'the billing address' : $shipping) . '.';
+        $lines[] = 'Shipping: ' . ($option === '' ? 'none chosen' : $option) . (Words::string($arguments, 'pickup_point') === '' ? '' : ', to the pickup point ' . Words::string($arguments, 'pickup_point')) . '.';
+        $lines[] = $customer === null ? 'It is on no customer\'s account.' : "It is on the account of customer #{$customer}.";
+        $lines[] = 'Payment: ' . ($payment === '' ? 'no method chosen' : $payment) . '. ' . (Words::yes($arguments, 'paid') ? 'It is recorded as paid already.' : 'It waits for the customer to pay.');
+        if (Words::string($arguments, 'vat_number') !== '') {
+            $lines[] = 'VAT number: ' . Words::string($arguments, 'vat_number') . ', checked as checkout checks it.';
+        }
+        if (Words::string($arguments, 'note') !== '') {
+            $lines[] = 'Note: ' . Words::quoted(Words::string($arguments, 'note'));
+        }
+        if (Words::yes($arguments, 'test')) {
+            $lines[] = 'It is a test order: never emailed, left out of the reports.';
+        }
         $lines[] = Words::yes($arguments, 'email_customer') ? 'The customer is emailed about it.' : 'The customer is not emailed.';
         $lines[] = 'The items are taken from stock.';
 

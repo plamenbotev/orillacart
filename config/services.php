@@ -219,6 +219,7 @@ use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
 use OrillaCart\Platform\Twig\TwigTemplateWords;
 use OrillaCart\Platform\WordPress\AfterResponse\ShutdownWork;
+use OrillaCart\Platform\WordPress\Extensions\OptionClosedFailures;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
 use OrillaCart\Platform\WordPress\Files\WebServerFileDelivery;
@@ -228,6 +229,7 @@ use OrillaCart\Platform\WordPress\NetworkJobSites;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Platform\WordPress\WordPressIntegration;
 use OrillaCart\Platform\WordPress\WordPressLanguages;
+use OrillaCart\Platform\WordPress\WordPressShopManagers;
 use OrillaCart\Platform\WordPress\WordPressUserNames;
 use OrillaCart\Reports\Application\HomeCache;
 use OrillaCart\Reports\Application\ReportQueries;
@@ -281,6 +283,7 @@ use OrillaCart\Setup\Application\SetupSteps;
 use OrillaCart\Setup\Infrastructure\TaggedReadinessChecks;
 use OrillaCart\Setup\Infrastructure\TaggedSetupSteps;
 use OrillaCart\Setup\Infrastructure\WordPress\OptionSetupAnswers;
+use OrillaCart\Shared\Extension\ClosedFailures;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Files\PrivateFiles;
@@ -295,6 +298,7 @@ use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shared\Security\ReadOnlyRequest;
 use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
+use OrillaCart\Shared\Users\ShopManagers;
 use OrillaCart\Shared\Users\UserNames;
 use OrillaCart\Shared\View\EditedTemplates;
 use OrillaCart\Shared\View\TemplateEditing;
@@ -398,7 +402,7 @@ return static function (ContainerConfigurator $container): void {
 
     // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
     $services->load('OrillaCart\\', '../src/*/Application/')
-        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/'])
+        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/', '../src/Payment/Application/PayPal/PayPalWebhookSignature.php'])
         ->public();
     // The host functions scripts may call: every tagged namespace, gathered once.
     $services->set(HostCatalog::class)->args(['$namespaces' => tagged_iterator(HostNamespace::TAG)])->public();
@@ -425,6 +429,7 @@ return static function (ContainerConfigurator $container): void {
     $services->set(PayPalGateway::class)->tag(WordPressExtensions::GATEWAY_TAG, ['priority' => 10]);
     $services->alias(ReadOnlyRequest::class, KeyReadOnlyRequest::class);
     $services->alias(InstalledExtensions::class, WordPressExtensions::class);
+    $services->alias(ClosedFailures::class, OptionClosedFailures::class);
     $services->alias(ScriptGuide::class, PluginScriptGuide::class);
     $services->alias(Registry::class, WordPressExtensions::class);
     $services->alias(PayPalApi::class, WordPressPayPalApi::class);
@@ -481,6 +486,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(StockLevelRepository::class, DoctrineStockLevelRepository::class);
     $services->alias(StockMovementRepository::class, DoctrineStockMovements::class);
     $services->alias(UserNames::class, WordPressUserNames::class);
+    $services->alias(ShopManagers::class, WordPressShopManagers::class);
     $services->alias(BackInStockRequests::class, DoctrineBackInStockRequests::class);
     $services->alias(CarrierRepository::class, DoctrineCarrierRepository::class);
     $services->alias(ShippingClassRepository::class, DoctrineShippingClassRepository::class);
@@ -563,6 +569,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(GiftCardSettingsRepository::class, OptionGiftCardSettingsRepository::class);
     $services->alias(GiftCardMail::class, GiftCardEmails::class);
     $services->alias(AccountLinks::class, StorefrontAccountLinks::class);
+    $services->alias(\OrillaCart\Returns\Application\WithdrawalLinks::class, \OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks::class);
     $services->alias(PriceRuleRepository::class, DoctrinePriceRuleRepository::class);
     $services->alias(ShopperGroups::class, GroupsOfShoppers::class);
     $services->alias(RedemptionRepository::class, DoctrineRedemptionRepository::class);

@@ -149,9 +149,15 @@ final class NewsletterTest extends TestCase
         $this->shop->newsletter->changeEmail('ada@example.com', 'Ada@New.example');
         $this->shop->jobs->runAll();
 
-        self::assertTrue($this->shop->newsletter->isSubscribed('ada@new.example'));
         self::assertFalse($this->shop->newsletter->isSubscribed('ada@example.com'));
-        self::assertSame(['ada@new.example'], array_keys($this->list->members), 'the old address left the list, the new one joined');
+        self::assertTrue($this->shop->newsletter->isPending('ada@new.example'), 'nobody proved the new address is theirs');
+        self::assertSame([], array_keys($this->list->members), 'the old address left the list; the new one is not on it yet');
+        $asked = array_values(array_filter($this->shop->mail->emails, static fn($email): bool => $email->kind === 'newsletter_confirm'));
+        self::assertSame(['ada@new.example'], array_map(static fn($email): string => $email->to, $asked), 'its owner is asked, though the shop does not confirm new sign-ups');
+
+        self::assertTrue($this->shop->newsletter->confirm('ada@new.example'));
+        $this->shop->jobs->runAll();
+        self::assertSame(['ada@new.example'], array_keys($this->list->members), 'on the list once confirmed');
     }
 
     public function testANewSignUpWaitsForItsOwnerToConfirmItFromTheEmailBeforeAnyListHears(): void
@@ -207,7 +213,7 @@ final class NewsletterTest extends TestCase
         self::assertSame(['ada@new.example'], array_keys($this->list->members));
     }
 
-    public function testAnEmailChangedToOneThatLeftMovesTheSubscriptionThere(): void
+    public function testAnEmailChangedToOneThatLeftLeavesItsUnsubscribeStanding(): void
     {
         $this->shop->newsletter->updateSettings(new UpdateNewsletterSettings(true, 'News.', ['test_list'], confirmNew: false));
         $this->order('ada@new.example');
@@ -219,8 +225,10 @@ final class NewsletterTest extends TestCase
         $this->shop->jobs->runAll();
 
         self::assertNull($this->shop->newsletter->subscription('ada@example.com'));
-        self::assertTrue($this->shop->newsletter->isSubscribed('ada@new.example'), 'the subscribed sign-up moved to the new address');
-        self::assertSame(['ada@new.example'], array_keys($this->list->members));
+        self::assertFalse($this->shop->newsletter->isSubscribed('ada@new.example'), 'the new address\'s owner left, and that stands');
+        self::assertNotNull($this->shop->newsletter->subscription('ada@new.example')?->unsubscribedAt);
+        self::assertSame([], array_keys($this->list->members));
+        self::assertSame([], array_filter($this->shop->mail->emails, static fn($email): bool => $email->kind === 'newsletter_confirm'), 'nor are they asked again');
     }
 
     private function order(string $email): void

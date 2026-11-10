@@ -17,16 +17,15 @@ use OrillaCart\Shared\Security\Signatures;
  *
  * Each site's classes live in their own namespace (`…\Scripts\Site<id>`) and under their own keys, so two sites
  * of a network with the same extension never share a file or a class.
- * Nothing is included or evaluated unchecked: a file carries the site's signature of its source on its last
- * line, and the source has to pass the GeneratedCodeGate; a file that fails either (planted, edited, from
- * another site, or made by a compiler with a bug) is deleted and the class compiled again.
+ * Nothing is evaluated unchecked: a file carries the site's signature of its build, its key and its source on its
+ * last line, its source has to pass the GeneratedCodeGate, and the class it declares has to be the one asked for;
+ * a file that fails any of these (planted, edited, moved from another key or build, from another site, or made by
+ * a compiler with a bug) is deleted and the class compiled again.
  *
- * What is included is the bytes that were checked, never the file read again: they are written to a new file
- * of a random name (created exclusively, 0600) in the same folder, included, and that file removed, so a writer
- * of the cache folder who swaps the file between the check and the include changes nothing. The cost is
- * OPcache's: each include compiles the class afresh rather than from shared memory, and the removed file's
- * entry is invalidated. Comparing the file's inode and times before and after the include was the other way,
- * kept by OPcache; it finds a swap only after the swapped code ran.
+ * What runs is the bytes that were checked, evaluated from memory, never a file read or included again: a writer
+ * of the cache folder who swaps a file after the check changes nothing, as no file is left to swap. The cost is
+ * OPcache's: each request compiles the classes it uses afresh rather than from shared memory, which keeping the
+ * check cannot avoid (anything OPcache would load is a file in a writable folder).
  */
 final readonly class CompiledScriptStore implements ScriptStore
 {
@@ -47,20 +46,17 @@ final readonly class CompiledScriptStore implements ScriptStore
             return false;
         }
         $file = file_get_contents($path);
-        $source = $file === false ? null : $this->unsigned($file);
-        if ($file === false || $source === null || GeneratedCodeGate::refuse($source, $this->site()) !== null) {
+        $source = $file === false ? null : $this->unsigned($key, $file);
+        if ($source === null || GeneratedCodeGate::refuse($source, $this->site()) !== null || self::declared($source) !== ltrim($className, '\\')) {
             @unlink($path);
 
             return false;
         }
-
-        // Its class is named for its source's checksum: defined already, it is this same code, included once.
-        $declared = self::declared($source);
-        if ($declared !== null && class_exists($declared, false)) {
-            return class_exists($className, false);
+        if (!class_exists($className, false)) {
+            self::evaluate($source);
         }
 
-        return self::includeChecked(\dirname($path), $file) && class_exists($className, false);
+        return class_exists($className, false);
     }
 
     /** The fully qualified class a compiled file declares; null when it declares none. */
@@ -81,15 +77,14 @@ final readonly class CompiledScriptStore implements ScriptStore
         }
         $path = $this->path($key);
         if ($path !== null) {
-            $signed = $this->signed($source);
             $temporary = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
-            if (file_put_contents($temporary, $signed) !== false && rename($temporary, $path) && (class_exists($className, false) || self::includeChecked(\dirname($path), $signed)) && class_exists($className, false)) {
-                return;
+            if (file_put_contents($temporary, $this->signed($key, $source)) === false || !rename($temporary, $path)) {
+                @unlink($temporary);
             }
-            @unlink($temporary);
         }
-        // The class is defined in memory; the generated code is what the compiler made and the gate passed.
-        eval(substr($source, \strlen('<?php')));
+        if (!class_exists($className, false)) {
+            self::evaluate($source);
+        }
     }
 
     public function forget(string $keyPrefix): void
@@ -104,43 +99,23 @@ final readonly class CompiledScriptStore implements ScriptStore
         }
     }
 
+    /** Defines the class of source that passed the gate: what the compiler made, from memory. */
+    private static function evaluate(string $source): void
+    {
+        eval(substr($source, \strlen('<?php')));
+    }
+
     /**
-     * Includes these bytes, already checked: from a file made for this include alone, under a random name no one
-     * knew before, removed afterwards. False when the folder takes no such file.
+     * The source with the site's signature of it, its key and the build as a trailing comment, which PHP ignores
+     * and load() checks: a signed file moved to another key or build is refused as an edited one is.
      */
-    public static function includeChecked(string $folder, string $bytes): bool
+    public function signed(string $key, string $source): string
     {
-        $temporary = $folder . '/.include-' . bin2hex(random_bytes(16)) . '.php';
-        $handle = @fopen($temporary, 'x');
-        if ($handle === false) {
-            return false;
-        }
-        try {
-            @chmod($temporary, 0o600);
-            $written = fwrite($handle, $bytes) === \strlen($bytes);
-            fclose($handle);
-            if (!$written) {
-                return false;
-            }
-            require $temporary;
-        } finally {
-            @unlink($temporary);
-            if (\function_exists('opcache_invalidate')) {
-                @opcache_invalidate($temporary, true);
-            }
-        }
-
-        return true;
+        return $source . self::TRAILER . $this->signatures->sign(self::PURPOSE, $this->signedWhat($key, $source)) . "\n";
     }
 
-    /** The source with the site's signature of it as a trailing comment, which PHP ignores and load() checks. */
-    public function signed(string $source): string
-    {
-        return $source . self::TRAILER . $this->signatures->sign(self::PURPOSE, $source) . "\n";
-    }
-
-    /** The source a signed file holds, or null when the signature is missing or not this site's. */
-    public function unsigned(string $file): ?string
+    /** The source a signed file of this key holds, or null when the signature is missing, not this site's, or of another key or build. */
+    public function unsigned(string $key, string $file): ?string
     {
         $at = strrpos($file, self::TRAILER);
         if ($at === false) {
@@ -149,7 +124,12 @@ final readonly class CompiledScriptStore implements ScriptStore
         $source = substr($file, 0, $at);
         $signature = rtrim(substr($file, $at + \strlen(self::TRAILER)), "\n");
 
-        return $this->signatures->verify(self::PURPOSE, $source, $signature) ? $source : null;
+        return $this->signatures->verify(self::PURPOSE, $this->signedWhat($key, $source), $signature) ? $source : null;
+    }
+
+    private function signedWhat(string $key, string $source): string
+    {
+        return $this->context->build . "\n" . $key . "\n" . $source;
     }
 
     private function path(string $key): ?string

@@ -24,8 +24,10 @@ use OrillaCart\Shared\Lifecycle\RemovesShopData;
  * The folder is chosen when the first file is stored, where the process storing it can write, and remembered:
  * a folder made by WP-CLI running as root would be one the web server cannot write to. A marker in it names the
  * site and install it is for. The folder remembered is used only when it is this site's (the marker says so, or,
- * unmarked, it is where this site would make it): a cloned site, whose options name the original's folder, makes
- * its own, and removing the clone's data leaves the original's files alone.
+ * unmarked, it is where this site would make it). When it is not, or it is gone, the site was moved, restored or
+ * copied: the shop keeps the folder it remembers, serves, stores and deletes nothing, and the Status screen asks
+ * the shop manager (answer()): moved, adopt the folder; a copy, start a new one. Picking a new folder unasked
+ * would leave a moved shop's customers with links to files it no longer finds, and forget where they are.
  *
  * Every file gets a random name without an extension, so nothing in the folder runs or is sniffed as a page.
  */
@@ -46,6 +48,9 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
 
     public function store(string $uploadedPath, string $filename): StoredFile
     {
+        if ($this->unclaimed() !== null) {
+            throw new \RuntimeException('The downloads folder is not known as this site\'s: answer on the shop\'s Status screen whether the site moved or is a copy.');
+        }
         $directory = $this->directory();
         $key = bin2hex(random_bytes(16));
         $target = $directory . '/' . $key;
@@ -61,7 +66,7 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
 
     public function path(string $key): ?string
     {
-        if (preg_match('/^[a-f0-9]{32}$/', $key) !== 1) {
+        if (preg_match('/^[a-f0-9]{32}$/', $key) !== 1 || $this->unclaimed() !== null) {
             return null;
         }
         $path = $this->directory() . '/' . $key;
@@ -79,6 +84,10 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
 
     public function check(bool $fresh = false): StorageCheck
     {
+        $unclaimed = $this->unclaimed();
+        if ($unclaimed !== null) {
+            return new StorageCheck($this->location(), $unclaimed[1], null, '', $unclaimed[0]);
+        }
         $directory = $this->directory();
         // Written again on every check: a deploy or a backup restore may have lost them.
         self::writeDenyFiles($directory);
@@ -103,6 +112,105 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
         set_transient(self::CHECK_TRANSIENT, ['reachable' => $reachable], DAY_IN_SECONDS);
 
         return new StorageCheck($location, $directory, $reachable, $rule);
+    }
+
+    public function answer(string $answer): StorageCheck
+    {
+        $unclaimed = $this->unclaimed();
+        if ($unclaimed === null) {
+            return $this->check(true);
+        }
+        $created = get_option(self::CREATED_OPTION) === get_option(self::DIRECTORY_OPTION);
+        if ($answer === StorageCheck::ADOPT) {
+            if ($unclaimed[0] === StorageCheck::MISSING) {
+                throw new \DomainException('The folder is gone, so there is nothing to adopt: start a new one.');
+            }
+            $folder = $unclaimed[1];
+            self::mark($folder);
+            update_option(self::DIRECTORY_OPTION, $folder, false);
+            if ($created) {
+                update_option(self::CREATED_OPTION, $folder, false);
+            }
+            if (preg_match('/^orillacart-([a-f0-9]{64})$/', basename($folder), $secret) === 1) {
+                update_option(self::SECRET_OPTION, $secret[1], false);
+            }
+        } elseif ($answer === StorageCheck::START_NEW) {
+            delete_option(self::DIRECTORY_OPTION);
+            if ($created) {
+                delete_option(self::CREATED_OPTION);
+            }
+            if ($this->unclaimed() !== null) {
+                throw new \LogicException('The downloads folder is still not this site\'s.');
+            }
+        } else {
+            throw new \DomainException('Answer adopt or new.');
+        }
+        delete_transient(self::CHECK_TRANSIENT);
+
+        return $this->check(true);
+    }
+
+    /**
+     * Why the folder remembered is not used: [StorageCheck::ELSEWHERE or MISSING, the folder found (where it was
+     * moved to, for a moved site) or remembered]; null when it is this site's or none is remembered yet.
+     *
+     * @return array{string, string}|null
+     */
+    private function unclaimed(): ?array
+    {
+        if (\defined('ORILLACART_DOWNLOADS_DIR')) {
+            return null;
+        }
+        $chosen = get_option(self::DIRECTORY_OPTION);
+        if (!\is_string($chosen) || $chosen === '') {
+            return null;
+        }
+        $found = is_dir($chosen) ? $chosen : $this->movedTo($chosen);
+        $marker = $found === null ? false : @file_get_contents($found . '/' . self::MARKER);
+
+        return self::claim($chosen, $found, \is_string($marker) ? $marker : null, self::marker(), $found !== null && $this->madeHere($found));
+    }
+
+    /**
+     * Whose the remembered folder is.
+     *
+     * @param string      $chosen   the folder remembered
+     * @param string|null $found    that folder, or where it is now when the site moved; null when it is nowhere
+     * @param string|null $marker   the marker in the folder found; null for none
+     * @param string      $ours     this site's marker
+     * @param bool        $madeHere whether the folder found is where this site makes one, for one without a marker
+     *
+     * @return array{string, string}|null null when the folder is this site's
+     */
+    public static function claim(string $chosen, ?string $found, ?string $marker, string $ours, bool $madeHere): ?array
+    {
+        if ($found === null) {
+            return [StorageCheck::MISSING, $chosen];
+        }
+        if ($found === $chosen && ($marker === null ? $madeHere : $marker === $ours)) {
+            return null;
+        }
+
+        return [StorageCheck::ELSEWHERE, $found];
+    }
+
+    /**
+     * Where a folder that is gone from where it was remembered is, when the site moved with it: the same folder
+     * in this install's uploads folder, or in the orillacart-downloads folder next to this WordPress.
+     */
+    private function movedTo(string $chosen): ?string
+    {
+        $name = basename($chosen);
+        $candidates = preg_match('/^orillacart-[a-f0-9]{64}$/', $name) === 1
+            ? [wp_upload_dir(null, false)['basedir'] . '/' . $name]
+            : [\dirname(rtrim(ABSPATH, '/')) . '/orillacart-downloads/' . $name];
+        foreach ($candidates as $candidate) {
+            if ($candidate !== $chosen && is_dir($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     public function activate(): void {}
@@ -157,7 +265,11 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
             $directory = rtrim(self::configured(), '/') . (is_multisite() ? '/site-' . get_current_blog_id() : '');
         } else {
             $chosen = get_option(self::DIRECTORY_OPTION);
-            $directory = \is_string($chosen) && $chosen !== '' && $this->ours($chosen) ? $chosen : ($this->outsideWebRoot() ?? $this->uploadsDirectory());
+            if (\is_string($chosen) && $chosen !== '' && $this->unclaimed() !== null) {
+                // Kept, and neither made nor marked, until the shop manager says whose it is (answer()).
+                return $chosen;
+            }
+            $directory = \is_string($chosen) && $chosen !== '' ? $chosen : ($this->outsideWebRoot() ?? $this->uploadsDirectory());
             if ($create && $chosen !== $directory) {
                 update_option(self::DIRECTORY_OPTION, $directory, false);
             }
@@ -213,6 +325,12 @@ final readonly class LocalPrivateFiles implements PrivateFiles, LifecycleListene
             return true;
         }
 
+        return $this->madeHere($directory);
+    }
+
+    /** Whether the folder is where this site makes one, outside the site or in its uploads folder. */
+    private function madeHere(string $directory): bool
+    {
         return $directory === self::siteFolder(\dirname(rtrim(ABSPATH, '/')) . '/orillacart-downloads', ABSPATH, get_current_blog_id())
             || preg_match('#^' . preg_quote(wp_upload_dir(null, false)['basedir'], '#') . '/orillacart-[a-f0-9]{64}$#', $directory) === 1;
     }

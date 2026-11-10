@@ -29,6 +29,9 @@ interface AssistantTool
     /** What customers read or agree to changes: a page, a text of the shop's, goes live or comes down. */
     public const string PUBLISHING = 'publishing';
 
+    /** Something else in the shop changes: what a tool that does not only read risks when it names nothing else. */
+    public const string CHANGES = 'changes';
+
     /**
      * Lowercase letters, digits and underscores, up to 64, starting with the add-on's own prefix
      * ("parcelco_book_pickup"); a name the shop's tools have is left out.
@@ -58,7 +61,10 @@ interface AssistantTool
     /** True when it only reads: a read-only key is offered it. */
     public function readOnly(): bool;
 
-    /** One of MONEY, DELETING, CUSTOMERS, OPENING, or null. */
+    /**
+     * One of MONEY, DELETING, CUSTOMERS, OPENING, PUBLISHING or CHANGES, or null. A tool that does not only read
+     * always waits for the owner's yes when they ask about its risk: with null its risk is CHANGES.
+     */
     public function risk(): ?string;
 
     /**

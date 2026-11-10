@@ -57,6 +57,7 @@ final readonly class Payments
                 $command->breakdown,
                 $command->shipTo,
                 $command->email,
+                $command->payBy,
             ), new Settings($method->settings()));
         } catch (ProviderUnavailable $e) {
             $payment->fail(null, $this->clock->now());
@@ -86,6 +87,15 @@ final readonly class Payments
         }
 
         return new PaymentStartView($payment->id(), $start->redirectUrl);
+    }
+
+    /**
+     * Whether a payment of the order waits for the shop to look at it: its money may have been taken, so the order
+     * is not paid again meanwhile.
+     */
+    public function isHeld(int $orderId): bool
+    {
+        return array_any($this->payments->ofOrder($orderId), static fn(Payment $payment): bool => $payment->isHeld());
     }
 
     /** Whether a redirect goes over https to a host: nothing a browser reads another way (`javascript:`, `//`, `\\`). */

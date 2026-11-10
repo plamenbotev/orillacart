@@ -25,11 +25,12 @@ final class UnpaidOrdersTest extends TestCase
 {
     private TestShop $shop;
     private UnpaidOrders $unpaid;
+    private int $room;
 
     protected function setUp(): void
     {
         $this->shop = new TestShop();
-        $room = $this->shop->stockrooms->create(new SaveStockroom('Sofia'))->id;
+        $this->room = $room = $this->shop->stockrooms->create(new SaveStockroom('Sofia'))->id;
         $this->shop->content->add(20, 'E-book');
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->stock->setLevels(StockItemRef::product(20), new SetStockLevels([new SetStockLevel($room, 5)]));
@@ -78,26 +79,73 @@ final class UnpaidOrdersTest extends TestCase
         self::assertSame('on_hold', $this->shop->orders->order($order->number)->status);
     }
 
-    public function testAShopperHoldsAFewUnpaidOrdersAtOnce(): void
+    public function testACustomerHoldsAFewOrdersWaitingForATransferAtOnce(): void
     {
-        $orders = [$this->place(), $this->place('ada+2@example.com'), $this->place('ADA+3@example.com')];
+        $this->stocked();
+        $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
+        $orders = [$this->place(customer: $ada), $this->place('ada+2@example.com', customer: $ada), $this->place('other@example.com', customer: $ada)];
 
         try {
-            $this->place('ada+4@example.com');
+            $this->place(customer: $ada);
             self::fail('three wait for the money');
         } catch (CheckoutRuleViolation $e) {
-            self::assertSame(['orillacart_too_many_unpaid_orders', 'You have 3 orders waiting for your payment. Pay for them from their receipts, or wait until they are cancelled, to order again.'], [$e->errorCode, $e->getMessage()]);
+            self::assertSame(['orillacart_too_many_unpaid_orders', 'Too many orders wait for a payment like this one. Choose another way to pay, or pay for the orders that wait first.'], [$e->errorCode, $e->getMessage()]);
         }
-        self::assertSame('on_hold', $this->place('grace@example.com')->status, 'another shopper orders');
+        self::assertSame('on_hold', $this->place('grace@example.com', customer: $this->shop->accounts->add('grace@example.com', 'Grace'))->status, 'another shopper orders');
 
         $this->shop->orders->markPaid($orders[0]->number, null);
-        self::assertSame('on_hold', $this->place()->status, 'one paid makes room');
+        self::assertSame('on_hold', $this->place(customer: $ada)->status, 'one paid makes room');
     }
 
-    private function place(string $email = 'ada@example.com'): PlacedOrderView
+    public function testOrdersPlacedInSomeonesEmailNeverLockThemOut(): void
     {
-        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
+        $this->stocked();
+        // Someone else places transfers in Ada's email, and its variants, as a guest.
+        foreach (['ada@example.com', 'Ada+a@example.com', 'ADA+b@example.com', 'ada+c@example.com'] as $email) {
+            $this->place($email, caller: 'ip:198.51.100.9');
+        }
 
-        return $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
+        self::assertSame('on_hold', $this->place(caller: 'ip:203.0.113.7')->status, 'Ada orders from her own address');
+        self::assertSame('on_hold', $this->place(customer: $this->shop->accounts->add('ada@example.com', 'Ada'))->status, 'and from her account');
+    }
+
+    public function testAGuestHoldsAFewOrdersWaitingForATransferFromOnePlace(): void
+    {
+        $this->stocked();
+        $this->shop->rateLimiter->limits['unpaid_orders'] = 3;
+        for ($i = 0; $i < 3; ++$i) {
+            $this->place("guest{$i}@example.com", caller: 'ip:198.51.100.9');
+        }
+
+        $this->expectException(CheckoutRuleViolation::class);
+        $this->expectExceptionMessage('Too many orders wait for a payment like this one.');
+        $this->place('guest4@example.com', caller: 'ip:198.51.100.9');
+    }
+
+    public function testAnOrderPaidOnlineOrOnDeliveryIsNeverRefusedForOrdersThatWait(): void
+    {
+        $this->stocked();
+        $this->shop->paymentMethods->update('stripe', new SavePaymentMethod('Card', true, 2, settings: ['secret_key' => 'sk_live_shop', 'webhook_secret' => 'whsec_shop']));
+        $this->shop->paymentMethods->update('cash_on_delivery', new SavePaymentMethod('Cash on delivery', true, 3));
+        $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
+        for ($i = 0; $i < 3; ++$i) {
+            $this->place(customer: $ada);
+        }
+
+        self::assertSame('pending_payment', $this->place(customer: $ada, payment: 'stripe')->status);
+        self::assertSame('on_hold', $this->place(customer: $ada, payment: 'cash_on_delivery')->status);
+        self::assertSame('on_hold', $this->place(customer: $ada, payment: 'cash_on_delivery')->status, 'orders paid on delivery do not count either');
+    }
+
+    private function stocked(): void
+    {
+        $this->shop->stock->setLevels(StockItemRef::product(20), new SetStockLevels([new SetStockLevel($this->room, 50)]));
+    }
+
+    private function place(string $email = 'ada@example.com', ?int $customer = null, string $caller = '', string $payment = 'bank_transfer'): PlacedOrderView
+    {
+        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $customer), new AddToCart(20))->newToken, $customer);
+
+        return $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: $payment), $caller);
     }
 }

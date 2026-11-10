@@ -16,6 +16,8 @@ final class ShutdownWork implements AfterResponse, Registrar
 {
     /** @var array<string, \Closure> */
     private array $work = [];
+    /** Whether the container serves steps on another site (SiteKernels), which run the work at their end. */
+    private bool $inSteps = false;
 
     public function __construct(private readonly LoggerInterface $logger) {}
 
@@ -31,9 +33,18 @@ final class ShutdownWork implements AfterResponse, Registrar
         $this->work[$key] ??= $work;
     }
 
+    /**
+     * The container serves steps on another site than the request's (SiteKernels): its work runs at the end of
+     * each step (runNow()), while the visitor waits, so it does not detach.
+     */
+    public function forSteps(): void
+    {
+        $this->inSteps = true;
+    }
+
     public function detaches(): bool
     {
-        return \PHP_SAPI !== 'cli' && (\function_exists('fastcgi_finish_request') || \function_exists('litespeed_finish_request'));
+        return !$this->inSteps && \PHP_SAPI !== 'cli' && (\function_exists('fastcgi_finish_request') || \function_exists('litespeed_finish_request'));
     }
 
     public function run(): void
@@ -50,13 +61,23 @@ final class ShutdownWork implements AfterResponse, Registrar
         if (\function_exists('set_time_limit')) {
             set_time_limit(0);
         }
-        foreach ($this->work as $key => $work) {
+        $this->runNow();
+    }
+
+    /**
+     * Runs the work deferred so far, here and now, once: what it defers in turn is left (to cron), so work that
+     * pushes more work cannot keep the request going.
+     */
+    public function runNow(): void
+    {
+        $waiting = $this->work;
+        $this->work = [];
+        foreach ($waiting as $key => $work) {
             try {
                 $work();
             } catch (\Throwable $e) {
                 $this->logger->error('Work after the response ({key}) failed: {message}', ['key' => $key, 'message' => $e->getMessage(), 'exception' => $e]);
             }
         }
-        $this->work = [];
     }
 }

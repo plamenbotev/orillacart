@@ -11,6 +11,7 @@ final readonly class PayPalAccount
 {
     public function __construct(
         public string $clientId,
+        #[\SensitiveParameter]
         public string $clientSecret,
         public bool $sandbox,
         public string $webhookId = '',

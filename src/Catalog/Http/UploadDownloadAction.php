@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -19,6 +20,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Adds a file to a product's downloads: a multipart upload with the file in the "file" field.
  */
+#[Tool(unasked: 'a file for a product')]
 #[Route('/products/{id}/downloads', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UploadDownloadAction implements RequestHandlerInterface
 {

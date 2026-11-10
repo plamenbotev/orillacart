@@ -10,6 +10,7 @@ use OrillaCart\Payment\Application\Dto\TestPaymentSettings;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 
@@ -31,9 +32,9 @@ final class PaymentMethodServiceTest extends TestCase
             array_map(static fn(PaymentMethodView $method): array => [$method->gateway, $method->name, $method->active, $method->notReady === null], $methods),
         );
         self::assertSame(['secret_key', 'sandbox', 'webhook_secret'], array_map(static fn($field): string => $field->key, $methods[3]->fields));
-        self::assertSame('https://shop.test/payments/stripe/webhook', $methods[3]->notificationUrl);
+        self::assertSame('https://shop.test/payments/stripe/webhook?key=' . PaymentOutcomes::notificationKey($this->shop->signatures, 'stripe'), $methods[3]->notificationUrl);
         self::assertSame(['client_id', 'client_secret', 'sandbox', 'webhook_id'], array_map(static fn($field): string => $field->key, $methods[4]->fields));
-        self::assertSame('https://shop.test/payments/paypal/webhook', $methods[4]->notificationUrl);
+        self::assertSame('https://shop.test/payments/paypal/webhook?key=' . PaymentOutcomes::notificationKey($this->shop->signatures, 'paypal'), $methods[4]->notificationUrl);
     }
 
     public function testSecretsAreKeptButNeverShown(): void

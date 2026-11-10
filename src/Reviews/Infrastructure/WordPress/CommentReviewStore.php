@@ -15,24 +15,44 @@ use OrillaCart\Reviews\Domain\ReviewRuleViolation;
 use OrillaCart\Reviews\Domain\ReviewStatus;
 use OrillaCart\Reviews\Domain\ReviewStore;
 use OrillaCart\Shared\Http\Security\ClientAddress;
+use OrillaCart\Shared\Security\Capability;
 
 /**
  * Reviews are comments of their own type on the product's post, with the stars and the buyer's mark as comment
  * meta. They go through wp_new_comment, so the site's moderation, its disallowed words, flood and duplicate
- * checks and spam plugins such as Akismet see them as any comment; replies to them, such as the shop's from the
- * Comments screen, are ordinary comments.
+ * checks and spam plugins such as Akismet see them as any comment. The shop's answers to them, written on the
+ * Comments screen, are ordinary comments under them: one counts as the shop's when it was marked so as it was
+ * written (ProductComments), or its writer speaks for the shop now. Any other comment under a review is not shown.
  */
 final readonly class CommentReviewStore implements ReviewStore
 {
     public const string TYPE = 'orillacart_review';
     public const string RATING = 'orillacart_rating';
     public const string VERIFIED = 'orillacart_verified';
+    /** On an answer to a review: it was written by someone who spoke for the shop then. */
+    public const string SHOPS_ANSWER = 'orillacart_shops_answer';
 
     public function __construct(private EntityManagerInterface $entityManager) {}
 
+    /** Whether the user answers reviews in the shop's name: they moderate the site's comments or manage the shop. */
+    public static function speaksForTheShop(int $userId): bool
+    {
+        return $userId > 0 && (user_can($userId, 'moderate_comments') || user_can($userId, Capability::MANAGE_SHOP));
+    }
+
     public function isOpen(int $productId): bool
     {
-        return get_post_type($productId) === ProductPostType::NAME && get_post_status($productId) === 'publish' && comments_open($productId);
+        return $this->isReadable($productId) && comments_open($productId);
+    }
+
+    public function isReadable(int $productId, bool $byAnyone = false): bool
+    {
+        $product = get_post($productId);
+        if (!$product instanceof \WP_Post || $product->post_type !== ProductPostType::NAME || $product->post_status !== 'publish') {
+            return false;
+        }
+
+        return $product->post_password === '' || (!$byAnyone && !post_password_required($product));
     }
 
     public function loginRequired(): bool
@@ -111,7 +131,7 @@ final readonly class CommentReviewStore implements ReviewStore
                 'order' => 'ASC',
             ]);
             foreach (\is_array($answers) ? $answers : [] as $answer) {
-                if ($answer instanceof \WP_Comment) {
+                if ($answer instanceof \WP_Comment && self::isTheShops($answer)) {
                     $replies[(int) $answer->comment_parent][] = new ReviewReply($answer->comment_author, $answer->comment_content, self::date($answer));
                 }
             }
@@ -148,6 +168,11 @@ final readonly class CommentReviewStore implements ReviewStore
         }
 
         return array_map(static fn(array $counts): Rating => new Rating($counts), $stars);
+    }
+
+    private static function isTheShops(\WP_Comment $answer): bool
+    {
+        return get_comment_meta((int) $answer->comment_ID, self::SHOPS_ANSWER, true) === '1' || self::speaksForTheShop((int) $answer->user_id);
     }
 
     /**

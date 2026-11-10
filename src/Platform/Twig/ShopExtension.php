@@ -68,7 +68,8 @@ final class ShopExtension extends AbstractExtension
             new TwigFunction('shopper_currency', fn(): string => $this->currencies?->current() ?? $this->settings->current()->currency),
             // For an extension's template that calls one of its routes: {{ api_url('x/loyalty/points/use') }}
             // is the full URL under the shop's REST API, and api_nonce() the nonce a logged-in customer's call
-            // sends as X-WP-Nonce (null for a visitor, whose page may be cached: window.orillacart.api asks for one).
+            // sends as X-WP-Nonce (null for a visitor, whose page may be cached: window.orillacart.api asks for one,
+            // and sends it as X-OrillaCart-Nonce).
             new TwigFunction('api_url', static fn(string $path = ''): string => (\function_exists('rest_url') ? rtrim(rest_url('orillacart/v1'), '/') : '/wp-json/orillacart/v1') . ($path === '' ? '' : '/' . ltrim($path, '/'))),
             new TwigFunction('api_nonce', static fn(): ?string => \function_exists('is_user_logged_in') && is_user_logged_in() ? wp_create_nonce(Route::REST_NONCE) : null),
         ];

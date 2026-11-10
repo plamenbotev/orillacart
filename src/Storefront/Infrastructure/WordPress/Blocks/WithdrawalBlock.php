@@ -8,11 +8,14 @@ use OrillaCart\Customers\Application\CustomerService;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
+use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\KeptTokens;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks;
 
 /**
- * The withdrawal function: anyone withdraws without logging in, by the order's number and email; a logged-in
- * customer finds their name and email filled in.
+ * The withdrawal function: anyone withdraws without logging in. Asked by the order's number and email, the shop
+ * emails the order's own address a link; the link opens the page again with the order's items to choose from and
+ * the declaration to confirm. A logged-in customer finds their name and email filled in.
  */
 final readonly class WithdrawalBlock implements BlockDefinition
 {
@@ -30,11 +33,15 @@ final readonly class WithdrawalBlock implements BlockDefinition
     public function render(array $attributes, BlockContext $context): string
     {
         $id = $this->shopper->customerId();
-        $customer = $id === null ? null : $this->customers->customer($id);
+        $customer = $id === null ? null : $this->customers->account($id);
+
+        $token = KeptTokens::token(StorefrontWithdrawalLinks::QUERY);
 
         return $this->templates->render('storefront/withdrawal.html.twig', [
             'email' => $customer->email ?? '',
             'name' => $customer === null ? '' : trim($customer->firstName . ' ' . $customer->lastName),
+            // Opened from the link emailed to the order's address: '' once the browser no longer keeps it.
+            'token' => $token,
         ]);
     }
 }

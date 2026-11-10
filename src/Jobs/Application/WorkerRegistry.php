@@ -31,6 +31,15 @@ interface WorkerRegistry
 
     public function cronRan(\DateTimeImmutable $at): void;
 
+    /**
+     * A network worker leaves the site out (JobSites::apart()): plugins or theme, what the site has that the worker
+     * did not load.
+     */
+    public function leftOut(string $worker, string $reason, \DateTimeImmutable $at): void;
+
+    /** @return array{worker: string, reason: string, at: \DateTimeImmutable}|null the last network worker to say so */
+    public function leftOutBy(): ?array;
+
     /** Whether the site turned off WP-Cron's runs on visits (DISABLE_WP_CRON): a server's cron has to run it. */
     public function cronDisabled(): bool;
 }

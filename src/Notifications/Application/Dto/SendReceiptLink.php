@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Notifications\Application\Dto;
 
-use OrillaCart\Ordering\Application\ReceiptLinks;
+use OrillaCart\Ordering\Application\ReceiptHandles;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -13,7 +13,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class SendReceiptLink
 {
     public function __construct(
-        #[Assert\Regex(pattern: '/^' . ReceiptLinks::PATTERN . '$/')]
+        #[Assert\Regex(pattern: '/^(' . ReceiptHandles::PATTERN . ')$/')]
         public string $receipt,
     ) {}
 }

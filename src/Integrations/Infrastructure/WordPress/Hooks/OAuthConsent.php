@@ -60,12 +60,12 @@ final class OAuthConsent
         if (!is_user_logged_in() || !current_user_can(Capability::MANAGE_SHOP) || ($_GET['page'] ?? null) !== self::PAGE) {
             return;
         }
-        $this->request = $this->checked(self::parameters($_GET));
+        $this->request = $this->checked(self::parameters(wp_unslash($_GET)));
     }
 
     public function render(): void
     {
-        $request = $this->request ?? $this->checked(self::parameters($_GET));
+        $request = $this->request ?? $this->checked(self::parameters(wp_unslash($_GET)));
         echo '<div class="wrap orillacart-connect">';
         if ($request instanceof OAuthError) {
             printf('<h1>%s</h1><div class="notice notice-error"><p>%s</p></div>', esc_html__('This app cannot connect', 'orillacart'), esc_html($request->getMessage()));
@@ -104,7 +104,7 @@ final class OAuthConsent
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         printf('<input type="hidden" name="action" value="%s">', esc_attr(self::ACTION));
         wp_nonce_field(self::ACTION);
-        foreach (self::parameters($_GET) as $name => $value) {
+        foreach (self::parameters(wp_unslash($_GET)) as $name => $value) {
             printf('<input type="hidden" name="%s" value="%s">', esc_attr($name), esc_attr($value));
         }
         echo '<fieldset><legend class="screen-reader-text">' . esc_html__('It may', 'orillacart') . '</legend>';

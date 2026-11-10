@@ -9,6 +9,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\Tool;
+use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -21,11 +22,12 @@ final readonly class ShowKeyAssistantAction implements RequestHandlerInterface
 {
     public function __construct(
         private AssistantKeys $keys,
+        private Authorization $authorization,
         private JsonResponder $responder,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->keys->choices(PathParameter::id($request)));
+        return $this->responder->ok($this->keys->choices(PathParameter::id($request), $this->authorization->userId() ?? 0, $this->authorization->isGranted('manage_options')));
     }
 }

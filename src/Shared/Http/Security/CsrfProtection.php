@@ -15,7 +15,7 @@ interface CsrfProtection
      */
     public function isRequired(): bool;
 
-    public function isTokenValid(string $token, string $action): bool;
+    public function isTokenValid(#[\SensitiveParameter] string $token, string $action): bool;
 
     /** A token for the current user that isTokenValid() accepts for the action. */
     public function newToken(string $action): string;

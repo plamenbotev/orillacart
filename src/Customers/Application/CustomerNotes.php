@@ -42,7 +42,9 @@ final readonly class CustomerNotes
      */
     public function add(int $customerId, AddCustomerNote $command, ?int $userId): CustomerNoteView
     {
-        $this->accounts->find($customerId) ?? throw new CustomerNotFound($customerId);
+        if (!$this->accounts->isShopCustomer($customerId)) {
+            throw new CustomerNotFound($customerId);
+        }
         $note = new CustomerNote($customerId, $command->text, $userId, $this->clock->now());
         $this->notes->save($note);
 

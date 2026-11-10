@@ -6,6 +6,8 @@ namespace OrillaCart\Notifications\Http;
 
 use OrillaCart\Notifications\Application\Dto\SendReceiptLink;
 use OrillaCart\Notifications\Application\OrderEmails;
+use OrillaCart\Ordering\Http\PresentedReceipt;
+use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
@@ -21,13 +23,18 @@ final readonly class SendReceiptLinkAction implements RequestHandlerInterface
 {
     public function __construct(
         private OrderEmails $emails,
+        private PresentedReceipt $receipt,
         private RequestMapper $input,
         private JsonResponder $responder,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $this->emails->receiptLink($this->input->body($request, SendReceiptLink::class)->receipt);
+        try {
+            $this->emails->receiptLink($this->receipt->of($request, $this->input->body($request, SendReceiptLink::class)->receipt));
+        } catch (HttpException) {
+            // No token behind the page's handle: answered as for any link that was not the shop's.
+        }
 
         return $this->responder->ok(['message' => 'If the link was ours, a new one is on its way to the order\'s email.'], 202);
     }

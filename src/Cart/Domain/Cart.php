@@ -94,6 +94,7 @@ class Cart
     private ?string $recoverHash = null;
 
     public function __construct(
+        #[\SensitiveParameter]
         string $token,
         #[ORM\Column(nullable: true)]
         private ?int $customerId,
@@ -104,7 +105,7 @@ class Cart
         $this->updatedAt = $now;
     }
 
-    public static function hash(string $token): string
+    public static function hash(#[\SensitiveParameter] string $token): string
     {
         return hash('sha256', $token);
     }
@@ -120,7 +121,7 @@ class Cart
     }
 
     /** A new token for the cart, for a customer who comes back on another device: the old cookie stops working. */
-    public function rekey(string $token): void
+    public function rekey(#[\SensitiveParameter] string $token): void
     {
         $this->tokenHash = self::hash($token);
     }
@@ -513,7 +514,7 @@ class Cart
     }
 
     /** A new token for the reminder's link; the one before stops working. */
-    public function recoverWith(string $token): void
+    public function recoverWith(#[\SensitiveParameter] string $token): void
     {
         $this->recoverHash = self::hash($token);
     }
@@ -522,7 +523,7 @@ class Cart
      * The reminder's link brought the cart back: it works once. Sent on to someone else, a link that kept working
      * would let whoever sent it open the cart again later and see what was added, and the email given.
      */
-    public function recovered(string $token): void
+    public function recovered(#[\SensitiveParameter] string $token): void
     {
         $this->rekey($token);
         $this->recoverHash = null;

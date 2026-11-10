@@ -188,9 +188,11 @@ final readonly class Newsletter
     }
 
     /**
-     * The person changed their email address: the sign-up follows it, and the lists hear of both addresses. One the
-     * new address had already is merged with it: the subscribed one of the two stays, the new address's when both
-     * are, and the old address is off the newsletter either way.
+     * The person changed their email address: the sign-up follows it, as one waiting to be confirmed from the new
+     * address, and the lists hear the old address left. Nobody proved the new address is theirs (WordPress does not
+     * confirm a change made over its REST API, nor one an administrator makes), so it is on the newsletter once its
+     * owner follows the link emailed there, as a new sign-up is. A sign-up the new address had already stands as
+     * it is, subscribed or left (its owner's unsubscribe is theirs), and the old address's goes.
      */
     public function changeEmail(string $from, string $to): void
     {
@@ -200,23 +202,17 @@ final readonly class Newsletter
         }
         $existing = $this->subscribers->findByEmail($to);
         if ($existing !== null) {
-            // The old address's sign-up takes the new one's place only when it holds more: subscribed where the new
-            // address's is not, or waiting to be confirmed where the new address's was left.
-            $moves = $subscriber->isSubscribed() && !$existing->isSubscribed() || $subscriber->isPending() && !$existing->isSubscribed() && !$existing->isPending();
-            if (!$moves) {
-                // The new address's own sign-up stands: the old one's goes.
-                $this->subscribers->remove($subscriber);
-                $this->sync(Subscriber::normalize($from));
-                $this->sync($existing->email());
+            $this->subscribers->remove($subscriber);
+            $this->sync(Subscriber::normalize($from));
 
-                return;
-            }
-            $this->subscribers->remove($existing);
+            return;
         }
-        $subscriber->changeEmail($to);
+        $subscriber->moveTo($to);
         $this->subscribers->save($subscriber);
         $this->sync(Subscriber::normalize($from));
-        $this->sync($subscriber->email());
+        if ($subscriber->isPending() && $this->offer() !== null) {
+            $this->jobs->push(self::CONFIRM_JOB, ['email' => $subscriber->email(), 'locale' => $this->languages->current()], "confirm:{$subscriber->email()}");
+        }
     }
 
     /**

@@ -23,7 +23,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * ones.
  */
 #[Tool(leftOut: 'The admin\'s product pickers; find_products finds products, with more about each.')]
-#[Route('/product-choices', methods: ['GET'], capability: 'edit_posts')]
+#[Route('/product-choices', methods: ['GET'], capability: 'edit_posts', keys: true)]
 final readonly class ListProductChoicesAction implements RequestHandlerInterface
 {
     public function __construct(

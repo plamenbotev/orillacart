@@ -9,12 +9,14 @@ use OrillaCart\Search\Application\SearchFilters;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Adds a filter shoppers see in the shop, over the product attributes with the names given. */
+#[Tool(unasked: 'storefront search setup')]
 #[Route('/search-filters', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateSearchFilterAction implements RequestHandlerInterface
 {

@@ -14,7 +14,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Whether the setup is finished (GET), and that it is (PUT), so the admin stops offering it. */
-#[Tool(method: 'PUT', name: 'finish_setup')]
+#[Tool(method: 'PUT', name: 'finish_setup', unasked: 'only stops the admin offering the setup')]
 #[Tool(method: 'GET', name: 'show_setup_finished')]
 #[Route('/setup', methods: ['GET', 'PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class SetupAction implements RequestHandlerInterface

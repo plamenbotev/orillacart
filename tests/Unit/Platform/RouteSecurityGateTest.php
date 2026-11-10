@@ -71,7 +71,9 @@ final class RouteSecurityGateTest extends TestCase
         'POST /receipts/{receipt}/reorder',
         // Asking to return items: only with the receipt's secret key, for items of that order that can go back.
         'POST /receipts/{receipt}/returns',
-        // The EU's withdrawal function: by the order's number and email, without logging in, as the law asks.
+        // The EU's withdrawal function, without logging in, as the law asks: the order's number and email get a link
+        // mailed to the order's address, and only the link shows the order or files the withdrawal.
+        'POST /withdrawals/links',
         'POST /withdrawals/orders',
         'POST /withdrawals',
         'POST /accounts',

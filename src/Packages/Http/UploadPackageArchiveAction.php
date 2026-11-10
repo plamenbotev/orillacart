@@ -9,6 +9,7 @@ use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -22,6 +23,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * same id are replaced, and it keeps running its old files until enabled again. Answers the extension and the
  * zip's files that are not an extension's, which were left out.
  */
+#[Tool(unasked: 'an extension installed from a zip as a draft, or its files replaced as an import does; nothing runs until enabled, which asks')]
 #[Route('/extensions/upload', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class UploadPackageArchiveAction implements RequestHandlerInterface
 {

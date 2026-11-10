@@ -8,6 +8,7 @@ use OrillaCart\Assistant\Application\AssistantTools;
 use OrillaCart\Assistant\Application\Dto\Caller;
 use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Packages\Domain\Package;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\View\TemplateRenderer;
 use Twig\Sandbox\SecurityError;
 
@@ -84,6 +85,7 @@ final class ScriptedRoutesTest extends RestTestCase
         self::assertArrayHasKey('x_pages_post_echo', $offered, 'the manager route; public and account routes make no tool');
         self::assertArrayNotHasKey('x_pages_get_hello_name', $offered);
         self::assertSame(['Extensions', false, true, 'POST /echo of the extension "Pages".'], [$offered['x_pages_post_echo']->area, $offered['x_pages_post_echo']->readOnly, $offered['x_pages_post_echo']->addOn, $offered['x_pages_post_echo']->description]);
+        self::assertSame(Tool::CHANGES, $offered['x_pages_post_echo']->risk, 'a route that changes something and names no risk waits for the owner\'s yes');
 
         $outcome = $tools->call('x_pages_post_echo', ['body' => ['a' => 1]], $caller);
         self::assertNotNull($outcome);

@@ -22,6 +22,13 @@ use OrillaCart\Tax\Domain\TaxSettingsRepository;
  */
 final readonly class VatNumbers
 {
+    /** Words of a business name that tell no business from another: legal forms, and what many have in their names. */
+    private const array SAY_NOTHING = [
+        'gmbh', 'ltd', 'llc', 'inc', 'sarl', 'srl', 'spa', 'eood', 'ood', 'bvba', 'the', 'and', 'und', 'plc', 'llp', 'kft', 'zrt', 'sas', 'sro',
+        'company', 'compagnie', 'corporation', 'limited', 'group', 'gruppe', 'holding', 'holdings', 'services', 'service', 'trading', 'handel',
+        'handels', 'international', 'industries', 'solutions', 'systems', 'consulting', 'partners', 'gesellschaft',
+    ];
+
     /** VIES's country codes that are not the ISO ones. */
     private const array PREFIXES = ['GR' => 'EL'];
 
@@ -100,8 +107,12 @@ final readonly class VatNumbers
 
     /**
      * Why the shop should look at an order sold under the reverse charge: the name VIES has the number registered
-     * to shares no word with the billing name, nor with the email's domain (ACME GMBH and ada@acme.de agree). Null
-     * when they agree, or VIES gave no name. The order is not refused: a business orders in its staff's names.
+     * to is not the billing name, nor the email's domain. They agree when the billing name holds every telling word
+     * of the registered one (Max Muster of Muster GmbH), or is a shortening of it (ACME for ACME Robotics AG), or
+     * the email's domain is the name written as one (ada@acme-robotics.de); one word in common is not enough
+     * (Deutsche Telekom is not Deutsche Bank). Legal forms and words any business has (GmbH, Group, Services) tell
+     * nothing. Null when they agree, or VIES gave no name. The order is not refused: a business orders in its
+     * staff's names.
      */
     public function nameMismatch(ReverseCharge $reverse, string $billingName, string $email): ?string
     {
@@ -110,19 +121,25 @@ final readonly class VatNumbers
             return null;
         }
         $words = self::words($registered);
-        $domain = strtolower(substr($email, (int) strrpos($email, '@') + 1));
+        if ($words === []) {
+            return null;
+        }
         $billing = self::words($billingName);
-        foreach ($words as $word) {
-            if (\in_array($word, $billing, true) || str_contains($domain, $word)) {
-                return null;
-            }
+        $holdsAll = array_diff($words, $billing) === [];
+        $shortening = $billing !== [] && array_diff($billing, $words) === [];
+        $host = strtolower(substr($email, (int) strrpos($email, '@') + 1));
+        $labels = \array_slice(explode('.', $host), 0, -1);
+        $byDomain = array_intersect($labels, [implode('', $words), implode('-', $words)]) !== [];
+        if ($holdsAll || $shortening || $byDomain) {
+            return null;
         }
 
         return \sprintf('VIES has the VAT number %1$s registered to "%2$s", which is not the billing name "%3$s". Check that the buyer is that business: the order is sold without VAT.', (string) $reverse->number, $registered, trim($billingName));
     }
 
     /**
-     * The words of a name, lowercased, of 3 letters or more: legal forms shorter than that (SA, AB) say nothing.
+     * The telling words of a name, lowercased, each once: of 3 letters or more (legal forms shorter than that, SA
+     * or AB, say nothing), without the legal forms and the words any business may have in its name.
      *
      * @return list<string>
      */
@@ -133,7 +150,7 @@ final readonly class VatNumbers
             return [];
         }
 
-        return array_values(array_filter($words, static fn(string $word): bool => mb_strlen($word) >= 3 && !\in_array($word, ['gmbh', 'ltd', 'llc', 'inc', 'sarl', 'srl', 'spa', 'eood', 'ood', 'bvba', 'oy', 'the', 'and', 'und'], true)));
+        return array_values(array_unique(array_filter($words, static fn(string $word): bool => mb_strlen($word) >= 3 && !\in_array($word, self::SAY_NOTHING, true))));
     }
 
     /**

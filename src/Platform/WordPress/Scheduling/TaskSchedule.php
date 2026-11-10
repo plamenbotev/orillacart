@@ -7,6 +7,7 @@ namespace OrillaCart\Platform\WordPress\Scheduling;
 use OrillaCart\Shared\Container\LocatedServices;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\WordPress\ScheduledTask;
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -19,7 +20,7 @@ final readonly class TaskSchedule implements LifecycleListener
      * @param ServiceLocator<ScheduledTask> $tasks by hook
      */
     public function __construct(
-        #[AutowireLocator(ScheduledTask::TAG, defaultIndexMethod: 'hook')]
+        #[AutowireLocator(ScheduledTask::TAG, indexAttribute: TaggedKeyPass::KEY)]
         private ServiceLocator $tasks,
     ) {}
 

@@ -66,9 +66,9 @@ final readonly class StripeGateway implements PaymentGateway, NamesAccounts, Han
     public function settings(): array
     {
         return [
-            new Setting('secret_key', 'Secret key', Setting::SECRET, required: true, help: 'From Developers → API keys in the Stripe dashboard: the secret key (sk_…), or a restricted key (rk_…) that may write Checkout Sessions and Refunds.'),
+            new Setting('secret_key', 'Secret key', Setting::SECRET, required: true, goesWith: [], help: 'From Developers → API keys in the Stripe dashboard: the secret key (sk_…), or a restricted key (rk_…) that may write Checkout Sessions and Refunds.'),
             new Setting('sandbox', 'Test mode', Setting::BOOLEAN, help: 'Take test payments with a test key (sk_test_…).'),
-            new Setting('webhook_secret', 'Webhook signing secret', Setting::SECRET, help: 'whsec_…, needed for live payments. In Stripe, add an endpoint at the shop\'s webhook address with the events checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, refund.created, refund.updated, charge.refunded and charge.dispute.created, .updated and .closed.'),
+            new Setting('webhook_secret', 'Webhook signing secret', Setting::SECRET, goesWith: [], help: 'whsec_…, needed for live payments. In Stripe, add an endpoint at the shop\'s webhook address with the events checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, refund.created, refund.updated, charge.refunded and charge.dispute.created, .updated and .closed.'),
         ];
     }
 
@@ -120,6 +120,12 @@ final readonly class StripeGateway implements PaymentGateway, NamesAccounts, Han
         ];
         if ($session->email !== null && filter_var($session->email, FILTER_VALIDATE_EMAIL) !== false) {
             $params['customer_email'] = $session->email;
+        }
+        if ($session->payBy !== null) {
+            // The session ends with the order's payment window, so no money comes for an order the shop cancelled;
+            // within what Stripe allows, half an hour to a day from now.
+            $now = $this->clock->now()->getTimestamp();
+            $params['expires_at'] = min(max($session->payBy->getTimestamp(), $now + 1860), $now + 86400);
         }
         // The same payment opens the same session, however often it is asked; the site's address keeps a copy of
         // the site (a staging site on the same Stripe account) from getting this one's.
@@ -447,7 +453,7 @@ final readonly class StripeGateway implements PaymentGateway, NamesAccounts, Han
      * Whether Stripe signed the body with the endpoint's secret, lately: the Stripe-Signature header holds the
      * time and an HMAC-SHA256 of "time.body" per secret the endpoint has (two while one is being rolled).
      */
-    private function signed(Notification $notification, string $secret): bool
+    private function signed(Notification $notification, #[\SensitiveParameter] string $secret): bool
     {
         if ($secret === '') {
             return false;
@@ -467,7 +473,7 @@ final readonly class StripeGateway implements PaymentGateway, NamesAccounts, Han
         }
         $expected = hash_hmac('sha256', "{$time}.{$notification->body}", $secret);
 
-        return array_any($signatures, static fn(string $signature): bool => hash_equals($expected, $signature));
+        return array_any($signatures, static fn(#[\SensitiveParameter] string $signature): bool => hash_equals($expected, $signature));
     }
 
     /**

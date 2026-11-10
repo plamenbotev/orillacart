@@ -11,6 +11,7 @@ use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
+use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\Charge;
 use OrillaCart\Ordering\Domain\OrderNotFound;
@@ -193,7 +194,8 @@ final readonly class Returns
                 throw new ReturnRuleViolation('Nothing of this order is left to withdraw from.', 'orillacart_nothing_to_withdraw');
             }
             $items = $this->withCharges($order, $items);
-            $now = $this->clock->now();
+            // Declared when the consumer asked to withdraw, though confirmed from the emailed link later.
+            $now = $command->declaredAt ?? $this->clock->now();
             $name = trim($command->name);
             $confirmation = trim($command->confirmationEmail);
             $return = new ItemReturn($order->number, $items, ReturnReason::Withdrawal, \sprintf('Declared by %s on %s; confirmation to %s.', $name, $now->format(DATE_ATOM), $confirmation), $now);
@@ -334,7 +336,10 @@ final readonly class Returns
             throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$id, $return->status()->value]);
         }
         try {
-            [$amount, $couponsTaken] = $this->priced($order, $return->items(), $return->id());
+            [$amount, $couponsTaken, $values] = $this->priced($order, $return->items(), $return->id());
+            if ($amount->isZero()) {
+                return $this->closeWithoutMoney($id, $order, $command, $values, $userId);
+            }
             $refunds = $this->refunds->refund($order->number, new MakeRefund(
                 (string) $amount,
                 array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($return->items()), $return->items()),
@@ -342,11 +347,11 @@ final readonly class Returns
                 reason: \sprintf('Return %d', $id),
                 outside: $command->outside && !$command->storeCredit,
                 storeCredit: $command->storeCredit,
-            ), $userId, function (int $refundId) use ($id, $couponsTaken): void {
+            ), $userId, function (int $refundId) use ($id, $couponsTaken, $values): void {
                 // With the refund, under the order's lock, the return takes it as its own: a second refund of the
                 // return sent at the same time waits, finds it refunding, and is refused, undoing its refund.
                 $return = $this->returns->find($id, true) ?? throw new ReturnNotFound($id);
-                $return->refunding($refundId, $couponsTaken);
+                $return->refunding($refundId, $couponsTaken, $values);
                 $this->returns->save($return);
             });
         } catch (PaymentRuleViolation $e) {
@@ -366,6 +371,31 @@ final readonly class Returns
         }
 
         return $this->returnView($this->orders->order($order->number), $return);
+    }
+
+    /**
+     * A return whose items cost nothing, such as a free item sent back alone where the shop does not share deals
+     * out: the order counts them as back, in stock when the shop says so, and the return is done with no money and
+     * no credit note.
+     *
+     * @param array<int, Money> $values what it gives back of each line's worth, by line position
+     */
+    private function closeWithoutMoney(int $id, OrderView $order, RefundReturn $command, array $values, ?int $userId): ReturnView
+    {
+        $this->orders->whileLocked($order->number, function () use ($id, $order, $command, $values, $userId): void {
+            // Read again under the order's lock: a second click finds it refunded and is refused.
+            $return = $this->returns->find($id, true) ?? throw new ReturnNotFound($id);
+            $return->closedWithoutMoney($this->clock->now(), $values);
+            $this->orders->refund($order->number, new RefundOrder(
+                '0',
+                array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($return->items()), $return->items()),
+                restock: $command->restock,
+                reason: \sprintf('Return %d', $id),
+            ), 'with no money: the items cost nothing', $userId, false);
+            $this->returns->save($return);
+        });
+
+        return $this->returnView($this->orders->order($order->number), $this->get($id));
     }
 
     /**
@@ -487,31 +517,58 @@ final readonly class Returns
     }
 
     /**
-     * What these items refund (amount()), and what of it the coupons whose least order what is kept no longer
-     * meets keep back (less than nothing for what earlier returns kept back and these give again).
+     * What these items refund (amount()), what of it the coupons whose least order what is kept no longer meets
+     * keep back (less than nothing for what earlier returns kept back and these give again), and what they give
+     * back of each line's worth before that, by line position.
+     *
+     * Each line's part is in the currency's decimals. The items that take the last of a line get what is left of
+     * its worth once the earlier returns took what they gave back of it, items refunded without a return their
+     * share, and the returns still to be refunded theirs: a line's returns add up to it, whatever the coupons kept
+     * back on the way or how the refunds were booked as money.
      *
      * @param array<int, int> $items quantities by line position
      *
-     * @return array{Money, Money}
+     * @return array{Money, Money, array<int, Money>}
      */
     private function priced(OrderView $order, array $items, ?int $returnId = null): array
     {
-        // The items other returns are to refund (those refunded or refunding are the lines' refunded ones).
+        // The items other returns are to refund, and what those refunded or refunding gave back of each line.
         $pending = [];
+        $given = [];
+        $givenQuantity = [];
         foreach ($this->returns->forOrder($order->number) as $other) {
-            if ($other->id() !== $returnId && $other->status()->holdsItems() && $other->refundId() === null) {
-                foreach ($other->items() as $position => $quantity) {
-                    $pending[$position] = ($pending[$position] ?? 0) + $quantity;
+            if ($other->id() === $returnId) {
+                continue;
+            }
+            if ($other->refundId() === null && $other->status() !== ReturnStatus::Refunded) {
+                if ($other->status()->holdsItems()) {
+                    foreach ($other->items() as $position => $quantity) {
+                        $pending[$position] = ($pending[$position] ?? 0) + $quantity;
+                    }
                 }
+                continue;
+            }
+            $values = $other->lineValues();
+            if ($values === null) {
+                // Recorded with no worths: its items count as refunded without a return.
+                continue;
+            }
+            foreach ($other->items() as $position => $quantity) {
+                $givenQuantity[$position] = ($givenQuantity[$position] ?? 0) + $quantity;
+                $given[$position] = ($given[$position] ?? Money::zero())->add($values[$position] ?? Money::zero());
             }
         }
         $mine = $returnId === null ? null : $this->returns->find($returnId);
         $refundId = $mine?->refundId();
+        if ($mine !== null && $refundId === null && $mine->status() === ReturnStatus::Refunded) {
+            // Its items cost nothing, and came back with no money.
+            return [Money::zero(), Money::zero(), $mine->lineValues() ?? []];
+        }
         if ($mine !== null && $refundId !== null) {
             // Refunded, or being refunded: what it gave back.
             $refund = array_find($this->refunds->forOrder($order->number)->refunds, static fn(RefundView $refund): bool => $refund->id === $refundId);
             if ($refund !== null) {
-                return [Money::of($refund->amount), $mine->couponsTaken()];
+                return [Money::of($refund->amount), $mine->couponsTaken(), $mine->lineValues() ?? []];
             }
         }
         $refunding = $refundId !== null;
@@ -529,20 +586,24 @@ final readonly class Returns
                 $amount = $amount->subtract($order->pricesIncludeTax ? $price : $price->add($price->percent((string) $percent)));
             }
         }
+        $values = [];
         foreach ($items as $position => $quantity) {
             $line = self::lineAt($order, $position);
             if ($line === null || $line->quantity < 1) {
                 continue;
             }
-            $whole = isset($shares[$position]) ? $shares[$position]->times($line->quantity) : self::paid($order, $line);
-            $part = static fn(int $units): Money => $whole->proportion(Money::of((string) $units), Money::of((string) $line->quantity));
+            $whole = $shares[$position] ?? self::paid($order, $line);
+            $part = static fn(int $units): Money => $whole->proportion(Money::of((string) $units), Money::of((string) $line->quantity))->rounded($decimals);
             $others = $pending[$position] ?? 0;
-            if (!$refunding && $line->refundedQuantity + $others + $quantity === $line->quantity) {
+            $returned = $givenQuantity[$position] ?? 0;
+            $outside = max(0, $line->refundedQuantity - $returned);
+            if (!$refunding && $outside + $returned + $others + $quantity >= $line->quantity) {
                 // The last of the line: what is left of it once the refunds made and those to come took theirs.
-                $amount = $amount->add($whole->subtract(Money::of($line->refundedAmount))->subtract($part($others))->atLeastZero());
-                continue;
+                $values[$position] = $whole->subtract($given[$position] ?? Money::zero())->subtract($part($outside))->subtract($part($others))->atLeastZero();
+            } else {
+                $values[$position] = $part($quantity);
             }
-            $amount = $amount->add($part($quantity));
+            $amount = $amount->add($values[$position]);
         }
 
         $amount = ($amount->isNegative() ? Money::zero() : $amount)->rounded($decimals);
@@ -563,7 +624,7 @@ final readonly class Returns
             $taken = $taken->compare($amount) > 0 ? $amount : $taken;
         }
 
-        return [$amount->subtract($taken)->atLeastZero(), $taken];
+        return [$amount->subtract($taken)->atLeastZero(), $taken, $values];
     }
 
     /**
@@ -586,7 +647,7 @@ final readonly class Returns
         $taken = Money::zero();
         foreach ($order->discounts as $discount) {
             $off = Money::of($discount->amount);
-            if ($off->isZero() || $this->earned->stillMet($discount->code, $kept, $order->currency) !== false) {
+            if ($off->isZero() || $this->earned->stillMet($discount->code, $kept, $order->currency, $order->exchangeRate ?? '1') !== false) {
                 continue;
             }
             $all = Money::zero();
@@ -663,39 +724,85 @@ final readonly class Returns
     }
 
     /**
-     * Each item's share of a deal that gave free items, by line position: what its items (those it gave, and those
-     * it applies to) cost together, shared by their prices before the deal. A line in two deals takes the first's.
+     * Each line's share of a deal that gave free items, by line position: what the deal's items (those it gave, and
+     * those it applies to) cost together, after every coupon, shared out in the currency's decimals so the shares
+     * come to that cost exactly. A bought line weighs what it paid, a given one its price: a free 2-euro keychain of
+     * a 100-euro lamp deal refunds about 2 of it, not half, and a shade another coupon halved weighs its half.
+     * Deals that share a line are shared out together, so the line's money is never counted twice.
      *
      * @return array<int, Money>
      */
     private function shares(OrderView $order): array
     {
-        $deals = [];
-        foreach ($order->lines as $position => $line) {
-            if ($line->givenBy !== null) {
-                $deals[$line->givenBy['code']] = true;
-            }
-        }
-        $shares = [];
-        foreach (array_keys($deals) as $code) {
-            $code = (string) $code;
-            $items = array_filter($order->lines, fn(OrderLineView $line): bool => ($line->givenBy['code'] ?? null) === $code || ($line->givenBy === null && $line->addOn === null && $this->earned->appliesTo($code, $line->productId)));
-            $units = array_sum(array_map(static fn(OrderLineView $line): int => $line->quantity, $items));
-            if ($units < 1) {
+        $groups = [];
+        foreach ($order->lines as $line) {
+            if ($line->givenBy === null) {
                 continue;
             }
-            $cost = array_reduce($items, static fn(Money $sum, OrderLineView $line): Money => $sum->add(self::paid($order, $line)), Money::zero());
-            // Shared by what the items cost before the deal: a free 2-euro keychain of a 100-euro lamp deal
-            // refunds about 2 of it, not half.
-            $listed = array_reduce($items, static fn(Money $sum, OrderLineView $line): Money => $sum->add(Money::of($line->unitPrice)->times($line->quantity)), Money::zero());
-            foreach ($items as $position => $line) {
-                $shares[$position] ??= $listed->isZero()
-                    ? $cost->proportion(Money::of('1'), Money::of((string) $units))
-                    : $cost->proportion(Money::of($line->unitPrice), $listed);
+            $code = $line->givenBy['code'];
+            $members = [];
+            foreach ($order->lines as $position => $other) {
+                \assert($other instanceof OrderLineView);
+                if (($other->givenBy['code'] ?? null) === $code || ($other->givenBy === null && $other->addOn === null && $this->earned->appliesTo($code, $other->productId))) {
+                    $members[$position] = true;
+                }
+            }
+            // A deal joins the groups it shares a line with.
+            foreach ($groups as $index => $group) {
+                if (array_intersect_key($group, $members) !== []) {
+                    $members += $group;
+                    unset($groups[$index]);
+                }
+            }
+            $groups[] = $members;
+        }
+        $decimals = new Currency($order->currency)->decimals();
+        $shares = [];
+        foreach ($groups as $group) {
+            $lines = array_intersect_key($order->lines, $group);
+            $cost = array_reduce($lines, static fn(Money $sum, OrderLineView $line): Money => $sum->add(self::paid($order, $line)), Money::zero())->rounded($decimals);
+            $weights = array_map(static fn(OrderLineView $line): Money => $line->givenBy === null ? self::paid($order, $line) : self::priceOf($order, $line), $lines);
+            $whole = array_reduce($weights, static fn(Money $sum, Money $weight): Money => $sum->add($weight), Money::zero());
+            if ($whole->isZero()) {
+                $weights = array_map(static fn(OrderLineView $line): Money => Money::of((string) $line->quantity), $lines);
+                $whole = Money::of((string) array_sum(array_map(static fn(OrderLineView $line): int => $line->quantity, $lines)));
+            }
+            if ($whole->isZero()) {
+                continue;
+            }
+            // The heaviest line takes what rounding leaves, as it has the most room for it.
+            $heaviest = null;
+            foreach ($weights as $position => $weight) {
+                if ($heaviest === null || $weight->compare($weights[$heaviest]) > 0) {
+                    $heaviest = (int) $position;
+                }
+            }
+            $left = $cost;
+            foreach ($weights as $position => $weight) {
+                if ((int) $position !== $heaviest) {
+                    $share = $cost->proportion($weight, $whole)->rounded($decimals);
+                    $shares[(int) $position] = $share;
+                    $left = $left->subtract($share);
+                }
+            }
+            if ($heaviest !== null) {
+                $shares[$heaviest] = $left;
             }
         }
 
         return $shares;
+    }
+
+    /** What a line's items cost before any discount: its total, with its tax unless the prices include it. */
+    private static function priceOf(OrderView $order, OrderLineView $line): Money
+    {
+        $total = Money::of($line->total);
+        if ($order->pricesIncludeTax) {
+            return $total;
+        }
+        $percent = array_reduce($line->taxes, static fn(Money $sum, LineTaxView $tax): Money => $sum->add(Money::of($tax->percent)), Money::zero());
+
+        return $total->add($total->percent((string) $percent));
     }
 
     /**
@@ -730,7 +837,7 @@ final readonly class Returns
         }
         $unearned = [];
         foreach ($given as $code => $lines) {
-            $earned = $this->earned->earned((string) $code, $kept, $order->currency);
+            $earned = $this->earned->earned((string) $code, $kept, $order->currency, $order->exchangeRate ?? '1');
             if ($earned === null) {
                 continue;
             }

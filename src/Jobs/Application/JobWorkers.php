@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Jobs\Application;
 
+use OrillaCart\Jobs\Application\Dto\LeftOutView;
 use OrillaCart\Jobs\Application\Dto\WorkerView;
 use Psr\Clock\ClockInterface;
 
@@ -18,6 +19,8 @@ final readonly class JobWorkers
     public const int ALIVE_SECONDS = 120;
     /** How often a worker tells it is alive, at most. */
     public const int HEARTBEAT_SECONDS = 10;
+    /** How long a network worker's word that it leaves a site out holds: it says it again about every minute. */
+    public const int LEFT_OUT_SECONDS = 180;
 
     public function __construct(
         private WorkerRegistry $registry,
@@ -84,6 +87,27 @@ final readonly class JobWorkers
         }
 
         return $queues;
+    }
+
+    /**
+     * A network worker leaves the site out: plugins or theme, what the site has that the worker did not load. It
+     * says so each time it looks at the network's sites again.
+     */
+    public function leftOut(string $worker, string $reason): void
+    {
+        $this->registry->leftOut($worker, $reason, $this->clock->now());
+    }
+
+    /** The network worker that leaves the site out, while it says so; null when none does. */
+    public function leftOutBy(): ?LeftOutView
+    {
+        $left = $this->registry->leftOutBy();
+        // The worker says it again every minute or so; one silent for longer stopped, or serves the site now.
+        if ($left === null || $left['at'] < $this->clock->now()->modify(\sprintf('-%d seconds', self::LEFT_OUT_SECONDS))) {
+            return null;
+        }
+
+        return new LeftOutView($left['worker'], $left['reason'], $left['at']->format(\DATE_ATOM));
     }
 
     public function cronRan(): void

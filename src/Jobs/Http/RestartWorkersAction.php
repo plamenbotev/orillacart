@@ -7,6 +7,7 @@ namespace OrillaCart\Jobs\Http;
 use OrillaCart\Jobs\Application\JobOverview;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -16,6 +17,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Asks every running background worker to finish its batch and stop, so their supervisor starts them again; answers
  * with what the jobs are doing.
  */
+#[Tool(unasked: 'background workers restarted')]
 #[Route('/jobs/workers/restart', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class RestartWorkersAction implements RequestHandlerInterface
 {

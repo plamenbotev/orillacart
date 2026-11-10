@@ -12,12 +12,13 @@ use OrillaCart\Shared\Domain\Text;
  * Money the shop owes someone, to spend in it: a gift card, which whoever has its code pays with, or a customer's
  * store credit, which they use from their account. Only the SHA-256 of a code is kept, and its last four
  * characters to tell cards apart. The balance changes only by entries, under a lock, so two orders never spend
- * the same money.
+ * the same money. A customer has one store credit; gift cards are nobody's, so the key on customer and kind
+ * leaves them be.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'gift_cards')]
 #[ORM\UniqueConstraint(name: 'gift_card_code', columns: ['code_hash'])]
-#[ORM\Index(name: 'gift_cards_of_customer', columns: ['customer_id', 'kind'])]
+#[ORM\UniqueConstraint(name: 'gift_card_of_customer', columns: ['customer_id', 'kind'])]
 #[ORM\Index(name: 'gift_cards_of_order', columns: ['order_id'])]
 class GiftCard
 {

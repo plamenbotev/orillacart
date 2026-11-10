@@ -45,6 +45,9 @@ const MODES = [
 	},
 ];
 
+/** The role the shop gives the accounts it makes: always a customers' role. */
+const OWN_ROLE = 'orillacart_customer';
+
 /**
  * The Shop → Customers → Accounts and groups screen: whether customers have accounts, the newsletter, and the
  * customer groups price rules can price for.
@@ -115,6 +118,41 @@ export function CustomerSettingsScreen() {
 								}
 							/>
 						) }
+						<fieldset className="orillacart-customer-roles">
+							<legend>
+								{ __( 'Who is a customer', 'orillacart' ) }
+							</legend>
+							<p>
+								{ __(
+									'A user of the site is one of the shop’s customers when every role they have is ticked. Whoever has another role is not listed, read or changed as a customer, and takes no orders made in the admin. Roles that manage the site or the shop are never customers’.',
+									'orillacart'
+								) }
+							</p>
+							{ settings.available_roles.map( ( role ) => (
+								<CheckboxControl
+									key={ role.name }
+									label={ role.label }
+									checked={ settings.roles.includes(
+										role.name
+									) }
+									disabled={ role.name === OWN_ROLE }
+									onChange={ ( on ) =>
+										saveSettings( {
+											...settings,
+											roles: on
+												? [
+														...settings.roles,
+														role.name,
+													]
+												: settings.roles.filter(
+														( name ) =>
+															name !== role.name
+													),
+										} )
+									}
+								/>
+							) ) }
+						</fieldset>
 					</CardBody>
 				</Card>
 			) }

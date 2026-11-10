@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import apiFetch from '@wordpress/api-fetch';
 
@@ -13,6 +13,100 @@ type Request = { path: string; method?: string; data?: unknown };
 
 describe( 'CustomersScreen', () => {
 	afterEach( () => mockedFetch.mockReset() );
+
+	it( 'shows the invitations waiting, sends one again and withdraws another', async () => {
+		const invitation = {
+			id: 7,
+			email: 'grace@example.com',
+			first_name: 'Grace',
+			last_name: 'Hopper',
+			group_ids: [],
+			invited_by: 1,
+			sent_at: '2026-11-01T12:00:00+00:00',
+			expires_at: '2026-11-08T12:00:00+00:00',
+			expired: true,
+			may_resend: true,
+		};
+		const recent = {
+			...invitation,
+			id: 8,
+			email: 'alan@example.com',
+			first_name: 'Alan',
+			last_name: 'Turing',
+			expired: false,
+			may_resend: false,
+		};
+		const calls: Request[] = [];
+		mockedFetch.mockImplementation( ( options ) => {
+			const request = options as Request;
+			calls.push( request );
+			if ( request.path.startsWith( '/orillacart/v1/customer-groups' ) ) {
+				return Promise.resolve( [] );
+			}
+			if ( request.path === '/orillacart/v1/customer-invitations' ) {
+				return Promise.resolve( [ invitation, recent ] );
+			}
+			if (
+				request.path === '/orillacart/v1/customer-invitations/7/resend'
+			) {
+				return Promise.resolve( {
+					...invitation,
+					expired: false,
+					may_resend: false,
+				} );
+			}
+			if ( request.path === '/orillacart/v1/customer-invitations/8' ) {
+				return Promise.resolve( null );
+			}
+			return Promise.resolve( {
+				customers: [],
+				total: 0,
+				page: 1,
+				pages: 1,
+			} );
+		} );
+		const user = userEvent.setup();
+		render( <CustomersScreen /> );
+
+		expect( await screen.findByText( 'grace@example.com' ) ).toBeVisible();
+		expect( screen.getByText( 'Stopped working' ) ).toBeVisible();
+		const buttons = screen.getAllByRole( 'button', {
+			name: 'Send again',
+		} );
+		expect( buttons ).toHaveLength( 2 );
+		expect( buttons[ 1 ] ).toBeDisabled();
+
+		await user.click( buttons[ 0 ] as HTMLElement );
+		await waitFor( () =>
+			expect(
+				calls.some(
+					( call ) =>
+						call.path ===
+							'/orillacart/v1/customer-invitations/7/resend' &&
+						call.method === 'POST'
+				)
+			).toBe( true )
+		);
+		await waitFor( () =>
+			expect( screen.queryByText( 'Stopped working' ) ).toBeNull()
+		);
+
+		await user.click(
+			screen.getAllByRole( 'button', {
+				name: 'Withdraw',
+			} )[ 1 ] as HTMLElement
+		);
+		await waitFor( () =>
+			expect( screen.queryByText( 'alan@example.com' ) ).toBeNull()
+		);
+		expect(
+			calls.some(
+				( call ) =>
+					call.path === '/orillacart/v1/customer-invitations/8' &&
+					call.method === 'DELETE'
+			)
+		).toBe( true );
+	} );
 
 	it( 'lists customers and opens one as its own view', async () => {
 		const ada = {
@@ -30,6 +124,9 @@ describe( 'CustomersScreen', () => {
 		mockedFetch.mockImplementation( ( options ) => {
 			const request = options as Request;
 			if ( request.path.startsWith( '/orillacart/v1/customer-groups' ) ) {
+				return Promise.resolve( [] );
+			}
+			if ( request.path === '/orillacart/v1/customer-invitations' ) {
 				return Promise.resolve( [] );
 			}
 			if ( request.path.endsWith( '/store-credit' ) ) {
@@ -128,6 +225,13 @@ describe( 'CustomerSettingsScreen', () => {
 							request.data as
 								{ guest_orders?: boolean } | undefined
 						 )?.guest_orders ?? true,
+					roles: ( request.data as { roles?: string[] } | undefined )
+						?.roles ?? [ 'orillacart_customer', 'subscriber' ],
+					available_roles: [
+						{ name: 'orillacart_customer', label: 'Shop customer' },
+						{ name: 'subscriber', label: 'Subscriber' },
+						{ name: 'author', label: 'Author' },
+					],
 				} );
 			}
 			if (
@@ -159,7 +263,26 @@ describe( 'CustomerSettingsScreen', () => {
 		expect( mockedFetch ).toHaveBeenCalledWith( {
 			path: '/orillacart/v1/customer-settings',
 			method: 'PUT',
-			data: { accounts: 'required', guest_orders: true },
+			data: {
+				accounts: 'required',
+				guest_orders: true,
+				roles: [ 'orillacart_customer', 'subscriber' ],
+			},
 		} );
+
+		// Who counts as a customer is the shop's to choose; its own role always does.
+		expect( screen.getByLabelText( 'Shop customer' ) ).toBeDisabled();
+		await user.click( screen.getByLabelText( 'Author' ) );
+		await waitFor( () =>
+			expect( mockedFetch ).toHaveBeenCalledWith( {
+				path: '/orillacart/v1/customer-settings',
+				method: 'PUT',
+				data: {
+					accounts: 'required',
+					guest_orders: true,
+					roles: [ 'orillacart_customer', 'subscriber', 'author' ],
+				},
+			} )
+		);
 	} );
 } );

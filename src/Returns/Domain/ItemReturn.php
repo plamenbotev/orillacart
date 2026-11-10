@@ -62,6 +62,15 @@ class ItemReturn
     private string $couponsTaken = '0';
 
     /**
+     * What its refund gave back of each line's worth, by line position, before the coupons took theirs: a line's
+     * last item gets what is left of the line once these are taken, whatever the refunds booked as money.
+     *
+     * @var array<int, string>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $lineValues = null;
+
+    /**
      * @param array<int, int> $items quantities by line position
      *
      * @throws ReturnRuleViolation for nothing to send back, or a comment too long
@@ -207,9 +216,11 @@ class ItemReturn
     /**
      * The refund was made, and the provider sends the money later.
      *
+     * @param array<int, Money> $lineValues what it gives back of each line's worth, by line position
+     *
      * @throws ReturnRuleViolation for one whose items did not come back
      */
-    public function refunding(int $refundId, ?Money $couponsTaken = null): void
+    public function refunding(int $refundId, ?Money $couponsTaken = null, array $lineValues = []): void
     {
         if ($this->status !== ReturnStatus::Received) {
             throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$this->id(), $this->status->value]);
@@ -217,6 +228,35 @@ class ItemReturn
         $this->status = ReturnStatus::Refunding;
         $this->refundId = $refundId;
         $this->couponsTaken = ($couponsTaken ?? Money::zero())->toFixed();
+        $this->lineValues = array_map(static fn(Money $value): string => $value->toFixed(), $lineValues);
+    }
+
+    /**
+     * Its items cost nothing, such as a free item sent back alone: they came back, and no money goes.
+     *
+     * @param array<int, Money> $lineValues what it gives back of each line's worth, by line position
+     *
+     * @throws ReturnRuleViolation for one whose items did not come back
+     */
+    public function closedWithoutMoney(\DateTimeImmutable $at, array $lineValues): void
+    {
+        if ($this->status !== ReturnStatus::Received) {
+            throw new ReturnRuleViolation('Return %1$d is %2$s; its items are refunded once they came back.', 'orillacart_return_not_refundable', values: [$this->id(), $this->status->value]);
+        }
+        $this->status = ReturnStatus::Refunded;
+        $this->refundedAt = $at;
+        $this->couponsTaken = '0';
+        $this->lineValues = array_map(static fn(Money $value): string => $value->toFixed(), $lineValues);
+    }
+
+    /**
+     * What its refund gave back of each line's worth, by line position; null for none recorded.
+     *
+     * @return array<int, Money>|null
+     */
+    public function lineValues(): ?array
+    {
+        return $this->lineValues === null ? null : array_map(static fn(string $value): Money => Money::of($value), $this->lineValues);
     }
 
     /** What its refund kept back of coupons the items kept no longer met (Returns). */
@@ -236,6 +276,8 @@ class ItemReturn
         if ($this->status === ReturnStatus::Refunding) {
             $this->status = ReturnStatus::Received;
             $this->refundId = null;
+            $this->couponsTaken = '0';
+            $this->lineValues = null;
         }
     }
 

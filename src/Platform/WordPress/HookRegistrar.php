@@ -6,6 +6,7 @@ namespace OrillaCart\Platform\WordPress;
 
 use OrillaCart\Platform\PluginContext;
 use Psr\Container\ContainerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Hooks in the #[AsHook] classes. Each class is built the first time its hook fires, from the container of the site
@@ -78,7 +79,18 @@ final readonly class HookRegistrar implements Registrar
 
                         return $registrar->call($service, $method, $arguments, false, $filter);
                     },
-                    static fn(): mixed => $filter ? (array_values($arguments)[0] ?? null) : null,
+                    function (?string $reason) use ($site, $service, $arguments, $filter): mixed {
+                        // A site whose tables wait for an upgrade misses what its hooks would do: the shop hears
+                        // of it, once a process. One without the shop is no news.
+                        if ($reason === SiteKernels::BEHIND && SiteKernels::firstTold($site, $reason) && $this->services->has(LoggerInterface::class)) {
+                            $logger = $this->services->get(LoggerInterface::class);
+                            if ($logger instanceof LoggerInterface) {
+                                $logger->warning('The shop on site {site} waits for its upgrade, so {hook} was passed over there: run its upgrade (wp orillacart migrate --network).', ['site' => $site, 'hook' => $service]);
+                            }
+                        }
+
+                        return $filter ? (array_values($arguments)[0] ?? null) : null;
+                    },
                 );
             }
         }

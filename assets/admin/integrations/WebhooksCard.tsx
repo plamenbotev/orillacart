@@ -27,7 +27,39 @@ import {
 import { useLeaveGuard } from '../shared/useLeaveGuard';
 import { differs, useUnsavedChanges } from '../shared/useUnsavedChanges';
 
-const EMPTY: WebhookInput = { name: '', url: '', topics: [], active: true };
+const EMPTY: WebhookInput = {
+	name: '',
+	url: '',
+	topics: [],
+	active: true,
+	failure_limit: 10,
+};
+
+/**
+ * Why the shop switched the webhook off, for the shop manager to act on; null when it did not.
+ *
+ * @param webhook The webhook as listed.
+ */
+export function offReason( webhook: Webhook ): string | null {
+	switch ( webhook.off_reason ) {
+		case 'owner_left':
+			return __(
+				'Switched off by the shop: the manager it was saved by no longer manages the shop. Switching it on again makes you the one who answers for it.',
+				'orillacart'
+			);
+		case 'failing':
+			return sprintf(
+				/* translators: %d: how many events in a row */
+				__(
+					'Switched off by the shop: its address took none of the last %d events. Switch it on again once it takes them.',
+					'orillacart'
+				),
+				webhook.failed_in_a_row
+			);
+		default:
+			return null;
+	}
+}
 
 function outcome( delivery: WebhookDelivery | null ): string {
 	if ( delivery === null ) {
@@ -104,6 +136,7 @@ export function WebhooksCard() {
 					url: webhook.url,
 					topics: webhook.topics,
 					active: webhook.active,
+					failure_limit: webhook.failure_limit,
 				};
 	};
 	const [ leaving, guard, , scope ] = useLeaveGuard();
@@ -135,7 +168,7 @@ export function WebhooksCard() {
 			<CardBody>
 				<p>
 					{ __(
-						'The shop POSTs each event a webhook listens to as JSON, signed with its secret in X-OrillaCart-Signature ("t=<time>,v1=<HMAC-SHA256 of time.body>"). An answer other than 2xx is tried again, up to six times over a day.',
+						'The shop POSTs each event a webhook listens to as JSON, signed with its secret in X-OrillaCart-Signature ("t=<time>,v1=<HMAC-SHA256 of time.body>"). An answer other than 2xx is tried again, up to six times over a day. A webhook goes on in the name of the shop manager who saved it last, while they manage the shop.',
 						'orillacart'
 					) }
 				</p>
@@ -172,6 +205,7 @@ export function WebhooksCard() {
 								<th>{ __( 'Name', 'orillacart' ) }</th>
 								<th>{ __( 'Address', 'orillacart' ) }</th>
 								<th>{ __( 'Tells of', 'orillacart' ) }</th>
+								<th>{ __( 'Saved by', 'orillacart' ) }</th>
 								<th>{ __( 'Last delivery', 'orillacart' ) }</th>
 								<th>
 									<span className="screen-reader-text">
@@ -187,6 +221,14 @@ export function WebhooksCard() {
 										{ webhook.name }
 										{ ! webhook.active &&
 											` (${ __( 'off', 'orillacart' ) })` }
+										{ offReason( webhook ) !== null && (
+											<Notice
+												status="warning"
+												isDismissible={ false }
+											>
+												{ offReason( webhook ) }
+											</Notice>
+										) }
 									</td>
 									<td>
 										<code>{ webhook.url }</code>
@@ -198,6 +240,19 @@ export function WebhooksCard() {
 													topics[ topic ] ?? topic
 											)
 											.join( ', ' ) }
+									</td>
+									<td>
+										{ webhook.owner_id === null
+											? __( 'Nobody', 'orillacart' )
+											: webhook.owner ||
+												sprintf(
+													/* translators: %d: user id */
+													__(
+														'User #%d (deleted)',
+														'orillacart'
+													),
+													webhook.owner_id
+												) }
 									</td>
 									<td>
 										{ outcome( webhook.last_delivery ) }
@@ -387,6 +442,30 @@ export function WebhooksCard() {
 							label={ __( 'On', 'orillacart' ) }
 							checked={ editing.webhook.active }
 							onChange={ ( on ) => field( 'active', on ) }
+						/>
+						<TextControl
+							__next40pxDefaultSize
+							type="number"
+							min={ 0 }
+							max={ 1000 }
+							label={ __(
+								'Switch off after this many failed events in a row',
+								'orillacart'
+							) }
+							help={ __(
+								'An event fails once every try of it did. 0: never switch it off.',
+								'orillacart'
+							) }
+							value={ String( editing.webhook.failure_limit ) }
+							onChange={ ( value ) =>
+								field(
+									'failure_limit',
+									Math.max(
+										0,
+										Math.floor( Number( value ) ) || 0
+									)
+								)
+							}
 						/>
 						{ editing.id !== null && (
 							<p>

@@ -53,6 +53,7 @@ class DownloadGrant
         #[ORM\ManyToOne(targetEntity: Order::class, inversedBy: 'grants')]
         #[ORM\JoinColumn(name: 'order_id', nullable: false, onDelete: 'CASCADE')]
         private Order $order,
+        #[\SensitiveParameter]
         #[ORM\Column(length: 64)]
         private string $token,
         #[ORM\Column]

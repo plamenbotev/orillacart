@@ -36,7 +36,7 @@ final readonly class CartCookie
         return $this->give($response, $result->newToken ?? $this->owner($request)->token, $request);
     }
 
-    public function give(ResponseInterface $response, ?string $token, ServerRequestInterface $request): ResponseInterface
+    public function give(ResponseInterface $response, #[\SensitiveParameter] ?string $token, ServerRequestInterface $request): ResponseInterface
     {
         if ($token === null) {
             return $response;

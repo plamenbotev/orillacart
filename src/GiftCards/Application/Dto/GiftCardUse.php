@@ -14,6 +14,7 @@ final readonly class GiftCardUse
 {
     public function __construct(
         public int $cardId,
+        #[\SensitiveParameter]
         public ?string $code,
         public Text $label,
         public string $balance,

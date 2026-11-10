@@ -31,4 +31,21 @@ final class EnabledFilesBackfillTest extends TestCase
         $snapshot[0][1] = 'fn two() { return 3 }';
         self::assertNotSame($package->checksum(), Version20261110171500::checksum($snapshot));
     }
+
+    public function testTheOrderIsTheBytesNotTheDatabasesCollation(): void
+    {
+        $at = new \DateTimeImmutable('2026-11-10 12:00:00');
+        $package = new Package('trade', 'Trade', $at);
+        $package->write('order.ocs', 'extension "trade" { name: "Trade" }', $at);
+        $package->write('order_events.ocs', 'fn two() { return 2 }', $at);
+        $collated = [
+            ['path' => 'order_events.ocs', 'content' => 'fn two() { return 2 }'],
+            ['path' => 'order.ocs', 'content' => 'extension "trade" { name: "Trade" }'],
+        ];
+
+        $snapshot = Version20261110171500::snapshot($collated);
+
+        self::assertSame(['order.ocs', 'order_events.ocs'], array_column($snapshot, 0));
+        self::assertSame($package->checksum(), Version20261110171500::checksum($snapshot));
+    }
 }

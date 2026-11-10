@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -20,6 +21,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Changes how many downloads of a bought file are left and the last day it can be downloaded; the order's history
  * notes it.
  */
+#[Tool(risk: Tool::CHANGES)]
 #[Route('/orders/{id}/downloads/{grant}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'grant' => '\d+'])]
 final readonly class ChangeDownloadAllowanceAction implements RequestHandlerInterface
 {

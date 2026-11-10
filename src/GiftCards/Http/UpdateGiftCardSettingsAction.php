@@ -9,12 +9,14 @@ use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Chooses which products the shop sells as gift cards, and for how many months a card stays valid. */
+#[Tool(unasked: 'settings')]
 #[Route('/gift-cards/settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateGiftCardSettingsAction implements RequestHandlerInterface
 {

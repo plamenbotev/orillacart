@@ -10,6 +10,7 @@ use OrillaCart\Checkout\Application\Dto\CheckAddresses;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Extension\Checkout\CheckedAddress;
 use OrillaCart\Extension\FailsClosed;
+use OrillaCart\Shared\Extension\ClosedFailures;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;
@@ -29,6 +30,7 @@ final readonly class AddressChecks
     public function __construct(
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
+        private ClosedFailures $closedFailures,
     ) {}
 
     /** Whether any add-on checks addresses, so checkout asks before placing the order. */
@@ -83,6 +85,7 @@ final readonly class AddressChecks
                 $this->logger->error('The address check {check} failed: {message}', ['check' => $check->id(), 'message' => $e->getMessage(), 'exception' => $e]);
                 if ($check instanceof FailsClosed) {
                     $unchecked = true;
+                    $this->closedFailures->failed('address_check:' . $check->id(), \sprintf('The address check %s failed (%s): no order can be placed until it answers.', $check->id(), mb_substr($e->getMessage(), 0, 200)));
 
                     return new AddressSuggestionView(self::UNCHECKED, false);
                 }

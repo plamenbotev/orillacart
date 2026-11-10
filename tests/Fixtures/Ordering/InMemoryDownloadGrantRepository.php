@@ -50,7 +50,7 @@ final class InMemoryDownloadGrantRepository implements DownloadGrantRepository
             return false;
         }
         new \ReflectionProperty(DownloadGrant::class, 'resumesLeft')->setValue($grant, $grant->resumesLeft() - 1);
-        new \ReflectionProperty(DownloadGrant::class, 'sentUntil')->setValue($grant, $until);
+        new \ReflectionProperty(DownloadGrant::class, 'sentUntil')->setValue($grant, max($grant->sentUntil(), $until));
 
         return true;
     }

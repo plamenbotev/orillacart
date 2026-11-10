@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Payment\Application;
 
 use OrillaCart\Extension\Payment\ChecksPayments;
+use OrillaCart\Extension\Payment\ConfirmsNotifications;
 use OrillaCart\Extension\Payment\HandlesNotifications;
 use OrillaCart\Extension\Payment\HandlesReturns;
 use OrillaCart\Extension\Payment\InvalidNotification;
@@ -40,7 +41,8 @@ use Psr\Log\LoggerInterface;
 
 /**
  * How payments at providers end, whichever gateway took them: the customer coming back, and the provider's
- * notifications for customers who never did. Each payment settles once; what arrives after changes nothing. The
+ * notifications for customers who never did. Each payment settles once; what arrives after changes nothing,
+ * except money for a payment that ended unpaid, which the order is told of as late money. The
  * provider is asked first, with nothing locked; the payment then settles in one transaction with its row locked,
  * so the customer's return and the provider's notification arriving together do not both settle it.
  * A completed payment whose amount or currency is not the order's is held for the shop to look at.
@@ -49,6 +51,8 @@ final readonly class PaymentOutcomes
 {
     /** What the return and cancel addresses' signatures are for. */
     public const string RETURN_SIGNATURE = 'payment-return';
+    /** What the key in a notification address is signed for. */
+    public const string NOTIFICATION_SIGNATURE = 'payment-notification';
     /** How many days the return and cancel addresses lead to the order's receipt. */
     public const int RETURN_VALID_DAYS = 7;
 
@@ -81,6 +85,12 @@ final readonly class PaymentOutcomes
         $day = (string) intdiv($at->getTimestamp(), 86400);
 
         return ['payment' => (string) $paymentId, 'day' => $day, 'sig' => $signatures->sign(self::RETURN_SIGNATURE, "{$gatewayId}:{$paymentId}:{$day}")];
+    }
+
+    /** The key the shop puts in a gateway's notification address: the same for the gateway, and the site's own. */
+    public static function notificationKey(Signatures $signatures, string $gatewayId): string
+    {
+        return $signatures->sign(self::NOTIFICATION_SIGNATURE, $gatewayId);
     }
 
     /**
@@ -154,10 +164,18 @@ final readonly class PaymentOutcomes
         if (!$gateway instanceof HandlesNotifications) {
             throw new PaymentMethodNotFound($gatewayId);
         }
+        if ($gateway instanceof ConfirmsNotifications && !$this->signatures->verify(self::NOTIFICATION_SIGNATURE, $gatewayId, $notification->query[ConfirmsNotifications::NOTIFICATION_KEY] ?? '')) {
+            // Not sent to the address the shop gave the provider: the gateway never reads it.
+            throw new PaymentRuleViolation('The notification is not from the payment provider.', 'orillacart_invalid_notification');
+        }
         if ($gateway instanceof NamesNotifiedPayments) {
             $reference = $gateway->paymentReference($notification);
-            if ($reference !== null && $this->payments->findByReference($gatewayId, $reference) === null) {
-                // Another site's payment, or one deleted since: not this shop's to act on.
+            $named = $reference === null ? null : $this->payments->findByReference($gatewayId, $reference);
+            if ($reference !== null && ($named === null || $named->isSettled())) {
+                // Another site's payment, or one deleted since: not this shop's to act on. Nor is one that ended
+                // here: a customer who gave up, or whose payment failed, and approves at the provider after all
+                // is not charged for a payment the shop no longer waits for. Left alone, the provider's session
+                // runs out without taking money.
                 return;
             }
         }
@@ -179,11 +197,36 @@ final readonly class PaymentOutcomes
         if ($eventId !== null && $this->handled->wasHandled($gatewayId, $eventId)) {
             return;
         }
-        $this->act($gatewayId, $gateway, $outcome);
+        $this->act($gatewayId, $gateway, $this->confirmed($gatewayId, $gateway, $outcome));
         // Only once acted on: an event that broke on the way is handled when the provider sends it again.
         if ($eventId !== null) {
             $this->handled->remember(new NotifiedEvent($gatewayId, $eventId, $this->clock->now()));
         }
+    }
+
+    /**
+     * A gateway that confirms its notifications: money it says came is asked about at the provider first, under the
+     * shop's own reference of the payment, and only what the provider answers settles it.
+     *
+     * @throws PaymentProviderUnavailable when the provider cannot be asked now; it sends the notification again
+     */
+    private function confirmed(string $gatewayId, HandlesNotifications $gateway, ?PaymentOutcome $outcome): ?PaymentOutcome
+    {
+        if (!$gateway instanceof ConfirmsNotifications || $outcome === null || $outcome->status !== PaymentOutcome::COMPLETED) {
+            return $outcome;
+        }
+        $payment = $outcome->reference === '' ? null : $this->payments->findByReference($gatewayId, $outcome->reference);
+        $reference = $payment?->reference();
+        if ($payment === null || $reference === null || $payment->isSettled()) {
+            return null;
+        }
+        try {
+            $checked = $gateway->check($reference, $outcome->transactionId, $this->settings($gatewayId));
+        } catch (\Throwable $e) {
+            throw new PaymentProviderUnavailable($this->methods->findByGateway($gatewayId)?->name() ?? $gateway->defaultName(), $e->getMessage(), $e);
+        }
+
+        return $checked->reference === $reference ? $checked : null;
     }
 
     private function act(string $gatewayId, PaymentGateway&HandlesNotifications $gateway, ?PaymentOutcome $outcome): void
@@ -264,25 +307,44 @@ final readonly class PaymentOutcomes
 
     /**
      * Settles the payment, and tells the order. A payment the order replaced since (paid another way, or started
-     * again) only tells it of money: its failing, being given up or held moves nothing.
+     * again) only tells it of money: its failing, being given up or held moves nothing. Money that comes for a
+     * payment which had failed or been given up is the order's all the same: it is paid with it, opened again, or
+     * the money goes back, as for any payment that completes after its order closed.
      */
     private function settleLocked(Payment $payment, PaymentOutcome $outcome, bool $givenUp): void
     {
         $now = $this->clock->now();
         $replaced = array_any($this->payments->ofOrder($payment->orderId()), static fn(Payment $other): bool => $other->id() > $payment->id());
+        $late = $payment->endedUnpaid();
         $event = match ($outcome->status) {
             PaymentOutcome::COMPLETED => $this->paysInFull($payment, $outcome)
-                ? ($payment->complete($outcome->transactionId, $now) ? new PaymentCompleted($payment->orderId(), $payment->id(), $payment->gateway(), $outcome->transactionId ?? '', (string) $payment->amount()) : null)
-                : $this->hold($payment, $outcome),
+                ? ($payment->complete($outcome->transactionId, $now) || $payment->completeLate($outcome->transactionId, $now) ? new PaymentCompleted($payment->orderId(), $payment->id(), $payment->gateway(), $outcome->transactionId ?? '', (string) $payment->amount()) : null)
+                : ($late ? $this->lateAndOdd($payment, $outcome) : $this->hold($payment, $outcome)),
             PaymentOutcome::HELD => $this->hold($payment, $outcome),
             PaymentOutcome::FAILED => $payment->fail($outcome->transactionId, $now) ? new PaymentFailed($payment->orderId(), $payment->id(), $payment->gateway(), $outcome->transactionId ?? '') : null,
             PaymentOutcome::CANCELLED => $payment->cancel($now) ? new PaymentCancelled($payment->orderId(), $payment->id(), $payment->gateway()) : null,
             default => null,
         };
         $this->payments->save($payment);
-        if ($event instanceof PaymentCompleted || ($event !== null && !$replaced && !($givenUp && $event instanceof PaymentCancelled))) {
+        if ($event instanceof PaymentCompleted || $event instanceof PaymentInQuestion || ($event !== null && !$replaced && !($givenUp && $event instanceof PaymentCancelled))) {
             $this->events->dispatch($event);
         }
+    }
+
+    /**
+     * Money came for a payment that had failed or been given up, and it is not the payment's amount (or the
+     * provider did not say how much): the shop cannot take it for the order nor give it back by itself, so the
+     * order is flagged for the shop to look at the provider.
+     */
+    private function lateAndOdd(Payment $payment, PaymentOutcome $outcome): PaymentInQuestion
+    {
+        return new PaymentInQuestion($payment->orderId(), $payment->gateway(), \sprintf(
+            'Money came through %s for a payment of %s %s that had ended unpaid (transaction %s), and it is not that amount: look at it at the provider, and give it back or record it on the order.',
+            $payment->gateway(),
+            $payment->amount()->toFixed(),
+            $payment->currency(),
+            $outcome->transactionId ?? $outcome->reference,
+        ));
     }
 
     /** The provider holds the money, or it does not match the order: the shop has to look before it ships. */
@@ -298,23 +360,24 @@ final readonly class PaymentOutcomes
     }
 
     /**
-     * Whether what the provider says was paid is the payment's amount. One that does not say how much is not taken
-     * at its word: the payment waits for the shop to look, as a payment of the wrong amount does. An add-on's
-     * gateway that reads the provider's answer passes the amount it read.
+     * Whether what the provider says was paid is the payment's amount, in its currency. One that does not say how
+     * much, or in what, is not taken at its word: 100 of another currency is not the order's 100, and the payment
+     * waits for the shop to look, as a payment of the wrong amount does. An add-on's gateway that reads the
+     * provider's answer passes the amount and currency it read.
      */
     private function paysInFull(Payment $payment, PaymentOutcome $outcome): bool
     {
-        if ($outcome->amount === null) {
-            $this->logger->warning('{gateway} said payment {payment} was made without saying how much was paid; the order waits for the shop.', ['gateway' => $payment->gateway(), 'payment' => $payment->id()]);
+        if ($outcome->amount === null || $outcome->currency === null || $outcome->currency === '') {
+            $this->logger->warning('{gateway} said payment {payment} was made without saying how much was paid, or in what currency; the order waits for the shop.', ['gateway' => $payment->gateway(), 'payment' => $payment->id()]);
 
             return false;
         }
         $paid = preg_match('/^\d{1,11}(\.\d{1,4})?$/', $outcome->amount) === 1 ? Money::of($outcome->amount) : Money::zero();
-        if (($outcome->currency === null || $outcome->currency === $payment->currency()) && $paid->equals($payment->amount())) {
+        if (strtoupper($outcome->currency) === $payment->currency() && $paid->equals($payment->amount())) {
             return true;
         }
         $this->logger->warning('{gateway} paid {paid} {paidCurrency} for payment {payment} of {amount} {currency}; the order waits for the shop.', [
-            'gateway' => $payment->gateway(), 'paid' => $outcome->amount, 'paidCurrency' => $outcome->currency ?? $payment->currency(),
+            'gateway' => $payment->gateway(), 'paid' => $outcome->amount, 'paidCurrency' => $outcome->currency,
             'payment' => $payment->id(), 'amount' => (string) $payment->amount(), 'currency' => $payment->currency(),
         ]);
 

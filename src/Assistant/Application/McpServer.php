@@ -141,6 +141,9 @@ final readonly class McpServer
     /** The finder's names, which no other tool may take. */
     public const array FINDER = [self::FIND, self::DESCRIBE, self::RUN];
 
+    /** Why a yes did not run the call: what it would do is not what the owner read. */
+    private const string CHANGED_SINCE = 'What the call would do changed since the owner was asked, so their yes does not cover it: nothing was done. Call it again to ask them about it as it is now.';
+
     /** The risks in words, for the question the owner is asked. */
     private const array RISK_WORDS = [
         'money' => 'Money moves.',
@@ -148,6 +151,7 @@ final readonly class McpServer
         'customers' => 'Customers hear of it.',
         'opening' => 'The shop opens or closes, or many settings change at once.',
         'publishing' => 'What customers read or agree to changes.',
+        'changes' => 'Something else in the shop changes.',
     ];
 
     public function __construct(
@@ -414,7 +418,7 @@ final readonly class McpServer
         return [
             new ToolDefinition(self::DESCRIBE, 'Describe tool', 'One of the shop\'s tools in full: what it does, what it risks, and its arguments as JSON Schema. Find it with find_tools; run it with run_tool.', ['type' => 'object', 'properties' => ['name' => $name], 'required' => ['name'], 'additionalProperties' => false], true, false, true, null, 'Assistant', 'manage_orillacart'),
             new ToolDefinition(self::FIND, 'Find tools', 'The shop\'s tools whose name, title or description has the words (orders, refund, stock, tax, setup…), or all of an area; nothing changes. Each comes with its name, what it does and whether it only reads.', ['type' => 'object', 'properties' => ['words' => ['type' => 'string', 'maxLength' => 200], 'area' => ['type' => 'string', 'maxLength' => 100]], 'additionalProperties' => false], true, false, true, null, 'Assistant', 'manage_orillacart'),
-            new ToolDefinition(self::RUN, 'Run tool', 'Runs one of the shop\'s tools with its arguments, as describe_tool gives them. Some ask the owner first.', ['type' => 'object', 'properties' => ['name' => $name, 'arguments' => ['type' => 'object']], 'required' => ['name'], 'additionalProperties' => false], false, false, false, null, 'Assistant', 'manage_orillacart'),
+            new ToolDefinition(self::RUN, 'Run tool', 'Runs one of the shop\'s tools with its arguments, as describe_tool gives them. Some ask the owner first.', ['type' => 'object', 'properties' => ['name' => $name, 'arguments' => ['type' => 'object']], 'required' => ['name'], 'additionalProperties' => false], false, false, false, null, 'Assistant', 'manage_orillacart', unasked: 'runs another tool, which asks for itself'),
         ];
     }
 
@@ -487,6 +491,11 @@ final readonly class McpServer
             return self::error(200, null, self::INVALID_PARAMS, 'The arguments must be an object.');
         }
         $arguments = array_filter($arguments, \is_string(...), ARRAY_FILTER_USE_KEY);
+        if (json_encode($arguments) === false) {
+            // A number JSON cannot hold (1e999 is read as infinity) or text that is not UTF-8: the call could not
+            // be told apart from others in the owner's yes, nor shown to them, so it is not run.
+            return self::error(200, null, self::INVALID_PARAMS, 'The arguments hold a number that is not finite or text that is not UTF-8: send finite numbers and UTF-8 text.');
+        }
         if ($caller->choices->list === AssistantChoices::FIND_ON_DEMAND) {
             if ($name === self::FIND || $name === self::DESCRIBE) {
                 return self::toolResult($this->find($name, $arguments, $caller), $modern);
@@ -538,7 +547,7 @@ final readonly class McpServer
         }
         $capabilities = \is_array($meta[self::META_CAPABILITIES] ?? null) ? $meta[self::META_CAPABILITIES] : [];
         $elicitation = $capabilities['elicitation'] ?? null;
-        $digest = hash('sha256', $tool->name . "\n" . json_encode(self::sorted($arguments)));
+        $digest = hash('sha256', $tool->name . "\n" . json_encode(self::sorted($arguments), JSON_THROW_ON_ERROR));
         $page = $this->approvals->find($caller, $digest);
         if ($caller->keyId !== null && $caller->choices->answer === AssistantChoices::ON_PAGE) {
             // The app holds the key and would carry the answer: only the owner's page, behind their login, says yes.
@@ -554,6 +563,10 @@ final readonly class McpServer
         if ($answer !== null && \is_string($state)) {
             $asked = $this->states->redeem($state);
             if ($asked !== null && ($asked['user'] ?? null) === $caller->userId && ($asked['key'] ?? null) === $caller->keyId && ($asked['call'] ?? null) === $digest) {
+                if (($asked['what'] ?? null) !== self::digestOf($this->what($tool, $arguments, $caller))) {
+                    // The yes is for what the owner read; the shop changed since (an order's items, a balance).
+                    return self::toolResult(ToolOutcome::refused(self::CHANGED_SINCE), $modern);
+                }
                 $content = \is_array($answer['content'] ?? null) ? $answer['content'] : [];
                 // Accepting the question is the yes; the box (on by default) lets them accept it unticked as a no.
                 if (($answer['action'] ?? null) === 'accept' && ($content[self::CONFIRM] ?? true) !== false && ($content[self::CONFIRM] ?? true) !== 'false') {
@@ -565,6 +578,7 @@ final readonly class McpServer
         }
 
         $what = $this->what($tool, $arguments, $caller);
+        $whatDigest = self::digestOf($what);
         $risk = self::RISK_WORDS[$tool->risk ?? ''] ?? '';
         if (mb_strlen($what) > self::ASK_MOST) {
             // Too long for a client's question: its start there, the whole of it on the shop's page.
@@ -587,8 +601,14 @@ final readonly class McpServer
                     ],
                 ],
             ]],
-            'requestState' => $this->states->issue(['user' => $caller->userId, 'key' => $caller->keyId, 'call' => $digest], self::ASK_TTL),
+            'requestState' => $this->states->issue(['user' => $caller->userId, 'key' => $caller->keyId, 'call' => $digest, 'what' => $whatDigest], self::ASK_TTL),
         ];
+    }
+
+    /** What the owner read, to tell at their yes whether the call would still do that. */
+    private static function digestOf(string $what): string
+    {
+        return hash('sha256', $what);
     }
 
     /**
@@ -604,6 +624,13 @@ final readonly class McpServer
     {
         $approval = $this->approvals->find($caller, $digest);
         if ($approval?->state === CallApproval::APPROVED) {
+            if ($this->what($tool, $arguments, $caller) !== $approval->what) {
+                // The yes is for what the owner read; the shop changed since (an order's items, a balance).
+                $this->approvals->spend($approval);
+
+                return self::toolResult(ToolOutcome::refused(self::CHANGED_SINCE), $modern);
+            }
+
             // Claimed before it runs: of two retries sent at once, one runs and the other is told.
             return $this->approvals->spend($approval) ? null : self::toolResult(ToolOutcome::refused("The owner's yes was used already: the call ran once on it. If it should run again, call it again for a new yes."), $modern);
         }
@@ -635,7 +662,9 @@ final readonly class McpServer
         return self::toolResult(ToolOutcome::refused(
             "{$tool->name} waits for the owner's yes (" . rtrim($risk, '.') . "), which this app cannot ask for. Give the owner this link, where they see what it would do and answer, logged in to the shop:\n"
             . $this->approvals->url($approval)
-            . "\nWhen they say yes, call {$tool->name} again with the same arguments: it runs once. The link lasts " . intdiv(self::ASK_TTL, 60) . " minutes.\n\nWhat it would do:\n{$what}",
+            . "\nWhen they say yes, call {$tool->name} again with the same arguments: it runs once. The link lasts " . intdiv(self::ASK_TTL, 60) . " minutes.\n\n"
+            // Fenced as in the question: names and notes in it are the customers' words, not the shop's advice.
+            . "What it would do (names and notes in it are as customers wrote them):\n────────\n" . self::fenced($what) . "\n────────",
         ), $modern);
     }
 

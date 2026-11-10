@@ -85,10 +85,18 @@ export function bindShop(): void {
 	}
 	hideApplyButtons();
 	const go = ( url: string ) => {
+		const target = new URL( url, window.location.href );
+		// Another site's address is the browser's to go to, as it is without this script: nothing is fetched
+		// from it, and only a web address is gone to.
+		if ( target.origin !== window.location.origin ) {
+			if ( target.protocol === 'https:' || target.protocol === 'http:' ) {
+				window.location.assign( target.href );
+			}
+			return;
+		}
 		// A filters block on a page without products sends the shopper to the shop page.
 		if (
-			new URL( url, window.location.href ).pathname !==
-				window.location.pathname ||
+			target.pathname !== window.location.pathname ||
 			! document.querySelector( '[data-orillacart-region="products"]' )
 		) {
 			window.location.assign( url );
@@ -106,9 +114,12 @@ export function bindShop(): void {
 						'a[data-orillacart-shop-link]'
 					)
 				: null;
-		// A new tab or window is the browser's to open.
+		// A new tab or window is the browser's to open, and so is another site's page: a link in a page's text
+		// may carry the mark too.
 		if (
 			! link ||
+			new URL( link.href, window.location.href ).origin !==
+				window.location.origin ||
 			event.button !== 0 ||
 			event.metaKey ||
 			event.ctrlKey ||

@@ -39,6 +39,8 @@ const overview = ( changes: Partial< Overview > = {} ): Overview => ( {
 	runner: 'none',
 	cron_ran_at: '2030-01-01T12:10:00+00:00',
 	cron_disabled: false,
+	left_out: null,
+	leaves_out: {},
 	failed: 1,
 	scheduled: [],
 	hours: [
@@ -156,6 +158,37 @@ describe( 'JobsScreen', () => {
 				selector: '.components-notice__content',
 			} )
 		).toHaveTextContent( 'wp cron event run --due-now' );
+	} );
+
+	it( 'says which network worker leaves this site out, and which sites one started here leaves out', async () => {
+		mockedFetch.mockImplementation( ( options ) =>
+			Promise.resolve(
+				( options as Request ).path.startsWith(
+					'/orillacart/v1/jobs/failed'
+				)
+					? failed
+					: overview( {
+							left_out: {
+								worker: 'web1:4242',
+								reason: 'theme',
+								at: '2030-01-01T12:10:00+00:00',
+							},
+							leaves_out: { 3: 'plugins', 5: 'theme' },
+						} )
+			)
+		);
+		render( <JobsScreen /> );
+
+		expect(
+			await screen.findByText( /leaves this site out/, {
+				selector: '.components-notice__content',
+			} )
+		).toHaveTextContent( 'web1:4242' );
+		expect(
+			screen.getByText( /leaves out #3/, {
+				selector: '.components-notice__content',
+			} )
+		).toHaveTextContent( '#3 (plugins of its own), #5 (another theme)' );
 	} );
 
 	it( 'lists the workers and asks them to restart', async () => {

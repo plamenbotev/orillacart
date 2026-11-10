@@ -20,5 +20,5 @@ interface StripeApi
      * @throws StripeRefused              Stripe said no to the request itself, such as for a refund of more than is left
      * @throws PaymentProviderUnavailable Stripe could not be reached, refused the key, or failed
      */
-    public function request(string $secretKey, string $method, string $path, array $params = [], ?string $idempotencyKey = null): array;
+    public function request(#[\SensitiveParameter] string $secretKey, string $method, string $path, array $params = [], ?string $idempotencyKey = null): array;
 }

@@ -19,7 +19,7 @@ final readonly class Secrets
      */
     public function __construct(private Signatures $signatures, private array $earlier = []) {}
 
-    public function seal(string $plain): string
+    public function seal(#[\SensitiveParameter] string $plain): string
     {
         if ($plain === '') {
             return '';

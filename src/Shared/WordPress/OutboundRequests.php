@@ -13,8 +13,11 @@ namespace OrillaCart\Shared\WordPress;
  * own local names (localhost, *.test, *.local) when the caller allows it. The checking and pinning happen in the
  * request's own filters (Integrations' PublicOnlyRequests), for the requests sent through here.
  *
- * The address is written again before it goes (scheme and host in lowercase, no fragment), so the guard reads it as
- * curl will. The pin holds for curl alone, connecting itself: the request is refused when WordPress would send it
+ * The address is written again before it goes (scheme and host in lowercase, no fragment), and only a host written
+ * plainly goes at all: letters, digits and hyphens in dotted labels, an IPv4 address in its four numbers, or an
+ * IPv6 address in brackets. WordPress's HTTP library and curl both read a host again before connecting (percent
+ * escapes decoded, other scripts turned to punycode), so a host written any other way would be checked under one
+ * name and called under another. The guard also compares the host curl was given with the one it checked. The pin holds for curl alone, connecting itself: the request is refused when WordPress would send it
  * another way (no curl) or through a proxy (WP_PROXY_HOST), which resolves the name itself. A request started here
  * whose guard argument another plugin's filter took away is refused too, not sent unguarded.
  */
@@ -25,6 +28,11 @@ final class OutboundRequests
 
     /** @var array<string, int> the addresses being sent to through here now, as written for WordPress */
     private static array $sending = [];
+
+    /** @var array<string, int> of those, the ones that asked for the guard */
+    private static array $guarded = [];
+
+    private const string LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
 
     /**
      * As wp_remote_request(): the response, or a WP_Error, also when the address is not one to call. Redirects are
@@ -45,14 +53,17 @@ final class OutboundRequests
             }
             $url = $written;
             $host = strtolower((string) parse_url($url, \PHP_URL_HOST));
-            $args[self::PUBLIC_ONLY] = !($allowLocal && self::local($host) && self::development());
+            $public = !($allowLocal && self::local($host) && self::development());
+            $args[self::PUBLIC_ONLY] = $public;
             self::$sending[$url] = (self::$sending[$url] ?? 0) + 1;
+            self::$guarded[$url] = (self::$guarded[$url] ?? 0) + ($public ? 1 : 0);
             try {
                 // @phpstan-ignore argument.type (WordPress passes keys it does not know on to its filters, as this one is)
                 $response = wp_remote_request($url, $args);
             } finally {
+                self::$guarded[$url] -= $public ? 1 : 0;
                 if (--self::$sending[$url] <= 0) {
-                    unset(self::$sending[$url]);
+                    unset(self::$sending[$url], self::$guarded[$url]);
                 }
             }
             $status = \is_array($response) ? (int) wp_remote_retrieve_response_code($response) : 0;
@@ -79,23 +90,76 @@ final class OutboundRequests
     }
 
     /**
+     * What a request to the address under way asked of the guard: true to check and pin it, false for a local
+     * name in development; null when no request to it was started here. The guard holds the request to this, so
+     * a filter that changes the argument on the way is noticed as one that removes it.
+     */
+    public static function expected(string $url): ?bool
+    {
+        return isset(self::$sending[$url]) ? (self::$guarded[$url] ?? 0) > 0 : null;
+    }
+
+    /**
      * The address as curl reads it: an http or https scheme and the host in lowercase, the port when one is given,
      * the path and query as they are, no fragment; null for one that is not a web address.
      */
     public static function normalise(string $url): ?string
     {
-        $parts = parse_url(trim($url));
+        $url = trim($url);
+        // Nothing a reader could take two ways: no spaces, control characters or backslashes anywhere.
+        if (preg_match('/[\x00-\x20\x7f\\\\]/', $url) === 1) {
+            return null;
+        }
+        $parts = parse_url($url);
         if ($parts === false || !isset($parts['scheme'], $parts['host']) || $parts['host'] === '') {
             return null;
         }
         $scheme = strtolower($parts['scheme']);
-        if (!\in_array($scheme, ['http', 'https'], true) || preg_match('/[\s\\\\]/', $parts['host']) === 1) {
+        $host = self::host($parts['host']);
+        if (!\in_array($scheme, ['http', 'https'], true) || $host === null) {
             return null;
+        }
+        foreach ([$parts['user'] ?? '', $parts['pass'] ?? ''] as $credential) {
+            if (preg_match('/^[A-Za-z0-9._~%!$&\'()*+,;=-]*$/', $credential) !== 1) {
+                return null;
+            }
         }
         $user = isset($parts['user']) ? $parts['user'] . (isset($parts['pass']) ? ':' . $parts['pass'] : '') . '@' : '';
         $port = isset($parts['port']) ? ':' . $parts['port'] : '';
 
-        return $scheme . '://' . $user . strtolower($parts['host']) . $port . ($parts['path'] ?? '') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+        return $scheme . '://' . $user . $host . $port . ($parts['path'] ?? '') . (isset($parts['query']) ? '?' . $parts['query'] : '');
+    }
+
+    /**
+     * The host in lowercase when it is written plainly, null otherwise: dotted labels of letters, digits and
+     * hyphens (punycode for other scripts), an IPv4 address as four numbers, or an IPv6 address in brackets. A
+     * percent escape, another script's letters, an underscore, or a number that is an address in another form
+     * (2130706433, 0x7f.1, 127.1) is not: what reads those again may not read them as the guard did.
+     */
+    public static function host(string $host): ?string
+    {
+        $host = strtolower($host);
+        if (str_starts_with($host, '[')) {
+            return str_ends_with($host, ']') && filter_var(substr($host, 1, -1), \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV6) !== false ? $host : null;
+        }
+        if (\strlen($host) > 253 || preg_match('/^' . self::LABEL . '(?:\.' . self::LABEL . ')*$/', $host) !== 1) {
+            return null;
+        }
+        $last = substr($host, (int) strrpos('.' . $host, '.'));
+        // A name that ends in a number is an address to whatever connects: only the four-number form is taken.
+        if (preg_match('/^(?:[0-9]+|0x[0-9a-f]*)$/', $last) === 1 && filter_var($host, \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV4) === false) {
+            return null;
+        }
+
+        return $host;
+    }
+
+    /** Whether the address curl was given names the host that was checked, port and all else aside. */
+    public static function sameHost(string $checked, string $given): bool
+    {
+        $host = static fn(string $url): string => trim(strtolower((string) parse_url($url, \PHP_URL_HOST)), '[]');
+
+        return $host($checked) !== '' && $host($checked) === $host($given);
     }
 
     /**
@@ -151,9 +215,11 @@ final class OutboundRequests
     }
 
     /**
-     * Neither private, loopback, link-local, shared (100.64/10), reserved, nor an IPv6 form of one of those: the
-     * IPv4-mapped ::ffff:0:0/96 is refused by PHP's ranges, the NAT64 64:ff9b::/96 and 6to4 2002::/16 forms, which
-     * carry an IPv4 address inside, here.
+     * An address of the public internet. IPv6: only global unicast (2000::/3), which leaves out loopback,
+     * link-local, site-local, unique local, multicast and every form that carries an IPv4 address in its low bits
+     * (IPv4-mapped, IPv4-compatible, NAT64), and of it not 6to4 (2002::/16) or Teredo (2001::/32), which carry one
+     * higher up. IPv4: not private, loopback, link-local, shared (100.64/10), reserved, multicast (224/4) or the
+     * 6to4 relay (192.88.99/24). PHP's ranges are asked on top of both.
      */
     public static function isPublic(string $address): bool
     {
@@ -161,7 +227,11 @@ final class OutboundRequests
         if ($binary === false) {
             return false;
         }
-        if (\strlen($binary) === 16 && (str_starts_with($binary, "\x00\x64\xff\x9b") || str_starts_with($binary, "\x20\x02"))) {
+        if (\strlen($binary) === 16) {
+            if ((\ord($binary[0]) & 0xE0) !== 0x20 || str_starts_with($binary, "\x20\x02") || str_starts_with($binary, "\x20\x01\x00\x00")) {
+                return false;
+            }
+        } elseif ((\ord($binary[0]) & 0xF0) === 0xE0 || str_starts_with($binary, "\xC0\x58\x63")) {
             return false;
         }
 

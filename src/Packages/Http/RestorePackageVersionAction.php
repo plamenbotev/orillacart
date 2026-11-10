@@ -7,12 +7,14 @@ namespace OrillaCart\Packages\Http;
 use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Puts an extension's files back as a kept version had them; that becomes the newest version. An enabled extension keeps running what it was enabled with until enabled again. */
+#[Tool(unasked: 'an extension\'s files put back as a kept version had them; an enabled one runs its old files until enabled again, which asks')]
 #[Route('/extensions/{id}/versions/{number}/restore', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '[a-z][a-z0-9_]*', 'number' => '\d+'])]
 final readonly class RestorePackageVersionAction implements RequestHandlerInterface
 {

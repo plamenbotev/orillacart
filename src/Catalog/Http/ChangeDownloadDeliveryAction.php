@@ -9,6 +9,7 @@ use OrillaCart\Catalog\Application\Dto\ChangeDownloadDelivery;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -18,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Tests a way of sending downloads and keeps it when it works. Answers 200 either way, with the outcome and the
  * web server setting the method needs.
  */
+#[Tool(risk: Tool::CHANGES)]
 #[Route('/download-delivery', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class ChangeDownloadDeliveryAction implements RequestHandlerInterface
 {

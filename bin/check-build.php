@@ -181,3 +181,36 @@ if ($checked === 0) {
     $fail('The build has no extension API.');
 }
 echo "The extension API names no library classes\n";
+
+// The libraries ship by allowlist (bin/vendor-files.php): their PHP outside test folders, and the data files
+// they read. A schema, a translation catalogue, a test helper or a shell script in the zip fails the build.
+/** @var array{php_excluded: list<string>, data: list<string>} $vendorFiles */
+$vendorFiles = require __DIR__ . '/vendor-files.php';
+$matches = static function (string $path, array $patterns): bool {
+    foreach ($patterns as $pattern) {
+        if (is_string($pattern) && preg_match($pattern, $path) === 1) {
+            return true;
+        }
+    }
+
+    return false;
+};
+$vendor = $pluginDir . '/vendor';
+$shipped = 0;
+foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($vendor, FilesystemIterator::SKIP_DOTS)) as $file) {
+    if (!$file instanceof SplFileInfo || $file->isDir()) {
+        continue;
+    }
+    $path = substr(str_replace('\\', '/', $file->getPathname()), strlen($vendor) + 1);
+    $php = $file->getExtension() === 'php' && !$matches($path, $vendorFiles['php_excluded']);
+    if (!$php && !$matches($path, $vendorFiles['data'])) {
+        $fail("vendor/{$path} is not on the list of library files the release ships (bin/vendor-files.php).");
+    }
+    ++$shipped;
+}
+foreach (['dompdf/dompdf/lib/res/html.css', 'dompdf/dompdf/VERSION', 'composer/autoload_classmap.php'] as $needed) {
+    if (!is_file($vendor . '/' . $needed)) {
+        $fail("vendor/{$needed} is missing from the build.");
+    }
+}
+echo "The libraries ship only their code and the data they read ({$shipped} files)\n";

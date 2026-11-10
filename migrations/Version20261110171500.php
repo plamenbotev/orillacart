@@ -35,7 +35,7 @@ final class Version20261110171500 extends Migration
                 continue;
             }
             $id = (int) $id;
-            $files = $this->connection->fetchAllAssociative('SELECT path, content FROM ' . $this->table('package_files') . ' WHERE package_id = ? ORDER BY path ASC', [$id]);
+            $files = $this->connection->fetchAllAssociative('SELECT path, content FROM ' . $this->table('package_files') . ' WHERE package_id = ?', [$id]);
             $snapshot = self::snapshot($files);
             if (self::checksum($snapshot) === $package['enabled_checksum']) {
                 $this->addSql("UPDATE {prefix}packages SET enabled_files = ? WHERE id = ? AND state IN ('enabled', 'stopped') AND enabled_files IS NULL", [json_encode($snapshot, JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION), $id]);
@@ -53,7 +53,10 @@ final class Version20261110171500 extends Migration
     }
 
     /**
-     * @param list<array<string, mixed>> $rows path and content, in path order
+     * The files in path order byte for byte, as Package::files() has them: the database's order is its collation's,
+     * which puts `order_events.ocs` and `order.ocs` the other way round.
+     *
+     * @param list<array<string, mixed>> $rows path and content
      *
      * @return list<array{0: string, 1: string}>
      */
@@ -65,6 +68,7 @@ final class Version20261110171500 extends Migration
                 $files[] = [$row['path'], $row['content']];
             }
         }
+        usort($files, static fn(array $a, array $b): int => strcmp($a[0], $b[0]));
 
         return $files;
     }

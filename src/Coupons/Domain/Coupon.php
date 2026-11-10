@@ -383,7 +383,7 @@ class Coupon
      */
     public function appliesTo(BasketLine $line): bool
     {
-        return $this->matching(new Basket([$line], '')) !== [];
+        return $this->matching(new Basket([$line], '', '1')) !== [];
     }
 
     /**
@@ -542,7 +542,7 @@ class Coupon
             return 0;
         }
         // What it gives of its own named items is not bought for it.
-        $bought = array_sum(array_map(fn(BasketLine $line): int => $this->givesOthers() && $this->giftable(new Basket([$line], '')) !== [] ? 0 : $line->quantity, $matching));
+        $bought = array_sum(array_map(fn(BasketLine $line): int => $this->givesOthers() && $this->giftable(new Basket([$line], '', '1')) !== [] ? 0 : $line->quantity, $matching));
 
         return intdiv($bought, $this->buyQuantity) * $this->getQuantity;
     }
@@ -571,7 +571,7 @@ class Coupon
     {
         return match ($this->kind) {
             CouponKind::FreeGift => $this->giftProductId !== null && $this->addsItems,
-            CouponKind::BuyGet => $this->addsGiven(new Basket([], '')),
+            CouponKind::BuyGet => $this->addsGiven(new Basket([], '', '1')),
             default => false,
         };
     }
@@ -713,7 +713,7 @@ class Coupon
         $giftable = [];
         foreach ($basket->lines as $index => $line) {
             $named = \in_array($line->productId, $this->getProductIds, true) || array_intersect($line->categoryIds, $this->getCategoryIds) !== [];
-            if ($named && !$this->excludes($line) && !$line->total->isZero()) {
+            if ($named && !$this->excludes($line) && !$this->givenByAnother($line) && !$line->total->isZero()) {
                 $giftable[$index] = $line;
             }
         }
@@ -728,7 +728,7 @@ class Coupon
      */
     private function giftLines(Basket $basket): array
     {
-        $lines = array_filter($basket->lines, fn(BasketLine $line): bool => $this->giftProductId !== null && $line->productId === $this->giftProductId && !$line->total->isZero());
+        $lines = array_filter($basket->lines, fn(BasketLine $line): bool => $this->giftProductId !== null && $line->productId === $this->giftProductId && !$this->givenByAnother($line) && !$line->total->isZero());
 
         return array_reverse($lines, true);
     }
@@ -743,6 +743,16 @@ class Coupon
     public function release(): void
     {
         $this->uses = max(0, $this->uses - 1);
+    }
+
+    /**
+     * Whether another coupon gave the line: it is that coupon's, so this one neither counts it towards its least
+     * items, takes money off it, nor gives it. Counted, a free keychain would make one lamp "two or more", and the
+     * money taken off it would leave its own coupon nothing to give.
+     */
+    private function givenByAnother(BasketLine $line): bool
+    {
+        return $line->givenBy !== null && $line->givenBy !== $this->code;
     }
 
     /** Whether the coupon leaves the line out, whatever it applies to. */
@@ -769,7 +779,7 @@ class Coupon
                 || array_intersect($line->brandIds, $this->brandIds) !== [];
             $excluded = $this->excludes($line);
             $gift = $this->kind === CouponKind::FreeGift && $line->productId === $this->giftProductId;
-            if ($targeted && !$excluded && !$gift && !$line->total->isZero()) {
+            if ($targeted && !$excluded && !$gift && !$this->givenByAnother($line) && !$line->total->isZero()) {
                 $matching[$index] = $line;
             }
         }

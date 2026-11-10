@@ -14,10 +14,11 @@ use WpOrg\Requests\Transport\Curl;
  * take), so DNS cannot say one thing to the check and another to the connection. Last of the filters: a request a
  * test or another plugin answers itself connects nowhere and is not second-guessed. The pin needs curl to connect
  * itself, so a request WordPress would send without curl, or through a proxy, is refused; so is one started through
- * OutboundRequests whose guard argument a filter took away.
+ * OutboundRequests whose guard argument a filter took away or changed, and one whose address curl was given under
+ * another host than the one checked (something on the way read the host again).
  */
 #[AsHook('pre_http_request', method: 'check', filter: true, priority: \PHP_INT_MAX, arguments: 3, anySite: true)]
-#[AsHook('http_api_curl', method: 'pin', priority: 10, arguments: 3, anySite: true)]
+#[AsHook('http_api_curl', method: 'pin', priority: \PHP_INT_MAX, arguments: 3, anySite: true)]
 final class PublicOnlyRequests
 {
     /** @var array<string, list<string>> url → the addresses it was checked at, until it connects */
@@ -63,6 +64,11 @@ final class PublicOnlyRequests
         }
         $addresses = $guarded === true ? ($this->pinned[$url] ?? null) : null;
         unset($this->pinned[$url]);
+        $given = curl_getinfo($handle, \CURLINFO_EFFECTIVE_URL);
+        if ($addresses !== null && !(\is_string($given) && OutboundRequests::sameHost($url, $given))) {
+            // The pin is by name: a host curl reads otherwise than the one checked would be looked up unchecked.
+            $addresses = null;
+        }
         if ($addresses === null) {
             // Checked by no one (another plugin's filter answered false after ours, or took the guard away): connect nowhere.
             curl_setopt($handle, \CURLOPT_URL, 'http://0.0.0.0:0/');
@@ -75,21 +81,17 @@ final class PublicOnlyRequests
     }
 
     /**
-     * Whether the request is one to check: true when it asks for it; null when OutboundRequests started it and the
-     * argument that asks is gone; false otherwise.
+     * Whether the request is one to check: true when it asks for it; null when OutboundRequests started it asking
+     * for the check and the argument that asks is gone or says otherwise now; false otherwise.
      *
      * @param array<array-key, mixed> $args
      */
     private static function guarded(array $args, string $url): ?bool
     {
-        $asked = $args[OutboundRequests::PUBLIC_ONLY] ?? null;
-        if ($asked === true) {
+        if (($args[OutboundRequests::PUBLIC_ONLY] ?? null) === true) {
             return true;
         }
-        if ($asked === null && OutboundRequests::sending($url)) {
-            return null;
-        }
 
-        return false;
+        return OutboundRequests::expected($url) === true ? null : false;
     }
 }

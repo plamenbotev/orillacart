@@ -18,6 +18,7 @@ use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Notifications\Application\EmailSettingsService;
 use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Returns\Application\Returns;
@@ -166,6 +167,15 @@ final readonly class CheckoutBlock implements BlockDefinition
         ];
     }
 
+    /**
+     * What the page's forms say they are for: the order's handle when the token went into the browser's cookies
+     * (KeptTokens), so the page holds no token; the token itself only when the address still carried it.
+     */
+    private static function handle(string $receipt, int $orderNumber): string
+    {
+        return KeptTokens::kept(StorefrontOrderLinks::RECEIPT_QUERY) ? ReceiptHandles::of($orderNumber) : $receipt;
+    }
+
     private function receipt(string $receipt): string
     {
         $links = $this->links->pages();
@@ -175,14 +185,14 @@ final readonly class CheckoutBlock implements BlockDefinition
         try {
             $order = $this->orders->byReceipt($receipt);
         } catch (ReceiptLinkExpired) {
-            return $this->templates->render('storefront/receipt-expired.html.twig', ['receipt' => $receipt, 'links' => $links]);
+            return $this->templates->render('storefront/receipt-expired.html.twig', ['receipt' => self::handle($receipt, (int) strtok($receipt, '-')), 'links' => $links]);
         } catch (OrderNotFound) {
             return $this->templates->render('storefront/checkout.html.twig', ['summary' => null, 'problem' => __('There is no order at this address.', 'orillacart'), 'links' => $links, 'states' => []]);
         }
 
         return $this->templates->render('storefront/receipt.html.twig', [
             'order' => $order,
-            'receipt' => $receipt,
+            'receipt' => self::handle($receipt, $order->number),
             'heading' => true,
             'links' => $links,
             'shipments' => $this->shipments->forOrder($order->number),
@@ -201,7 +211,7 @@ final readonly class CheckoutBlock implements BlockDefinition
             return null;
         }
         try {
-            return $this->customers->customer($id);
+            return $this->customers->account($id);
         } catch (CustomerNotFound) {
             return null;
         }

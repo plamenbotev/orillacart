@@ -19,7 +19,7 @@ final class PackagesRestTest extends RestTestCase
 
         settings {
           greeting: text { label: "Greeting", required: true }
-          token: secret { label: "Token" }
+          token: secret { label: "Token", goes_with: [] }
           loud: boolean { label: "Loud" }
         }
 
@@ -153,7 +153,7 @@ final class PackagesRestTest extends RestTestCase
 
         // The settings follow the files it runs: an edit that makes the secret plain text shows it no sooner, and
         // a setting only the edit declares is offered but not yet required.
-        $edit = str_replace(['token: secret { label: "Token" }', 'loud: boolean { label: "Loud" }'], ['token: text { label: "Token" }', "loud: boolean { label: \"Loud\" }\n  region: text { label: \"Region\", required: true }"], self::SCRIPT);
+        $edit = str_replace(['token: secret { label: "Token", goes_with: [] }', 'loud: boolean { label: "Loud" }'], ['token: text { label: "Token" }', "loud: boolean { label: \"Loud\" }\n  region: text { label: \"Region\", required: true }"], self::SCRIPT);
         $shown = array_column($this->rows($this->data($this->request('PUT', '/extensions/greeter/files/' . rawurlencode('main.ocs'), ['content' => $edit], nonce: true))['settings']), null, 'key');
         self::assertSame(['secret', '', true], [self::assoc($shown['token'] ?? null)['type'] ?? null, self::assoc($shown['token'] ?? null)['value'] ?? null, self::assoc($shown['token'] ?? null)['set'] ?? null], 'still the running files\' secret');
         self::assertArrayHasKey('region', $shown);

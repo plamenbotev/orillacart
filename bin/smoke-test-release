@@ -11,6 +11,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ZIP="${1:-$(ls -t "$ROOT"/dist/orillacart-*.zip | head -1)}"
+# The images by digest and WP-CLI by its SHA-256, so the test runs on what was checked, not on what a tag
+# points at today (the tag is said beside each).
+MYSQL_IMAGE="mysql@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902" # mysql:8.4
+WORDPRESS_IMAGE="wordpress@sha256:1065422531e9f1741e393ebd27e235a92edeb3336142b66d781ff5d8c90e0392" # wordpress:php8.5-apache
+WP_CLI_VERSION="2.12.0"
+WP_CLI_SHA256="ce34ddd838f7351d6759068d09793f26755463b4a4610a5a5c0a97b68220d85c"
+# The zip is the one built when its checksum file says so.
+if [ -f "$ZIP.sha256" ]; then
+    (cd "$(dirname "$ZIP")" && sha256sum --quiet -c "$(basename "$ZIP").sha256") || { echo "FAIL: $ZIP does not match its checksum" >&2; exit 1; }
+fi
 RUN="orillacart-smoke-$$"
 NET="$RUN-net"
 DB="$RUN-db"
@@ -31,15 +41,17 @@ plugin_tables() { docker exec "$DB" mysql -uwp -pwp wordpress -N -e "SHOW TABLES
 echo "==> Containers"
 docker network create "$NET" > /dev/null
 docker run -d --name "$DB" --network "$NET" -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=wordpress \
-    -e MYSQL_USER=wp -e MYSQL_PASSWORD=wp mysql:8.4 > /dev/null
+    -e MYSQL_USER=wp -e MYSQL_PASSWORD=wp "$MYSQL_IMAGE" > /dev/null
 docker run -d --name "$WP" --network "$NET" -e WORDPRESS_DB_HOST="$DB" -e WORDPRESS_DB_USER=wp \
-    -e WORDPRESS_DB_PASSWORD=wp -e WORDPRESS_DB_NAME=wordpress wordpress:php8.5-apache > /dev/null
+    -e WORDPRESS_DB_PASSWORD=wp -e WORDPRESS_DB_NAME=wordpress "$WORDPRESS_IMAGE" > /dev/null
 for _ in $(seq 1 60); do
     # Over TCP: the temporary server MySQL runs while initialising answers only on its socket.
     docker exec "$DB" mysqladmin ping -h 127.0.0.1 -uroot -proot --silent > /dev/null 2>&1 && break
     sleep 2
 done
-docker exec "$WP" bash -c 'curl -fsSL -o /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && chmod +x /usr/local/bin/wp'
+docker exec "$WP" bash -c "curl -fsSL -o /tmp/wp-cli.phar https://github.com/wp-cli/wp-cli/releases/download/v$WP_CLI_VERSION/wp-cli-$WP_CLI_VERSION.phar \
+    && echo '$WP_CLI_SHA256  /tmp/wp-cli.phar' | sha256sum -c --quiet \
+    && mv /tmp/wp-cli.phar /usr/local/bin/wp && chmod +x /usr/local/bin/wp" || fail "WP-CLI did not download, or not as published"
 for _ in $(seq 1 30); do docker exec "$WP" test -f /var/www/html/wp-config.php && break; sleep 1; done
 wp config set WP_DEBUG true --raw > /dev/null
 wp config set WP_DEBUG_LOG true --raw > /dev/null
@@ -185,8 +197,12 @@ rate="$(docker exec "$WP" curl -s -u "admin:$PASS" -X POST -H 'Content-Type: app
     -d '{"name":"Cash on delivery","active":true}' "$API/payment-methods/cash_on_delivery")" = 200 ] \
     || fail "the administrator could not turn on cash on delivery"
 # A visitor: the cart lives in the database, the browser keeps its token in a cookie.
-nonce="$(wp eval 'wp_set_current_user(0); echo wp_create_nonce("wp_rest");')"
-visitor() { docker exec "$WP" curl -s -b /tmp/cart -c /tmp/cart -H "X-WP-Nonce: $nonce" -H 'Content-Type: application/json' "$@"; }
+# The nonce as the storefront's script gets and sends it: asked over HTTP, in the shop's own header, with the
+# page's Origin (the site's address, its port too).
+origin="$(wp eval 'echo untrailingslashit(home_url());')"
+nonce="$(docker exec "$WP" curl -s -b /tmp/cart -c /tmp/cart -H "Origin: $origin" "$API/session" | sed -n 's/.*"nonce":"\([^"]*\)".*/\1/p')"
+[ -n "$nonce" ] || fail "a visitor got no nonce from /session"
+visitor() { docker exec "$WP" curl -s -b /tmp/cart -c /tmp/cart -H "Origin: $origin" -H "X-OrillaCart-Nonce: $nonce" -H 'Content-Type: application/json' "$@"; }
 visitor -X POST -d "{\"product_id\":$product,\"quantity\":2}" "$API/cart/items" | grep -q '"items":2' \
     || fail "a visitor could not add to the cart"
 docker exec "$WP" grep -q 'orillacart_cart' /tmp/cart || fail "the cart cookie was not set"

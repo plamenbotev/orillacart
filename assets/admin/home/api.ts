@@ -43,7 +43,8 @@ export function fetchHome(): Promise< Home > {
 
 /**
  * The admin URL of a "needs you" line or tile: a Shop page with its query, an admin page (`admin.php?…`), a path
- * of the site, or an http(s) URL as it is. Anything else (`javascript:`, `//host`) is no link: an empty string.
+ * of the site, or an http(s) URL on one of the site's own hosts (those the server says the site has, and the
+ * admin's). Anything else (`javascript:`, `//host`, another site's address) is no link: an empty string.
  *
  * @param url The line's url.
  */
@@ -52,8 +53,10 @@ export function adminUrl( url: string ): string {
 	if ( /[\s\u0000-\u001f\u007f]/.test( url ) ) {
 		return '';
 	}
+	if ( /^https?:\/\/[^/\\]/i.test( url ) ) {
+		return onSite( url ) ? url : '';
+	}
 	if (
-		/^https?:\/\/[^/\\]/i.test( url ) ||
 		/^\/(?![/\\])/.test( url ) ||
 		/^[a-z0-9_-]+\.php(?:[?#]|$)/i.test( url )
 	) {
@@ -65,4 +68,29 @@ export function adminUrl( url: string ): string {
 	const [ page, query ] = url.split( '?' );
 
 	return `admin.php?page=orillacart-${ page }${ query ? `&${ query }` : '' }`;
+}
+
+/**
+ * Whether a full address is on one of the site's own hosts, with no user name in it.
+ *
+ * @param url An http(s) address.
+ */
+function onSite( url: string ): boolean {
+	let parsed: URL;
+	try {
+		parsed = new URL( url );
+	} catch {
+		return false;
+	}
+	const hosts = [
+		window.location.hostname,
+		...( window.orillacartAdmin?.hosts ?? [] ),
+	].map( ( host ) => host.toLowerCase() );
+
+	return (
+		( parsed.protocol === 'http:' || parsed.protocol === 'https:' ) &&
+		parsed.username === '' &&
+		parsed.password === '' &&
+		hosts.includes( parsed.hostname.toLowerCase() )
+	);
 }

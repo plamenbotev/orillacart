@@ -21,6 +21,7 @@ use OrillaCart\Extension\Registry;
 use OrillaCart\Integrations\Application\OAuthServer;
 use OrillaCart\Packages\Application\ScriptedRouteToolSource;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 
@@ -133,11 +134,15 @@ final class AssistantMcpTest extends RestTestCase
 
     public function testAnAddOnsToolsComeUnderItsName(): void
     {
-        $this->connect('read_write');
+        // An add-on's tool that changes something and names no risk is asked about as one that changes something;
+        // this key's owner chose not to be asked about that.
+        $this->connect('read_write', array_values(array_diff(Tool::RISKS, [Tool::CHANGES])));
 
         $tools = self::arrayOf(self::at($this->mcp('tools/list'), 'result', 'tools'));
         $names = self::names($tools);
         self::assertContains('e2e_echo', $names);
+        $stamp = self::arrayOf(array_values(array_filter($tools, static fn(mixed $tool): bool => \is_array($tool) && ($tool['name'] ?? null) === 'e2e_stamp'))[0] ?? null);
+        self::assertTrue(self::at($stamp, 'annotations', 'destructiveHint'), 'it waits for a yes where the owner asks about changes');
 
         $echo = $this->mcp('tools/call', ['name' => 'e2e_echo', 'arguments' => ['word' => 'hi']]);
         self::assertSame(['word' => 'hi', 'user' => get_current_user_id()], self::at($echo, 'result', 'structuredContent'));
@@ -263,7 +268,8 @@ final class AssistantMcpTest extends RestTestCase
 
     public function testWhatWordPressKeepsHasItsOwnTools(): void
     {
-        $this->connect('read_write');
+        // save_category changes categories customers see, and asks as a change; this key's owner chose not to be asked about that.
+        $this->connect('read_write', array_values(array_diff(Tool::RISKS, [Tool::CHANGES])));
         // A 1x1 PNG.
         $png = base64_encode((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', true));
 
@@ -274,6 +280,8 @@ final class AssistantMcpTest extends RestTestCase
         self::assertSame('A dot', get_post_meta($imageId, '_wp_attachment_image_alt', true));
         $text = $this->mcp('tools/call', ['name' => 'upload_image', 'arguments' => ['file_name' => 'note.txt', 'file_base64' => base64_encode('hello')]]);
         self::assertTrue(self::at($text, 'result', 'isError'), 'only pictures');
+        $svg = $this->mcp('tools/call', ['name' => 'upload_image', 'arguments' => ['file_name' => 'logo.svg', 'file_base64' => base64_encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')]]);
+        self::assertTrue(self::at($svg, 'result', 'isError'), 'not an SVG, whatever the media library takes');
 
         $made = $this->mcp('tools/call', ['name' => 'create_product', 'arguments' => ['name' => 'Desk lamp', 'categories' => ['Assistant lighting > Assistant desk lamps'], 'image_ids' => [$imageId]]]);
         self::assertFalse(self::at($made, 'result', 'isError'));
@@ -283,10 +291,19 @@ final class AssistantMcpTest extends RestTestCase
         self::assertSame($imageId, get_post_thumbnail_id($productId));
         self::assertSame(['Assistant desk lamps'], wp_get_post_terms($productId, 'orillacart_category', ['fields' => 'names']));
 
-        $changed = $this->mcp('tools/call', ['name' => 'change_product_content', 'arguments' => ['id' => $productId, 'status' => 'publish', 'short_description' => 'Bright.']]);
-        self::assertSame('publish', self::at($changed, 'result', 'structuredContent', 'status'));
+        $changed = $this->mcp('tools/call', ['name' => 'change_product_content', 'arguments' => ['id' => $productId, 'short_description' => 'Bright.']]);
+        self::assertSame('draft', self::at($changed, 'result', 'structuredContent', 'status'));
         self::assertSame('Bright.', get_post_field('post_excerpt', $productId));
         self::assertSame('Desk lamp', get_the_title($productId), 'what was left out stays');
+        self::assertTrue(self::at($this->mcp('tools/call', ['name' => 'change_product_content', 'arguments' => ['id' => $productId, 'status' => 'publish']]), 'result', 'isError'), 'putting it on sale is publish_product\'s');
+        // Putting it on sale asks the owner, as customers see it; a client that cannot ask is refused.
+        $onSale = $this->mcp('tools/call', ['name' => 'publish_product', 'arguments' => ['id' => $productId]]);
+        self::assertStringContainsString('waits for the owner\'s yes', self::textAt($onSale, 'result', 'content', 0, 'text'));
+        self::assertSame('draft', get_post_status($productId));
+        wp_update_post(['ID' => $productId, 'post_status' => 'publish']);
+        $quietly = $this->mcp('tools/call', ['name' => 'change_product_content', 'arguments' => ['id' => $productId, 'short_description' => 'Quietly.']]);
+        self::assertStringContainsString('publish_product', self::textAt($quietly, 'result', 'content', 0, 'text'), 'a product on sale is not changed without asking');
+        self::assertSame('Bright.', get_post_field('post_excerpt', $productId));
 
         $found = $this->mcp('tools/call', ['name' => 'find_products', 'arguments' => ['search' => 'Desk lamp']]);
         self::assertContains($productId, array_column(self::arrayOf(self::at($found, 'result', 'structuredContent', 'products')), 'id'));
@@ -489,7 +506,7 @@ final class AssistantMcpTest extends RestTestCase
         self::assertSame([], array_values(array_diff($areas, $answered)), 'every area has a reading tool that needs nothing, and it answers');
     }
 
-    public function testTheToolsAreWordPressAbilitiesExceptTheRiskyOnes(): void
+    public function testTheToolsThatOnlyReadAreWordPressAbilities(): void
     {
         if (!\function_exists('wp_get_ability')) {
             self::markTestSkipped('WordPress before 6.9 has no Abilities API.');
@@ -504,14 +521,10 @@ final class AssistantMcpTest extends RestTestCase
         self::assertIsArray($read);
         self::assertArrayHasKey('currency', $read);
 
-        $made = wp_get_ability('orillacart/create-tax-group')?->execute(['name' => 'By ability']);
-        self::assertIsArray($made);
-        self::assertSame('By ability', $made['name']);
-        $refused = wp_get_ability('orillacart/create-tax-group')?->execute(['name' => '']);
-        self::assertInstanceOf(\WP_Error::class, $refused);
-
         self::assertFalse(wp_has_ability('orillacart/refund-order'), 'abilities cannot ask the owner first');
-        self::assertTrue(wp_has_ability('orillacart/e2e-echo'), 'add-ons\' tools too');
+        self::assertFalse(wp_has_ability('orillacart/create-tax-group'), 'nor hold a key\'s choices, so no tool that changes something is one');
+        self::assertFalse(wp_has_ability('orillacart/e2e-stamp'), 'an add-on\'s tool that changes something neither');
+        self::assertTrue(wp_has_ability('orillacart/e2e-echo'), 'add-ons\' tools that read are');
     }
 
     public function testWithoutAKeyTheEndpointAsksForOne(): void
@@ -550,13 +563,16 @@ final class AssistantMcpTest extends RestTestCase
         self::assertStringContainsString('file_url', $message);
     }
 
-    private function connect(string $scope): void
+    /**
+     * @param list<string>|null $ask the risks that wait for the owner's yes, when not all
+     */
+    private function connect(string $scope, ?array $ask = null): void
     {
         $this->actAs('administrator');
         $made = $this->data($this->request('POST', '/api-keys', ['name' => 'Assistant', 'scope' => $scope], nonce: true));
         $key = self::textAt($made, 'key');
         // These tests ask in the app's window; the default, the shop's page, has tests of its own.
-        $chosen = $this->request('PUT', '/api-keys/' . self::intOf(self::at($made, 'api_key', 'id')) . '/assistant', ['answer' => 'app'], nonce: true);
+        $chosen = $this->request('PUT', '/api-keys/' . self::intOf(self::at($made, 'api_key', 'id')) . '/assistant', ['answer' => 'app'] + ($ask === null ? [] : ['ask' => $ask]), nonce: true);
         self::assertSame(200, $chosen->get_status(), (string) wp_json_encode($chosen->get_data()));
         wp_set_current_user(0);
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $key;

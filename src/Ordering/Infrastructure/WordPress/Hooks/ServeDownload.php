@@ -7,6 +7,7 @@ namespace OrillaCart\Ordering\Infrastructure\WordPress\Hooks;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
 use OrillaCart\Shared\Files\ByteRange;
+use OrillaCart\Shared\Files\DeliveryMethod;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Http\Security\ClientAddress;
 use OrillaCart\Shared\I18n\Translations;
@@ -39,7 +40,7 @@ final readonly class ServeDownload
 
         $range = \is_string($_SERVER['HTTP_RANGE'] ?? null) ? $_SERVER['HTTP_RANGE'] : '';
         try {
-            $file = $this->downloads->open(sanitize_key($token), $range, ClientAddress::of($_SERVER));
+            $file = $this->downloads->open(sanitize_key($token), $range, ClientAddress::of($_SERVER), $this->delivery->settings()->method === DeliveryMethod::Php);
         } catch (DownloadUnavailable $e) {
             wp_die(esc_html($this->translations->text($e->text)), esc_html__('Download not available', 'orillacart'), ['response' => 403, 'back_link' => true]);
         }
@@ -65,7 +66,7 @@ final readonly class ServeDownload
         ignore_user_abort(true);
         $until = self::send($file->path, $range);
         if ($until !== null) {
-            $this->downloads->sentOnly(sanitize_key($token), $until);
+            $this->downloads->sentOnly(sanitize_key($token), $until, $file->sentBefore);
         }
         exit;
     }

@@ -47,6 +47,15 @@ final readonly class HttpKernel implements RequestHandlerInterface
         return $this->next(0)->handle($request);
     }
 
+    /**
+     * Answers a request the adapter could not carry in (a header PSR-7 refuses, say) the way the kernel answers its
+     * own errors, so the caller gets the same 400 a route would give rather than the server's 500.
+     */
+    public function refuse(ServerRequestInterface $request, \Throwable $reason): ResponseInterface
+    {
+        return $this->pipeline[0]->process($request, new RefusedRequest($reason));
+    }
+
     /** @return list<class-string<MiddlewareInterface>> the middleware in the order it runs */
     public function middleware(): array
     {

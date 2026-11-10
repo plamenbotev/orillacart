@@ -92,6 +92,10 @@ export interface CustomerSettings {
 	/** A new account takes the orders placed with its email as a guest before. */
 	guest_orders: boolean;
 	modes: string[];
+	/** The roles whose users are the shop's customers. */
+	roles: string[];
+	/** The site's roles that can be customers' roles: those that manage neither the site nor the shop. */
+	available_roles: { name: string; label: string }[];
 }
 
 const BASE = '/orillacart/v1';
@@ -318,7 +322,7 @@ export function fetchCustomerSettings(): Promise< CustomerSettings > {
 }
 
 export function saveCustomerSettings(
-	settings: Pick< CustomerSettings, 'accounts' | 'guest_orders' >
+	settings: Pick< CustomerSettings, 'accounts' | 'guest_orders' | 'roles' >
 ): Promise< CustomerSettings > {
 	return apiFetch< CustomerSettings >( {
 		path: `${ BASE }/customer-settings`,
@@ -326,6 +330,44 @@ export function saveCustomerSettings(
 		data: {
 			accounts: settings.accounts,
 			guest_orders: settings.guest_orders,
+			roles: settings.roles,
 		},
+	} );
+}
+
+/** An invitation to make an account at the shop: on a network the shop invites customers rather than making their accounts. */
+export interface Invitation {
+	id: number;
+	email: string;
+	first_name: string;
+	last_name: string;
+	/** The customer groups the account joins once made. */
+	group_ids: number[];
+	invited_by: number | null;
+	sent_at: string;
+	expires_at: string;
+	/** Its link stopped working. */
+	expired: boolean;
+	/** A new link may go now: the last stopped working, or went a day ago. */
+	may_resend: boolean;
+}
+
+export function fetchInvitations(): Promise< Invitation[] > {
+	return apiFetch< Invitation[] >( {
+		path: `${ BASE }/customer-invitations`,
+	} );
+}
+
+export function resendInvitation( id: number ): Promise< Invitation > {
+	return apiFetch< Invitation >( {
+		path: `${ BASE }/customer-invitations/${ id }/resend`,
+		method: 'POST',
+	} );
+}
+
+export function withdrawInvitation( id: number ): Promise< unknown > {
+	return apiFetch( {
+		path: `${ BASE }/customer-invitations/${ id }`,
+		method: 'DELETE',
 	} );
 }

@@ -14,15 +14,17 @@ final readonly class AssistantKeys
 {
     public function __construct(private ApiKeys $keys) {}
 
-    public function choices(int $keyId): AssistantChoices
+    /** The choices for a key the user may manage: their own, or any for an administrator. */
+    public function choices(int $keyId, int $userId, bool $administrator): AssistantChoices
     {
-        return AssistantChoices::fromArray($this->keys->assistant($keyId));
+        return AssistantChoices::fromArray($this->keys->assistant($keyId, $userId, $administrator));
     }
 
-    public function choose(int $keyId, AssistantChoices $choices): AssistantChoices
+    /** Chooses for a key the user may manage: their own, or any for an administrator. */
+    public function choose(int $keyId, AssistantChoices $choices, int $userId, bool $administrator): AssistantChoices
     {
-        $this->keys->chooseForAssistant($keyId, $choices->toArray());
+        $this->keys->chooseForAssistant($keyId, $choices->toArray(), $userId, $administrator);
 
-        return $this->choices($keyId);
+        return $this->choices($keyId, $userId, $administrator);
     }
 }

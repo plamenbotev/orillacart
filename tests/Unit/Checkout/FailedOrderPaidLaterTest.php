@@ -27,13 +27,16 @@ final class FailedOrderPaidLaterTest extends TestCase
 {
     private TestShop $shop;
     private int $rate;
+    private int $carrier;
 
     protected function setUp(): void
     {
         $this->shop = new TestShop();
         $this->shop->content->add(10, 'Lamp');
         $this->shop->products->save(10, new SaveProduct('100', weight: '1'));
-        $this->rate = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Bulgaria', '5', regions: ['BG'])]))->rates[0]->id;
+        $carrier = $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Bulgaria', '5', regions: ['BG'])]));
+        $this->carrier = $carrier->id;
+        $this->rate = $carrier->rates[0]->id;
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
     }
 
@@ -102,6 +105,36 @@ final class FailedOrderPaidLaterTest extends TestCase
             self::assertSame('orillacart_order_not_payable', $e->errorCode);
         }
         self::assertSame('failed', $this->shop->orders->order($number)->status);
+    }
+
+    public function testShippingThatCostsMoreNowIsNotPaidAtTheOldPrice(): void
+    {
+        $number = $this->failed();
+        $this->shop->carriers->update($this->carrier, new SaveCarrier('Courier', rates: [new SaveShippingRate('Bulgaria', '9', $this->rate, regions: ['BG'])]));
+        self::assertSame("rate:{$this->rate}", $this->shop->orders->order($number)->shippingOption, 'the same rate, at another price');
+
+        try {
+            $this->shop->payNow->pay($this->shop->receipts->issue($number), new PayOrder('bank_transfer'));
+            self::fail('shipping priced again');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_order_not_payable', $e->errorCode);
+        }
+        self::assertSame('failed', $this->shop->orders->order($number)->status);
+    }
+
+    public function testAFailedOrderIsPaidOnlyWithinTheWindowOfItsFirstWait(): void
+    {
+        $owner = $this->cart();
+        $this->shop->paymentMethods->update('stripe', new SavePaymentMethod('Card', true, settings: ['secret_key' => 'sk_live_shop', 'webhook_secret' => 'whsec_shop']));
+        $number = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'stripe'))->number;
+        $this->shop->clock->modify('+2 hours');
+        $this->shop->orders->fail($number, 'Declined.');
+        $this->shop->payNow->pay($this->shop->receipts->issue($number), new PayOrder('stripe'));
+        $this->shop->orders->fail($number, 'Declined again.');
+
+        $this->shop->clock->modify('+61 minutes');
+
+        self::assertFalse($this->shop->orders->order($number)->payable, 'three hours from when it was placed, not from the last try');
     }
 
     public function testAFailedOrderAsItWasIsPaidAgain(): void

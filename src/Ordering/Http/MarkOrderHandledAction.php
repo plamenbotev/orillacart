@@ -18,7 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * The shop looked at what the order needed attention for: the flag goes, the history says so.
  */
-#[Tool(risk: Tool::NONE)]
+#[Tool(unasked: 'only takes an order off the attention list')]
 #[Route('/orders/{id}/attention', methods: ['DELETE'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class MarkOrderHandledAction implements RequestHandlerInterface
 {

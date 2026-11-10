@@ -6,6 +6,7 @@ namespace OrillaCart\Platform\WordPress\Cli;
 
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\WordPress\CliCommand;
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -18,7 +19,7 @@ final readonly class CliCommandRegistrar implements Registrar
      * @param ServiceLocator<CliCommand> $commands by name
      */
     public function __construct(
-        #[AutowireLocator(CliCommand::TAG, defaultIndexMethod: 'name')]
+        #[AutowireLocator(CliCommand::TAG, indexAttribute: TaggedKeyPass::KEY)]
         private ServiceLocator $commands,
     ) {}
 

@@ -35,7 +35,7 @@ final readonly class NewsletterConfirmLinks implements ConfirmLinks
     }
 
     /** Whether the shop made the link for the email on that day; whether it still works is expired()'s to tell. */
-    public function verify(string $email, string $day, string $signature): bool
+    public function verify(string $email, string $day, #[\SensitiveParameter] string $signature): bool
     {
         return preg_match('/^\d{1,6}$/', $day) === 1 && $this->signatures->verify(self::SIGNATURE, Subscriber::normalize($email) . ':' . $day, $signature);
     }

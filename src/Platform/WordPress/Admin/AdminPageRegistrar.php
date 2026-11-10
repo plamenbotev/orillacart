@@ -169,7 +169,21 @@ final class AdminPageRegistrar implements Registrar
             }
         }
 
-        return ['page' => $current->slug(), 'group' => $current->group()->label(), 'tabs' => \count($tabs) > 1 ? $tabs : []];
+        return ['page' => $current->slug(), 'group' => $current->group()->label(), 'tabs' => \count($tabs) > 1 ? $tabs : [], 'hosts' => self::hosts()];
+    }
+
+    /**
+     * The site's own hosts, which a screen may link to with a full address: the site's and the admin's, and those
+     * WordPress lets redirects go to (allowed_redirect_hosts), as wp_validate_redirect() takes them.
+     *
+     * @return list<string>
+     */
+    private static function hosts(): array
+    {
+        $own = array_values(array_filter([wp_parse_url(home_url(), \PHP_URL_HOST), wp_parse_url(admin_url(), \PHP_URL_HOST)], \is_string(...)));
+        $allowed = apply_filters('allowed_redirect_hosts', $own, '');
+
+        return array_values(array_unique(array_map(strtolower(...), array_filter(\is_array($allowed) ? $allowed : $own, \is_string(...)))));
     }
 
     /** A page reached by a tab highlights its group's entry. */

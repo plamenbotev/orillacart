@@ -264,7 +264,7 @@ final readonly class OrderPricing
     {
         $giftCards = $this->giftCards->ids();
 
-        return array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds, $line['quote']->coupons, $line['given'] === null && !\in_array($line['quote']->productId, $giftCards, true)), $lines);
+        return array_map(static fn(array $line): DiscountItem => new DiscountItem($line['quote']->productId, $line['quantity'], $line['total']->toFixed(), $line['quote']->onSale, $line['quote']->categoryIds, $line['quote']->brandIds, $line['quote']->coupons, $line['given'] === null && !\in_array($line['quote']->productId, $giftCards, true), $line['given']), $lines);
     }
 
     /**

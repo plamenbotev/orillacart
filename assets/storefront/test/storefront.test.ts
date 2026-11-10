@@ -56,8 +56,10 @@ describe( 'api', () => {
 			'https://shop.test/wp-json/orillacart/v1/cart/items',
 			'https://shop.test/wp-json/orillacart/v1/cart/items',
 		] );
-		expect( header( calls[ 1 ], 'X-WP-Nonce' ) ).toBe( 'n1' );
-		expect( header( calls[ 2 ], 'X-WP-Nonce' ) ).toBe( 'n1' );
+		expect( header( calls[ 1 ], 'X-OrillaCart-Nonce' ) ).toBe( 'n1' );
+		expect( header( calls[ 2 ], 'X-OrillaCart-Nonce' ) ).toBe( 'n1' );
+		// Not in WordPress's header: WordPress refuses a visitor's nonce there before the shop's route runs.
+		expect( header( calls[ 1 ], 'X-WP-Nonce' ) ).toBeUndefined();
 	} );
 
 	it( 'gets a fresh nonce once when the server refuses the old one', async () => {
@@ -71,7 +73,7 @@ describe( 'api', () => {
 		const result = await api( 'POST', '/cart/items', {} );
 
 		expect( result.ok ).toBe( true );
-		expect( header( calls[ 3 ], 'X-WP-Nonce' ) ).toBe( 'new' );
+		expect( header( calls[ 3 ], 'X-OrillaCart-Nonce' ) ).toBe( 'new' );
 	} );
 
 	it( 'tells the shopper to reload when the fresh nonce is refused too', async () => {
@@ -119,6 +121,7 @@ describe( 'api', () => {
 		] );
 		expect( header( calls[ 0 ], 'X-WP-Nonce' ) ).toBe( 'mine' );
 		expect( header( calls[ 1 ], 'X-WP-Nonce' ) ).toBe( 'mine' );
+		expect( header( calls[ 1 ], 'X-OrillaCart-Nonce' ) ).toBeUndefined();
 	} );
 
 	it( 'reads without a nonce on a page for visitors', async () => {

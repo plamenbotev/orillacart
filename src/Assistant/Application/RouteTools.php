@@ -22,7 +22,7 @@ final readonly class RouteTools
     private array $tools;
 
     /**
-     * @param list<array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file: bool, wholeBody: ?string}> $tools what describe() gave
+     * @param list<array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file: bool, wholeBody: ?string, unasked: ?string}> $tools what describe() gave
      */
     public function __construct(array $tools)
     {
@@ -51,7 +51,7 @@ final readonly class RouteTools
      *
      * @param list<RouteDefinition> $routes
      *
-     * @return list<array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file: bool, wholeBody: ?string}>
+     * @return list<array{name: string, title: string, description: string, area: string, method: string, path: string, placeholders: array<string, string>, input: 'body'|'query'|null, inputSchema: array<string, mixed>, readOnly: bool, destructive: bool, idempotent: bool, risk: ?string, capability: string, file: bool, wholeBody: ?string, unasked: ?string}>
      */
     public static function describe(array $routes): array
     {
@@ -76,8 +76,8 @@ final readonly class RouteTools
                 if (isset($tools[$name])) {
                     throw new \LogicException(\sprintf('Two routes make the tool "%s": %s and %s %s. Name one with #[Tool(name: …)].', $name, $tools[$name]['path'], $method, $route->path));
                 }
-                $risk = self::risk($tool, $method);
                 $readOnly = $safe || !$route->changes;
+                $risk = self::risk($tool, $method, $readOnly);
                 $dto = $safe ? $query : $body;
                 $tools[$name] = new RouteTool(
                     $name,
@@ -96,6 +96,7 @@ final readonly class RouteTools
                     $route->capability,
                     $file && !$safe,
                     $whole === null ? null : (string) array_key_first($whole),
+                    $risk === null && !$readOnly ? $tool?->unasked : null,
                 )->toArray();
             }
         }
@@ -105,16 +106,20 @@ final readonly class RouteTools
     }
 
     /**
-     * What the tool risks: what its #[Tool] says, none where it says Tool::NONE, and Tool::DELETING for a DELETE
-     * that says nothing.
+     * What the tool risks: what its #[Tool] says; nothing when it only reads or says why it runs unasked;
+     * Tool::DELETING for a DELETE that says nothing, and Tool::CHANGES for any other change that says nothing.
+     * A new route that changes something therefore waits for the owner's yes until it says otherwise.
      */
-    public static function risk(?Tool $tool, string $method): ?string
+    public static function risk(?Tool $tool, string $method, bool $readOnly = false): ?string
     {
-        if ($tool?->risk === Tool::NONE) {
+        if ($tool?->risk !== null) {
+            return $tool->risk;
+        }
+        if ($readOnly || $tool?->unasked !== null) {
             return null;
         }
 
-        return $tool->risk ?? ($method === 'DELETE' ? Tool::DELETING : null);
+        return $method === 'DELETE' ? Tool::DELETING : Tool::CHANGES;
     }
 
     /** Whether the route is a shop manager's, and its action does not leave it out. */

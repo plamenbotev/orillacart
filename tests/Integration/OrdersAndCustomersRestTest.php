@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Customers\Application\AddressBook;
+use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\Dto\AddressData;
@@ -69,6 +70,46 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         }
         $made = $this->data($this->request('POST', '/customers', ['email' => 'scope-' . wp_generate_password(6, false) . '@example.com', 'first_name' => 'Ada'], nonce: true));
         self::assertSame(200, $this->request('GET', '/customers/' . (\is_int($made['id']) ? $made['id'] : 0))->get_status());
+    }
+
+    public function testACustomerIsAUserWhoseEveryRoleIsACustomersRoleWhereverTheNumberComesFrom(): void
+    {
+        $editor = wp_insert_user(['user_login' => 'scope-editor', 'user_email' => 'scope-editor@example.com', 'user_pass' => 'correct horse battery', 'role' => 'editor']);
+        $subscriber = wp_insert_user(['user_login' => 'scope-subscriber', 'user_email' => 'scope-subscriber@example.com', 'user_pass' => 'correct horse battery', 'role' => 'subscriber']);
+        $both = wp_insert_user(['user_login' => 'scope-both', 'user_email' => 'scope-both@example.com', 'user_pass' => 'correct horse battery', 'role' => WordPressAccounts::ROLE]);
+        self::assertIsInt($editor);
+        self::assertIsInt($subscriber);
+        self::assertIsInt($both);
+        array_push($this->users, $editor, $subscriber, $both);
+        new \WP_User($both)->add_role('editor');
+        $admin = $this->actAs('administrator');
+
+        self::assertSame(404, $this->request('GET', '/customers/' . $editor)->get_status(), 'an editor has another job on the site');
+        self::assertSame(404, $this->request('GET', '/customers/' . $both)->get_status(), 'a customer made an editor too');
+        self::assertSame(200, $this->request('GET', '/customers/' . $subscriber)->get_status(), 'whoever registered at the site is a customer');
+        $listed = array_column($this->rows($this->data($this->request('GET', '/customers?search=scope-&per_page=100'))['customers'] ?? []), 'id');
+        self::assertContains($subscriber, $listed);
+        self::assertNotContains($editor, $listed);
+        self::assertNotContains($both, $listed);
+
+        $billing = ['first_name' => 'Ada', 'last_name' => 'Lovelace', 'street' => '1 Vitosha Blvd', 'city' => 'Sofia', 'postcode' => '1000', 'country' => 'BG', 'phone' => '+359 2 000 0000'];
+        foreach ([$admin, $editor] as $staff) {
+            $order = ['email' => 'scope@example.com', 'customer_id' => $staff, 'billing' => $billing, 'items' => [['product_id' => $this->lamp, 'quantity' => 1]]];
+            self::assertSame(404, $this->request('POST', '/orders', $order, nonce: true)->get_status(), 'no order is made in the name of the site\'s staff');
+            self::assertSame(404, $this->request('POST', '/orders/quote', ['customer_id' => $staff, 'billing_country' => 'BG', 'items' => $order['items']], nonce: true)->get_status());
+            self::assertSame(404, $this->request('PUT', '/customers/' . $staff . '/groups', ['group_ids' => []], nonce: true)->get_status());
+        }
+
+        // The shop chooses the customers' roles; one that manages the site or the shop is never taken.
+        $saved = $this->data($this->request('PUT', '/customer-settings', ['accounts' => 'optional', 'roles' => ['editor', 'administrator', 'no-such-role']], nonce: true));
+        self::assertSame([WordPressAccounts::ROLE, 'editor'], $saved['roles']);
+        try {
+            self::assertSame(200, $this->request('GET', '/customers/' . $both)->get_status());
+            self::assertSame(404, $this->request('GET', '/customers/' . $subscriber)->get_status());
+            self::assertSame(404, $this->request('GET', '/customers/' . $admin)->get_status());
+        } finally {
+            delete_option(OptionCustomerSettingsRepository::OPTION);
+        }
     }
 
     public function testTheOrdersListFiltersAndSortsOnTheDatabase(): void
@@ -253,7 +294,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
     public function testTheCustomerScreenSumsWhatTheCustomerPaidAndKeepsTheShopsNotes(): void
     {
-        $customer = $this->actAs('customer');
+        $customer = $this->actAs(WordPressAccounts::ROLE);
         $paid = $this->order([[$this->lamp, 2]]);
         $this->order([[$this->guide, 1]]);
         $this->actAs('administrator');
@@ -321,7 +362,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame(201, $rule->get_status(), (string) wp_json_encode($rule->get_data()));
         self::assertSame(422, $this->request('POST', '/price-rules', ['name' => 'Empty', 'tiers' => []], nonce: true)->get_status(), 'a rule has a price');
 
-        $customer = $this->actAs('customer');
+        $customer = $this->actAs(WordPressAccounts::ROLE);
         $this->actAs('administrator');
         $set = $this->request('PUT', "/customers/{$customer}/groups", ['group_ids' => [$groupId]], nonce: true);
         self::assertSame([$groupId], $this->data($set)['group_ids']);
@@ -657,7 +698,7 @@ final class OrdersAndCustomersRestTest extends RestTestCase
         self::assertSame($wpdb->get_blog_prefix() . 'orillacart_addresses', WordPressAccounts::key(WordPressAccounts::ADDRESSES));
         self::assertSame($wpdb->get_blog_prefix() . 'orillacart_wishlist', WordPressAccounts::key(WordPressAccounts::WISHLIST));
         $serializer = new Serializer([new ObjectNormalizer(null, null, null, new ReflectionExtractor())]);
-        $accounts = new WordPressAccounts($serializer, $serializer);
+        $accounts = new WordPressAccounts($serializer, $serializer, new OptionCustomerSettingsRepository());
         $user = wp_insert_user(['user_login' => 'customer-two-shops', 'user_email' => 'two-shops@example.com', 'user_pass' => 'correct horse battery', 'role' => WordPressAccounts::ROLE]);
         self::assertIsInt($user);
         $this->users[] = $user;

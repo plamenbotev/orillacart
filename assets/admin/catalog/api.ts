@@ -180,6 +180,11 @@ export interface DownloadStorage {
 	/** Whether the web server handed out a test file by itself; null when not tested. */
 	reachable: boolean | null;
 	nginx_rule: string;
+	/**
+	 * Set while the shop waits to hear whose the folder is, after the site was moved, restored or copied:
+	 * elsewhere, it is marked as another site's or install's; missing, it is gone. Nothing is served meanwhile.
+	 */
+	claim: 'elsewhere' | 'missing' | null;
 }
 
 export type ProductInput = Omit<
@@ -417,6 +422,22 @@ export function fetchDownloadStorage(
 ): Promise< DownloadStorage > {
 	return apiFetch< DownloadStorage >( {
 		path: `${ BASE }/download-storage${ fresh ? '?fresh=1' : '' }`,
+	} );
+}
+
+/**
+ * Says whose the downloads folder is: adopt, the site moved and it is this site's; new, the site is a copy and
+ * starts an empty folder of its own.
+ *
+ * @param answer The answer.
+ */
+export function answerDownloadStorage(
+	answer: 'adopt' | 'new'
+): Promise< DownloadStorage > {
+	return apiFetch< DownloadStorage >( {
+		path: `${ BASE }/download-storage/answer`,
+		method: 'POST',
+		data: { answer },
 	} );
 }
 

@@ -85,6 +85,7 @@ use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Invoicing\Application\EInvoices;
 use OrillaCart\Invoicing\Application\InvoiceAttachments;
 use OrillaCart\Invoicing\Application\InvoiceNumbers;
+use OrillaCart\Invoicing\Application\InvoiceKeys;
 use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Invoicing\Application\SendEInvoices;
 use OrillaCart\Invoicing\Infrastructure\Events\IssueInvoices;
@@ -212,6 +213,7 @@ use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerNotes;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryCustomerSettingsRepository;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryPendingAccounts;
 use OrillaCart\Tests\Fixtures\Customers\RecordingAccountMail;
+use OrillaCart\Tests\Fixtures\Extension\MemoryClosedFailures;
 use OrillaCart\Tests\Fixtures\FakeLanguages;
 use OrillaCart\Tests\Fixtures\Forms\InMemoryFormRepository;
 use OrillaCart\Tests\Fixtures\Forms\InMemoryFormUploadRepository;
@@ -246,7 +248,9 @@ use OrillaCart\Tests\Fixtures\Ordering\InMemoryDownloadGrantRepository;
 use OrillaCart\Tests\Fixtures\Ordering\InMemoryOrderRepository;
 use OrillaCart\Tests\Fixtures\Ordering\ListedOrderLookups;
 use OrillaCart\Tests\Fixtures\Payment\FakePaymentUrls;
+use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Tests\Fixtures\Payment\FakePayPalApi;
+use OrillaCart\Tests\Fixtures\Shared\CountingRateLimiter;
 use OrillaCart\Tests\Fixtures\Payment\FakeStripeApi;
 use OrillaCart\Tests\Fixtures\Payment\FixedExtensions;
 use OrillaCart\Tests\Fixtures\Payment\InMemoryNotifiedEvents;
@@ -287,6 +291,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 final class TestShop
 {
     public readonly MockClock $clock;
+    public readonly CountingRateLimiter $rateLimiter;
     public readonly InMemoryGiftCards $giftCardRecords;
     public readonly MemoryCurrencySettings $currencySettings;
     public readonly ChosenCurrency $chosenCurrency;
@@ -298,6 +303,7 @@ final class TestShop
     public readonly DeliveryDays $deliveryDays;
     public readonly AddressChecks $addressChecks;
     public readonly Returns $returns;
+    public readonly \OrillaCart\Returns\Application\WithdrawalRequests $withdrawals;
     public readonly Reorder $reorder;
     public readonly InMemoryCustomerNotes $customerNoteRecords;
     public readonly CustomerNotes $customerNotes;
@@ -305,6 +311,7 @@ final class TestShop
     public readonly InMemorySubscribers $subscribers;
     public readonly InMemoryNewsletterSettings $newsletterSettings;
     public readonly ExtensionFailures $failures;
+    public readonly MemoryClosedFailures $closedFailures;
     public readonly InMemoryProductContent $content;
     public readonly InMemoryProductRepository $productRecords;
     public readonly ProductService $products;
@@ -414,6 +421,7 @@ final class TestShop
     public readonly PaymentOptions $paymentOptions;
     public readonly FakeLanguages $languages;
     public readonly ReceiptLinks $receipts;
+    public readonly InvoiceKeys $invoiceKeys;
     public readonly Signatures $signatures;
     public readonly InMemoryNotifiedEvents $notifiedEvents;
     public readonly FakePaymentUrls $paymentUrls;
@@ -433,8 +441,9 @@ final class TestShop
 
     /**
      * @param list<ShippingMethod> $shippingMethods as add-ons would register them
+     * @param list<PaymentGateway>  $gateways        as add-ons would register them
      */
-    public function __construct(string $now = '2026-10-17 12:00:00 UTC', array $shippingMethods = [])
+    public function __construct(string $now = '2026-10-17 12:00:00 UTC', array $shippingMethods = [], array $gateways = [])
     {
         $this->clock = new MockClock($now);
         $this->jobs = new TestJobs($this->clock);
@@ -465,7 +474,10 @@ final class TestShop
         $classRecords = new InMemoryShippingClassRepository();
         $this->payPalApi = new FakePayPalApi();
         $this->stripeApi = new FakeStripeApi();
-        $this->extensions = $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new StripeGateway($this->stripeApi, $this->clock), new PayPalGateway($this->payPalApi)], $shippingMethods);
+        $this->signatures = new Signatures('test secret');
+        $this->paymentUrls = $urls = new FakePaymentUrls($this->signatures, $this->clock);
+        $this->rateLimiter = new CountingRateLimiter();
+        $this->extensions = $extensions = new FixedExtensions([new CashOnDelivery(), new BankTransfer(), new Cheque(), new StripeGateway($this->stripeApi, $this->clock), new PayPalGateway($this->payPalApi, $urls, $this->rateLimiter, $this->clock, $this->logger), ...$gateways], $shippingMethods);
         $shippingMethodList = new ShippingMethods($extensions);
         $this->rateCache = new MemoryRateCache();
         $this->content = new InMemoryProductContent();
@@ -513,8 +525,6 @@ final class TestShop
         $methodRecords = new InMemoryPaymentMethodRepository();
         $this->paymentRecords = new InMemoryPaymentRepository($this->transactions);
         $gateways = new Gateways($extensions);
-        $this->signatures = new Signatures('test secret');
-        $this->paymentUrls = $urls = new FakePaymentUrls($this->signatures, $this->clock);
         $this->paymentMethods = new PaymentMethodService($methodRecords, $gateways, $settings, $urls, $this->contentTranslations, $this->transactions, $this->translationPackages);
         $this->packageSources->append(new PaymentMethodPackages($methodRecords));
         $payments = new Payments($this->paymentRecords, $methodRecords, $gateways, $urls, $this->clock, $this->logger);
@@ -526,7 +536,7 @@ final class TestShop
         $this->currencies = new Currencies($this->currencySettings, $settings, $this->chosenCurrency);
         $this->files = new TemporaryPrivateFiles();
         $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings, $this->productTranslations);
-        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations);
+        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations, $this->closedFailures = new MemoryClosedFailures());
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
         $links = new FakeOrderLinks($this->receipts);
@@ -600,7 +610,7 @@ final class TestShop
             $this->failures,
             $fees,
             $this->deliveryDays = new DeliveryDays($carrierRecords, $this->orders, new SofiaCalendar(), $this->clock),
-            $this->addressChecks = new AddressChecks($extensions, $this->logger),
+            $this->addressChecks = new AddressChecks($extensions, $this->logger, $this->closedFailures),
             $this->newsletter,
             $this->giftCardPayments,
             $giftCardProducts,
@@ -609,16 +619,18 @@ final class TestShop
             $this->legal = new LegalSettingsService($this->legalRecords = new InMemoryLegalSettings(pages: [1, 2, 3, 4])),
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
             $this->givenItems = new GivenItems($this->carts, $this->pricing, $quotes, $this->currencies, $this->discounts),
+            $this->rateLimiter,
         );
         $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
         $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);
         $this->reorder = new Reorder($this->orders, $this->carts);
-        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content));
+        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content, $giftCardProducts));
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));
+        $this->withdrawals = new \OrillaCart\Returns\Application\WithdrawalRequests($this->returns, $this->orders, $this->signatures, $this->jobs->jobs, $this->clock);
         $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies, $this->pricing);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();
-        $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock, $this->receipts);
+        $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock, $this->invoiceKeys = new InvoiceKeys($this->signatures, $this->clock));
 
         $this->mail = new SentMail();
         $this->emailSettings = new InMemoryEmailSettingsRepository();
@@ -645,6 +657,7 @@ final class TestShop
         $this->sentEmails = new InMemorySentEmails();
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
         $this->jobs->with(new SendNewsletterConfirmation($this->newsletter, new RecordingConfirmations(), $this->writer, $this->mail));
+        $this->jobs->with(new \OrillaCart\Notifications\Application\SendWithdrawalLink($this->orders, new \OrillaCart\Tests\Fixtures\Returns\FakeWithdrawalLinks(), $this->writer, $this->mail));
         $this->eInvoices = new EInvoices($this->invoiceSettings, $settings, $geography, $this->writer, new SofiaCalendar());
         $this->sendEInvoices = new SendEInvoices($this->invoices, $this->eInvoices, $this->extensions, $this->jobs->jobs);
         $this->jobs->with($this->sendEInvoices);

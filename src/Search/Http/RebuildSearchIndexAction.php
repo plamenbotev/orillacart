@@ -7,12 +7,14 @@ namespace OrillaCart\Search\Http;
 use OrillaCart\Search\Application\SearchEngines;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Indexes every product again, in the background, and answers with how many are queued. */
+#[Tool(unasked: 'the search index built again')]
 #[Route('/search-engine/rebuild', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class RebuildSearchIndexAction implements RequestHandlerInterface
 {

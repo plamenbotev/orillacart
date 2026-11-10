@@ -15,7 +15,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /** The problems the shop logged, the latest first (?page=2), and clearing them (DELETE). */
 #[Tool(method: 'GET', name: 'list_problems', description: 'The problems the shop logged, the latest first, a page at a time; nothing changes.')]
-#[Tool(method: 'DELETE', name: 'clear_problems', description: 'Clears the problems the shop logged.', risk: Tool::NONE)]
+#[Tool(method: 'DELETE', name: 'clear_problems', description: 'Clears the problems the shop logged.', unasked: 'only clears the problems list')]
 #[Route('/problems', methods: ['GET', 'DELETE'], capability: Capability::MANAGE_SHOP)]
 final readonly class ProblemsAction implements RequestHandlerInterface
 {

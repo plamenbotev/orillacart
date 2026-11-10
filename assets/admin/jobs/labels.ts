@@ -9,6 +9,10 @@ export const TYPE_LABELS: Record< string, string > = {
 	'reports.rebuild': __( 'Counting every order again', 'orillacart' ),
 	'exchange.import_products': __( 'Products import', 'orillacart' ),
 	'newsletter.sync': __( 'Mailing lists', 'orillacart' ),
+	'newsletter.follow_email': __(
+		'Changed emails on the network’s other shops',
+		'orillacart'
+	),
 	'webhook.deliver': __( 'Webhooks', 'orillacart' ),
 	'translations.packages': __( 'WPML translations', 'orillacart' ),
 };

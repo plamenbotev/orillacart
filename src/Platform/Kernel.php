@@ -12,6 +12,7 @@ use OrillaCart\Ordering\Application\OrderLookup;
 use OrillaCart\Ordering\Application\OrderMark;
 use OrillaCart\Platform\DependencyInjection\HookPass;
 use OrillaCart\Platform\DependencyInjection\RoutePass;
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Search\Application\FacetSource;
 use OrillaCart\Setup\Application\ReadinessCheck;
@@ -129,6 +130,7 @@ final class Kernel
 
         $builder->addCompilerPass(new RoutePass());
         $builder->addCompilerPass(new HookPass());
+        $builder->addCompilerPass(new TaggedKeyPass());
         $builder->addCompilerPass(new RegisterListenersPass());
 
         $loader = new PhpFileLoader($builder, new FileLocator($pluginDir . '/config'));
@@ -169,6 +171,9 @@ final class Kernel
             }
             try {
                 self::writeContainer($builder, \dirname($cache->getPath()), self::DEV_CONTAINER_CLASS, $cache);
+                if (str_starts_with($cache->getPath(), CacheFolders::root() . '/')) {
+                    CacheFolders::protect(CacheFolders::root());
+                }
 
                 return self::requireContainer($cache->getPath());
             } catch (IOException) {
@@ -190,7 +195,11 @@ final class Kernel
     {
         $files = [$this->context->path(self::DEV_CONTAINER_FILE)];
         if (\defined('WP_CONTENT_DIR')) {
-            $files[] = WP_CONTENT_DIR . '/cache/orillacart/container/' . substr(hash('sha256', $this->context->dir), 0, 16) . '/container.php';
+            // Not where every user on the server may write: the container is included as found (CacheFolders).
+            $folder = CacheFolders::root() . '/' . CacheFolders::CONTAINER . '/' . substr(hash('sha256', $this->context->dir), 0, 16);
+            if (CacheFolders::trusted($folder)) {
+                $files[] = $folder . '/container.php';
+            }
         }
 
         return $files;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
+use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Shared\Http\SiteCookies;
@@ -83,7 +84,7 @@ final class PromotionBlocksTest extends RestTestCase
     public function testACustomersProgressComesWithThePage(): void
     {
         $this->coupon(['code' => 'summer10', 'kind' => 'percent', 'amount' => '10', 'min_subtotal' => '50', 'advertised' => true]);
-        $this->actAs('customer');
+        $this->actAs(WordPressAccounts::ROLE);
         $this->request('POST', '/cart/items', ['product_id' => $this->lamp, 'quantity' => 1], nonce: true);
 
         $html = do_blocks('<!-- wp:orillacart/promotion-progress {"showBars":false} /-->');
@@ -124,7 +125,7 @@ final class PromotionBlocksTest extends RestTestCase
         self::assertStringNotContainsString('SECRET', $html, 'a code the shop does not show');
         self::assertStringNotContainsString('WELCOME', $html, 'a visitor\'s cached page: not one for first orders');
 
-        $this->actAs('customer');
+        $this->actAs(WordPressAccounts::ROLE);
         self::assertStringContainsString('WELCOME', do_blocks("<!-- wp:orillacart/product-promotions {\"productId\":{$this->lamp}} /-->"), 'a customer who never ordered');
         self::assertStringNotContainsString('SUMMER10', do_blocks("<!-- wp:orillacart/product-promotions {\"productId\":{$this->lamp},\"showCodes\":false} /-->"));
     }

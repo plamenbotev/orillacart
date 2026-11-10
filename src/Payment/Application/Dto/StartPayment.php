@@ -29,6 +29,8 @@ final readonly class StartPayment
         public ?PaymentBreakdown $breakdown = null,
         public ?PaymentAddress $shipTo = null,
         public ?string $email = null,
+        /** When the order stops waiting for the payment: the end of its payment window. */
+        public ?\DateTimeImmutable $payBy = null,
     ) {}
 
     /**
@@ -57,6 +59,7 @@ final readonly class StartPayment
             $whole ? $breakdown : null,
             $address === null || $order->pickupPointId !== null ? null : new PaymentAddress(trim("{$address->firstName} {$address->lastName}"), $address->street, $address->city, $address->postcode, $address->country, $address->state),
             $order->email === '' ? null : $order->email,
+            $order->payBy === null ? null : new \DateTimeImmutable($order->payBy),
         );
     }
 }

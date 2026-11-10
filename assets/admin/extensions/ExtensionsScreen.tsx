@@ -1102,7 +1102,7 @@ function Console( {
 		<Section
 			title={ __( 'Console', 'orillacart' ) }
 			description={ __(
-				'Runs one top-level function of the extension with its granted permissions, and shows what it returned and what the run used.',
+				'Runs one top-level function of the extension and shows what it returned and what the run used. An enabled extension runs the files it was enabled with, under its granted permissions; a draft or a disabled one runs its saved files with nothing granted.',
 				'orillacart'
 			) }
 		>

@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -19,6 +20,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Changes a stockroom's name, delivery times and low-stock warning, or turns it on or off. Turned off, its stock stops
  * counting; turned on, it counts again and customers who asked to hear of an item back in stock are emailed.
  */
+#[Tool(unasked: 'inventory setup')]
 #[Route('/stockrooms/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdateStockroomAction implements RequestHandlerInterface
 {

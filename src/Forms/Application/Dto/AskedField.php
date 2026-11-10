@@ -20,6 +20,7 @@ final readonly class AskedField
      * @param array{field: string, values: list<string>}|null          $condition asked only when that field (by id) is answered, or has one of the values
      * @param list<string>                                             $types     a file field's types
      * @param int                                                      $largest   a file's largest size, in megabytes
+     * @param bool                                                     $pdfLinks  a PDF it takes may hold links to web addresses
      */
     public function __construct(
         public string $id,
@@ -39,6 +40,7 @@ final readonly class AskedField
         public ?array $condition = null,
         public array $types = [],
         public int $largest = 10,
+        public bool $pdfLinks = false,
     ) {}
 
     /** What an item adds with this answer (a choice by its value). */

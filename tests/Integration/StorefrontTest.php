@@ -11,6 +11,7 @@ use OrillaCart\Catalog\Infrastructure\WordPress\Hooks\CategoryOrder;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Jobs\Application\JobRunner;
+use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionShopPagesRepository;
@@ -374,8 +375,24 @@ final class StorefrontTest extends RestTestCase
         // Opened, the link's token goes to a cookie and the address says it is kept there (KeptTokens).
         $_GET = ['orillacart_order' => 'kept'];
         $_COOKIE['orillacart_receipt'] = $query['orillacart_order'];
-        self::assertStringContainsString('Thank you for your order', do_blocks('<!-- wp:orillacart/checkout /-->'));
-        unset($_COOKIE['orillacart_receipt']);
+        $kept = do_blocks('<!-- wp:orillacart/checkout /-->');
+        self::assertStringContainsString('Thank you for your order', $kept);
+        // Its forms name the order; the token stays in the cookies, where the page's scripts cannot read it.
+        $handle = 'kept-' . strtok($query['orillacart_order'], '-');
+        self::assertStringContainsString('data-orillacart-reorder="' . $handle . '"', $kept);
+        self::assertStringNotContainsString($query['orillacart_order'], $kept);
+        self::assertSame(410, $this->request('POST', "/receipts/{$handle}/reorder", [], nonce: true)->get_status(), 'no token kept for the actions');
+        $_COOKIE[ReceiptHandles::COOKIE] = $query['orillacart_order'];
+        // Reordered in a browser of its own: the cart the visitor ordered from stays empty.
+        $ordered = $_COOKIE[CartCookie::NAME] ?? null;
+        unset($_COOKIE[CartCookie::NAME]);
+        self::assertSame(200, $this->request('POST', "/receipts/{$handle}/reorder", [], nonce: true)->get_status());
+        if ($ordered === null) {
+            unset($_COOKIE[CartCookie::NAME]);
+        } else {
+            $_COOKIE[CartCookie::NAME] = $ordered;
+        }
+        unset($_COOKIE['orillacart_receipt'], $_COOKIE[ReceiptHandles::COOKIE]);
         self::assertStringContainsString('open the link in your email again', do_blocks('<!-- wp:orillacart/checkout /-->'), 'kept for an hour');
 
         // A link the shop made long ago: the page offers a new one, which goes to the order's email.

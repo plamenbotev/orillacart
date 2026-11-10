@@ -13,7 +13,8 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * A page of a product's published reviews, as its page shows them to anyone.
+ * A page of a product's published reviews, as its page shows them to anyone: an empty one for a product that is
+ * not published or has a password, as for one that does not exist.
  */
 #[Route('/products/{id}/reviews', methods: ['GET'], capability: Route::PUBLIC, requirements: ['id' => '\d+'])]
 final readonly class ListReviewsAction implements RequestHandlerInterface
@@ -29,6 +30,6 @@ final readonly class ListReviewsAction implements RequestHandlerInterface
         // Digits only, as many as a page number has: Reviews::page() takes up to its last page.
         $page = \is_string($page) && ctype_digit($page) && \strlen($page) <= 9 ? (int) $page : 1;
 
-        return $this->responder->ok($this->reviews->shown() ? $this->reviews->page(PathParameter::id($request), $page) : ['rating' => null, 'reviews' => [], 'page' => 1, 'pages' => 1]);
+        return $this->responder->ok($this->reviews->shown() ? $this->reviews->page(PathParameter::id($request), $page, forAnyone: true) : ['rating' => null, 'reviews' => [], 'page' => 1, 'pages' => 1]);
     }
 }

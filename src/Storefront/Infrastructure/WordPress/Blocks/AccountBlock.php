@@ -16,7 +16,7 @@ use OrillaCart\Notifications\Domain\EmailKind;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
-use OrillaCart\Ordering\Application\ReceiptLinks;
+use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\View\TemplateRenderer;
@@ -53,7 +53,6 @@ final readonly class AccountBlock implements BlockDefinition
         private TemplateRenderer $templates,
         private PayNow $payNow,
         private Invoices $invoices,
-        private ReceiptLinks $receipts,
         private SettingsService $settings,
         private Newsletter $newsletter,
         private EmailSettingsService $emails,
@@ -97,7 +96,7 @@ final readonly class AccountBlock implements BlockDefinition
         // Customers who sent certificates still see them when the shop no longer takes new ones.
         $taxExemptions = $this->certificates->accepts() || $exemptions !== [];
         $section = \in_array($section, ['orders', 'order', 'downloads', 'addresses', 'emails', ...($wishlist === WishlistPolicy::Off ? [] : ['wishlist']), ...($taxExemptions ? ['tax-exemptions'] : [])], true) ? $section : 'orders';
-        $me = $this->customers->customer($customerId);
+        $me = $this->customers->account($customerId);
         $context = [
             'logged_in' => true,
             'section' => $section,
@@ -158,9 +157,8 @@ final readonly class AccountBlock implements BlockDefinition
         if ($order === null) {
             return ['order' => null];
         }
-        $receipt = $this->receipts->issue($order->number);
-
-        return ['order' => $order, 'receipt' => $receipt, 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number), 'review_links' => $this->reviewLinks->forOrder($order)];
+        // The order's handle, not a token: the logged-in owner is enough for its forms (ReceiptHandles).
+        return ['order' => $order, 'receipt' => ReceiptHandles::of($order->number), 'pay_methods' => $this->payNow->methods($order), 'invoices' => $this->invoices->ofOrder($order->number), 'review_links' => $this->reviewLinks->forOrder($order)];
     }
 
     /**
@@ -169,7 +167,7 @@ final readonly class AccountBlock implements BlockDefinition
     private function addressForm(int $customerId): array
     {
         try {
-            $customer = $this->customers->customer($customerId);
+            $customer = $this->customers->account($customerId);
         } catch (CustomerNotFound) {
             $customer = null;
         }
@@ -190,7 +188,7 @@ final readonly class AccountBlock implements BlockDefinition
     private function emailChoices(int $customerId): array
     {
         try {
-            $customer = $this->customers->customer($customerId);
+            $customer = $this->customers->account($customerId);
         } catch (CustomerNotFound) {
             $customer = null;
         }

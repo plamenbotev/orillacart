@@ -13,6 +13,13 @@ interface GiftCardRepository
     public function storeCreditOf(int $customerId, bool $lock = false): ?GiftCard;
 
     /**
+     * The customer's store credit, locked, made empty in the currency first when they have none. Made with a
+     * statement that leaves a row another transaction made meanwhile as it is, so two first credits at once both
+     * add to the one store credit; run it in a transaction.
+     */
+    public function storeCreditFor(int $customerId, string $currency, \DateTimeImmutable $now): GiftCard;
+
+    /**
      * @return array{cards: list<GiftCard>, total: int} gift cards, newest first; those whose recipient or code end
      *                                                   matches the search
      */

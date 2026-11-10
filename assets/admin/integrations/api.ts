@@ -63,11 +63,21 @@ export interface Webhook {
 	secret: string | null;
 	created_at: string;
 	last_delivery: WebhookDelivery | null;
+	/** The shop manager who answers for it: who made it, or saved it last. */
+	owner_id: number | null;
+	/** Their name; empty for an account that is gone. */
+	owner: string;
+	/** Events in a row it may fail before the shop switches it off; 0 for never. */
+	failure_limit: number;
+	failed_in_a_row: number;
+	/** Why the shop switched it off; null when it is on, or a manager switched it off. */
+	off_reason: 'owner_left' | 'failing' | null;
+	off_at: string | null;
 }
 
 export type WebhookInput = Pick<
 	Webhook,
-	'name' | 'url' | 'topics' | 'active'
+	'name' | 'url' | 'topics' | 'active' | 'failure_limit'
 >;
 
 /** The webhooks, and what they can tell of (topic => label). */

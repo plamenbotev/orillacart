@@ -9,12 +9,14 @@ use OrillaCart\Catalog\Application\Dto\SaveAttributeSet;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** The shop adds an attribute set: a named list of attributes, with their options, that products can offer. */
+#[Tool(unasked: 'catalog setup')]
 #[Route('/attribute-sets', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class CreateAttributeSetAction implements RequestHandlerInterface
 {

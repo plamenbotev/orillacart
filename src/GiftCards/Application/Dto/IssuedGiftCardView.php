@@ -10,6 +10,7 @@ namespace OrillaCart\GiftCards\Application\Dto;
 final readonly class IssuedGiftCardView
 {
     public function __construct(
+        #[\SensitiveParameter]
         public string $code,
         public GiftCardView $card,
         /** Whether the email with the code went out. */

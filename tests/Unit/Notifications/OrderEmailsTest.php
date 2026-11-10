@@ -9,7 +9,6 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
-use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
 use OrillaCart\Notifications\Application\Dto\SendOrderEmail;
@@ -25,6 +24,7 @@ use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Payment\PayPalNotifications;
 use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
 use PHPUnit\Framework\TestCase;
 
@@ -167,7 +167,7 @@ final class OrderEmailsTest extends TestCase
     public function testPayPalsWebhookArrivingWhileTheCustomerComesBackConfirmsTheOrderOnce(): void
     {
         $order = $this->place('paypal');
-        $this->shop->payPalApi->whileCapturing = fn() => $this->shop->outcomes->notified('paypal', new Notification(['paypal-transmission-id' => 'T-1'], (string) json_encode([
+        $this->shop->payPalApi->whileCapturing = fn() => $this->shop->outcomes->notified('paypal', PayPalNotifications::of($this->shop, (string) json_encode([
             'id' => 'WH-1',
             'event_type' => 'PAYMENT.CAPTURE.COMPLETED',
             'resource' => ['id' => 'CAPTURE-PAYPAL-1', 'status' => 'COMPLETED', 'amount' => ['value' => '8.00', 'currency_code' => 'EUR'], 'supplementary_data' => ['related_ids' => ['order_id' => 'PAYPAL-1']]],

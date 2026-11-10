@@ -40,6 +40,10 @@ final readonly class WordPressToolSource implements ToolSource
     public const string AREA = 'WordPress';
 
     private const array STATUSES = ['publish', 'draft', 'pending', 'private'];
+    /** The states of a product customers do not see, which change_product_content may give and change. */
+    private const array HIDDEN = ['draft', 'pending'];
+    /** The states publish_product gives a product. */
+    private const array SHOWN = ['publish', 'private', 'draft'];
     /** Marks a page the assistant made as a landing page, which its page tools may then change. */
     public const string LANDING = '_orillacart_landing';
 
@@ -59,7 +63,6 @@ final readonly class WordPressToolSource implements ToolSource
         $id = ['type' => 'integer', 'minimum' => 1];
         $texts = [
             'name' => ['description' => 'The product\'s name.', 'type' => 'string', 'minLength' => 1, 'maxLength' => 200],
-            'status' => ['description' => 'publish puts it on sale; draft keeps it hidden.', 'enum' => self::STATUSES],
             'description' => ['description' => 'The long description, HTML allowed.', 'type' => 'string', 'maxLength' => 65535],
             'short_description' => ['description' => 'The short description shown beside the price.', 'type' => 'string', 'maxLength' => 5000],
             'categories' => ['description' => 'Its categories, each as its path ("Lighting > Desk lamps"); a missing one is made. Replaces the categories it had.', 'type' => 'array', 'items' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 400], 'maxItems' => 50],
@@ -76,8 +79,9 @@ final readonly class WordPressToolSource implements ToolSource
                 'page' => ['type' => 'integer', 'minimum' => 1, 'default' => 1],
                 'per_page' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 100, 'default' => 20],
             ], [], true),
-            self::tool('create_product', 'Create product', 'Makes a product: its name, texts, categories, brands, tags and pictures, as a draft unless told to publish. Then set its price, stock and shipping with update_product.', $texts, ['name'], false),
-            self::tool('change_product_content', 'Change product content', 'Changes a product\'s name, state, texts, categories, brands, tags or pictures; what is left out stays. Price, stock and shipping are update_product\'s.', ['id' => $id] + $texts, ['id'], false),
+            self::tool('create_product', 'Create product', 'Makes a product as a draft, hidden from customers: its name, texts, categories, brands, tags and pictures. Then set its price, stock and shipping with update_product, and put it on sale with publish_product.', $texts, ['name'], false, unasked: 'a draft product nobody but the shop sees; publish_product, which asks, puts it on sale'),
+            self::tool('change_product_content', 'Change product content', 'Changes the name, texts, categories, brands, tags or pictures of a product that is a draft, pending review or in the trash; what is left out stays. status draft restores one from the trash. A product on sale or private changes, or is taken off sale, with publish_product. Price, stock and shipping are update_product\'s.', ['id' => $id, 'status' => ['description' => 'draft keeps it hidden, or restores it from the trash; pending marks it for review.', 'enum' => self::HIDDEN]] + $texts, ['id'], false, unasked: 'a product nobody but the shop sees; publish_product, which asks, changes one customers see'),
+            self::tool('publish_product', 'Publish product', 'Puts a product on sale for customers (publish), makes it private, or takes it back to a draft, with new texts, categories, brands, tags or pictures if given. Changing what a product on sale or a private one says is this too.', ['id' => $id, 'status' => ['description' => 'publish puts it on sale; private shows it only to the shop; draft takes it off sale.', 'enum' => self::SHOWN, 'default' => 'publish']] + $texts, ['id'], false, Tool::PUBLISHING),
             self::tool('trash_product', 'Trash product', 'Moves a product to the trash: it is no longer sold or shown; placed orders keep it. It can be restored with change_product_content, status draft.', ['id' => $id], ['id'], false, Tool::DELETING),
             self::tool('list_categories', 'List categories', 'The product categories, each with its parent, order, layout, picture and how many products it has; nothing changes.', [], [], true),
             self::tool('save_category', 'Save category', 'Adds a product category, or changes one when id is given: its name, parent, description, place in the order, layout and picture.', [
@@ -92,20 +96,20 @@ final readonly class WordPressToolSource implements ToolSource
             self::tool('delete_category', 'Delete category', 'Deletes a product category; its products stay, in their other categories.', ['id' => $id], ['id'], false, Tool::DELETING),
             self::tool('upload_image', 'Upload image', 'Puts a picture into the media library, from base64 or an address the shop fetches, and answers with its id for create_product, change_product_content and save_category.', InputSchemas::FILE + [
                 'alt' => ['description' => 'What the picture shows, for people who cannot see it.', 'type' => 'string', 'maxLength' => 500],
-            ], ['file_name'], false),
+            ], ['file_name'], false, unasked: 'a picture in the media library, shown nowhere until a product, category or page has it'),
             self::tool('list_pages', 'List the shop\'s pages', 'The shop\'s own pages, each with what it is for: the shop, cart, checkout and account pages, the legal pages the shop links to (terms, right of withdrawal, the withdrawal form, shipping and payment, legal notice), and the landing pages made with create_landing_page. The site\'s other pages are not the shop\'s; nothing changes.', [], [], true),
             self::tool('list_patterns', 'List the shop\'s patterns', 'The shop\'s block patterns for landing pages (hero, categories, sale, new arrivals, product spotlight, gift card, a whole launch page), each with its blocks, to make a page from with create_landing_page or to put into a shop page; nothing changes.', [], [], true),
             self::tool('create_landing_page', 'Create landing page', 'Makes a landing page as a draft, from the shop\'s patterns (by name, in order) and blocks or HTML after them. It is then one of the shop\'s pages: change it with change_page, put it live with publish_page. A product spotlight shows nothing until its Single product block names a product (productId).', [
                 'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 200],
                 'patterns' => ['description' => 'Pattern names from list_patterns, such as orillacart/shop-hero.', 'type' => 'array', 'items' => ['type' => 'string', 'maxLength' => 100], 'maxItems' => 20],
                 'content' => ['description' => 'Blocks or HTML after the patterns.', 'type' => 'string', 'maxLength' => 200000],
-            ], ['title'], false),
+            ], ['title'], false, unasked: 'a draft page nobody but the shop sees; publish_page, which asks, puts it live'),
             self::tool('show_page', 'Show page', 'One of the shop\'s pages with its whole text; nothing changes.', ['id' => $id], ['id'], true),
             self::tool('change_page', 'Change page', 'Changes the title or text of one of the shop\'s pages that is a draft or pending review, such as a legal draft the setup made. A published, scheduled or private page changes, or is taken down, with publish_page.', [
                 'id' => $id,
                 'title' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 200],
                 'content' => ['description' => 'The whole text, HTML or blocks; replaces what it had.', 'type' => 'string', 'maxLength' => 200000],
-            ], ['id'], false),
+            ], ['id'], false, unasked: 'a draft page nobody but the shop sees; publish_page, which asks, changes one customers see'),
             self::tool('publish_page', 'Publish page', 'Puts one of the shop\'s pages live for customers, with a new title or text if given, or takes it back to a draft (publish: false). Changing a published page\'s text is this too. Show the owner the text first: legal pages are what customers agree to.', [
                 'id' => $id,
                 'publish' => ['description' => 'true puts it live; false takes it back to a draft.', 'type' => 'boolean', 'default' => true],
@@ -121,7 +125,8 @@ final readonly class WordPressToolSource implements ToolSource
             $answer = match ($tool->name) {
                 'find_products' => $this->findProducts($arguments),
                 'create_product' => $this->createProduct($arguments),
-                'change_product_content' => $this->changeProduct($arguments),
+                'change_product_content' => $this->changeProduct($arguments, false),
+                'publish_product' => $this->changeProduct($arguments, true),
                 'trash_product' => $this->trashProduct($arguments),
                 'list_categories' => $this->categories(),
                 'save_category' => $this->saveCategory($arguments),
@@ -154,7 +159,7 @@ final readonly class WordPressToolSource implements ToolSource
      * @param array<string, array<string, mixed>> $properties
      * @param list<string>                        $required
      */
-    private static function tool(string $name, string $title, string $description, array $properties, array $required, bool $readOnly, ?string $risk = null): ToolDefinition
+    private static function tool(string $name, string $title, string $description, array $properties, array $required, bool $readOnly, ?string $risk = null, ?string $unasked = null): ToolDefinition
     {
         $schema = $properties === [] ? ['type' => 'object'] : ['type' => 'object', 'properties' => $properties];
         if ($required !== []) {
@@ -162,7 +167,7 @@ final readonly class WordPressToolSource implements ToolSource
         }
         $schema['additionalProperties'] = false;
 
-        return new ToolDefinition($name, $title, $description, $schema, $readOnly, !$readOnly && $risk !== null, $readOnly, $risk, self::AREA, Capability::MANAGE_SHOP);
+        return new ToolDefinition($name, $title, $description, $schema, $readOnly, !$readOnly && $risk !== null, $readOnly, $risk, self::AREA, Capability::MANAGE_SHOP, unasked: $unasked);
     }
 
     /**
@@ -208,10 +213,9 @@ final readonly class WordPressToolSource implements ToolSource
     private function createProduct(array $arguments): array
     {
         $name = self::requiredString($arguments, 'name', 200);
-        $status = self::optionalStatus($arguments) ?? 'draft';
         $images = self::images($arguments);
-        $id = $this->posts->create($name, $status);
-        $this->posts->change($id, self::change($arguments));
+        $id = $this->posts->create($name, 'draft');
+        $this->posts->change($id, self::change($arguments, null));
         if ($images !== null) {
             self::setImages($id, $images);
         }
@@ -224,15 +228,24 @@ final readonly class WordPressToolSource implements ToolSource
      *
      * @return array<string, mixed>
      */
-    private function changeProduct(array $arguments): array
+    private function changeProduct(array $arguments, bool $publishing): array
     {
         $id = self::productId($arguments);
         $images = self::images($arguments);
         if (isset($arguments['name'])) {
             self::requiredString($arguments, 'name', 200);
         }
-        self::optionalStatus($arguments);
-        $this->posts->change($id, self::change($arguments));
+        $status = self::optionalStatus($arguments, $publishing ? self::SHOWN : self::HIDDEN);
+        // Only a product nobody but the shop sees changes unasked: one on sale, a private one and a scheduled
+        // one (it goes on sale by itself) are publish_product's, which asks the owner first.
+        $current = get_post_status($id);
+        if (!$publishing && !\in_array($current, [...self::HIDDEN, 'trash', 'auto-draft'], true)) {
+            throw new \InvalidArgumentException(\sprintf('Product %d is %s: change_product_content changes only a draft, a product pending review or one in the trash. Change it with publish_product, which asks the owner first.', $id, \is_string($current) ? $current : 'not a draft'));
+        }
+        if ($publishing) {
+            $status ??= 'publish';
+        }
+        $this->posts->change($id, self::change($arguments, $status));
         if ($images !== null) {
             self::setImages($id, $images);
         }
@@ -388,9 +401,9 @@ final readonly class WordPressToolSource implements ToolSource
         $name = sanitize_file_name(self::requiredString($arguments, 'file_name', 200));
         $temporary = $this->files->write($arguments);
         try {
-            $type = wp_check_filetype_and_ext($temporary, $name);
-            if (!\is_string($type['type'] ?? null) || !str_starts_with($type['type'], 'image/')) {
-                throw new \InvalidArgumentException('That is not a picture WordPress takes (JPEG, PNG, GIF, WebP, AVIF): check the file and its name\'s extension.');
+            // By name and by content, whatever else the media library is let take.
+            if (AssistantImages::type($temporary, $name) === null) {
+                throw new \InvalidArgumentException('That is not a picture the assistant may add (JPEG, PNG, GIF, WebP, AVIF): check the file and its name\'s extension.');
             }
             require_once ABSPATH . 'wp-admin/includes/file.php';
             require_once ABSPATH . 'wp-admin/includes/media.php';
@@ -577,11 +590,11 @@ final readonly class WordPressToolSource implements ToolSource
     /**
      * @param array<string, mixed> $arguments
      */
-    private static function change(array $arguments): ProductPostChange
+    private static function change(array $arguments, ?string $status): ProductPostChange
     {
         return new ProductPostChange(
             isset($arguments['name']) ? self::requiredString($arguments, 'name', 200) : null,
-            self::optionalStatus($arguments),
+            $status,
             self::optionalString($arguments, 'description'),
             self::optionalString($arguments, 'short_description'),
             self::strings($arguments, 'categories'),
@@ -703,12 +716,13 @@ final readonly class WordPressToolSource implements ToolSource
 
     /**
      * @param array<string, mixed> $arguments
+     * @param list<string>         $allowed   the states the tool may give
      */
-    private static function optionalStatus(array $arguments): ?string
+    private static function optionalStatus(array $arguments, array $allowed): ?string
     {
         $status = self::optionalString($arguments, 'status');
-        if ($status !== null && !\in_array($status, self::STATUSES, true)) {
-            throw new \InvalidArgumentException('status is one of ' . implode(', ', self::STATUSES) . '.');
+        if ($status !== null && !\in_array($status, $allowed, true)) {
+            throw new \InvalidArgumentException('status is one of ' . implode(', ', $allowed) . '.');
         }
 
         return $status;

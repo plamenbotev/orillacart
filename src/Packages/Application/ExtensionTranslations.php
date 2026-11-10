@@ -78,6 +78,7 @@ final class ExtensionTranslations
             $setting->required,
             $this->word($extension, $setting->help),
             array_map(fn(string $label): string => $this->word($extension, $label), $setting->choices),
+            $setting->goesWith,
         ), array_values($settings));
     }
 

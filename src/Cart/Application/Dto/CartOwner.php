@@ -13,6 +13,7 @@ final readonly class CartOwner
     public const string COOKIE = 'orillacart_cart';
 
     public function __construct(
+        #[\SensitiveParameter]
         public ?string $token,
         public ?int $customerId = null,
     ) {}

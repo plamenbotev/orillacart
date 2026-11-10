@@ -76,28 +76,33 @@ final class InvoicesTest extends TestCase
 
         $documents = $this->shop->invoices->ofOrder($order->number);
         self::assertSame(['INV-2026-00001', 'CN-2026-00001'], self::numbers($documents));
-        $credit = $this->shop->invoices->document('CN-2026-00001', $this->shop->receipts->issue($order->number));
+        $credit = $this->shop->invoices->document('CN-2026-00001', $this->shop->invoiceKeys->issue('CN-2026-00001'));
         self::assertSame(['credit_note', '8', 'INV-2026-00001', [['line' => 0, 'quantity' => 1]]], [$credit->invoice->kind, $credit->invoice->amount, $credit->corrects, $credit->lines]);
         self::assertSame('BG123456789', $credit->seller['vat_number']);
     }
 
-    public function testADocumentKeepsTheSellerAsItWasAndOpensOnlyWithAWorkingLinkToItsOrder(): void
+    public function testADocumentKeepsTheSellerAsItWasAndOpensOnlyWithItsOwnWorkingKey(): void
     {
-        $order = $this->place();
+        $order = $this->place(2);
         $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->refunds->refund($order->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Holding Ltd'));
-        $key = $this->shop->receipts->issue($order->number);
+        $key = $this->shop->invoiceKeys->issue('INV-2026-00001');
 
         $document = $this->shop->invoices->document('INV-2026-00001', $key);
-        self::assertSame(['Lamps Ltd', '8'], [$document->seller['legal_name'], $document->invoice->amount]);
-        self::assertSame("https://shop.test/?orillacart_invoice=INV-2026-00001&receipt={$key}", $document->invoice->url);
+        self::assertSame(['Lamps Ltd', '16'], [$document->seller['legal_name'], $document->invoice->amount]);
+        self::assertSame("https://shop.test/?orillacart_invoice=INV-2026-00001&key={$key}", $document->invoice->url);
 
-        $other = $this->shop->receipts->issue($order->number + 1);
-        $this->shop->clock->modify('+90 days');
-        foreach (['1-1-' . str_repeat('0', 32), $other, $key] as $refused) {
+        $receipt = $this->shop->receipts->issue($order->number);
+        self::assertStringNotContainsString($receipt, $document->invoice->url, 'an invoice link carries no key to its receipt');
+        $other = $this->shop->invoiceKeys->issue('CN-2026-00001');
+        $this->shop->clock->modify('+89 days');
+        $this->shop->invoices->document('INV-2026-00001', $key);
+        $this->shop->clock->modify('+1 day');
+        foreach (['1-' . str_repeat('0', 32), $receipt, $other, $key] as $refused) {
             try {
                 $this->shop->invoices->document('INV-2026-00001', $refused);
-                self::fail("{$refused} opens no other order's invoice, and none once expired");
+                self::fail("{$refused} opens no other document, its receipt's token none at all, and none once expired");
             } catch (InvoiceNotFound) {
             }
         }
@@ -107,7 +112,7 @@ final class InvoicesTest extends TestCase
     {
         $order = $this->place(2);
         $this->shop->orders->markPaidByShop($order->number, '', 7);
-        $key = $this->shop->receipts->issue($order->number);
+        $key = $this->shop->invoiceKeys->issue('INV-2026-00001');
 
         $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document('INV-2026-00001', $key), 'locale' => 'en-US']);
 

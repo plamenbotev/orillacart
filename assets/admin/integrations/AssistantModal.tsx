@@ -77,6 +77,13 @@ const RISKS = [
 			'orillacart'
 		),
 	},
+	{
+		value: 'changes',
+		label: __(
+			"Something else in the shop changes: currency rates, gift card dates, add-ons' tools",
+			'orillacart'
+		),
+	},
 ];
 
 interface Props {

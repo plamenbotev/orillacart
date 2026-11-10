@@ -106,7 +106,7 @@ final readonly class FormUploads
                 throw self::refused('This field takes %s files.', implode(', ', array_map(static fn(string $type): string => strtoupper(self::EXTENSIONS[$type] ?? $type), $takes)));
             }
             try {
-                $clean = $this->inspector->clean($command->temporaryPath, $type);
+                $clean = $this->inspector->clean($command->temporaryPath, $type, $field->pdfLinks);
             } catch (FormRuleViolation $e) {
                 throw self::refused($e->text);
             }
@@ -260,11 +260,16 @@ final readonly class FormUploads
         $this->uploads->remove($upload);
     }
 
-    /** The sender's address as a hash: an IPv6 address by its /64 network, which one machine can fill. */
+    /**
+     * The sender's address as a hash: an IPv6 address by its /64 network, which one machine can fill; an IPv4
+     * address written as IPv6 (`::ffff:a.b.c.d`) as the IPv4 address it is, not one /64 for every IPv4 sender.
+     */
     private static function sender(string $address): string
     {
         $packed = @inet_pton($address);
-        if ($packed !== false && \strlen($packed) === 16) {
+        if ($packed !== false && \strlen($packed) === 16 && str_starts_with($packed, str_repeat("\0", 10) . "\xff\xff")) {
+            $address = (string) inet_ntop(substr($packed, 12));
+        } elseif ($packed !== false && \strlen($packed) === 16) {
             $address = bin2hex(substr($packed, 0, 8)) . '::/64';
         }
 

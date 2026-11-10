@@ -33,7 +33,7 @@ final readonly class NewsletterUnsubscribeLinks implements UnsubscribeLinks
         return add_query_arg([self::PARAMETER => rawurlencode($email), 'sig' => $this->signatures->sign(self::SIGNATURE, $email)], home_url('/'));
     }
 
-    public function verify(string $email, string $signature): bool
+    public function verify(string $email, #[\SensitiveParameter] string $signature): bool
     {
         return $this->signatures->verify(self::SIGNATURE, Subscriber::normalize($email), $signature);
     }

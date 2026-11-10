@@ -1,5 +1,5 @@
 import apiFetch from '@wordpress/api-fetch';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { reportText, type Status } from '../api';
 import { StatusScreen } from '../StatusScreen';
@@ -86,6 +86,74 @@ describe( 'StatusScreen', () => {
 		await screen.findByText(
 			'An email could not be sent: SMTP connect() failed.'
 		);
+	} );
+
+	it( 'asks whose the downloads folder is after the site moved or was copied', async () => {
+		const posted: unknown[] = [];
+		let claim: string | null = 'elsewhere';
+		mockedFetch.mockImplementation( ( options ) => {
+			const path = String( options.path );
+			if ( path === '/orillacart/v1/download-storage/answer' ) {
+				posted.push( options.data );
+				claim = null;
+			}
+			if ( path.startsWith( '/orillacart/v1/download-storage' ) ) {
+				return Promise.resolve( {
+					location: 'outside_web_root',
+					directory: '/srv/orillacart-downloads/abc-site-1',
+					reachable: null,
+					nginx_rule: '',
+					claim,
+				} );
+			}
+			if ( path.startsWith( '/orillacart/v1/problems' ) ) {
+				return Promise.resolve( {
+					problems: [],
+					total: 0,
+					page: 1,
+					per_page: 50,
+				} );
+			}
+			if ( path.startsWith( '/orillacart/v1/change-log' ) ) {
+				return Promise.resolve( {
+					records: [],
+					total: 0,
+					page: 1,
+					pages: 1,
+					areas: [],
+				} );
+			}
+			return Promise.resolve( {
+				checks: [
+					{
+						id: 'downloads',
+						check: 'The shop’s download files',
+						status: claim === null ? 'good' : 'critical',
+						finding:
+							claim === null
+								? 'The shop’s download files are private'
+								: 'The shop does not know the downloads folder as its own',
+						description: '',
+						action_url: '',
+						action_label: '',
+					},
+				],
+				sections: [],
+			} );
+		} );
+
+		render( <StatusScreen /> );
+
+		const adopt = await screen.findByRole( 'button', {
+			name: 'The site moved: adopt the folder',
+		} );
+		screen.getByRole( 'button', {
+			name: 'This is a copy: start a new folder',
+		} );
+		fireEvent.click( adopt );
+
+		await screen.findByText( 'The shop’s download files are private' );
+		expect( posted ).toEqual( [ { answer: 'adopt' } ] );
 	} );
 
 	it( 'writes the report as plain text', () => {

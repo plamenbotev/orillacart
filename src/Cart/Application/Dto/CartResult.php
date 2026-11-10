@@ -11,6 +11,7 @@ final readonly class CartResult
 {
     public function __construct(
         public CartView $cart,
+        #[\SensitiveParameter]
         public ?string $newToken,
     ) {}
 }

@@ -13,6 +13,7 @@ import {
 	fetchGroups,
 } from './api';
 import { CustomerCard } from './CustomerCard';
+import { InvitationsSection } from './InvitationsSection';
 import { money } from '../orders/labels';
 import { useLatest } from '../shared/useLatest';
 import { shopDate } from '../shared/dates';
@@ -70,11 +71,14 @@ export function CustomersScreen() {
 	const [ groups, setGroups ] = useState< CustomerGroup[] >( [] );
 	const [ error, setError ] = useState< string | null >( null );
 
-	const fail = ( failure: unknown ) => setError( errorMessage( failure ) );
+	const fail = useCallback(
+		( failure: unknown ) => setError( errorMessage( failure ) ),
+		[]
+	);
 
 	useEffect( () => {
 		fetchGroups().then( setGroups ).catch( fail );
-	}, [] );
+	}, [ fail ] );
 	const latest = useLatest();
 	const load = useCallback( () => {
 		latest(
@@ -86,7 +90,7 @@ export function CustomersScreen() {
 		)
 			.then( setPage )
 			.catch( fail );
-	}, [ view, latest ] );
+	}, [ view, latest, fail ] );
 	useEffect( load, [ load ] );
 	// The row opened is the list's: it has no extensions' fields, which only the record's own view carries. The
 	// whole customer is read when one is opened, and again after a save answered without them.
@@ -105,7 +109,7 @@ export function CustomersScreen() {
 		return () => {
 			current = false;
 		};
-	}, [ selected, latest ] );
+	}, [ selected, latest, fail ] );
 
 	if ( selected !== null ) {
 		return (
@@ -182,6 +186,7 @@ export function CustomersScreen() {
 					/>
 				}
 			/>
+			<InvitationsSection onError={ fail } />
 		</Page>
 	);
 }

@@ -9,12 +9,14 @@ use OrillaCart\Reviews\Application\Reviews;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Sets who may review products: no one, anyone, or only buyers. */
+#[Tool(unasked: 'settings')]
 #[Route('/review-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateReviewSettingsAction implements RequestHandlerInterface
 {

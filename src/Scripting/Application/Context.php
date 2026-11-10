@@ -101,6 +101,20 @@ final class Context
         return ($function->callable)($this, ...$captured, ...$args);
     }
 
+    /**
+     * A host function that sends mail as well as what it counts as (an order placed with the customer emailed):
+     * the extension needs `email:send`, and the mail counts against the run's emails as shop.email.send's does.
+     */
+    public function mails(string $name): void
+    {
+        if (!$this->grant->allows('email:send')) {
+            throw new ScriptError(\sprintf('"%s" emails only with the permission "email:send", which the extension was not granted', $name));
+        }
+        if (++$this->emails > $this->budget->emails) {
+            throw new BudgetExceeded(\sprintf('The script sent more than %d emails', $this->budget->emails));
+        }
+    }
+
     private function allow(HostFunction $function): void
     {
         if ($function->needs !== null && !$this->grant->allows($function->needs)) {

@@ -13,7 +13,7 @@ final readonly class GiftCardCode implements \Stringable
     private const string ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     private const int LENGTH = 16;
 
-    private function __construct(private string $code) {}
+    private function __construct(#[\SensitiveParameter] private string $code) {}
 
     public static function generate(): self
     {

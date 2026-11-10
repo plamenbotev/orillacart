@@ -14,7 +14,7 @@ final readonly class DoctrineDownloadGrantRepository implements DownloadGrantRep
 {
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function findByToken(string $token): ?DownloadGrant
+    public function findByToken(#[\SensitiveParameter] string $token): ?DownloadGrant
     {
         return $this->entityManager->getRepository(DownloadGrant::class)->findOneBy(['token' => $token]);
     }
@@ -34,9 +34,9 @@ final readonly class DoctrineDownloadGrantRepository implements DownloadGrantRep
     public function resume(DownloadGrant $grant, string $by, int $least = \PHP_INT_MAX, int $until = 0): bool
     {
         // Where it was sent to is read in the statement: a resume asked for while the download is still going
-        // finds it sent to its end.
+        // finds it sent to its end. It only grows: a short range must not move it back towards the start.
         $changed = $this->entityManager->createQuery(
-            'UPDATE ' . DownloadGrant::class . ' g SET g.resumesLeft = g.resumesLeft - 1, g.sentUntil = :until WHERE g.id = :id AND g.resumesLeft > 0 AND g.lastDownloadedBy = :by AND g.sentUntil <= :least',
+            'UPDATE ' . DownloadGrant::class . ' g SET g.resumesLeft = g.resumesLeft - 1, g.sentUntil = CASE WHEN g.sentUntil < :until THEN :until ELSE g.sentUntil END WHERE g.id = :id AND g.resumesLeft > 0 AND g.lastDownloadedBy = :by AND g.sentUntil <= :least',
         )->setParameter('id', $grant->id())->setParameter('by', $by)->setParameter('least', $least)->setParameter('until', $until)->execute();
         $this->entityManager->refresh($grant);
 

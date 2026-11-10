@@ -32,7 +32,8 @@ use OrillaCart\Tax\Application\Dto\TaxAddress;
 /**
  * Paying an order later, from its receipt: one waiting for its money (an offline payment the customer would
  * rather make online, a provider page they closed) or one whose payment failed. The customer may choose any
- * method the shop offers for the billing country; the order then waits for that payment. A failed order is paid only
+ * method the shop offers for the billing country; the order then waits for that payment. Not while a payment of it
+ * is held for the shop to check: that one may have taken the money. A failed order is paid only
  * within the payment window of its last try, and only as the shop would still sell it (checkStillSo()).
  */
 final readonly class PayNow
@@ -56,7 +57,7 @@ final readonly class PayNow
      */
     public function methods(OrderView $order): array
     {
-        if (!$order->payable || Money::of($order->total)->isZero()) {
+        if (!$order->payable || Money::of($order->total)->isZero() || $this->payments->isHeld($order->number)) {
             return [];
         }
         $decimals = $this->currencies->decimals($order->currency);
@@ -89,7 +90,8 @@ final readonly class PayNow
     public function pay(string $receipt, PayOrder $command): PlacedOrderView
     {
         $order = $this->orders->byReceipt($receipt);
-        if (!$order->payable) {
+        // A payment held for the shop to check may have taken the money: paying again could take it twice.
+        if (!$order->payable || $this->payments->isHeld($order->number)) {
             throw new CheckoutRuleViolation('This order cannot be paid now.', 'orillacart_order_not_payable');
         }
         if (!\in_array($command->payment, array_map(static fn(PaymentOptionView $method): string => $method->gateway, $this->methods($order)), true)) {
@@ -132,9 +134,10 @@ final readonly class PayNow
     }
 
     /**
-     * A failed order is paid as it was placed only while the shop would still sell it so: its items priced again
-     * now come to what the order says, and each of its coupons still holds (on, not ended, a first order's still
-     * the first, the order still its least). Otherwise the customer orders again from the shop.
+     * A failed order is paid as it was placed only while the shop would still sell it so: priced again now, its
+     * items, their tax, and its shipping and the tax on it come to what the order says, and each of its coupons
+     * still holds (on, not ended, a first order's still the first, the order still its least). Otherwise the
+     * customer orders again from the shop.
      *
      * @throws CheckoutRuleViolation
      */
@@ -162,7 +165,7 @@ final readonly class PayNow
         $address = static fn(AddressData $address): TaxAddress => new TaxAddress($address->country, $address->state, $address->postcode, $address->city, $address->street);
         $shipping = $address($order->shippingAddress ?? $order->billing);
         try {
-            $priced = $this->pricing->price($items, $shipping, $address($order->billing), null, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, currency: $order->currency, automatic: $automatic, itemsOnly: true);
+            $priced = $this->pricing->price($items, $shipping, $address($order->billing), $order->shippingOption, $shipping->postcode, $codes, $order->customerId, $order->email, $order->number, $order->reverseCharge, currency: $order->currency, automatic: $automatic);
         } catch (CheckoutRuleViolation $e) {
             throw new CheckoutRuleViolation('Some of the items sold out or are no longer sold: this order cannot be paid any more. Order them again from the shop.', 'orillacart_out_of_stock', $e);
         }
@@ -176,7 +179,11 @@ final readonly class PayNow
         $decimals = $this->currencies->decimals($order->currency);
         $now = array_reduce($priced['lines'], static fn(Money $sum, array $line): Money => $sum->add($line['total'])->subtract($line['discount']), Money::zero());
         $then = array_reduce($order->lines, static fn(Money $sum, OrderLineView $line): Money => $sum->add(Money::of($line->total))->subtract(Money::of($line->discount)), Money::zero());
-        if ($now->rounded($decimals)->compare($then->rounded($decimals)) !== 0) {
+        $same = static fn(Money $now, string $then): bool => $now->rounded($decimals)->compare(Money::of($then)->rounded($decimals)) === 0;
+        $bill = $priced['bill'];
+        // Shipped the way it was: the rate is still offered, at what it cost; and the tax is still what it was.
+        $shipped = $order->shippingOption === null || ($priced['chosen']?->id === $order->shippingOption && $same($bill->shipping(), $order->shippingTotal) && $same($bill->shippingTax(), $order->shippingTax));
+        if ($now->rounded($decimals)->compare($then->rounded($decimals)) !== 0 || !$same($bill->itemsTax(), $order->itemsTax) || !$shipped) {
             throw new CheckoutRuleViolation('The prices changed since the payment of this order failed, so it cannot be paid any more. Order again from the shop.', 'orillacart_order_not_payable');
         }
     }

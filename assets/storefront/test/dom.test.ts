@@ -22,6 +22,19 @@ describe( 'reloading a region', () => {
 		window.fetch = answering( region( '20.00' ) );
 	} );
 
+	it( "fetches only the shop's own pages", async () => {
+		document.body.innerHTML = region( '10.00' );
+
+		await expect(
+			reloadRegions( [ 'summary' ], 'https://elsewhere.test/cart/' )
+		).rejects.toThrow( 'own pages' );
+
+		expect( window.fetch ).not.toHaveBeenCalled();
+		expect( document.querySelector( '.total' )?.textContent ).toBe(
+			'10.00'
+		);
+	} );
+
 	it( 'keeps what the customer is typing, and the caret', async () => {
 		document.body.innerHTML = region( '10.00' );
 		const typed = document.querySelector( '#coupon' ) as HTMLInputElement;

@@ -20,6 +20,9 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\ShopperCurrency;
  */
 final class CheckoutRestTest extends RestTestCase
 {
+    /** The signature the fake PayPal says it made. */
+    private const string GENUINE = 'Z2VudWluZQ' . 'Z2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQZ2VudWluZQ';
+
     /** @var list<int> */
     private array $posts = [];
     /** @var list<array{method: string, url: string, body: string, headers: array<array-key, mixed>}> */
@@ -482,19 +485,25 @@ final class CheckoutRestTest extends RestTestCase
 
     public function testPayPalWebhooksAreReadOnlyWhenPayPalSignedThem(): void
     {
+        $this->expectOutputRegex('/WARNING: A PayPal webhook was refused: /');
         $this->keepCookie($this->request('POST', '/cart/items', ['product_id' => $this->product], nonce: true));
         $order = $this->data($this->request('POST', '/checkout', $this->order('paypal'), nonce: true));
 
         $forged = new \WP_REST_Request('POST', self::NAMESPACE . '/payments/paypal/webhook');
         $forged->set_header('Content-Type', 'application/json');
-        $forged->set_header('PayPal-Transmission-Sig', 'forged');
+        // The five headers in PayPal's shape; its certificate cannot be had here, so the shop asks PayPal.
+        $forged->set_header('PayPal-Transmission-Id', 'T-1');
+        $forged->set_header('PayPal-Transmission-Time', gmdate('Y-m-d\\TH:i:s\\Z'));
+        $forged->set_header('PayPal-Cert-Url', 'https://api-m.sandbox.paypal.com/v1/notifications/certs/CERT-1');
+        $forged->set_header('PayPal-Auth-Algo', 'SHA256withRSA');
+        $forged->set_header('PayPal-Transmission-Sig', str_repeat('Zm9yZ2Vk', 20));
         $forged->set_body((string) wp_json_encode(['event_type' => 'CHECKOUT.ORDER.APPROVED', 'resource' => ['id' => 'PAY-1']]));
         $response = rest_do_request($forged);
 
         self::assertSame(400, $response->get_status(), 'not from PayPal: a bad request, not one to send again');
         self::assertSame('pending_payment', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
 
-        $forged->set_header('PayPal-Transmission-Sig', 'genuine');
+        $forged->set_header('PayPal-Transmission-Sig', self::GENUINE);
         self::assertSame(200, rest_do_request($forged)->get_status());
         self::assertSame('processing', $this->data($this->request('GET', "/receipts/{$this->key($order)}"))['status']);
     }
@@ -708,7 +717,7 @@ final class CheckoutRestTest extends RestTestCase
                 ['id' => 'CAP-1', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '38.33']],
             ]]]]],
             $path === '/v2/payments/captures/CAP-1/refund' => ['id' => 'RF-1', 'status' => 'COMPLETED'],
-            $path === '/v1/notifications/verify-webhook-signature' => ['verification_status' => str_contains($body, '"transmission_sig":"genuine"') ? 'SUCCESS' : 'FAILURE'],
+            $path === '/v1/notifications/verify-webhook-signature' => ['verification_status' => str_contains($body, '"transmission_sig":"' . self::GENUINE . '"') ? 'SUCCESS' : 'FAILURE'],
             default => null,
         };
 

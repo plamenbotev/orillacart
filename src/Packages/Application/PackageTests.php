@@ -14,15 +14,19 @@ use OrillaCart\Scripting\Application\Dto\TestResult;
 use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Application\ScriptTests;
+use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Security\ReadOnlyRequest;
 
 /**
- * An extension's own tests, run against the shop with everything the `needs` ask for granted, whether or not the
- * extension is enabled: its records and field values are rolled back after each test, its HTTP calls answered
+ * An extension's own tests, run against the shop whether or not the extension is enabled. The shop's own functions
+ * hold to what a manager granted when enabling it (nothing, for one never enabled or since disabled); what the
+ * files declare beyond that reaches only the stand-ins, which reach no one. A test reads only the settings it
+ * gives itself, never the stored ones, so no stored secret can be read or carried out by a test. Its records and field values are rolled back after each test, its HTTP calls answered
  * from the test's map, its jobs recorded, its mail held and its orders placed as test orders (never sent, never
  * invoiced), so files sent with the request reach no one. Files sent with the request stand in for the saved ones, so an editor
- * tests what is on screen. On a request that may only read (a read-only key), every function that writes refuses
- * in the tests too, as in the extension's runs: the HTTP answers and the jobs, which only record, aside.
+ * tests what is on screen. On a request that may only read (a read-only key), files cannot be sent, and every
+ * function that writes refuses in the tests too, as in the extension's runs: the HTTP answers and the jobs, which
+ * only record, aside.
  */
 final readonly class PackageTests
 {
@@ -43,6 +47,10 @@ final readonly class PackageTests
     public function run(string $slug, ?array $files = null): array
     {
         $package = $this->packages->find($slug) ?? throw new PackageNotFound($slug);
+        $readOnly = $this->readOnly?->readOnly() === true;
+        if ($readOnly && $files !== null) {
+            throw new HttpException(403, 'orillacart_read_only_key', 'This API key only reads: it tests the saved files, not files sent with the request.');
+        }
         $scripts = [];
         if ($files === null) {
             foreach ($package->scripts() as $file) {
@@ -64,11 +72,11 @@ final readonly class PackageTests
             throw new PackageRuleViolation('The extension does not compile: %s', 'orillacart_extension_does_not_compile', values: [implode('; ', $findings)]);
         }
         $manifest = PackageManifest::ofClass($this->scripts->load($source, $scope)::class);
-        $grant = new Grant($slug, $manifest->needs(), $manifest->hosts(), $package->settings());
+        $grant = new Grant($slug, array_values(array_intersect($manifest->needs(), $package->granted())), $manifest->hosts());
         $this->definitions->use($slug, $manifest);
         try {
-            $narrow = $this->readOnly?->readOnly() === true ? static fn(HostCatalog $host): HostCatalog => ScriptRunner::readingOnly($host, ScriptTests::RECORDED) : null;
-            $results = $this->tests->run($source, $scope, $grant, fn(callable $one): TestResult => $this->objects->isolated($one), $narrow);
+            $narrow = $readOnly ? static fn(HostCatalog $host): HostCatalog => ScriptRunner::readingOnly($host, ScriptTests::RECORDED) : null;
+            $results = $this->tests->run($source, $scope, $grant, fn(callable $one): TestResult => $this->objects->isolated($one), $narrow, $manifest->needs());
         } finally {
             $this->definitions->forget($slug);
         }

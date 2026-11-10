@@ -47,6 +47,8 @@ export interface FormField {
 	condition: { field: string; values: string[] } | null;
 	types: string[];
 	largest: number;
+	/** A PDF it takes may hold links to web addresses. */
+	pdf_links: boolean;
 	/** Its label, help and placeholder in the site's other languages, by part. */
 	translations?: Partial<
 		Record< 'label' | 'help' | 'placeholder', FieldTranslations >
@@ -105,6 +107,7 @@ export function newField( kind: FieldKind = 'text' ): FormField {
 		condition: null,
 		types: [ ...FILE_TYPES ],
 		largest: 10,
+		pdf_links: false,
 	};
 }
 

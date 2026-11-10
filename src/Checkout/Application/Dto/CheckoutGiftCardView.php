@@ -13,6 +13,7 @@ final readonly class CheckoutGiftCardView
 {
     public function __construct(
         /** As the customer entered it; null for store credit. */
+        #[\SensitiveParameter]
         public ?string $code,
         /** "Gift card ····7KQ2", or "Store credit". */
         public Text|string $label,

@@ -141,7 +141,7 @@ final class CouponProgressTest extends TestCase
     public function testTheSmallestOrderIsInTheCartsCurrency(): void
     {
         $coupon = self::coupon(new CouponTerms('BIG', CouponKind::Percent, Money::of('10'), minSubtotal: Money::of('50')));
-        $progress = $coupon->progress(new Basket([self::lamp(1)], 'BGN', rate: '2'));
+        $progress = $coupon->progress(new Basket([self::lamp(1)], 'BGN', '2'));
 
         self::assertSame(['100', '80'], [(string) $progress?->threshold, (string) $progress?->short()]);
     }
@@ -202,9 +202,9 @@ final class CouponProgressTest extends TestCase
         self::assertFalse($ok($usedUp->terms(), coupon: $usedUp), 'used up');
         self::assertFalse($ok(new CouponTerms('EACH', CouponKind::Percent, Money::of('10'), perCustomerLimit: 2), uses: 2), 'this customer used it up');
         self::assertTrue($ok(new CouponTerms('EACH', CouponKind::Percent, Money::of('10'), perCustomerLimit: 2), uses: 1));
-        self::assertFalse($ok(new CouponTerms('HELLO', CouponKind::Percent, Money::of('10'), firstOrderOnly: true), new Basket([self::lamp(1)], 'EUR', firstOrder: false)), 'one who ordered before');
-        self::assertFalse($ok(new CouponTerms('DE', CouponKind::Percent, Money::of('10'), countries: ['DE']), new Basket([self::lamp(1)], 'EUR', 'BG')), 'another country');
-        self::assertTrue($ok(new CouponTerms('DE', CouponKind::Percent, Money::of('10'), countries: ['DE']), new Basket([self::lamp(1)], 'EUR')), 'a country not known yet');
+        self::assertFalse($ok(new CouponTerms('HELLO', CouponKind::Percent, Money::of('10'), firstOrderOnly: true), new Basket([self::lamp(1)], 'EUR', '1', firstOrder: false)), 'one who ordered before');
+        self::assertFalse($ok(new CouponTerms('DE', CouponKind::Percent, Money::of('10'), countries: ['DE']), new Basket([self::lamp(1)], 'EUR', '1', 'BG')), 'another country');
+        self::assertTrue($ok(new CouponTerms('DE', CouponKind::Percent, Money::of('10'), countries: ['DE']), new Basket([self::lamp(1)], 'EUR', '1')), 'a country not known yet');
         self::assertTrue($ok(new CouponTerms('BIG', CouponKind::Percent, Money::of('10'), minSubtotal: Money::of('500'))), 'what the cart lacks is progress, not a refusal');
     }
 
@@ -242,7 +242,7 @@ final class CouponProgressTest extends TestCase
 
     private static function basket(BasketLine ...$lines): Basket
     {
-        return new Basket(array_values($lines), 'EUR');
+        return new Basket(array_values($lines), 'EUR', '1');
     }
 
     private static function lamp(int $quantity, bool $onSale = false): BasketLine

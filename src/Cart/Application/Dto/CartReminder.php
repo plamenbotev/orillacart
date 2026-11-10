@@ -17,6 +17,7 @@ final readonly class CartReminder
         public ?int $customerId,
         public CartView $cart,
         /** Null for a customer's cart: they log in to it. */
+        #[\SensitiveParameter]
         public ?string $recoverToken,
     ) {}
 }

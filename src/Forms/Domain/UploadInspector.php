@@ -16,9 +16,11 @@ interface UploadInspector
      * A copy safe to keep, at a new path: a picture decoded and written again (nothing hidden in it, no metadata),
      * a PDF as it is once nothing in it asks to run.
      *
+     * @param bool $links a PDF may hold links to web addresses, as the field takes them
+     *
      * @throws FormRuleViolation with what is wrong with the file
      */
-    public function clean(string $path, string $type): string;
+    public function clean(string $path, string $type, bool $links = false): string;
 
     /** Types can be read from content: fileinfo is there. Without, no file is taken. */
     public function readsTypes(): bool;

@@ -22,7 +22,7 @@ final readonly class WordPressStripeApi implements StripeApi
 
     public function __construct(private LoggerInterface $logger) {}
 
-    public function request(string $secretKey, string $method, string $path, array $params = [], ?string $idempotencyKey = null): array
+    public function request(#[\SensitiveParameter] string $secretKey, string $method, string $path, array $params = [], ?string $idempotencyKey = null): array
     {
         $url = self::BASE . $path;
         $body = http_build_query($params, '', '&', PHP_QUERY_RFC1738);

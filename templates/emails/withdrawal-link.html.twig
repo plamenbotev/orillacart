@@ -1,0 +1,15 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To the order's own address, when someone asked on the withdrawal page to withdraw from it: the link that opens
+ # its withdrawal. number: the order's; link; asked_at: ISO 8601, when it was asked for, which the withdrawal counts
+ # as declared at.
+ #}
+{# translators: 1: site name, 2: order number -#}
+{% block subject %}{{ __('[%1$s] Withdraw from order #%2$s')|format(site_name, number) }}{% endblock %}
+{% block heading %}{{ __('Withdraw from your order') }}{% endblock %}
+{# translators: %s: date and time -#}
+{% block intro %}<p>{{ __('Someone, we hope you, asked on %s to withdraw from order #%s. Follow the link to choose what you withdraw from and confirm it: the withdrawal counts as sent when it was asked for.')|format(asked_at|date('Y-m-d H:i T'), number) }}</p>{% endblock %}
+{% block content %}
+<p><a href="{{ link }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Withdraw from the order') }}</a></p>
+<p style="color:#71717a;font-size:13px;">{{ __('The link works for 7 days. If you did not ask, ignore this email: nothing changes.') }}</p>
+{% endblock %}

@@ -18,8 +18,8 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** The shop saves a new address in a customer's address book, or changes one. */
-#[Tool(path: '/customers/{id}/addresses', name: 'add_customer_address')]
-#[Tool(path: '/customers/{id}/addresses/{address}', name: 'change_customer_address')]
+#[Tool(path: '/customers/{id}/addresses', name: 'add_customer_address', unasked: 'an address on a customer\'s account, nobody told')]
+#[Tool(path: '/customers/{id}/addresses/{address}', name: 'change_customer_address', unasked: 'an address on a customer\'s account, nobody told')]
 #[Route('/customers/{id}/addresses', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 #[Route('/customers/{id}/addresses/{address}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+', 'address' => AddressBook::ID_PATTERN])]
 final readonly class SaveCustomerAddressAction implements RequestHandlerInterface
@@ -34,6 +34,6 @@ final readonly class SaveCustomerAddressAction implements RequestHandlerInterfac
     {
         $address = $request->getAttribute('address');
 
-        return $this->responder->ok($this->customers->saveAddress(PathParameter::id($request), \is_string($address) ? $address : null, $this->input->body($request, SaveAddress::class)));
+        return $this->responder->ok($this->customers->saveAddressOf(PathParameter::id($request), \is_string($address) ? $address : null, $this->input->body($request, SaveAddress::class)));
     }
 }

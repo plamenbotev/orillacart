@@ -12,7 +12,7 @@ interface AccountLinks
 {
     public function accountUrl(): string;
 
-    public function confirmUrl(string $token): string;
+    public function confirmUrl(#[\SensitiveParameter] string $token): string;
 
     public function loginUrl(): string;
 

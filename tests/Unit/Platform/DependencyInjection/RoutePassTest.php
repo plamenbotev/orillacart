@@ -11,7 +11,9 @@ use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Tests\Fixtures\Http\DuplicateProductAction;
 use OrillaCart\Tests\Fixtures\Http\NotAHandlerAction;
+use OrillaCart\Tests\Fixtures\Http\OpenedSecretAction;
 use OrillaCart\Tests\Fixtures\Http\ProductAction;
+use OrillaCart\Tests\Fixtures\Http\SecretAction;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
@@ -37,6 +39,24 @@ final class RoutePassTest extends TestCase
             ],
             $routes->all(),
         );
+    }
+
+    public function testAKeyCallsWhatTheAssistantMayUnlessTheRouteSaysOtherwise(): void
+    {
+        $container = $this->container([ProductAction::class, SecretAction::class, OpenedSecretAction::class]);
+
+        new RoutePass()->process($container);
+
+        $container->getDefinition(RouteCollection::class)->setPublic(true);
+        $container->compile();
+        $routes = $container->get(RouteCollection::class);
+        self::assertInstanceOf(RouteCollection::class, $routes);
+        $keys = [];
+        foreach ($routes->all() as $route) {
+            $keys[implode(',', $route->methods) . ' ' . $route->path] = $route->keys;
+        }
+
+        self::assertSame(['POST /endpoint' => true, 'DELETE /products/{id}' => true, 'GET /products/{id}' => true, 'GET /secrets' => false], $keys);
     }
 
     public function testTwoActionsOnTheSameRouteFailTheBuild(): void

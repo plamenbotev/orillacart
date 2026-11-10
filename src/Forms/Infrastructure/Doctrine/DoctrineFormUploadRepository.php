@@ -17,7 +17,7 @@ final readonly class DoctrineFormUploadRepository implements FormUploadRepositor
         return $this->entityManager->find(FormUpload::class, $id);
     }
 
-    public function withToken(string $token): ?FormUpload
+    public function withToken(#[\SensitiveParameter] string $token): ?FormUpload
     {
         return $this->entityManager->getRepository(FormUpload::class)->findOneBy(['tokenHash' => FormUpload::hash($token)]);
     }

@@ -25,7 +25,7 @@ final readonly class TransientAuthorizationCodes implements AuthorizationCodes
         return $code;
     }
 
-    public function redeem(string $code): ?array
+    public function redeem(#[\SensitiveParameter] string $code): ?array
     {
         if (preg_match('/^oac_[a-f0-9]{48}$/', $code) !== 1) {
             return null;
@@ -40,7 +40,7 @@ final readonly class TransientAuthorizationCodes implements AuthorizationCodes
         return array_filter($grant, \is_string(...), ARRAY_FILTER_USE_KEY);
     }
 
-    public function spent(string $code): ?array
+    public function spent(#[\SensitiveParameter] string $code): ?array
     {
         if (preg_match('/^oac_[a-f0-9]{48}$/', $code) !== 1) {
             return null;

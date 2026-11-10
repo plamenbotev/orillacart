@@ -101,7 +101,7 @@ final class ScriptedAssistantTool extends ScriptedProvider implements AssistantT
             $risk = $risk['$spec'];
         }
 
-        return \is_string($risk) && \in_array($risk, [AssistantTool::MONEY, AssistantTool::DELETING, AssistantTool::CUSTOMERS, AssistantTool::OPENING, AssistantTool::PUBLISHING], true) ? $risk : null;
+        return \is_string($risk) && \in_array($risk, [AssistantTool::MONEY, AssistantTool::DELETING, AssistantTool::CUSTOMERS, AssistantTool::OPENING, AssistantTool::PUBLISHING, AssistantTool::CHANGES], true) ? $risk : null;
     }
 
     public function run(array $arguments, ToolCall $call): ?array

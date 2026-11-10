@@ -8,6 +8,7 @@ use OrillaCart\Exchange\Application\ProductImports;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -18,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Reads a products file, a multipart upload with the file in the "file" field, ready to start.
  */
+#[Tool(unasked: 'a file for an import, which start_product_import runs')]
 #[Route('/imports/products', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class UploadProductImportAction implements RequestHandlerInterface
 {

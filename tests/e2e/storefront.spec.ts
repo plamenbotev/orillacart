@@ -875,6 +875,10 @@ test.describe( 'A visitor', () => {
 					shop.urls.cart.includes( '?' ) ? '&' : '?'
 				}${ cartLink( 'e2e-left@example.com', 'ab'.repeat( 32 ) ) }`
 			);
+			// Opening the link asks first: a mail scanner opening it does not use it up.
+			await other
+				.getByRole( 'button', { name: 'Bring back my cart' } )
+				.click();
 			await expect( other ).toHaveURL( shop.urls.cart );
 			await expect(
 				other.getByRole( 'link', { name: 'E2E Lamp' } )

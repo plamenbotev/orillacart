@@ -8,17 +8,17 @@ use OrillaCart\Invoicing\Application\InvoiceLinks;
 use OrillaCart\Invoicing\Infrastructure\WordPress\Hooks\ShowInvoice;
 
 /**
- * Invoices are pages of their own under the home address, found by number and their order's key.
+ * Invoices are pages of their own under the home address, found by number and a key of their own (InvoiceKeys).
  */
 final readonly class WordPressInvoiceLinks implements InvoiceLinks
 {
-    public function documentUrl(string $number, string $receipt): string
+    public function documentUrl(string $number, string $key): string
     {
-        return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($receipt)], home_url('/'));
+        return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($key)], home_url('/'));
     }
 
-    public function xmlUrl(string $number, string $receipt): string
+    public function xmlUrl(string $number, string $key): string
     {
-        return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($receipt), ShowInvoice::FORMAT => 'xml'], home_url('/'));
+        return add_query_arg([ShowInvoice::QUERY => rawurlencode($number), ShowInvoice::KEY => rawurlencode($key), ShowInvoice::FORMAT => 'xml'], home_url('/'));
     }
 }

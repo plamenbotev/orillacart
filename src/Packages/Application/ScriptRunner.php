@@ -37,15 +37,12 @@ final readonly class ScriptRunner
 
     /**
      * Whether a host function changes something or reaches someone: refused on a read-only request, whatever the
-     * extension says its route or tool does. `http.get` counts: its URL carries whatever the script puts in it to a
-     * host outside the shop.
+     * extension says its route or tool does. Each function declares it where it is made; one that does not is
+     * taken to write. `http.get` writes: its URL carries whatever the script puts in it to a host outside the shop.
      */
     public static function writes(HostFunction $function): bool
     {
-        return $function->counts === HostFunction::EMAIL
-            || ($function->needs !== null && (str_ends_with($function->needs, ':write') || str_ends_with($function->needs, ':create')))
-            || \in_array($function->name, ['jobs.push', 'fields.set', 'http.get', 'http.post', 'http.put', 'http.patch', 'http.delete'], true)
-            || preg_match('/^(objects\.\*\.(create|update|delete)|shop\.[a-z_]+\.(mark|unmark|create))$/', $function->name) === 1;
+        return $function->writes ?? true;
     }
 
     /**
@@ -151,7 +148,7 @@ final readonly class ScriptRunner
         foreach ($catalog->all() as $function) {
             if (self::writes($function) && !\in_array($function->name, $keep, true)) {
                 $name = $function->name;
-                $refusing[] = new HostFunction($name, static fn(): never => throw new ScriptFailure(ScriptFailure::REFUSED, \sprintf('%s changes the shop or reaches outside it, and this request may only read (a read-only key).', $name)), $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts);
+                $refusing[] = new HostFunction($name, static fn(): never => throw new ScriptFailure(ScriptFailure::REFUSED, \sprintf('%s changes the shop or reaches outside it, and this request may only read (a read-only key).', $name)), $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, writes: true);
             }
         }
 

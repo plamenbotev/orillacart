@@ -27,6 +27,8 @@ use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Jobs\TestJobs;
+use OrillaCart\Tests\Fixtures\Shared\FixedShopManagers;
+use OrillaCart\Tests\Fixtures\Shared\FixedUserNames;
 use PHPUnit\Framework\TestCase;
 
 final class WebhooksTest extends TestCase
@@ -36,6 +38,7 @@ final class WebhooksTest extends TestCase
     private InMemoryWebhooks $repository;
     private RecordingSender $sender;
     private Webhooks $webhooks;
+    private FixedShopManagers $managers;
 
     protected function setUp(): void
     {
@@ -59,14 +62,15 @@ final class WebhooksTest extends TestCase
                 return \is_array($data) ? $data : [];
             }
         };
-        $this->jobs->with(new DeliverWebhook($this->repository, new WebhookPayloads($this->shop->orders, $this->shop->products, $normalizer), $this->sender, $this->shop->clock));
-        $this->webhooks = new Webhooks($this->repository, $topics, $this->jobs->jobs, $this->shop->clock);
+        $this->managers = new FixedShopManagers([7, 8]);
+        $this->jobs->with(new DeliverWebhook($this->repository, new WebhookPayloads($this->shop->orders, $this->shop->products, $normalizer), $this->sender, $this->shop->clock, $this->managers, $this->shop->logger));
+        $this->webhooks = new Webhooks($this->repository, $topics, $this->jobs->jobs, $this->shop->clock, new FixedUserNames([7 => 'Mara', 8 => 'Ivo']), $this->managers, $this->shop->logger);
     }
 
     public function testAnEventGoesToTheWebhooksThatListenSignedWithTheirSecret(): void
     {
-        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]));
-        $this->webhooks->create(new SaveWebhook('Orders only', 'https://other.example.com/hook', [WebhookTopics::ORDER_PLACED]));
+        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]), 7);
+        $this->webhooks->create(new SaveWebhook('Orders only', 'https://other.example.com/hook', [WebhookTopics::ORDER_PLACED]), 7);
 
         $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
         $this->jobs->runAll();
@@ -86,7 +90,7 @@ final class WebhooksTest extends TestCase
 
     public function testASecretThatCannotBeReadSendsNothingUnsigned(): void
     {
-        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]));
+        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]), 7);
         $this->repository->find($hook->id)?->newSecret('');
 
         $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
@@ -98,7 +102,7 @@ final class WebhooksTest extends TestCase
 
     public function testAFailedDeliveryIsTriedAgainAndEachTryKept(): void
     {
-        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', ['loyalty.points']));
+        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', ['loyalty.points']), 7);
         $this->sender->answers = [new WebhookResponse(503, 'Busy', 12), new WebhookResponse(200, '', 8)];
 
         $this->webhooks->announce('loyalty.points', ['customer' => 7, 'points' => 50]);
@@ -117,7 +121,7 @@ final class WebhooksTest extends TestCase
 
     public function testAWebhookTurnedOffHearsNothingButItsTest(): void
     {
-        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED], active: false));
+        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED], active: false), 7);
 
         $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
         $this->webhooks->ping($hook->id);
@@ -127,9 +131,103 @@ final class WebhooksTest extends TestCase
         self::assertSame(WebhookTopics::PING, $this->sender->sent[0][2]['X-OrillaCart-Topic']);
     }
 
+    public function testAWebhookIsInTheNameOfWhoSavedItAndStopsWhenTheyNoLongerManageTheShop(): void
+    {
+        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]), 7);
+        self::assertSame([7, 'Mara'], [$hook->ownerId, $hook->owner]);
+        self::assertSame(0, $this->webhooks->ownerChanged(7), 'still a manager: nothing changes');
+
+        // Demoted with a capability a plugin took away, which no hook tells of: the next event finds out.
+        $this->managers->managers = [8];
+        $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+        $this->jobs->runAll();
+        self::assertSame([], $this->sender->sent, 'no order or customer data goes in the name of someone who left');
+        $view = $this->webhooks->all()[0];
+        self::assertSame([false, Webhook::OFF_OWNER_LEFT], [$view->active, $view->offReason]);
+        self::assertTrue(array_any($this->shop->logger->records, static fn(array $record): bool => $record['level'] === 'warning' && str_contains($record['message'], 'no longer manages the shop')), 'the shop is told');
+
+        $this->webhooks->update($hook->id, new SaveWebhook('ERP orders', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED], active: false), 8);
+        self::assertSame(Webhook::OFF_OWNER_LEFT, $this->webhooks->all()[0]->offReason, 'left off, it still says why');
+        $on = $this->webhooks->update($hook->id, new SaveWebhook('ERP orders', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]), 8);
+        self::assertSame([true, null, 8, 'Ivo'], [$on->active, $on->offReason, $on->ownerId, $on->owner], 'the manager who switched it on answers for it');
+        $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+        $this->jobs->runAll();
+        self::assertCount(1, $this->sender->sent);
+
+        // Deleted, or demoted through WordPress: switched off at once.
+        $this->managers->managers = [];
+        self::assertSame(1, $this->webhooks->ownerChanged(8));
+        self::assertSame(0, $this->webhooks->ownerChanged(8), 'off already');
+        self::assertFalse($this->webhooks->all()[0]->active);
+    }
+
+    public function testAWebhookTakenOffTheSiteWithItsManagerStopsThoughTheyStillHaveTheirRoles(): void
+    {
+        $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]), 7);
+        $this->webhooks->create(new SaveWebhook('Other', 'https://other.example.com/hook', [WebhookTopics::PRODUCT_CHANGED]), 8);
+
+        self::assertSame(1, $this->webhooks->ownerChanged(7, leaving: true));
+        self::assertSame([false, true], array_map(static fn($view): bool => $view->active, $this->webhooks->all()));
+    }
+
+    public function testAWebhookWhoseEventsFailInARowIsSwitchedOffAndTheShopIsTold(): void
+    {
+        $hook = $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED], failureLimit: 2), 7);
+        $this->sender->always = new WebhookResponse(null, 'Could not connect', 3);
+
+        $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+        $this->drain();
+        self::assertSame([true, 1], [$this->webhooks->all()[0]->active, $this->webhooks->all()[0]->failedInARow], 'one event failed after every try');
+        $this->webhooks->ping($hook->id);
+        $this->drain();
+        self::assertSame(1, $this->webhooks->all()[0]->failedInARow, 'a test does not count');
+
+        $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+        $this->drain();
+        $view = $this->webhooks->all()[0];
+        self::assertSame([false, Webhook::OFF_FAILING, 2], [$view->active, $view->offReason, $view->failedInARow]);
+        self::assertTrue(array_any($this->shop->logger->records, static fn(array $record): bool => $record['level'] === 'error' && str_contains($record['message'], 'was switched off')), 'the shop is told');
+        $sent = \count($this->sender->sent);
+        $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+        $this->drain();
+        self::assertCount($sent, $this->sender->sent, 'a dead address is not tried for every event forever');
+
+        $this->sender->always = null;
+        $on = $this->webhooks->update($hook->id, new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED], failureLimit: 2), 7);
+        self::assertSame([true, 0, null], [$on->active, $on->failedInARow, $on->offReason], 'switched on, it starts again');
+    }
+
+    public function testAnEventTakenStartsTheCountOfFailedOnesAgainAndALimitOfNoneNeverSwitchesOff(): void
+    {
+        $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED], failureLimit: 0), 7);
+        $this->sender->always = new WebhookResponse(500, 'Down', 3);
+        foreach ([1, 2, 3] as $event) {
+            $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+            $this->drain();
+        }
+        self::assertSame([true, 3], [$this->webhooks->all()[0]->active, $this->webhooks->all()[0]->failedInARow]);
+
+        $this->sender->always = null;
+        $this->webhooks->announce(WebhookTopics::PRODUCT_CHANGED, ['product' => 20]);
+        $this->drain();
+        self::assertSame(0, $this->webhooks->all()[0]->failedInARow);
+
+        $this->expectException(IntegrationRuleViolation::class);
+        $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::PRODUCT_CHANGED], failureLimit: -1), 7);
+    }
+
+    /** Runs the queue until every job is done or failed, each retry's wait passed. */
+    private function drain(): void
+    {
+        for ($i = 0; $i < 10; ++$i) {
+            $this->jobs->runAll();
+            $this->shop->clock->sleep(6 * 3600);
+        }
+    }
+
     public function testTheShopsEventsAreQueuedForWebhooksInsideTheirTransaction(): void
     {
-        $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::ORDER_PLACED]));
+        $this->webhooks->create(new SaveWebhook('ERP', 'https://erp.example.com/hook', [WebhookTopics::ORDER_PLACED]), 7);
         $announce = new AnnounceToWebhooks($this->webhooks, $this->shop->orderRecords);
         $this->shop->events->addListener(OrderPaid::class, $announce->orderPaid(...));
         $this->shop->events->addListener(OrderPlaced::class, $announce->orderPlaced(...));
@@ -152,12 +250,12 @@ final class WebhooksTest extends TestCase
     {
         foreach ([['http://erp.example.com/hook', [WebhookTopics::ORDER_PLACED]], ['https://erp.example.com/hook', ['nothing.here']]] as [$url, $topics]) {
             try {
-                $this->webhooks->create(new SaveWebhook('ERP', $url, $topics));
+                $this->webhooks->create(new SaveWebhook('ERP', $url, $topics), 7);
                 self::fail("{$url} with " . implode(', ', $topics) . ' was taken');
             } catch (IntegrationRuleViolation) {
             }
         }
-        self::assertSame('http://localhost:8080/hook', $this->webhooks->create(new SaveWebhook('Test', 'http://localhost:8080/hook', [WebhookTopics::ORDER_PLACED]))->url, 'http on this computer, for testing');
+        self::assertSame('http://localhost:8080/hook', $this->webhooks->create(new SaveWebhook('Test', 'http://localhost:8080/hook', [WebhookTopics::ORDER_PLACED]), 7)->url, 'http on this computer, for testing');
     }
 
     private static function at(mixed $value, string ...$keys): mixed
@@ -176,12 +274,14 @@ final class RecordingSender implements WebhookSender
     public array $sent = [];
     /** @var list<WebhookResponse> */
     public array $answers = [];
+    /** What every post is answered, once the answers above are used up. */
+    public ?WebhookResponse $always = null;
 
     public function post(string $url, string $body, array $headers): WebhookResponse
     {
         $this->sent[] = [$url, $body, $headers];
 
-        return array_shift($this->answers) ?? new WebhookResponse(200, '', 5);
+        return array_shift($this->answers) ?? $this->always ?? new WebhookResponse(200, '', 5);
     }
 }
 

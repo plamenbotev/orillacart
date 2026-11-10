@@ -10,6 +10,7 @@ namespace OrillaCart\Forms\Application\Dto;
 final readonly class SentUpload
 {
     public function __construct(
+        #[\SensitiveParameter]
         public string $token,
         public string $name,
         public string $type,

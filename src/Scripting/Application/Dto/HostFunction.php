@@ -9,7 +9,7 @@ namespace OrillaCart\Scripting\Application\Dto;
  * the script names, `money` for a builtin), how many arguments it takes, what permission it needs, and what it
  * counts against. The callable gets the run's context, the named segments, then the script's arguments. A function
  * that reaches outside the shop (mail, an order placed) says what it does in an extension's own tests instead:
- * tests run with whatever the extension declares, saved or not, so they must never send or place for real.
+ * tests answer for whatever the extension declares, granted or not, so they must never send or place for real.
  */
 final readonly class HostFunction
 {
@@ -23,6 +23,9 @@ final readonly class HostFunction
      * @param string|null                       $needs    a permission such as `orders:read`, `http`; null for none
      * @param self::CALL|self::HTTP|self::QUERY|self::EMAIL $counts
      * @param \Closure|null                     $inTests  takes what $callable takes, and stands in for it in tests
+     * @param bool|null                         $writes   whether it changes something or reaches outside the shop
+     *                                                    (a request that may only read refuses it); null, not
+     *                                                    declared, counts as writing
      */
     public function __construct(
         public string $name,
@@ -33,5 +36,18 @@ final readonly class HostFunction
         public ?string $needs = null,
         public string $counts = self::CALL,
         public ?\Closure $inTests = null,
+        public ?bool $writes = null,
     ) {}
+
+    /**
+     * Functions that only work a value out (a namespace of builtins), declared as reading where they say nothing.
+     *
+     * @param list<self> $functions
+     *
+     * @return list<self>
+     */
+    public static function reading(array $functions): array
+    {
+        return array_map(static fn(self $f): self => $f->writes !== null ? $f : new self($f->name, $f->callable, $f->leastArguments, $f->mostArguments, $f->summary, $f->needs, $f->counts, $f->inTests, false), $functions);
+    }
 }

@@ -199,17 +199,20 @@ final readonly class PackageService
     }
 
     /**
-     * The console: runs one top-level function with the extension's granted permissions and the default budget.
-     * What it returns, or how it failed, and what the run used.
+     * The console: runs one top-level function with the default budget. An enabled (or stopped) extension runs the
+     * files a manager approved when enabling it, with what was granted then; a draft or a disabled one runs its
+     * files as saved with nothing granted (no permissions, no hosts, no settings), so an edit reaches nothing
+     * until a manager approves it by enabling. What it returns, or how it failed, and what the run used.
      */
     public function run(string $slug, RunFunction $command): RunResult
     {
         $package = $this->get($slug);
-        $compiled = $this->compile($package);
+        $source = self::approved($package) ? $package->runningSource() : $package->source();
+        $compiled = $this->scripts->compile($source, $package->slug());
         if (!$compiled->ok()) {
             throw new PackageRuleViolation('The extension does not compile: %s', 'orillacart_extension_does_not_compile', values: [implode('; ', $this->findings($package, $compiled))]);
         }
-        $script = $this->scripts->load($package->source(), $package->slug(), new Budget(), $this->grantOf($package));
+        $script = $this->scripts->load($source, $package->slug(), new Budget(), $this->grantOf($package));
         $method = 'fn_' . $command->function;
         if (!method_exists($script, $method)) {
             throw new PackageRuleViolation('The extension has no top-level function "%s".', 'orillacart_extension_no_function', values: [$command->function]);
@@ -442,10 +445,14 @@ final readonly class PackageService
 
     /**
      * What a run of the extension is allowed: its granted permissions, the hosts the files it was enabled with
-     * declared (a host added since waits for enabling again), its settings.
+     * declared (a host added since waits for enabling again), its settings. One that is not enabled (a draft, a
+     * disabled one) is allowed nothing: what its saved files declare was never approved.
      */
     public function grantOf(Package $package): Grant
     {
+        if (!self::approved($package)) {
+            return new Grant($package->slug());
+        }
         $running = $package->runningSource();
         $hosts = $this->scripts->compile($running, $package->slug())->ok() ? PackageManifest::ofClass($this->scripts->load($running, $package->slug())::class)->hosts() : [];
 
@@ -455,6 +462,12 @@ final readonly class PackageService
     private function get(string $slug): Package
     {
         return $this->packages->find($slug) ?? throw new PackageNotFound($slug);
+    }
+
+    /** Whether a manager approved the files it runs: enabled, or stopped after failing while enabled. */
+    private static function approved(Package $package): bool
+    {
+        return $package->state()->runs() || $package->state() === PackageState::Stopped;
     }
 
     private function compile(Package $package): Compiled

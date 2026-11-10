@@ -38,6 +38,7 @@ class FormUpload
     private ?\DateTimeImmutable $heldAt = null;
 
     public function __construct(
+        #[\SensitiveParameter]
         string $token,
         #[ORM\Column(length: 255)]
         private string $storageKey,
@@ -56,7 +57,7 @@ class FormUpload
         $this->filename = CleanText::filename($filename);
     }
 
-    public static function hash(string $token): string
+    public static function hash(#[\SensitiveParameter] string $token): string
     {
         return hash('sha256', $token);
     }

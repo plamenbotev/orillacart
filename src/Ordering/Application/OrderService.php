@@ -57,6 +57,7 @@ use OrillaCart\Ordering\Domain\LineType;
 use OrillaCart\Ordering\Domain\NoteAuthor;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderDraft;
+use OrillaCart\Ordering\Domain\OrderNote;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRefund;
 use OrillaCart\Ordering\Domain\OrderRepository;
@@ -85,6 +86,8 @@ final readonly class OrderService
 {
     /** How long a customer has to finish paying at a provider before the order is cancelled. */
     public const string PAYMENT_WINDOW = Order::PAYMENT_WINDOW;
+    /** How long an order is left as it is before a manager erases its customer by hand. */
+    public const int QUIET_DAYS = 30;
 
     public function __construct(
         private OrderRepository $orders,
@@ -153,7 +156,7 @@ final readonly class OrderService
      * @throws OrderNotFound      for a link the shop never made, or an order deleted since
      * @throws ReceiptLinkExpired for a link too old: a new one goes to the order's email
      */
-    public function byReceipt(string $token): OrderView
+    public function byReceipt(#[\SensitiveParameter] string $token): OrderView
     {
         [$number, $expired] = $this->receipts->read($token) ?? throw new OrderNotFound();
         if ($expired) {
@@ -501,9 +504,15 @@ final readonly class OrderService
      * Erases the customer from the order, as a privacy request asks; the books keep what they must (see
      * Order::anonymise()).
      *
+     * By hand, without a privacy request the person confirmed, an order is erased only once it has been left as
+     * it is for QUIET_DAYS: the change log keeps what a manager changed on an order until the order is erased, and
+     * a change made just before (a new email for its downloads, then the order cancelled) stays to be seen for that
+     * long whatever is done to the order after.
+     *
      * @param \DateTimeImmutable|null $openUnlessPlacedBefore by hand: an order still open (not completed,
      *                                                      cancelled, refunded or failed) placed since then is
-     *                                                      refused, so the record of a change made on it stays
+     *                                                      refused, and so is any order changed in the last
+     *                                                      QUIET_DAYS
      *
      * @throws OrderNotFound
      * @throws OrderRuleViolation
@@ -511,8 +520,17 @@ final readonly class OrderService
     public function anonymise(int $id, ?int $userId, ?\DateTimeImmutable $openUnlessPlacedBefore = null): OrderView
     {
         return $this->changing($id, function (Order $order) use ($userId, $openUnlessPlacedBefore): OrderView {
-            if ($openUnlessPlacedBefore !== null && $order->anonymisedAt() === null && !self::settled($order->status()) && $order->placedAt() >= $openUnlessPlacedBefore) {
-                throw new OrderRuleViolation('Order #%d is still open: erase its customer once it is completed, cancelled, refunded or failed.', 'orillacart_order_open', values: [$order->id()]);
+            if ($openUnlessPlacedBefore !== null && $order->anonymisedAt() === null) {
+                if (!self::settled($order->status()) && $order->placedAt() >= $openUnlessPlacedBefore) {
+                    throw new OrderRuleViolation('Order #%d is still open: erase its customer once it is completed, cancelled, refunded or failed.', 'orillacart_order_open', values: [$order->id()]);
+                }
+                $quietSince = $this->clock->now()->modify('-' . self::QUIET_DAYS . ' days');
+                // Each change to an order leaves a note: its status, its customer's details, its items, a payment.
+                $notes = $order->notes();
+                $last = $notes === [] ? $order->placedAt() : max(array_map(static fn(OrderNote $note): \DateTimeImmutable => $note->createdAt(), $notes));
+                if ($last > $quietSince) {
+                    throw new OrderRuleViolation('Order #%d changed in the last %d days: erase its customer once it has been left as it is that long.', 'orillacart_order_recent', values: [$order->id(), self::QUIET_DAYS]);
+                }
             }
             $email = $order->email();
             if ($order->anonymise($this->clock->now())) {
@@ -954,12 +972,14 @@ final readonly class OrderService
     }
 
     /**
-     * How many orders the customer, by account or by who the email reaches, has on hold unpaid: each holds its
-     * stock until the money comes or the shop cancels it.
+     * How many orders of the customer's account are on hold unpaid, waiting for a payment by one of the gateways:
+     * each holds its stock until the money comes or the shop cancels it.
+     *
+     * @param list<string> $gateways
      */
-    public function countUnpaidOnHold(?int $customerId, string $email): int
+    public function countUnpaidOnHold(int $customerId, array $gateways): int
     {
-        return $this->orders->countUnpaidOnHold($customerId, $email);
+        return $gateways === [] ? 0 : $this->orders->countUnpaidOnHold($customerId, $gateways);
     }
 
     /**

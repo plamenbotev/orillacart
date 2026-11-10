@@ -11,6 +11,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -18,6 +19,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Sends the preview to whoever asks. */
+#[Tool(unasked: 'goes to the manager who asks, not to customers')]
 #[Route('/email-templates/{name}/test', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['name' => '[a-z_-]+'])]
 final readonly class SendTestEmailAction implements RequestHandlerInterface
 {

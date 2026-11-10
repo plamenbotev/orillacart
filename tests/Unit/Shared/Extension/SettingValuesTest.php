@@ -27,18 +27,18 @@ final class SettingValuesTest extends TestCase
     {
         $saved = ['api_key' => 'k3y', 'mode' => 'test', 'note' => ''];
 
-        self::assertSame('k3y', SettingValues::accept($this->fields, $saved, ['api_key' => ''], 'Test Pay')['api_key']);
-        self::assertSame('n3w', SettingValues::accept($this->fields, $saved, ['api_key' => 'n3w'], 'Test Pay')['api_key']);
-        self::assertSame('', SettingValues::accept($this->fields, $saved, ['api_key' => false], 'Test Pay')['api_key']);
+        self::assertSame('k3y', SettingValues::accept($this->fields, $saved, ['api_key' => '', 'mode' => 'test'], 'Test Pay')['api_key']);
+        self::assertSame('n3w', SettingValues::accept($this->fields, $saved, ['api_key' => 'n3w', 'mode' => 'test'], 'Test Pay')['api_key']);
+        self::assertSame('', SettingValues::accept($this->fields, $saved, ['api_key' => false, 'mode' => 'test'], 'Test Pay')['api_key']);
     }
 
-    public function testASavedSecretIsForgottenWhenTheAddressOrUserItGoesToChanges(): void
+    public function testASavedSecretIsForgottenWhenASettingItGoesWithChanges(): void
     {
         $fields = [
             new Setting('endpoint', 'Address', Setting::TEXT),
             new Setting('account_user', 'User', Setting::TEXT),
             new Setting('note', 'Note', Setting::TEXT),
-            new Setting('hmac_key', 'Signing key', Setting::SECRET),
+            new Setting('hmac_key', 'Signing key', Setting::SECRET, goesWith: ['endpoint', 'account_user']),
         ];
         $saved = ['endpoint' => 'https://erp.example.com/api', 'account_user' => 'shop', 'note' => 'a', 'hmac_key' => 'k3y'];
 
@@ -48,8 +48,31 @@ final class SettingValuesTest extends TestCase
         self::assertSame('n3w', SettingValues::accept($fields, $saved, ['endpoint' => 'https://attacker.example.net/api', 'account_user' => 'shop', 'hmac_key' => 'n3w'], 'ERP')['hmac_key'], 'typed again');
 
         $byValue = [new Setting('where', 'Where', Setting::TEXT), new Setting('pin', 'PIN', Setting::SECRET)];
-        self::assertSame('', SettingValues::accept($byValue, ['where' => 'erp.example.com', 'pin' => '1234'], ['where' => 'erp.example.net'], 'ERP')['pin'], 'a value that is an address');
         self::assertSame(['where', 'pin'], array_keys(SettingValues::accept($byValue, [], [], 'ERP')), 'in their order');
+    }
+
+    public function testASecretThatSaysNothingGoesWithEveryOtherSetting(): void
+    {
+        // Named as nothing an address or a user would be: guessing from names would keep the PIN for a new place.
+        $fields = [new Setting('target', 'Where to', Setting::TEXT), new Setting('sandbox', 'Test mode', Setting::BOOLEAN), new Setting('pin', 'PIN', Setting::SECRET)];
+        $saved = ['target' => 'erp-1', 'sandbox' => false, 'pin' => '1234'];
+
+        self::assertSame('1234', SettingValues::accept($fields, $saved, ['target' => 'erp-1', 'sandbox' => false], 'ERP')['pin'], 'nothing changed');
+        self::assertSame('', SettingValues::accept($fields, $saved, ['target' => 'erp-2', 'sandbox' => false], 'ERP')['pin']);
+        self::assertSame('', SettingValues::accept($fields, $saved, ['target' => 'erp-1', 'sandbox' => true], 'ERP')['pin']);
+    }
+
+    public function testASecretThatGoesWithNothingStaysWhateverChanges(): void
+    {
+        $fields = [new Setting('sandbox', 'Test mode', Setting::BOOLEAN), new Setting('secret_key', 'Secret key', Setting::SECRET, goesWith: [])];
+
+        self::assertSame('sk', SettingValues::accept($fields, ['sandbox' => false, 'secret_key' => 'sk'], ['sandbox' => true], 'Pay')['secret_key']);
+    }
+
+    public function testOnlyASecretSaysWhatItGoesWith(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        new Setting('host', 'Host', Setting::TEXT, goesWith: ['user']);
     }
 
     public function testTextHasALimitAndAChoiceSaysItsKeys(): void

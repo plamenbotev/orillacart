@@ -7,6 +7,7 @@ namespace OrillaCart\Tax\Http;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Tax\Application\Dto\UpdateTaxSettings;
 use OrillaCart\Tax\Application\TaxSettingsService;
@@ -18,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Replaces the tax settings: by which address the shop taxes, whether prices include tax, the default group, a tax
  * service, and how tax is shown.
  */
+#[Tool(unasked: 'settings')]
 #[Route('/tax/settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateTaxSettingsAction implements RequestHandlerInterface
 {

@@ -23,7 +23,8 @@ final class PackageManifestTest extends TestCase
               needs: { orders: [read, write], customers: read, http: ["a.example", "b.example"], assets: serve }
             }
             settings {
-              key: secret { label: "API key", required: true, help: "From the dashboard" }
+              key: secret { label: "API key", required: true, help: "From the dashboard", goes_with: ["mode"] }
+              pin: secret
               mode: choice { of: ["live", "test"] }
               retries: number
               loud: boolean { label: "Loud" }
@@ -43,10 +44,11 @@ final class PackageManifestTest extends TestCase
         self::assertSame(['orders:read', 'orders:write', 'customers:read', 'http', 'assets'], $manifest->needs());
         self::assertSame(['a.example', 'b.example'], $manifest->hosts());
         $settings = $manifest->settings();
-        self::assertSame(['key', 'mode', 'retries', 'loud', 'note'], array_map(static fn(Setting $s): string => $s->key, $settings), 'an unknown kind is left out');
+        self::assertSame(['key', 'pin', 'mode', 'retries', 'loud', 'note'], array_map(static fn(Setting $s): string => $s->key, $settings), 'an unknown kind is left out');
+        self::assertSame([['mode'], null], [$settings[0]->goesWith, $settings[1]->goesWith], 'a secret says what it goes with, or goes with everything');
         self::assertSame([Setting::SECRET, 'API key', true, 'From the dashboard'], [$settings[0]->type, $settings[0]->label, $settings[0]->required, $settings[0]->help]);
-        self::assertSame(['live' => 'live', 'test' => 'test'], $settings[1]->choices);
-        self::assertSame('Retries', $settings[2]->label, 'a label made from the key');
+        self::assertSame(['live' => 'live', 'test' => 'test'], $settings[2]->choices);
+        self::assertSame('Retries', $settings[3]->label, 'a label made from the key');
     }
 
     public function testWithoutAnExtensionBlockThereIsNothingToSay(): void

@@ -24,11 +24,12 @@ interface PayPalApi
     public function createOrder(PayPalAccount $account, PayPalOrderRequest $request): PayPalOrder;
 
     /**
-     * Captures an approved order; for an order captured before, returns that capture.
+     * Captures an approved order; for an order captured before, returns that capture. PayPal captures once per
+     * request id, so a capture asked for again (the customer's return and the webhook together) takes no more.
      *
      * @throws PaymentProviderUnavailable also when the order is not approved
      */
-    public function captureOrder(PayPalAccount $account, string $orderId): PayPalCapture;
+    public function captureOrder(PayPalAccount $account, string $orderId, string $requestId): PayPalCapture;
 
     /**
      * Refunds part or all of a capture. PayPal refunds once per request id, however often it is sent.
@@ -77,4 +78,12 @@ interface PayPalApi
      * @throws PaymentProviderUnavailable
      */
     public function verifyNotification(PayPalAccount $account, PayPalNotification $notification): bool;
+
+    /**
+     * The certificate PayPal signs webhooks with, as PEM, from an address on PayPal's own hosts that the caller
+     * checked. Kept for a day, so a webhook is verified without asking PayPal anything.
+     *
+     * @throws PaymentProviderUnavailable when it cannot be had
+     */
+    public function certificate(string $url): string;
 }

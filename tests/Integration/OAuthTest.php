@@ -125,7 +125,7 @@ final class OAuthTest extends RestTestCase
 
         $keys = self::kernel()->container()->get(ApiKeys::class);
         self::assertInstanceOf(ApiKeys::class, $keys);
-        $listed = $keys->all();
+        $listed = $keys->all($admin, true);
         self::assertCount(1, $listed, 'the owner\'s yes stays: the app connects again without asking them');
         self::assertSame($client['client_id'], $listed[0]->client);
         [$verifier, $challenge] = self::pkce();
@@ -135,7 +135,7 @@ final class OAuthTest extends RestTestCase
         $fresh = $server->token(['grant_type' => 'authorization_code', 'code' => $answer['code'], 'client_id' => $client['client_id'], 'code_verifier' => $verifier]);
         self::assertIsString($fresh['access_token']);
         self::assertNotNull($server->authenticate($fresh['access_token']));
-        $keys->revoke($listed[0]->id);
+        $keys->revoke($listed[0]->id, $admin, true);
         self::assertNull($server->authenticate($fresh['access_token']), 'revoking the key ends its tokens');
     }
 
@@ -182,6 +182,15 @@ final class OAuthTest extends RestTestCase
         $screen = (string) ob_get_clean();
         self::assertStringContainsString('This app cannot connect', $screen);
         self::assertStringContainsString('https://app.example/callback?error=unsupported_response_type', html_entity_decode($screen), 'a link back, for the manager to follow');
+
+        // WordPress adds slashes to the query: the state goes back to the app as it sent it, a quote and all.
+        $_GET = wp_slash(['page' => OAuthConsent::PAGE, 'state' => "it's"] + self::query($id, 'https://app.example/callback', $challenge));
+        ob_start();
+        new OAuthConsent(self::oauth())->render();
+        $form = html_entity_decode((string) ob_get_clean(), \ENT_QUOTES);
+        self::assertStringContainsString('name="state" value="it\'s"', $form);
+        self::assertStringNotContainsString('it\\\'s', $form, 'not the slashed text');
+        $_GET = [];
     }
 
     public function testAClientNobodyConnectedIsForgottenAfterADay(): void
@@ -259,7 +268,7 @@ final class OAuthTest extends RestTestCase
         global $wpdb;
         \assert($wpdb instanceof \wpdb);
         $rows = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}orillacart_rate_limits");
-        self::assertSame(2, (int) $rows, 'one row a caller and window');
+        self::assertSame(4, (int) $rows, 'one row a caller and window, and one its network\'s');
         $wpdb->query("UPDATE {$wpdb->prefix}orillacart_rate_limits SET expires_at = '2000-01-01 00:00:00'");
         $_SERVER['REMOTE_ADDR'] = '203.0.113.' . random_int(1, 254);
         add_filter('orillacart_rate_limits', $limits, 20);
@@ -269,7 +278,7 @@ final class OAuthTest extends RestTestCase
             remove_filter('orillacart_rate_limits', $limits, 20);
             unset($_SERVER['REMOTE_ADDR']);
         }
-        self::assertSame(1, (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}orillacart_rate_limits"), 'a new window sweeps the rows of windows that ended');
+        self::assertSame(2, (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}orillacart_rate_limits"), 'a new window sweeps the rows of windows that ended: the new caller\'s and its network\'s are left');
     }
 
     public function testTheRequestIsCheckedBeforeTheOwnerIsAsked(): void

@@ -12,10 +12,10 @@ interface CartRepository
      */
     public function find(int $id, bool $lock = false): ?Cart;
 
-    public function findByToken(string $token): ?Cart;
+    public function findByToken(#[\SensitiveParameter] string $token): ?Cart;
 
     /** The cart a reminder's link brings back. */
-    public function findByRecoverToken(string $token): ?Cart;
+    public function findByRecoverToken(#[\SensitiveParameter] string $token): ?Cart;
 
     /** The customer's most recently changed cart. */
     public function findByCustomer(int $customerId): ?Cart;

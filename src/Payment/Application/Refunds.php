@@ -170,7 +170,9 @@ final readonly class Refunds
      */
     public function retry(int $refundId, ?int $userId): OrderRefundsView
     {
-        $refund = $this->pending($refundId);
+        // Checked with the order and the refund locked, as every path that settles a refund takes them: one the
+        // provider's notification completed meanwhile is not sent again.
+        $refund = $this->pendingLocked($refundId, static fn(Refund $refund): null => null);
         $payment = $refund->paymentId() === null ? null : $this->payments->find($refund->paymentId());
         if ($payment === null) {
             throw new PaymentRuleViolation('The payment this refund is for is gone.', 'orillacart_refund_payment_missing');
@@ -188,9 +190,11 @@ final readonly class Refunds
      */
     public function giveUp(int $refundId): OrderRefundsView
     {
-        $refund = $this->pending($refundId);
-        $refund->fail('Given up by the shop: the provider never confirmed it.', $this->clock->now());
-        $this->refunds->save($refund);
+        // Failed with the order and the refund locked: never over the provider's answer that it went through.
+        $refund = $this->pendingLocked($refundId, function (Refund $refund): void {
+            $refund->fail('Given up by the shop: the provider never confirmed it.', $this->clock->now());
+            $this->refunds->save($refund);
+        });
 
         return $this->forOrder($refund->orderId());
     }
@@ -326,21 +330,20 @@ final readonly class Refunds
                 $refund->reason(),
             ), new Settings($this->methods->findByGateway($payment->gateway())?->settings() ?? []));
         } catch (RefundRefused $e) {
-            $refund->fail($e->getMessage(), $this->clock->now());
-            $this->refunds->save($refund);
+            $this->stillPending($refund, function (Refund $refund) use ($e): void {
+                $refund->fail($e->getMessage(), $this->clock->now());
+            });
 
             throw new PaymentRuleViolation('%1$s refused the refund: %2$s', 'orillacart_refund_refused', $e, values: [$this->name($payment->gateway()), $e->getMessage()]);
         } catch (ProviderUnavailable $e) {
-            $refund->unanswered($e->getMessage());
-            $this->refunds->save($refund);
+            $this->stillPending($refund, static fn(Refund $refund) => $refund->unanswered($e->getMessage()));
             $this->logger->warning('Refund {refund} of order {order}: {message}', ['refund' => $refund->id(), 'order' => $order->number, 'message' => $e->getMessage()]);
 
             throw new PaymentRuleViolation('%s did not answer, so the refund waits. Try it again: it is never sent twice.', 'orillacart_refund_unanswered', $e, values: [$this->name($payment->gateway())]);
         } catch (\Throwable $e) {
             // The gateway broke; whether the money moved is not known. The refund waits with the error, to be
             // tried again under the same id (never refunding twice) or given up.
-            $refund->unanswered($e->getMessage());
-            $this->refunds->save($refund);
+            $this->stillPending($refund, static fn(Refund $refund) => $refund->unanswered($e->getMessage()));
             $this->logger->error('Refund {refund} of order {order} failed in {gateway}: {message}', ['refund' => $refund->id(), 'order' => $order->number, 'gateway' => $payment->gateway(), 'message' => $e->getMessage(), 'exception' => $e]);
 
             throw new PaymentRuleViolation('%1$s failed: %2$s The refund waits: try it again, or give it up.', 'orillacart_refund_unanswered', $e, values: [$this->name($payment->gateway()), $e->getMessage()]);
@@ -490,14 +493,50 @@ final readonly class Refunds
         }
     }
 
-    private function pending(int $refundId): Refund
+    /**
+     * The refund, read again with its order and itself locked, when it still waits for the provider; the work runs
+     * under the same locks.
+     *
+     * @param \Closure(Refund): mixed $work
+     *
+     * @throws PaymentRuleViolation for one that does not wait
+     */
+    private function pendingLocked(int $refundId, \Closure $work): Refund
     {
-        $refund = $this->refunds->find($refundId);
-        if ($refund === null || $refund->status() !== RefundStatus::Pending) {
+        $found = $this->refunds->find($refundId);
+        $refund = null;
+        if ($found !== null) {
+            $this->withOrderLocked($found->orderId(), function () use ($refundId, $work, &$refund): void {
+                $locked = $this->refunds->find($refundId, true);
+                if ($locked !== null && $locked->status() === RefundStatus::Pending) {
+                    $refund = $locked;
+                    $work($locked);
+                }
+            });
+        }
+        if (!$refund instanceof Refund) {
             throw new PaymentRuleViolation('Only a refund waiting for the provider can be tried again or given up.', 'orillacart_refund_not_pending');
         }
 
         return $refund;
+    }
+
+    /**
+     * What the provider's answer changes on a refund that still waits for it, read again under the locks: one
+     * that the provider's notification settled meanwhile, or the shop gave up, is left as it is.
+     *
+     * @param \Closure(Refund): mixed $change
+     */
+    private function stillPending(Refund $sent, \Closure $change): void
+    {
+        $this->withOrderLocked($sent->orderId(), function () use ($sent, $change): void {
+            $refund = $this->refunds->find($sent->id(), true);
+            if ($refund === null || $refund->status() !== RefundStatus::Pending) {
+                return;
+            }
+            $change($refund);
+            $this->refunds->save($refund);
+        });
     }
 
     /** What a payment has left to give back: its amount, less the refunds through it that went or are on the way. */

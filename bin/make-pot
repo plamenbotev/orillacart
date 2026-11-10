@@ -12,15 +12,30 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WP_CLI_VERSION="2.12.0"
+# The phar's SHA-256, as WP-CLI publishes it beside the release: a download (or a cached copy) that differs is not run.
+WP_CLI_SHA256="ce34ddd838f7351d6759068d09793f26755463b4a4610a5a5c0a97b68220d85c"
 PHAR="$ROOT/var/tools/wp-cli-$WP_CLI_VERSION.phar"
+
+verify() {
+    local actual
+    actual="$(sha256sum "$1" | cut -d' ' -f1)"
+    if [ "$actual" != "$WP_CLI_SHA256" ]; then
+        rm -f "$1"
+        echo "$(basename "$1") has SHA-256 $actual, not $WP_CLI_SHA256: refused" >&2
+        exit 1
+    fi
+}
 
 if command -v wp > /dev/null; then
     WP=(wp)
 else
     if [ ! -f "$PHAR" ]; then
         mkdir -p "$(dirname "$PHAR")"
-        curl -fsSL -o "$PHAR" "https://github.com/wp-cli/wp-cli/releases/download/v$WP_CLI_VERSION/wp-cli-$WP_CLI_VERSION.phar"
+        curl -fsSL -o "$PHAR.part" "https://github.com/wp-cli/wp-cli/releases/download/v$WP_CLI_VERSION/wp-cli-$WP_CLI_VERSION.phar"
+        verify "$PHAR.part"
+        mv "$PHAR.part" "$PHAR"
     fi
+    verify "$PHAR"
     WP=(php -d memory_limit=2G "$PHAR")
 fi
 

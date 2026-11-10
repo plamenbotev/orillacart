@@ -46,6 +46,14 @@ final class InMemoryAccounts implements Accounts
         return isset($this->accounts[$id]) && !\in_array($id, $this->staff, true);
     }
 
+    /** @var array<string, string> */
+    public array $roles = ['orillacart_customer' => 'Shop customer', 'subscriber' => 'Subscriber', 'author' => 'Author'];
+
+    public function availableRoles(): array
+    {
+        return $this->roles;
+    }
+
     public function markTest(int $id): void
     {
         $this->tests[$id] = true;
@@ -77,6 +85,14 @@ final class InMemoryAccounts implements Accounts
         }
 
         return null;
+    }
+
+    /** Whether the shop is one of a network's: so when users of other shops are given. */
+    public bool $network = false;
+
+    public function onNetwork(): bool
+    {
+        return $this->network || $this->elsewhere !== [];
     }
 
     public function elsewhere(string $email): ?int

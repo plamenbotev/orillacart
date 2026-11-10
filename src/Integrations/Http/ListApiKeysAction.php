@@ -8,6 +8,7 @@ use OrillaCart\Integrations\Application\ApiKeys;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\Tool;
+use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -19,11 +20,12 @@ final readonly class ListApiKeysAction implements RequestHandlerInterface
 {
     public function __construct(
         private ApiKeys $keys,
+        private Authorization $authorization,
         private JsonResponder $responder,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->keys->all());
+        return $this->responder->ok($this->keys->all($this->authorization->userId() ?? 0, $this->authorization->isGranted('manage_options')));
     }
 }

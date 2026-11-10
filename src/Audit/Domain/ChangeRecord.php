@@ -102,4 +102,27 @@ class ChangeRecord
     {
         return $this->madeAt;
     }
+
+    /**
+     * Whether what was sent names the email, in any case: as a value of its own or within a longer one ("write to
+     * ada@example.com"), but whole: "n@gmail.com" is not in "john@gmail.com", nor "ada@example.co" in
+     * "ada@example.com".
+     *
+     * @param array<array-key, mixed> $values
+     */
+    public static function mentions(array $values, string $email): bool
+    {
+        $email = trim($email);
+        if ($email === '') {
+            return false;
+        }
+        // What may stand next to an address without being part of it: anything but the characters it is made of.
+        $pattern = '/(?<![\p{L}\p{N}._%+\-])' . preg_quote($email, '/') . '(?![\p{L}\p{N}_%+\-]|\.[\p{L}\p{N}])/iu';
+        $found = false;
+        array_walk_recursive($values, static function (mixed $value, int|string $key) use ($pattern, &$found): void {
+            $found = $found || (\is_string($value) && preg_match($pattern, $value) === 1) || (\is_string($key) && preg_match($pattern, $key) === 1);
+        });
+
+        return $found;
+    }
 }

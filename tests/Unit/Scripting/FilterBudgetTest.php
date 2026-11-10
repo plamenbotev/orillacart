@@ -46,6 +46,15 @@ final class FilterBudgetTest extends TestCase
         $script->run('fn_f');
     }
 
+    public function testNumbersSeparatorsArePredictedAgainstTheBytesLeft(): void
+    {
+        self::assertSame('1 234 567,50', Ops::filter('number', 1234567.5, [2, ',', ' ']));
+        self::assertSame('1,000', Ops::filter('number', 1000, [], 5));
+
+        $this->expectException(BudgetExceeded::class);
+        Ops::filter('number', 1e300, [0, '.', str_repeat('x', 100000)], 1000000);
+    }
+
     public function testSplitIsPredictedAgainstTheBytesLeft(): void
     {
         $script = self::load('fn f(text) { return text|split("") }', new Budget(bytes: 200000));

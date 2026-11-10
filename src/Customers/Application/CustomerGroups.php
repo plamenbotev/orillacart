@@ -81,7 +81,7 @@ final readonly class CustomerGroups
      */
     public function setGroupsOf(int $customerId, SetCustomerGroups $command): array
     {
-        if ($this->accounts->find($customerId) === null) {
+        if (!$this->accounts->isShopCustomer($customerId)) {
             throw new CustomerNotFound($customerId);
         }
         $wanted = array_values(array_unique($command->groupIds));

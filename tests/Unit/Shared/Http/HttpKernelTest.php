@@ -105,6 +105,14 @@ final class HttpKernelTest extends TestCase
         self::assertSame(200, $this->kernel()->handle($request)->getStatusCode());
     }
 
+    public function testAVisitorsNonceComesInTheShopsOwnHeaderWhichWordPressDoesNotRead(): void
+    {
+        $route = $this->route(['POST'], Route::PUBLIC);
+
+        self::assertSame(200, $this->send('POST', $route, ['X-OrillaCart-Nonce' => 'good-token'])->getStatusCode());
+        self::assertSame(403, $this->send('POST', $route, ['X-OrillaCart-Nonce' => 'forged'])->getStatusCode());
+    }
+
     public function testTheNonceIsCheckedForTheRoutesOwnAction(): void
     {
         $route = new RouteDefinition(RecordingAction::class, '/cart', ['POST'], Route::PUBLIC, 'orillacart_cart');

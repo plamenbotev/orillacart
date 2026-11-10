@@ -25,7 +25,7 @@ final readonly class StorefrontAccountLinks implements AccountLinks
         return $this->accountPage();
     }
 
-    public function confirmUrl(string $token): string
+    public function confirmUrl(#[\SensitiveParameter] string $token): string
     {
         return add_query_arg(self::CONFIRM_QUERY, rawurlencode($token), $this->accountPage());
     }

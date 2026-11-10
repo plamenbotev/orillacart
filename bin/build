@@ -13,6 +13,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSER_BIN="${COMPOSER_BIN:-composer}"
 SCOPER_VERSION="0.18.20"
+# The phar's SHA-256, as GitHub lists it for the release: a download (or a cached copy) that differs is not run.
+SCOPER_SHA256="5e35e4a89ea53b2c70a19bfa8a856e4f9080aa12eb13a5bce650bb69d08eb122"
 SCOPER="$ROOT/var/tools/php-scoper-$SCOPER_VERSION.phar"
 
 WORK="$ROOT/var/build"
@@ -21,6 +23,17 @@ OUT="$WORK/orillacart"
 VERSION="$(sed -n "s/^defined('ORILLACART_VERSION') || define('ORILLACART_VERSION', '\(.*\)');/\1/p" "$ROOT/orillacart.php")"
 
 step() { printf '\n==> %s\n' "$1"; }
+
+# Fails unless the file's SHA-256 is the one expected; the file goes, so the next build downloads it again.
+verify() {
+    local file="$1" expected="$2" actual
+    actual="$(sha256sum "$file" | cut -d' ' -f1)"
+    if [ "$actual" != "$expected" ]; then
+        rm -f "$file"
+        echo "$(basename "$file") has SHA-256 $actual, not $expected: refused" >&2
+        exit 1
+    fi
+}
 
 step "Admin assets"
 (cd "$ROOT" && npm run --silent build)
@@ -45,8 +58,11 @@ php "$ROOT/bin/compile-container.php" "$STAGE"
 step "Prefixing libraries with PHP-Scoper $SCOPER_VERSION"
 if [ ! -f "$SCOPER" ]; then
     mkdir -p "$(dirname "$SCOPER")"
-    curl -fsSL -o "$SCOPER" "https://github.com/humbug/php-scoper/releases/download/$SCOPER_VERSION/php-scoper.phar"
+    curl -fsSL -o "$SCOPER.part" "https://github.com/humbug/php-scoper/releases/download/$SCOPER_VERSION/php-scoper.phar"
+    verify "$SCOPER.part" "$SCOPER_SHA256"
+    mv "$SCOPER.part" "$SCOPER"
 fi
+verify "$SCOPER" "$SCOPER_SHA256"
 php "$SCOPER" add-prefix --config="$ROOT/scoper.inc.php" --working-dir="$STAGE" --output-dir="$OUT" --force --no-interaction --quiet
 
 # PHP-Scoper only writes the files its finders select; the rest ships unchanged.
@@ -98,4 +114,6 @@ step "Zip"
 ZIP="$ROOT/dist/orillacart-$VERSION.zip"
 rm -f "$ZIP"
 (cd "$WORK" && zip -qr "$ZIP" orillacart)
-echo "Built $ZIP ($(stat -c %s "$ZIP") bytes)"
+# Published beside the zip, so whoever installs it can check it is the one built: sha256sum -c <file>.sha256
+(cd "$ROOT/dist" && sha256sum "$(basename "$ZIP")" > "$(basename "$ZIP").sha256")
+echo "Built $ZIP ($(stat -c %s "$ZIP") bytes, SHA-256 $(cut -d' ' -f1 "$ZIP.sha256"))"

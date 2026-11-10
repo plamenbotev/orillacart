@@ -30,7 +30,7 @@ final class SealedJsonType extends JsonType
         self::$unreadable = $unreadable;
     }
 
-    public function convertToDatabaseValue(mixed $value, AbstractPlatform $platform): ?string
+    public function convertToDatabaseValue(#[\SensitiveParameter] mixed $value, AbstractPlatform $platform): ?string
     {
         $json = parent::convertToDatabaseValue($value, $platform);
         if ($json === null) {
@@ -40,7 +40,7 @@ final class SealedJsonType extends JsonType
         return json_encode(['sealed' => self::secrets()->seal($json)], \JSON_THROW_ON_ERROR);
     }
 
-    public function convertToPHPValue(mixed $value, AbstractPlatform $platform): mixed
+    public function convertToPHPValue(#[\SensitiveParameter] mixed $value, AbstractPlatform $platform): mixed
     {
         $decoded = parent::convertToPHPValue($value, $platform);
         if (!\is_array($decoded) || array_keys($decoded) !== ['sealed'] || !\is_string($decoded['sealed'])) {

@@ -8,6 +8,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shipping\Application\CarrierService;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
@@ -19,6 +20,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Changes a carrier: its name, whether checkout offers it, its position, and its whole list of rates. A secret method
  * setting left empty keeps the saved one.
  */
+#[Tool(unasked: 'shipping setup')]
 #[Route('/carriers/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class UpdateCarrierAction implements RequestHandlerInterface
 {

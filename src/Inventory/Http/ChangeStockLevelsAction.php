@@ -11,6 +11,7 @@ use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
@@ -23,6 +24,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * since it was loaded, as a sale moves it, refuses the whole save with 409 orillacart_stock_changed, naming each such
  * level as it is now.
  */
+#[Tool(unasked: 'stock counts')]
 #[Route('/stock-levels', methods: ['PATCH'], capability: Capability::MANAGE_SHOP)]
 final readonly class ChangeStockLevelsAction implements RequestHandlerInterface
 {

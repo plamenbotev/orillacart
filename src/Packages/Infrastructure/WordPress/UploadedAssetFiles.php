@@ -10,28 +10,36 @@ use OrillaCart\Packages\Application\AssetFiles;
  * An extension's assets under the site's uploads folder (`uploads/orillacart/extensions/<extension>/`), which
  * the web server serves as any upload; on a network each site has its own uploads. A file is written as
  * `<name>-<hash>.<ext>`, so its URL changes with its content and may be cached for long; writing a new one
- * removes the older of the same name. The folder has an `.htaccess` that turns off every script handler, so
- * Apache serves its files as files whatever handlers its setup adds by name.
+ * removes the older of the same name. The folder has an `.htaccess` that lets Apache serve only such files, as
+ * files with no handler, and refuses every other.
  */
 final readonly class UploadedAssetFiles implements AssetFiles
 {
     private const string FOLDER = 'orillacart/extensions';
-    /** Apache's rules for the folder: nothing in it runs; scripts, stylesheets and SVGs are served as they are. */
+    /**
+     * Apache's rules for the folder, an allowlist: the files the shop writes (`<name>-<12 hex>.js|css|svg`, the
+     * name as Package::ASSET allows it) are served as files, with no handler; every other file is refused, so
+     * nothing put there by other means is served or run, whatever handlers the server's setup adds by name.
+     */
     public const string HTACCESS = <<<'APACHE'
-        # Written by OrillaCart: the extensions' assets are served as files, never run.
-        <FilesMatch "\.(?i:php\d*|phtml|phar|pht|pl|py|cgi|shtml|asp|aspx|jsp|sh)">
+        # Written by OrillaCart: only the extensions' scripts, stylesheets and SVGs are served, as files; nothing else.
+        <IfModule mod_authz_core.c>
+            Require all denied
+        </IfModule>
+        <IfModule !mod_authz_core.c>
+            Order deny,allow
+            Deny from all
+        </IfModule>
+        <FilesMatch "^[a-z0-9_-]+(\.(min|[0-9]+))*-[0-9a-f]{12}\.(js|css|svg)$">
             <IfModule mod_authz_core.c>
-                Require all denied
+                Require all granted
             </IfModule>
             <IfModule !mod_authz_core.c>
                 Order allow,deny
-                Deny from all
+                Allow from all
             </IfModule>
+            SetHandler none
         </FilesMatch>
-        <IfModule mod_mime.c>
-            RemoveHandler .php .php5 .php7 .php8 .phtml .phar .pht .pl .py .cgi .shtml .asp .aspx .jsp .sh
-            RemoveType .php .php5 .php7 .php8 .phtml .phar .pht
-        </IfModule>
         <IfModule mod_php.c>
             php_flag engine off
         </IfModule>

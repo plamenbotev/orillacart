@@ -134,7 +134,7 @@ final class FormsRestTest extends RestTestCase
 
         $response = $this->upload('/form-uploads', $this->file("%PDF-1.4\n1 0 obj << /OpenAction << /S /JavaScript /JS (app.alert(1)) >> >> endobj\n%%EOF"), 'a.pdf', ['product_id' => (string) $product, 'field' => $field]);
         self::assertSame(422, $response->get_status());
-        self::assertSame('This PDF has scripts, actions, attachments, forms or encryption; send one without.', $this->violations($response)[0]['message'] ?? null);
+        self::assertSame('This PDF has scripts, links, actions, attachments, media, forms or encryption; send one without.', $this->violations($response)[0]['message'] ?? null);
     }
 
     /**

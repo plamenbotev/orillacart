@@ -34,7 +34,7 @@ import {
 	startPromotions,
 } from './shop-blocks';
 import { startWishlist } from './wishlist';
-import { bindWithdrawal } from './withdrawal';
+import { bindWithdrawal, bindWithdrawalAsk } from './withdrawal';
 
 declare global {
 	interface Window {
@@ -105,6 +105,11 @@ function start(): void {
 			'form[data-orillacart-withdrawal]'
 		)
 		.forEach( bindWithdrawal );
+	document
+		.querySelectorAll< HTMLFormElement >(
+			'form[data-orillacart-withdrawal-ask]'
+		)
+		.forEach( bindWithdrawalAsk );
 	// Choosing a currency reloads the page in it; the button is for browsers without the script.
 	document
 		.querySelectorAll< HTMLFormElement >(

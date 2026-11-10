@@ -50,14 +50,43 @@ final class ApiKeysTest extends TestCase
         $key = $this->keys->authenticate($created->key);
         self::assertNotNull($key);
         self::assertSame([1, ApiKeyScope::ReadWrite], [$key->userId, $key->scope]);
-        self::assertSame('2026-10-21T08:00:00+00:00', $this->keys->all()[0]->lastUsedAt);
+        self::assertSame('2026-10-21T08:00:00+00:00', $this->keys->all(1, false)[0]->lastUsedAt);
         self::assertNull($this->keys->authenticate('oc_' . str_repeat('0', 40)), 'a key the shop never made');
         self::assertNull($this->keys->authenticate('Bearer nonsense'));
 
-        $this->keys->revoke($created->apiKey->id);
+        $this->keys->revoke($created->apiKey->id, 1, false);
         self::assertNull($this->keys->authenticate($created->key));
         $this->expectException(IntegrationRuleViolation::class);
-        $this->keys->revoke($created->apiKey->id);
+        $this->keys->revoke($created->apiKey->id, 1, false);
+    }
+
+    public function testAKeyIsManagedOnlyByWhoMadeItOrAnAdministrator(): void
+    {
+        $admins = $this->keys->create(new CreateApiKey('Administrator\'s assistant', 'read_write'), 1);
+        $managers = $this->keys->create(new CreateApiKey('Manager\'s assistant', 'read_write'), 2);
+        $id = $admins->apiKey->id;
+
+        self::assertSame([$managers->apiKey->id], array_map(static fn($key): int => $key->id, $this->keys->all(2, false)), 'a manager lists their own');
+        self::assertCount(2, $this->keys->all(1, true), 'an administrator lists every key');
+        foreach ([
+            fn() => $this->keys->chooseForAssistant($id, ['ask' => []], 2, false),
+            fn() => $this->keys->assistant($id, 2, false),
+            fn() => $this->keys->revoke($id, 2, false),
+        ] as $attempt) {
+            try {
+                $attempt();
+                self::fail('Another manager reached the administrator\'s key.');
+            } catch (IntegrationRuleViolation $e) {
+                self::assertSame('There is no such key.', $e->getMessage(), 'as for a key that is not there');
+            }
+        }
+        self::assertNull($this->keys->assistant($id, 1, false), 'its choices are as they were');
+        self::assertNotNull($this->keys->authenticate($admins->key), 'and it still works');
+
+        $this->keys->chooseForAssistant($managers->apiKey->id, ['ask' => []], 1, true);
+        self::assertSame(['ask' => []], $this->keys->assistant($managers->apiKey->id, 2, false), 'an administrator manages any key');
+        $this->keys->revoke($managers->apiKey->id, 1, true);
+        self::assertNull($this->keys->authenticate($managers->key));
     }
 
     public function testAUseIsSavedAtMostOnceAMinute(): void

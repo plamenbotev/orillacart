@@ -142,7 +142,7 @@ final class ReverseChargeTest extends TestCase
         $order = $this->shop->orders->order($placed->number);
         self::assertSame('123456782RT0001', $order->vatNumber);
         $this->shop->orders->markPaidByShop($order->number, '', 7);
-        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document($this->shop->invoices->ofOrder($order->number)[0]->number, $this->shop->receipts->issue($order->number)), 'locale' => 'en-US']);
+        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->issued($this->shop->invoices->ofOrder($order->number)[0]->number), 'locale' => 'en-US']);
         self::assertStringContainsString('Business number: 123456782RT0001', $html);
 
         $dropped = $this->shop->checkout->placeOrder(new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken), new PlaceOrder('buyer@example.ca', new AddressData('Jo', 'Tremblay', '1 Rue Sainte-Catherine', 'Montreal', 'H2X 1Y4', 'CA', '+1 514 000 0000', 'QC'), payment: 'bank_transfer', vatNumber: '123456789'));
@@ -156,7 +156,7 @@ final class ReverseChargeTest extends TestCase
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['DE123456789', true, '10', '0'], [$order->vatNumber, $order->reverseCharge, $order->total, $order->itemsTax]);
         $this->shop->orders->markPaidByShop($order->number, '', 7);
-        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document($this->shop->invoices->ofOrder($order->number)[0]->number, $this->shop->receipts->issue($order->number)), 'locale' => 'en-US']);
+        $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->issued($this->shop->invoices->ofOrder($order->number)[0]->number), 'locale' => 'en-US']);
         self::assertStringContainsString('DE123456789', $html);
         self::assertStringContainsString('Reverse charge', $html);
     }
@@ -175,6 +175,22 @@ final class ReverseChargeTest extends TestCase
 
         $order = $this->shop->orders->order($other->number);
         self::assertSame([true, 'VIES has the VAT number DE123456789 registered to "Muster GmbH", which is not the billing name "Eve Adams". Check that the buyer is that business: the order is sold without VAT.'], [$order->reverseCharge, $order->attention], 'flagged, not refused');
+    }
+
+    public function testOneWordInCommonIsNotTheSameBusiness(): void
+    {
+        // The check reads only the names: no registry, settings or geography take part.
+        $numbers = new \ReflectionClass(\OrillaCart\Tax\Application\VatNumbers::class)->newInstanceWithoutConstructor();
+        $bank = new \OrillaCart\Tax\Application\Dto\ReverseCharge(true, 'DE123456789', registeredName: 'Deutsche Bank AG');
+
+        self::assertNotNull($numbers->nameMismatch($bank, 'Deutsche Telekom', 'buyer@example.com'), 'a word in common');
+        self::assertNotNull($numbers->nameMismatch($bank, 'Eve Adams', 'eve@deutsche.example'), 'a domain with one of the words');
+        self::assertNotNull($numbers->nameMismatch($bank, 'Eve Adams', 'eve@bankmail.de'), 'a domain holding a word');
+        self::assertNull($numbers->nameMismatch($bank, 'Deutsche Bank', 'buyer@example.com'));
+        self::assertNull($numbers->nameMismatch($bank, 'Eve Adams', 'eve@deutschebank.de'));
+        self::assertNull($numbers->nameMismatch($bank, 'Eve Adams', 'eve@mail.deutsche-bank.de'));
+        self::assertNull($numbers->nameMismatch(new \OrillaCart\Tax\Application\Dto\ReverseCharge(true, 'DE1', registeredName: 'ACME Robotics Services GmbH'), 'ACME', 'a@example.com'), 'a shortening of the name');
+        self::assertNotNull($numbers->nameMismatch(new \OrillaCart\Tax\Application\Dto\ReverseCharge(true, 'DE1', registeredName: 'ACME Services GmbH'), 'Other Services', 'a@example.com'), 'the words any business has tell nothing');
     }
 
     public function testWithPricesIncludingTaxTheBusinessPaysThemLessTheShopsVat(): void

@@ -21,8 +21,8 @@ jobs:
       matrix:
         php: ['8.5']
     steps:
-      - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: mysqli, pdo_sqlite
@@ -30,6 +30,8 @@ jobs:
           tools: composer:v2
       - run: composer validate --strict
       - run: composer install --no-interaction --no-progress
+      - name: Known vulnerabilities in the libraries the plugin ships
+        run: composer audit --locked --no-dev
       - name: Code style
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
       - name: Static analysis
@@ -43,12 +45,14 @@ jobs:
     name: Admin code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Known vulnerabilities in the packages the scripts ship
+        run: npm audit --omit=dev
       - run: npm run typecheck
       - run: npm run lint:js
       - run: npm run test:js
@@ -58,13 +62,13 @@ jobs:
     name: Integration and end-to-end (wp-env)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
           coverage: none
           tools: composer:v2
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -75,7 +79,7 @@ jobs:
       - run: npm run test:integration
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         if: failure()
         with:
           name: e2e-artifacts
@@ -85,13 +89,13 @@ jobs:
     name: Search on OpenSearch (wp-env)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
           coverage: none
           tools: composer:v2
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -103,7 +107,7 @@ jobs:
           network="$(docker network ls --filter name=wp-env --format '{{.Name}}' | head -n 1)"
           docker run -d --name oc-opensearch --network "$network" -p 9200:9200 \
             -e discovery.type=single-node -e DISABLE_SECURITY_PLUGIN=true -e OPENSEARCH_JAVA_OPTS='-Xms512m -Xmx512m' \
-            opensearchproject/opensearch:2.19.1
+            opensearchproject/opensearch@sha256:72fe2fc84be8295906b8efca020b46c58ed45c8da60cd9b8b49e1991e38e89a4 # 2.19.1
           for attempt in $(seq 1 60); do curl -fs http://localhost:9200 > /dev/null && break; sleep 2; done
           curl -fs http://localhost:9200
       - run: npm run test:opensearch
@@ -112,14 +116,19 @@ jobs:
     name: Release zip
     runs-on: ubuntu-latest
     needs: [php, admin, integration, opensearch]
+    permissions:
+      contents: read
+      # A signed statement of which workflow and commit built the zip (gh attestation verify <zip> -R <repo>).
+      id-token: write
+      attestations: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
           coverage: none
           tools: composer:v2
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -129,8 +138,16 @@ jobs:
         run: bin/build
       - name: Install and run it on a clean WordPress
         run: bin/smoke-test-release
-      - uses: actions/upload-artifact@v5
+      - name: Build provenance
+        if: github.event_name == 'push'
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-path: dist/*.zip
+      # The zip with its SHA-256 beside it (sha256sum -c orillacart-<version>.zip.sha256).
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: orillacart-zip
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
           if-no-files-found: error

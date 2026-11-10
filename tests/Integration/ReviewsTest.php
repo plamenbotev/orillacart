@@ -73,15 +73,17 @@ final class ReviewsTest extends RestTestCase
         self::assertSame(['Bob', 'bob@example.com', '4', '0'], [$comment->comment_author, $comment->comment_author_email, get_comment_meta((int) $comment->comment_ID, CommentReviewStore::RATING, true), get_comment_meta((int) $comment->comment_ID, CommentReviewStore::VERIFIED, true)]);
 
         $again = $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 1, 'text' => 'Changed my mind.', 'name' => 'Bob', 'email' => 'bob@example.com'], nonce: true);
-        self::assertSame([422, 'orillacart_already_reviewed'], [$again->get_status(), $this->data($again)['code']]);
+        // A guest is answered as one whose review waits: the answer does not tell which emails reviewed.
+        self::assertSame([201, 'held', null], [$again->get_status(), $this->data($again)['status'], $this->data($again)['review']]);
         wp_spam_comment((int) $comment->comment_ID);
         $spammed = $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 1, 'text' => 'Buy cheap watches.', 'name' => 'Bob', 'email' => 'bob@example.com'], nonce: true);
-        self::assertSame('orillacart_already_reviewed', $this->data($spammed)['code'] ?? null, 'marked spam, not a new reviewer');
+        self::assertSame([201, 'held'], [$spammed->get_status(), $this->data($spammed)['status']], 'marked spam, not a new reviewer');
+        self::assertCount(1, get_comments(['post_id' => $this->lamp, 'type' => CommentReviewStore::TYPE, 'status' => ['approve', 'hold', 'spam']]), 'neither was kept');
         wp_unspam_comment((int) $comment->comment_ID);
 
         // The shop answers from the Comments screen.
         $this->actAs('administrator');
-        wp_insert_comment(['comment_post_ID' => $this->lamp, 'comment_parent' => (int) $comment->comment_ID, 'comment_content' => 'Thank you, Bob!', 'comment_author' => 'The shop', 'comment_approved' => 1]);
+        wp_insert_comment(['comment_post_ID' => $this->lamp, 'comment_parent' => (int) $comment->comment_ID, 'comment_content' => 'Thank you, Bob!', 'comment_author' => 'The shop', 'comment_approved' => 1, 'user_id' => get_current_user_id()]);
         wp_set_current_user(0);
 
         $page = $this->data($this->request('GET', "/products/{$this->lamp}/reviews"));
@@ -163,6 +165,91 @@ final class ReviewsTest extends RestTestCase
             remove_filter('wp_die_handler', $died);
         }
         self::assertSame(0, (int) get_comments(['post_id' => $this->lamp, 'count' => true]));
+    }
+
+    public function testOnlyWhoSpeaksForTheShopAnswersAReviewAndWordPressOwnApiTakesNoOtherCommentOnAProduct(): void
+    {
+        self::assertSame(201, $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 2, 'text' => 'Flickers.', 'name' => 'Bob', 'email' => 'bob@example.com'], nonce: true)->get_status());
+        $reviews = get_comments(['post_id' => $this->lamp, 'type' => CommentReviewStore::TYPE]);
+        self::assertIsArray($reviews);
+        self::assertInstanceOf(\WP_Comment::class, $reviews[0] ?? null);
+        $review = (int) $reviews[0]->comment_ID;
+        // WordPress's own route for comments, which the theme's form's filters never see.
+        $comment = static function (array $params): \WP_REST_Response {
+            $request = new \WP_REST_Request('POST', '/wp/v2/comments');
+            $request->set_header('Content-Type', 'application/json');
+            $request->set_body((string) wp_json_encode($params));
+
+            return rest_do_request($request);
+        };
+
+        // A customer as they are: with an email, so WordPress's own checks pass and the shop's guard answers.
+        $customer = wp_insert_user(['user_login' => 'reviews-customer-' . wp_generate_password(6, false), 'user_email' => 'reviews-customer-' . wp_generate_password(6, false) . '@example.com', 'user_pass' => wp_generate_password(), 'role' => WordPressAccounts::ROLE]);
+        self::assertIsInt($customer);
+        wp_set_current_user($customer);
+        $posed = $comment(['post' => $this->lamp, 'parent' => $review, 'content' => 'We are sorry: here is a refund link.', 'author_name' => 'The shop', 'author_email' => 'shop@example.com']);
+        self::assertSame(403, $posed->get_status(), (string) wp_json_encode($posed->get_data()));
+        self::assertSame('orillacart_review_from_page', $this->data($posed)['code']);
+        self::assertSame(403, $comment(['post' => $this->lamp, 'content' => 'A plain comment.'])->get_status(), 'nor a comment of its own');
+        self::assertSame(1, (int) get_comments(['post_id' => $this->lamp, 'count' => true]), 'only the review');
+        // However a comment got under the review, it is the shop's answer only from someone who speaks for the shop.
+        wp_insert_comment(['comment_post_ID' => $this->lamp, 'comment_parent' => $review, 'comment_content' => 'Call this number for a refund.', 'comment_author' => 'The shop', 'comment_approved' => 1, 'user_id' => $customer]);
+        wp_insert_comment(['comment_post_ID' => $this->lamp, 'comment_parent' => $review, 'comment_content' => 'Nobody wrote this.', 'comment_author' => 'The shop', 'comment_approved' => 1]);
+
+        $manager = $this->actAs('administrator');
+        $answered = $comment(['post' => $this->lamp, 'parent' => $review, 'content' => 'A new lamp is on its way.']);
+        self::assertSame(201, $answered->get_status(), (string) wp_json_encode($answered->get_data()));
+        $answer = $this->data($answered)['id'];
+        self::assertIsInt($answer);
+        self::assertSame('1', get_comment_meta($answer, CommentReviewStore::SHOPS_ANSWER, true));
+        wp_set_comment_status($answer, 'approve');
+        self::assertSame(403, $comment(['post' => $this->lamp, 'content' => 'A plain comment.'])->get_status(), 'a manager answers reviews, and writes no comment of their own either');
+        wp_set_current_user(0);
+
+        $texts = function (): array {
+            $page = $this->data($this->request('GET', "/products/{$this->lamp}/reviews"));
+            self::assertIsArray($page['reviews']);
+            self::assertIsArray($page['reviews'][0]);
+            self::assertIsArray($page['reviews'][0]['replies']);
+
+            return array_column($page['reviews'][0]['replies'], 'text');
+        };
+        self::assertSame(['A new lamp is on its way.'], $texts());
+        self::assertStringNotContainsString('Call this number', $this->productPage());
+
+        // The answer was the shop's when it was written: it stays one after its writer left the shop.
+        $user = get_user_by('id', $manager);
+        self::assertInstanceOf(\WP_User::class, $user);
+        $user->set_role('subscriber');
+        try {
+            self::assertSame(['A new lamp is on its way.'], $texts());
+        } finally {
+            $user->set_role('administrator');
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            wp_delete_user($customer);
+        }
+    }
+
+    public function testAProductThatIsNotPublishedOrHasAPasswordGivesAnEmptyPageOfReviewsAndTakesNone(): void
+    {
+        self::assertSame(201, $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 4, 'text' => 'Warm light.', 'name' => 'Bob', 'email' => 'bob@example.com'], nonce: true)->get_status());
+        $empty = ['rating' => null, 'reviews' => [], 'page' => 1, 'pages' => 1];
+        self::assertNotSame($empty, $this->data($this->request('GET', "/products/{$this->lamp}/reviews")));
+
+        foreach (['draft', 'private', 'trash'] as $status) {
+            $status === 'trash' ? wp_trash_post($this->lamp) : wp_update_post(['ID' => $this->lamp, 'post_status' => $status]);
+            self::assertSame($empty, $this->data($this->request('GET', "/products/{$this->lamp}/reviews")), $status);
+            if ($status === 'trash') {
+                wp_untrash_post($this->lamp);
+            }
+        }
+        wp_update_post(['ID' => $this->lamp, 'post_status' => 'publish', 'post_password' => 'brass', 'comment_status' => 'open']);
+        self::assertSame($empty, $this->data($this->request('GET', "/products/{$this->lamp}/reviews")), 'with a password');
+        $written = $this->request('POST', "/products/{$this->lamp}/reviews", ['rating' => 1, 'text' => 'Never saw it.', 'name' => 'Eve', 'email' => 'eve@example.com'], nonce: true);
+        self::assertSame([422, 'orillacart_reviews_closed'], [$written->get_status(), $this->data($written)['code']]);
+
+        wp_update_post(['ID' => $this->lamp, 'post_password' => '']);
+        self::assertNotSame($empty, $this->data($this->request('GET', "/products/{$this->lamp}/reviews")));
     }
 
     /**

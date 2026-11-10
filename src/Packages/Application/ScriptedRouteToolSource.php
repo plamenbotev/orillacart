@@ -9,12 +9,14 @@ use OrillaCart\Assistant\Application\Dto\ToolDefinition;
 use OrillaCart\Assistant\Application\Dto\ToolOutcome;
 use OrillaCart\Assistant\Application\ToolSource;
 use OrillaCart\Packages\Application\Dto\ScriptResponse;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 
 /**
  * An extension's manager routes as the assistant's tools: `route POST "/refunds" { who: manager }` of the
  * extension `payfast` is the tool `x_payfast_post_refunds`, unless the route says `tool: false`. The route's
- * `title`, `description`, `input` (a JSON schema of the body) and `risk` describe it; without `input` the tool
+ * `title`, `description`, `input` (a JSON schema of the body) and `risk` describe it (a route that is not a GET
+ * and names no risk the shop knows waits for the owner's yes as one that changes something); without `input` the tool
  * takes `params`, `query` and `body` maps. The handler gets the request map a REST call would give it, as the
  * caller, a manager.
  */
@@ -47,7 +49,7 @@ final readonly class ScriptedRouteToolSource implements ToolSource
                 $method === 'GET',
                 $method === 'DELETE',
                 \in_array($method, ['GET', 'PUT', 'DELETE'], true),
-                \is_string($risk) ? $risk : ($method === 'DELETE' ? 'deleting' : null),
+                \is_string($risk) && \in_array($risk, Tool::RISKS, true) ? $risk : ($method === 'DELETE' ? Tool::DELETING : null),
                 self::AREA,
                 Capability::MANAGE_SHOP,
                 true,

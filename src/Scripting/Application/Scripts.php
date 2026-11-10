@@ -99,8 +99,9 @@ final readonly class Scripts
         return ['filters' => \OrillaCart\Scripting\Domain\Ops::FILTERS, 'tests' => \OrillaCart\Scripting\Domain\Ops::TESTS];
     }
 
+    /** The whole SHA-256 of the source: the class and the cache key go by it, so two sources never share one. */
     public static function checksum(string $source): string
     {
-        return substr(hash('sha256', $source), 0, 16);
+        return hash('sha256', $source);
     }
 }

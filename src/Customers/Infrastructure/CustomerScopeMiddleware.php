@@ -17,8 +17,10 @@ use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
 
 /**
  * A customer's screens (`/customers/{id}…`: the customer, addresses, notes, groups, store credit, exemptions, the
- * welcome email) reach the shop's own customers only: not the site's administrators or managers, and on a network
- * not the users of its other sites. Whoever is not one is not found, as if there were no such user.
+ * welcome email) reach the shop's own customers only: users whose every role is a customers' role, so not the
+ * site's staff, and on a network not the users of its other sites. Whoever is not one is not found, as if there
+ * were no such user. The services behind them check the same for a number that comes another way (an order being
+ * made, a script): this turns the whole path away before any of them runs.
  */
 #[AutoconfigureTag(HttpKernel::MIDDLEWARE_TAG)]
 final readonly class CustomerScopeMiddleware implements MiddlewareInterface

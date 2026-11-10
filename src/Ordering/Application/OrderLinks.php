@@ -13,7 +13,7 @@ interface OrderLinks
     public function receiptUrl(int $orderNumber): string;
 
     /** The link that downloads a bought file. */
-    public function downloadUrl(string $token): string;
+    public function downloadUrl(#[\SensitiveParameter] string $token): string;
 
     /**
      * Where a customer whose way back to the order expired finds it by its number and email, and is told so: a

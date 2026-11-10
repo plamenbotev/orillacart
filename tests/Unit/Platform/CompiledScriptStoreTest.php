@@ -6,14 +6,14 @@ namespace OrillaCart\Tests\Unit\Platform;
 
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\Scripting\CompiledScriptStore;
+use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Shared\Security\Signatures;
 use PHPUnit\Framework\TestCase;
 
 /**
  * The compiled-class store without a cache folder (no WordPress here): what it keeps is signed, what it reads
- * back has to carry this site's signature, what the gate refuses is never evaluated, and what is included is the
- * bytes checked, from a file of its own. The cache files themselves are tried in the integration suite
- * (CompiledScriptStoreTest there).
+ * back has to carry this site's signature of that key and build, and what the gate refuses is never evaluated.
+ * The cache files themselves are tried in the integration suite (CompiledScriptStoreTest there).
  */
 final class CompiledScriptStoreTest extends TestCase
 {
@@ -23,12 +23,28 @@ final class CompiledScriptStoreTest extends TestCase
     {
         $store = self::store('secret-a');
 
-        $signed = $store->signed(self::SOURCE);
+        $signed = $store->signed('s1-unit-k', self::SOURCE);
         self::assertStringStartsWith(self::SOURCE . "\n// signed ", $signed);
-        self::assertSame(self::SOURCE, $store->unsigned($signed));
-        self::assertNull($store->unsigned(self::SOURCE), 'no signature');
-        self::assertNull($store->unsigned(str_replace('Script_store_unit', 'Script_other', $signed)), 'the source changed after signing');
-        self::assertNull(self::store('secret-b')->unsigned($signed), 'another site\'s signature');
+        self::assertSame(self::SOURCE, $store->unsigned('s1-unit-k', $signed));
+        self::assertNull($store->unsigned('s1-unit-k', self::SOURCE), 'no signature');
+        self::assertNull($store->unsigned('s1-unit-k', str_replace('Script_store_unit', 'Script_other', $signed)), 'the source changed after signing');
+        self::assertNull(self::store('secret-b')->unsigned('s1-unit-k', $signed), 'another site\'s signature');
+    }
+
+    public function testASignedFileMovedToAnotherKeyOrBuildIsRefused(): void
+    {
+        $signed = self::store('secret-a')->signed('s1-unit-k', self::SOURCE);
+
+        self::assertNull(self::store('secret-a')->unsigned('s1-unit-other', $signed), 'another key');
+        self::assertNull(self::store('secret-a', '0.0.1-test')->unsigned('s1-unit-k', $signed), 'another build');
+    }
+
+    public function testAClassAndItsKeyGoByTheWholeChecksumOfTheSource(): void
+    {
+        $checksum = Scripts::checksum("fn f() { return 1 }\n");
+
+        self::assertSame(hash('sha256', "fn f() { return 1 }\n"), $checksum, 'all 256 bits: a collision is not within reach');
+        self::assertStringEndsWith('-' . $checksum, Scripts::key('1', 'unit', "fn f() { return 1 }\n"));
     }
 
     public function testRefusesToEvaluateWhatTheGateRefuses(): void
@@ -52,40 +68,8 @@ final class CompiledScriptStoreTest extends TestCase
         self::assertTrue(class_exists('OrillaCart\\Generated\\Scripts\\Site1\\Script_store_unit', false));
     }
 
-    public function testIncludesTheBytesCheckedFromAFileOfItsOwnAndLeavesNoneBehind(): void
+    private static function store(string $secret, string $version = '0.0.0-test'): CompiledScriptStore
     {
-        $folder = sys_get_temp_dir() . '/oc-store-' . bin2hex(random_bytes(6));
-        mkdir($folder, 0o700);
-        try {
-            // The cache file says one thing; the bytes checked say another: the bytes are what runs.
-            file_put_contents($folder . '/k.php', str_replace('Script_store_include', 'Script_swapped_in', self::included()));
-
-            self::assertTrue(CompiledScriptStore::includeChecked($folder, self::included()));
-
-            self::assertTrue(class_exists('OrillaCart\\Generated\\Scripts\\Site1\\Script_store_include', false));
-            self::assertFalse(class_exists('OrillaCart\\Generated\\Scripts\\Site1\\Script_swapped_in', false));
-            self::assertSame(['k.php'], array_values(array_diff((array) scandir($folder), ['.', '..'])), 'the file made for the include is gone');
-        } finally {
-            $files = glob($folder . '/{,.}*.php', GLOB_BRACE);
-            foreach ($files === false ? [] : $files as $file) {
-                unlink($file);
-            }
-            rmdir($folder);
-        }
-    }
-
-    public function testIncludesNothingWhereItCannotWrite(): void
-    {
-        self::assertFalse(CompiledScriptStore::includeChecked('/nonexistent-' . bin2hex(random_bytes(4)), self::included()));
-    }
-
-    private static function included(): string
-    {
-        return str_replace('Script_store_unit', 'Script_store_include', self::SOURCE);
-    }
-
-    private static function store(string $secret): CompiledScriptStore
-    {
-        return new CompiledScriptStore(new PluginContext(__DIR__ . '/orillacart.php', '0.0.0-test'), new Signatures($secret));
+        return new CompiledScriptStore(new PluginContext(__DIR__ . '/orillacart.php', $version), new Signatures($secret));
     }
 }

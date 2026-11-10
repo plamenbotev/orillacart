@@ -100,6 +100,34 @@ final class SafeUploadInspectorTest extends TestCase
         yield 'cut short by a false end' => ["%PDF-1.5\n1 0 obj << /Filter /FlateDecode >>\nstream\n" . substr((string) gzcompress(str_repeat('q ', 500) . '<< /S /Launch >>'), 0, 8) . "endstream\nendobj"];
         yield 'a stream that does not unpack' => ["%PDF-1.5\n1 0 obj << /Filter /FlateDecode >>\nstream\nnot zlib at all\nendstream\nendobj"];
         yield 'a stream without its object' => ["%PDF-1.5\n<< /Filter /FlateDecode >>\nstream\n" . gzcompress('BT ET') . "\nendstream"];
+        yield 'a name ended by a NUL' => ["%PDF-1.4\n1 0 obj << /Type /Action /S /JavaScript\0/JS\0(app.alert(1)) >> endobj"];
+        yield 'a name ended by a form feed' => ["%PDF-1.4\n1 0 obj << /OpenAction\f2 0 R >> endobj"];
+        yield 'an escaped NUL ends a name' => ["%PDF-1.4\n1 0 obj << /Launch#00 >> endobj"];
+        yield 'a web link' => ["%PDF-1.4\n1 0 obj << /Type /Annot /Subtype /Link /A << /S /URI /URI (https://evil.example) >> >> endobj"];
+        yield 'a named action' => ["%PDF-1.4\n1 0 obj << /A << /S /Named /N /Print >> >> endobj"];
+        yield 'media' => ["%PDF-1.4\n1 0 obj << /A << /S /Rendition /R 2 0 R >> >> endobj"];
+        yield 'an action type with a comment before it' => ["%PDF-1.4\n1 0 obj << /S %x\n/Thread /D 2 0 R >> endobj"];
+        yield 'a jump to another file' => ["%PDF-1.4\n1 0 obj << /S/GoToR /F (other.pdf) >> endobj"];
+        yield 'a planted header in a comment hides the encoding' => ["%PDF-1.5\n1 0 obj << /Filter /ASCIIHexDecode /Length 9 % 2 0 obj <<\n>>\nstream\n2F4A532028782920>\nendstream\nendobj"];
+        yield 'a planted header in a string hides the encoding' => ["%PDF-1.5\n1 0 obj << /Filter /ASCIIHexDecode /T (2 0 obj << >>) >>\nstream\n2F4A53>\nendstream\nendobj"];
+        yield 'an encoding behind a reference' => ["%PDF-1.5\n1 0 obj << /Filter 2 0 R >>\nstream\n2F4A53>\nendstream\nendobj\n2 0 obj /ASCIIHexDecode endobj"];
+        yield 'an encoding behind a far header' => ["%PDF-1.5\n1 0 obj << /Filter /ASCIIHexDecode /T (" . str_repeat('x', 9000) . ") >>\nstream\n2F4A53>\nendstream\nendobj"];
+        yield 'data in another file' => ["%PDF-1.5\n1 0 obj << /F (data.bin) /FFilter /ASCIIHexDecode >>\nstream\n\nendstream\nendobj"];
+        yield 'a dictionary that does not end at its stream' => ["%PDF-1.5\n1 0 obj << /Filter /FlateDecode\nstream\n" . gzcompress('BT ET') . "\nendstream\nendobj"];
+    }
+
+    public function testAPdfThatJumpsToItsOwnPagesWithLabelsTransitionsAndCommentsIsTaken(): void
+    {
+        $pdf = "%PDF-1.5\n%\xE2\xE3\xCF\xD3\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R /PageLabels << /Nums [0 << /S /D >>] >> /Outlines 6 0 R >>\nendobj\n"
+            . "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n"
+            . "3 0 obj << /Type /Page /Parent 2 0 R /Trans << /S /Dissolve >> /Annots [<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /A << /S /GoTo /D [3 0 R /Fit] >> >>] /Contents 4 0 R >> endobj\n"
+            . "4 0 obj\n<< /Length 30 % the page\n/Filter [ /FlateDecode ] /DecodeParms << /Predictor 1 >> /Title (with \\) and (nested) parens) /Id <0A1b> >>\nstream\r\n" . gzcompress('BT /F1 12 Tf (Hello) Tj ET') . "\r\nendstream\nendobj\n"
+            . "5 0 obj<</Type/XObject/Subtype/Image/Width 1/Height 1/Filter/DCTDecode/Length 9>>stream\n\xFF\xD8\xFF\xE0 jpeg \xFF\xD9\nendstream\nendobj\n"
+            . "6 0 obj << /Type /Outlines /Count 0 >> endobj\n%%EOF\n";
+        $clean = new SafeUploadInspector()->clean($this->file($pdf), 'application/pdf');
+        $this->paths[] = $clean;
+
+        self::assertSame($pdf, file_get_contents($clean));
     }
 
     #[DataProvider('actingPdfs')]
@@ -107,6 +135,22 @@ final class SafeUploadInspectorTest extends TestCase
     {
         $this->expectException(FormRuleViolation::class);
         new SafeUploadInspector()->clean($this->file($pdf), 'application/pdf');
+    }
+
+    public function testAFieldThatTakesLinksTakesAPdfWithAWebLinkAndNothingElseThatActs(): void
+    {
+        $link = "%PDF-1.4\n1 0 obj << /Type /Annot /Subtype /Link /A << /S /URI /URI (https://example.com/cv) >> >> endobj";
+        $inspector = new SafeUploadInspector();
+
+        self::assertSame($link, file_get_contents($inspector->clean($this->file($link), 'application/pdf', true)));
+
+        $script = "%PDF-1.4\n1 0 obj << /Type /Annot /Subtype /Link /A << /S /JavaScript /JS (app.alert(1)) >> >> endobj";
+        try {
+            $inspector->clean($this->file($script), 'application/pdf', true);
+            self::fail('a script is never taken');
+        } catch (FormRuleViolation $e) {
+            self::assertStringNotContainsString('links', $e->getMessage());
+        }
     }
 
     public function testAPictureIsWrittenAgainWithoutWhatHidAfterIt(): void

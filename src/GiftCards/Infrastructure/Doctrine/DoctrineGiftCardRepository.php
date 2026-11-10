@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\GiftCards\Infrastructure\Doctrine;
 
 use Doctrine\DBAL\LockMode;
+use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\GiftCards\Domain\GiftCard;
 use OrillaCart\GiftCards\Domain\GiftCardCode;
@@ -29,6 +31,24 @@ final readonly class DoctrineGiftCardRepository implements GiftCardRepository
     public function storeCreditOf(int $customerId, bool $lock = false): ?GiftCard
     {
         return $this->locked($this->entityManager->getRepository(GiftCard::class)->findOneBy(['customerId' => $customerId, 'kind' => GiftCardKind::StoreCredit]), $lock);
+    }
+
+    public function storeCreditFor(int $customerId, string $currency, \DateTimeImmutable $now): GiftCard
+    {
+        $credit = $this->storeCreditOf($customerId, true);
+        if ($credit !== null) {
+            return $credit;
+        }
+        // The unique key on customer and kind: a row another first credit made meanwhile is waited for, and kept.
+        $this->entityManager->getConnection()->executeStatement(
+            'INSERT INTO ' . $this->entityManager->getClassMetadata(GiftCard::class)->getTableName()
+            . ' (code_hash, code_end, initial, balance, expires_at, active, recipient_name, recipient_email, message, kind, currency, customer_id, order_id, created_at)'
+            . " VALUES (NULL, '', 0, 0, NULL, 1, '', '', '', ?, ?, ?, NULL, ?) ON DUPLICATE KEY UPDATE id = id",
+            [GiftCardKind::StoreCredit->value, $currency, $customerId, $now],
+            [ParameterType::STRING, ParameterType::STRING, ParameterType::INTEGER, Types::DATETIME_IMMUTABLE],
+        );
+
+        return $this->storeCreditOf($customerId, true) ?? throw new \LogicException("The store credit of customer {$customerId} was made and is not there.");
     }
 
     public function page(string $search, int $page, int $perPage): array

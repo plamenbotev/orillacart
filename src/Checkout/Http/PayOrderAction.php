@@ -6,7 +6,8 @@ namespace OrillaCart\Checkout\Http;
 
 use OrillaCart\Checkout\Application\Dto\PayOrder;
 use OrillaCart\Checkout\Application\PayNow;
-use OrillaCart\Ordering\Application\ReceiptLinks;
+use OrillaCart\Ordering\Application\ReceiptHandles;
+use OrillaCart\Ordering\Http\PresentedReceipt;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
@@ -17,10 +18,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Pays an unpaid order from its receipt, for whoever holds a link to it: where to send the customer next.
  */
-#[Route('/receipts/{receipt}/payment', methods: ['POST'], capability: Route::PUBLIC, requirements: ['receipt' => ReceiptLinks::PATTERN], guard: 'receipts')]
+#[Route('/receipts/{receipt}/payment', methods: ['POST'], capability: Route::PUBLIC, requirements: ['receipt' => ReceiptHandles::PATTERN], guard: 'receipts')]
 final readonly class PayOrderAction implements RequestHandlerInterface
 {
     public function __construct(
+        private PresentedReceipt $receipt,
         private PayNow $payNow,
         private RequestMapper $input,
         private JsonResponder $responder,
@@ -30,6 +32,6 @@ final readonly class PayOrderAction implements RequestHandlerInterface
     {
         $receipt = $request->getAttribute('receipt');
 
-        return $this->responder->ok($this->payNow->pay(\is_string($receipt) ? $receipt : '', $this->input->body($request, PayOrder::class)));
+        return $this->responder->ok($this->payNow->pay($this->receipt->of($request, \is_string($receipt) ? $receipt : ''), $this->input->body($request, PayOrder::class)));
     }
 }

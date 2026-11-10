@@ -61,6 +61,17 @@ export interface Overview {
 	hours: JobCounts[];
 	days: JobCounts[];
 	now: string;
+	/**
+	 * A network worker leaves this site out: its plugins or theme are not the ones the worker loaded, so its jobs
+	 * would run without them.
+	 */
+	left_out: {
+		worker: string;
+		reason: 'plugins' | 'theme';
+		at: string;
+	} | null;
+	/** The sites a network worker started on this one leaves out, by id: why. */
+	leaves_out: Record< string, 'plugins' | 'theme' >;
 }
 
 export interface FailedJob {

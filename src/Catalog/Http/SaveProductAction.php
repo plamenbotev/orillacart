@@ -13,6 +13,7 @@ use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -25,6 +26,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * data.product, and a save without it is refused the same way once the product was saved. The assistant may leave
  * updated_at out: its save then goes over whatever is there (the last save wins).
  */
+#[Tool(unasked: 'catalog')]
 #[Route('/products/{id}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class SaveProductAction implements RequestHandlerInterface
 {

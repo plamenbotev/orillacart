@@ -9,12 +9,14 @@ use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Puts an exported extension in place: a new one as a draft, or the files of the one with the same id replaced (it keeps running its old files until enabled again). */
+#[Tool(unasked: 'an extension\'s files put in place as a draft; nothing runs until enabled, which asks')]
 #[Route('/extensions/import', methods: ['POST'], capability: Capability::MANAGE_SHOP)]
 final readonly class ImportPackageAction implements RequestHandlerInterface
 {

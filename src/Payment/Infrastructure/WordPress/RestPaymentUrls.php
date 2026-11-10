@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Payment\Infrastructure\WordPress;
 
+use OrillaCart\Extension\Payment\ConfirmsNotifications;
 use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Payment\Application\PaymentUrls;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
@@ -36,9 +37,10 @@ final readonly class RestPaymentUrls implements PaymentUrls
         return add_query_arg(PaymentOutcomes::returnQuery($this->signatures, $gateway, $paymentId, $this->clock->now()), $url);
     }
 
+    /** With the shop's key for the gateway, which a gateway that confirms its notifications needs. */
     public function notificationUrl(string $gateway): string
     {
-        return self::url($gateway, 'webhook');
+        return add_query_arg([ConfirmsNotifications::NOTIFICATION_KEY => PaymentOutcomes::notificationKey($this->signatures, $gateway)], self::url($gateway, 'webhook'));
     }
 
     private static function url(string $gateway, string $action): string

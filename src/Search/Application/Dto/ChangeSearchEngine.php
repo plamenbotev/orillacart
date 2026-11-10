@@ -19,6 +19,7 @@ final readonly class ChangeSearchEngine
         public string $host = '',
         #[Assert\Length(max: 200)]
         public string $username = '',
+        #[\SensitiveParameter]
         #[Assert\Length(max: 200)]
         public string $password = '',
         #[Assert\Length(max: 100)]

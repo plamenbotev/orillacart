@@ -16,6 +16,7 @@ use OrillaCart\Checkout\Domain\BilledTax;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Coupons\Application\Discounts;
 use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
@@ -78,10 +79,15 @@ final readonly class ManualOrders
     }
 
     /**
+     * @throws NotFound              for a customer who is not one of the shop's
      * @throws CheckoutRuleViolation for items not sold or not available in that quantity
      */
     public function quote(QuoteOrder $query): OrderQuoteView
     {
+        // Priced as the customer is (their groups, exemptions): only for one of the shop's own customers.
+        if ($query->customerId !== null && !$this->customers->isCustomer($query->customerId)) {
+            throw new CustomerNotFound($query->customerId);
+        }
         $shipping = $query->shippingCountry === null ? null : new TaxAddress($query->shippingCountry, $query->shippingState, $query->shippingPostcode);
         $billing = $query->billingCountry === null ? $shipping : new TaxAddress($query->billingCountry, $query->billingState, $query->billingPostcode);
         [$priced, $reverse] = $this->priced(self::items($query->items), $shipping ?? $billing, $billing, $query->shippingOption, $query->customerId, $query->email, $query->payment, $query->vatNumber, $query->fields);
@@ -120,7 +126,8 @@ final readonly class ManualOrders
     }
 
     /**
-     * @throws NotFound              for a customer that does not exist
+     * @throws NotFound              for a customer who is not one of the shop's: no order is made for the site's
+     *                               staff, or on a network for a user of another site
      * @throws CheckoutRuleViolation for an unknown address, items that cannot be ordered, stock that ran out,
      *                               a missing shipping rate, a payment method the shop does not offer, or
      *                               a price an add-on that fails closed could not set

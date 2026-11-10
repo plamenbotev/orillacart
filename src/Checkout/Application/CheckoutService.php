@@ -58,6 +58,7 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\Extension\ExtensionFailures;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\Transactions;
 use OrillaCart\Shipping\Application\DeliveryDays;
@@ -108,6 +109,7 @@ final readonly class CheckoutService
         private LegalSettingsService $legal,
         private ShopOpening $opening,
         private GivenItems $given,
+        private RateLimiter $limits,
     ) {}
 
     /**
@@ -435,9 +437,12 @@ final readonly class CheckoutService
      *                                    shipping rate or payment method, stock that ran out, an address in a
      *                                    country the shop does not sell to, a shop that only shows its catalog,
      *                                    or a price an add-on that fails closed could not set
+     * @param string $caller who places it, as the rate limits count callers ("ip:203.0.113.7"): a guest's orders
+     *                       waiting for a transfer are counted by it
+     *
      * @throws PaymentProviderUnavailable when the payment cannot start; the order is then cancelled
      */
-    public function placeOrder(CartOwner $owner, PlaceOrder $command): PlacedOrderView
+    public function placeOrder(CartOwner $owner, PlaceOrder $command, string $caller = ''): PlacedOrderView
     {
         if ($this->settings->current()->catalogOnly) {
             throw new CheckoutRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
@@ -534,16 +539,21 @@ final readonly class CheckoutService
         $test = false;
         if ($owner->customerId !== null) {
             try {
-                $test = $this->customers->customer($owner->customerId)->test;
+                $test = $this->customers->account($owner->customerId)->test;
             } catch (CustomerNotFound) {
                 $test = false;
             }
         }
-        // Unpaid orders on hold keep their stock: one shopper (by account, or by who their email reaches) holds no
-        // more than a few at once, so a limited run is not bought up by orders never paid.
+        // Orders waiting for a transfer keep their stock: one shopper holds no more than a few at once, so a limited
+        // run is not bought up by orders never paid. Counted by account, or for a guest by where they order from,
+        // never by email, which anyone can type to lock its owner out. An order paid online now, or on delivery,
+        // holds nothing unpaid, and is never refused. The words tell nothing of anyone's orders.
         $most = $this->settings->current()->unpaidOrdersEach;
-        if ($most !== null && $needsPayment && !$test && $this->orders->countUnpaidOnHold($owner->customerId, $command->email) >= $most) {
-            throw new CheckoutRuleViolation('You have %d orders waiting for your payment. Pay for them from their receipts, or wait until they are cancelled, to order again.', 'orillacart_too_many_unpaid_orders', values: [$most]);
+        $offline = $gateway !== null && \in_array($gateway, $this->paymentOptions->paidOffline(), true);
+        if ($most !== null && $offline && !$test && ($owner->customerId !== null
+            ? $this->orders->countUnpaidOnHold($owner->customerId, $this->paymentOptions->paidOffline()) >= $most
+            : $caller !== '' && $this->limits->hit('unpaid_orders', $caller) !== null)) {
+            throw new CheckoutRuleViolation('Too many orders wait for a payment like this one. Choose another way to pay, or pay for the orders that wait first.', 'orillacart_too_many_unpaid_orders');
         }
         $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,

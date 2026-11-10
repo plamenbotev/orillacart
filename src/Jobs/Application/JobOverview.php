@@ -33,6 +33,7 @@ final readonly class JobOverview
         private JobWorkers $workers,
         private Jobs $jobs,
         private ClockInterface $clock,
+        private ?JobSites $sites = null,
     ) {}
 
     public function overview(): JobsOverview
@@ -78,6 +79,8 @@ final readonly class JobOverview
             self::byDay($this->queue->history($now->setTime(0, 0)->modify('-29 days'))),
             $now->format(\DATE_ATOM),
             $this->workers->cronDisabled(),
+            $this->workers->leftOutBy(),
+            $this->sites !== null && $this->sites->network() ? $this->sites->apart() : [],
         );
     }
 

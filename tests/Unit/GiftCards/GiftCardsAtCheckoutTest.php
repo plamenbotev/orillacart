@@ -285,6 +285,21 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertStringContainsString('gift cards that still spend', (string) $this->shop->orders->order($placed->number)->attention);
     }
 
+    public function testARefundThatNamesOtherItemsSaysSoWhenItLeavesTheCards(): void
+    {
+        $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
+        $placed = $this->shop->checkout->placeOrder($this->cart([10, 1], [20, 1]), $this->order('bank_transfer'));
+        $this->shop->orders->markPaid($placed->number, null);
+        $lamp = array_key_first(array_filter($this->shop->orders->order($placed->number)->lines, static fn($line): bool => $line->productId === 10));
+        self::assertNotNull($lamp);
+
+        $this->shop->refunds->refund($placed->number, new MakeRefund('40', [new RefundLine($lamp, 1)], outside: true), 1);
+
+        $attention = (string) $this->shop->orders->order($placed->number)->attention;
+        self::assertStringContainsString('naming other items than its gift cards', $attention);
+        self::assertStringNotContainsString('without naming items', $attention);
+    }
+
     public function testACardWhoseEmailDidNotGoIsForTheShopToSendAgain(): void
     {
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));

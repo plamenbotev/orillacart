@@ -10,6 +10,7 @@ use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Files\LocalPrivateFiles;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
+use OrillaCart\Shared\Files\StorageCheck;
 use OrillaCart\Shared\Security\Capability;
 use PHPUnit\Framework\TestCase;
 
@@ -106,6 +107,37 @@ final class UninstallTest extends TestCase
         }
     }
 
+    public function testAMovedSiteAdoptsItsFolderOrACopyStartsANewOne(): void
+    {
+        $moved = sys_get_temp_dir() . '/orillacart-moved-' . bin2hex(random_bytes(4));
+        mkdir($moved);
+        $key = bin2hex(random_bytes(16));
+        file_put_contents("{$moved}/{$key}", 'the guide');
+        file_put_contents("{$moved}/" . LocalPrivateFiles::MARKER, 'site ' . get_current_blog_id() . " of 0123456789abcdef\n");
+        $previous = [get_option(LocalPrivateFiles::DIRECTORY_OPTION), get_option(LocalPrivateFiles::CREATED_OPTION)];
+        update_option(LocalPrivateFiles::DIRECTORY_OPTION, $moved);
+        delete_option(LocalPrivateFiles::CREATED_OPTION);
+        try {
+            self::assertNull(new LocalPrivateFiles()->path($key));
+            $adopted = new LocalPrivateFiles()->answer(StorageCheck::ADOPT);
+            self::assertNull($adopted->claim);
+            self::assertSame("{$moved}/{$key}", new LocalPrivateFiles()->path($key), 'moved: served from it again');
+
+            file_put_contents("{$moved}/" . LocalPrivateFiles::MARKER, "site 7 of 0123456789abcdef\n");
+            $new = new LocalPrivateFiles()->answer(StorageCheck::START_NEW);
+            self::assertNull($new->claim);
+            self::assertNotSame($moved, get_option(LocalPrivateFiles::DIRECTORY_OPTION), 'a copy: a folder of its own');
+            self::assertFileExists("{$moved}/{$key}", 'the other\'s files left alone');
+        } finally {
+            $left = glob("{$moved}/{,.}*[!.]*", GLOB_BRACE);
+            array_map(unlink(...), $left === false ? [] : $left);
+            @rmdir($moved);
+            foreach ([LocalPrivateFiles::DIRECTORY_OPTION, LocalPrivateFiles::CREATED_OPTION] as $index => $option) {
+                $previous[$index] === false ? delete_option($option) : update_option($option, $previous[$index]);
+            }
+        }
+    }
+
     public function testAClonedSiteNeitherUsesNorRemovesTheOriginalsFolder(): void
     {
         $original = sys_get_temp_dir() . '/orillacart-original-' . bin2hex(random_bytes(4));
@@ -119,12 +151,16 @@ final class UninstallTest extends TestCase
         update_option(LocalPrivateFiles::CREATED_OPTION, $original);
         try {
             self::assertNull(new LocalPrivateFiles()->path($key), 'the clone does not read the original\'s files');
-            self::assertNotSame($original, get_option(LocalPrivateFiles::DIRECTORY_OPTION), 'it chose a folder of its own');
-            update_option(LocalPrivateFiles::DIRECTORY_OPTION, $original);
+            self::assertSame($original, get_option(LocalPrivateFiles::DIRECTORY_OPTION), 'nor forgets where they are: it asks');
+            $check = new LocalPrivateFiles()->check();
+            self::assertSame([StorageCheck::ELSEWHERE, $original], [$check->claim, $check->directory]);
+            new LocalPrivateFiles()->delete($key);
+            self::assertFileExists("{$original}/{$key}", 'deleting nothing while it asks');
 
             new LocalPrivateFiles()->uninstall();
 
             self::assertFileExists("{$original}/{$key}", 'removing the clone\'s data leaves the original\'s');
+            self::assertSame("site 7 of 0123456789abcdef\n", file_get_contents("{$original}/" . LocalPrivateFiles::MARKER));
         } finally {
             $left = glob("{$original}/{,.}*[!.]*", GLOB_BRACE);
             array_map(unlink(...), $left === false ? [] : $left);

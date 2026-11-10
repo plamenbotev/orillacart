@@ -10,6 +10,8 @@ declare global {
 			page: string;
 			group: string;
 			tabs: { id: string; label: string; href: string }[];
+			/** The site's own hosts, which a screen may link to with a full address. */
+			hosts?: string[];
 		};
 	}
 }

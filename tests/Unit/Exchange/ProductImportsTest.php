@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Exchange;
 
 use OrillaCart\Audit\Application\ChangeLog;
-use OrillaCart\Audit\Domain\ChangeRecord;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
@@ -152,8 +151,10 @@ final class ProductImportsTest extends TestCase
         self::assertSame(['123', '456'], [$this->barcodes[10], $this->barcodes[$bulb]]);
         self::assertNull($this->shop->files->path($this->records->find($view->id)?->fileKey() ?? ''), 'the file is deleted once imported');
         $logged = $this->changes->search('imports', null, 0, 50)[0];
-        self::assertCount(4, $logged, 'each saved row is in the change log; refused rows changed nothing');
-        self::assertContains("/imports/products/{$view->id}/rows/2", array_map(static fn(ChangeRecord $record): string => $record->path(), $logged));
+        self::assertCount(1, $logged, 'one record for the whole import, however many rows it had');
+        self::assertSame("/imports/products/{$view->id}", $logged[0]->path());
+        self::assertSame(['status' => 'done', 'rows' => 6, 'created' => 1, 'updated' => 2, 'failed' => 3], array_intersect_key($logged[0]->values(), array_flip(['status', 'rows', 'created', 'updated', 'failed'])));
+        self::assertSame($done->errors, $logged[0]->values()['errors']);
     }
 
     public function testAnImportStartsOnceAndAFileWithoutKnownColumnsIsRefused(): void

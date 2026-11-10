@@ -12,7 +12,7 @@ final readonly class DoctrinePendingAccountRepository implements PendingAccountR
 {
     public function __construct(private EntityManagerInterface $entityManager) {}
 
-    public function findByToken(string $token): ?PendingAccount
+    public function findByToken(#[\SensitiveParameter] string $token): ?PendingAccount
     {
         return $this->entityManager->getRepository(PendingAccount::class)->findOneBy(['tokenHash' => PendingAccount::hash($token)]);
     }
@@ -20,6 +20,19 @@ final readonly class DoctrinePendingAccountRepository implements PendingAccountR
     public function findByEmail(string $email): ?PendingAccount
     {
         return $this->entityManager->getRepository(PendingAccount::class)->findOneBy(['email' => mb_strtolower(trim($email))]);
+    }
+
+    public function find(int $id): ?PendingAccount
+    {
+        return $this->entityManager->find(PendingAccount::class, $id);
+    }
+
+    public function invitations(): array
+    {
+        /** @var list<PendingAccount> */
+        return $this->entityManager->createQueryBuilder()->select('p')->from(PendingAccount::class, 'p')
+            ->where('p.invitedBy IS NOT NULL')->orderBy('p.createdAt', 'DESC')->addOrderBy('p.id', 'DESC')
+            ->getQuery()->getResult();
     }
 
     public function save(PendingAccount $account): void
@@ -37,7 +50,8 @@ final readonly class DoctrinePendingAccountRepository implements PendingAccountR
     public function removeExpired(\DateTimeImmutable $now): void
     {
         $this->entityManager->createQueryBuilder()->delete(PendingAccount::class, 'p')
-            ->where('p.expiresAt <= :now')->setParameter('now', $now)
+            ->where('p.expiresAt <= :now AND (p.invitedBy IS NULL OR p.expiresAt <= :kept)')
+            ->setParameter('now', $now)->setParameter('kept', $now->modify('-30 days'))
             ->getQuery()->execute();
     }
 }

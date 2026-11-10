@@ -14,14 +14,25 @@ interface Accounts
     public function find(int $id): ?CustomerRecord;
 
     /**
-     * Whether the user is one of this shop's customers, for the screens a manager reads and changes customers on:
-     * a user of this site (on a network) who is not its staff (an administrator, a shop manager, a super admin).
-     * Other users' details are not the shop's to show.
+     * Whether the user is one of this shop's customers, for everything that reads or changes a customer by their
+     * number: a user of this site (on a network) every one of whose roles is a customers' role, as the shop chose
+     * them, and who cannot manage the site or the shop. Other users' details are not the shop's to show.
      */
     public function isShopCustomer(int $id): bool;
 
+    /**
+     * The site's roles the shop can choose as customers' roles, by name with the label WordPress shows: those
+     * that can manage neither the site nor the shop.
+     *
+     * @return array<string, string>
+     */
+    public function availableRoles(): array;
+
     /** Whether the email has an account at this shop: on a network, a user of this site. */
     public function isRegistered(string $email): bool;
+
+    /** Whether the site is one of a network of sites, whose users are the network's. */
+    public function onNetwork(): bool;
 
     /**
      * The user of the email on the network who is not one of this site's: a customer of another shop of it.
@@ -41,7 +52,7 @@ interface Accounts
     /**
      * @return int the new account's id
      */
-    public function register(string $email, string $password, string $firstName, string $lastName): int;
+    public function register(string $email, #[\SensitiveParameter] string $password, string $firstName, string $lastName): int;
 
     /** Logs the browser in as the account, as WordPress's login does. */
     public function logIn(int $id): void;

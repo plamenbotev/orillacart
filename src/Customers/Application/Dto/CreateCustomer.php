@@ -27,6 +27,7 @@ final readonly class CreateCustomer
         #[Assert\Length(max: 200)]
         public string $lastName = '',
         /** At least 8 characters; left out, the customer chooses theirs through the lost-password link. */
+        #[\SensitiveParameter]
         #[Assert\Length(min: 8, max: 200)]
         public ?string $password = null,
         #[Assert\All([new Assert\Type('int'), new Assert\Positive()])]

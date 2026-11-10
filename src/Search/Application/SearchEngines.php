@@ -30,11 +30,18 @@ final readonly class SearchEngines
         return $this->view($this->settings->load());
     }
 
-    public function change(ChangeSearchEngine $command): SearchEngineView
+    /**
+     * @param bool $connects whether the caller may set where OpenSearch is (the site's administrator): a shop
+     *                       manager switches to the database search only, and the administrator's address, user,
+     *                       password and index stay as they were saved, for switching back
+     */
+    public function change(ChangeSearchEngine $command, bool $connects = true): SearchEngineView
     {
         $saved = $this->settings->load();
         if ($command->engine === SearchEngine::Database->value) {
-            $settings = new EngineSettings(SearchEngine::Database, trim($command->host), trim($command->username), self::password($command, $saved), trim($command->index));
+            $settings = $connects
+                ? new EngineSettings(SearchEngine::Database, trim($command->host), trim($command->username), self::password($command, $saved), trim($command->index))
+                : new EngineSettings(SearchEngine::Database, $saved->host, $saved->username, $saved->password, $saved->index);
             $this->settings->save($settings);
 
             return $this->view($settings, true, 'The shop searches its database.');

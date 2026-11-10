@@ -16,7 +16,8 @@ use Psr\Clock\ClockInterface;
 /**
  * The shop's change log: each change a shop manager made through the shop's API, kept for KEEP_DAYS. What was
  * sent is kept as sent, but for secrets, which are blanked out: settings declared secret by the gateway, shipping
- * method or extension the change was for, and keys named as secrets (SecretKeys).
+ * method or extension the change was for, keys named as secrets (SecretKeys), and in a map of `settings` every
+ * setting the request did not declare plain, as one not declared could be a secret.
  */
 final readonly class ChangeLog
 {
@@ -83,13 +84,14 @@ final readonly class ChangeLog
      *
      * @return array<string, mixed>
      */
-    private static function blank(array $values): array
+    private static function blank(array $values, bool $settings = false): array
     {
         $kept = [];
         foreach ($values as $key => $value) {
-            $kept[(string) $key] = SecretKeys::isSecret((string) $key) && $value !== '' && $value !== null
+            $secret = $settings ? SecretKeys::isSecretSetting((string) $key) : SecretKeys::isSecret((string) $key);
+            $kept[(string) $key] = $secret && $value !== '' && $value !== null && $value !== false
                 ? '••••'
-                : (\is_array($value) ? self::blank($value) : $value);
+                : (\is_array($value) ? self::blank($value, !$settings && $key === 'settings') : $value);
         }
 
         return $kept;

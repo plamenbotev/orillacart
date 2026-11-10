@@ -157,7 +157,7 @@ final class ExtensionAssetsTest extends TestCase
         self::assertStringContainsString('no other dot in its name', $this->warnings[0]);
     }
 
-    public function testTheAssetsFolderTurnsOffScriptHandlers(): void
+    public function testTheAssetsFolderServesOnlyItsAssetsWithNoHandler(): void
     {
         $folder = sys_get_temp_dir() . '/orillacart-assets-' . bin2hex(random_bytes(4));
         mkdir($folder);
@@ -165,9 +165,9 @@ final class ExtensionAssetsTest extends TestCase
             UploadedAssetFiles::guard($folder);
             $rules = (string) file_get_contents($folder . '/.htaccess');
             self::assertStringContainsString('Require all denied', $rules);
-            self::assertStringContainsString('RemoveHandler .php', $rules);
+            self::assertStringContainsString('Require all granted', $rules);
+            self::assertStringContainsString('SetHandler none', $rules);
             self::assertStringContainsString('php_flag engine off', $rules);
-            self::assertDoesNotMatchRegularExpression('/\\b(js|css|svg)\\b/', (string) preg_replace('/^#.*$/m', '', $rules), 'scripts, stylesheets and SVGs stay served');
 
             file_put_contents($folder . '/.htaccess', 'Options +ExecCGI');
             UploadedAssetFiles::guard($folder);

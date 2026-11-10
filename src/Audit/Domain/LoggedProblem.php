@@ -8,7 +8,8 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Something that went wrong which the shop should hear of (the shop's warnings and errors): the same message once,
- * counted, with when it was first and last seen. The shop's logger writes them (ShopLogger); kept a month.
+ * counted, with when it was first and last seen. The shop's logger writes them (ShopLogger); kept a month. The
+ * message has no emails in it: the row is marked with whom it was about instead, so erasing them finds it.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'problems')]
@@ -22,7 +23,7 @@ class LoggedProblem
     private ?int $id = null;
 
     public function __construct(
-        /** The level and message hashed, so the same problem is one row. */
+        /** The level and the message as the code wrote it, hashed, so the same problem is one row. */
         #[ORM\Column(length: 40, options: ['fixed' => true])]
         private string $fingerprint,
         #[ORM\Column(length: 10)]
@@ -35,11 +36,19 @@ class LoggedProblem
         private \DateTimeImmutable $firstAt,
         #[ORM\Column]
         private \DateTimeImmutable $lastAt,
+        /** The marks of the people the latest was about, a space between them (LoggedText::aboutMark()). */
+        #[ORM\Column(length: 255, options: ['default' => ''])]
+        private string $about = '',
     ) {}
 
     public function id(): int
     {
         return $this->id ?? throw new \LogicException('The problem was not saved.');
+    }
+
+    public function fingerprint(): string
+    {
+        return $this->fingerprint;
     }
 
     public function level(): string
@@ -65,5 +74,10 @@ class LoggedProblem
     public function lastAt(): \DateTimeImmutable
     {
         return $this->lastAt;
+    }
+
+    public function about(): string
+    {
+        return $this->about;
     }
 }

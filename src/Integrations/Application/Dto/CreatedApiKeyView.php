@@ -8,6 +8,7 @@ namespace OrillaCart\Integrations\Application\Dto;
 final readonly class CreatedApiKeyView
 {
     public function __construct(
+        #[\SensitiveParameter]
         public string $key,
         public ApiKeyView $apiKey,
     ) {}

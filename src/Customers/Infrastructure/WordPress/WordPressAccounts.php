@@ -7,6 +7,8 @@ namespace OrillaCart\Customers\Infrastructure\WordPress;
 use OrillaCart\Customers\Application\Accounts;
 use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Application\Dto\CustomerRecord;
+use OrillaCart\Customers\Domain\CustomerSettings;
+use OrillaCart\Customers\Domain\CustomerSettingsRepository;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
@@ -24,7 +26,9 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 final readonly class WordPressAccounts implements Accounts, LifecycleListener, RemovesShopData
 {
-    public const string ROLE = 'orillacart_customer';
+    public const string ROLE = CustomerSettings::CUSTOMER_ROLE;
+    /** Whoever can do one of these runs the site or the shop: never a customer, and a role that can is never a customers' role. */
+    private const array STAFF_CAPABILITIES = ['manage_options', Capability::MANAGE_SHOP];
     /** The meta's names, each behind the site's prefix: see key(). */
     public const string ADDRESSES = 'orillacart_addresses';
     public const string NO_CART_REMINDERS = 'orillacart_no_cart_reminders';
@@ -35,6 +39,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
     public function __construct(
         private NormalizerInterface $normalizer,
         private DenormalizerInterface $denormalizer,
+        private CustomerSettingsRepository $settings,
     ) {}
 
     public function find(int $id): ?CustomerRecord
@@ -50,8 +55,41 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         if (!$user instanceof \WP_User || (is_multisite() && !is_user_member_of_blog($id))) {
             return false;
         }
+        if (is_super_admin($id) || array_any(self::STAFF_CAPABILITIES, static fn(string $capability): bool => user_can($user, $capability))) {
+            return false;
+        }
 
-        return !is_super_admin($id) && !user_can($user, 'manage_options') && !user_can($user, Capability::MANAGE_SHOP);
+        return CustomerSettings::areCustomers(array_values($user->roles), $this->customerRoles());
+    }
+
+    public function availableRoles(): array
+    {
+        $available = [];
+        foreach (wp_roles()->roles as $name => $role) {
+            $capabilities = \is_array($role['capabilities'] ?? null) ? $role['capabilities'] : [];
+            if (array_any(self::STAFF_CAPABILITIES, static fn(string $capability): bool => ($capabilities[$capability] ?? false) === true)) {
+                continue;
+            }
+            $available[(string) $name] = translate_user_role(\is_string($role['name'] ?? null) ? $role['name'] : (string) $name);
+        }
+
+        return $available;
+    }
+
+    /**
+     * The roles whose users are the shop's customers: the ones the shop chose among those the site has and that
+     * manage nothing, which a site's code may change through the `orillacart_customer_roles` filter. The shop's
+     * own customer role is always one.
+     *
+     * @return list<string>
+     */
+    private function customerRoles(): array
+    {
+        $available = $this->availableRoles();
+        $chosen = apply_filters('orillacart_customer_roles', $this->settings->load()->roles);
+        $roles = array_filter(\is_array($chosen) ? $chosen : [], static fn(mixed $role): bool => \is_string($role) && isset($available[$role]));
+
+        return array_values(array_unique([self::ROLE, ...$roles]));
     }
 
     public function isRegistered(string $email): bool
@@ -59,6 +97,11 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         $id = email_exists($email);
 
         return \is_int($id) && (!is_multisite() || is_user_member_of_blog($id));
+    }
+
+    public function onNetwork(): bool
+    {
+        return is_multisite();
     }
 
     public function elsewhere(string $email): ?int
@@ -83,7 +126,7 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
         return \is_int($id) ? $id : null;
     }
 
-    public function register(string $email, string $password, string $firstName, string $lastName): int
+    public function register(string $email, #[\SensitiveParameter] string $password, string $firstName, string $lastName): int
     {
         // Not the email's first part: a username is public (author pages, comments) and would give the address away.
         do {
@@ -184,8 +227,11 @@ final readonly class WordPressAccounts implements Accounts, LifecycleListener, R
 
     public function search(?string $text, int $offset, int $limit): array
     {
+        $roles = $this->customerRoles();
         $query = new \WP_User_Query(array_filter([
-            'role__in' => [self::ROLE],
+            // Every role of a customer is a customers' role: whoever also has another is left out, as isShopCustomer() does.
+            'role__in' => $roles,
+            'role__not_in' => array_values(array_diff(array_map(strval(...), array_keys(wp_roles()->roles)), $roles)),
             'orderby' => 'registered',
             'order' => 'DESC',
             'number' => $limit,

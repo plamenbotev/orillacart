@@ -2,7 +2,7 @@ import { bindShop, filtersUrl } from '../shop';
 
 const page = ( grid: string ) => `
 	<div class="orillacart-products" data-orillacart-region="products">
-		<form method="get" action="https://shop.test/shop/" data-orillacart-filters>
+		<form method="get" action="http://localhost/shop/" data-orillacart-filters>
 			<input type="search" name="q" value="lamp">
 			<input type="checkbox" name="f[size][]" value="m">
 			<input type="checkbox" name="in_stock" value="1">
@@ -22,7 +22,7 @@ describe( 'the shop page', () => {
 		 ).checked = true;
 
 		expect( filtersUrl( form ) ).toBe(
-			'https://shop.test/shop/?q=lamp&f%5Bsize%5D%5B%5D=m'
+			'http://localhost/shop/?q=lamp&f%5Bsize%5D%5B%5D=m'
 		);
 	} );
 
@@ -52,12 +52,12 @@ describe( 'the shop page', () => {
 		await flush();
 
 		expect( fetched ).toEqual( [
-			'https://shop.test/shop/?q=lamp&in_stock=1',
+			'http://localhost/shop/?q=lamp&in_stock=1',
 		] );
 		expect( pushState ).toHaveBeenCalledWith(
 			{ orillacart: true },
 			'',
-			'https://shop.test/shop/?q=lamp&in_stock=1'
+			'http://localhost/shop/?q=lamp&in_stock=1'
 		);
 		expect(
 			document.querySelector( '.orillacart-products__grid' )?.textContent
@@ -108,7 +108,7 @@ describe( 'the shop page', () => {
 	it( 'keeps the sort, count, pages and active filters placed apart in step with the products', async () => {
 		const listing = ( count: string, chips: string, grid: string ) => `
 			<div data-orillacart-region="products-sort">
-				<form method="get" action="https://shop.test/shop/" data-orillacart-filters>
+				<form method="get" action="http://localhost/shop/" data-orillacart-filters>
 					<input type="hidden" name="in_stock" value="1">
 					<select name="sort"><option value="order">Recommended</option><option value="name">Name</option></select>
 					<button type="submit" data-orillacart-apply>Sort</button>
@@ -120,7 +120,7 @@ describe( 'the shop page', () => {
 			<div data-orillacart-region="products-pagination"></div>`;
 		document.body.innerHTML = listing(
 			'3 products',
-			'<a href="https://shop.test/shop/" data-orillacart-shop-link>In stock only</a>',
+			'<a href="http://localhost/shop/" data-orillacart-shop-link>In stock only</a>',
 			'<li>Before</li>'
 		);
 		window.history.replaceState( {}, '', '/shop/?in_stock=1' );
@@ -158,7 +158,7 @@ describe( 'the shop page', () => {
 		await flush();
 		// Each test before binds the document too.
 		expect( [ ...new Set( fetched ) ] ).toEqual( [
-			'https://shop.test/shop/?in_stock=1&sort=name',
+			'http://localhost/shop/?in_stock=1&sort=name',
 		] );
 		expect(
 			document.querySelector( '.orillacart-products__grid' )?.textContent
@@ -167,7 +167,7 @@ describe( 'the shop page', () => {
 
 		document.body.innerHTML = listing(
 			'3 products',
-			'<a href="https://shop.test/shop/" data-orillacart-shop-link>In stock only</a>',
+			'<a href="http://localhost/shop/" data-orillacart-shop-link>In stock only</a>',
 			'<li>Before</li>'
 		);
 		(
@@ -179,7 +179,7 @@ describe( 'the shop page', () => {
 		await flush();
 
 		expect( [ ...new Set( fetched ) ] ).toEqual( [
-			'https://shop.test/shop/',
+			'http://localhost/shop/',
 		] );
 		expect(
 			document.querySelector(
@@ -192,5 +192,48 @@ describe( 'the shop page', () => {
 		expect(
 			document.querySelector( '.orillacart-products__grid' )?.textContent
 		).toBe( 'After' );
+	} );
+	it( 'leaves a link to another site to the browser, and fetches nothing from it', async () => {
+		document.body.innerHTML =
+			page( '<li>Before</li>' ) +
+			'<a href="https://elsewhere.test/shop/" data-orillacart-shop-link>Elsewhere</a>';
+		window.history.replaceState( {}, '', '/shop/' );
+		const fetched: string[] = [];
+		window.fetch = jest.fn( ( url: RequestInfo | URL ) => {
+			fetched.push( String( url ) );
+			return Promise.resolve( {
+				ok: true,
+				text: () => Promise.resolve( page( '<li>After</li>' ) ),
+			} as Response );
+		} ) as typeof fetch;
+		const pushState = jest
+			.spyOn( window.history, 'pushState' )
+			.mockImplementation( () => undefined );
+		// Each test before spied on it too.
+		pushState.mockClear();
+		bindShop();
+		let followed = false;
+		// After the shop's own listener: whether the browser would follow the link, then stop it in the test.
+		const stop = ( event: Event ) => {
+			followed = ! event.defaultPrevented;
+			event.preventDefault();
+		};
+		document.addEventListener( 'click', stop );
+
+		(
+			document.querySelector(
+				'a[href^="https://elsewhere.test"]'
+			) as HTMLAnchorElement
+		 ).click();
+		await flush();
+		await flush();
+		document.removeEventListener( 'click', stop );
+
+		expect( followed ).toBe( true );
+		expect( fetched ).toEqual( [] );
+		expect( pushState ).not.toHaveBeenCalled();
+		expect(
+			document.querySelector( '.orillacart-products__grid' )?.textContent
+		).toBe( 'Before' );
 	} );
 } );

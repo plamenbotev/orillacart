@@ -168,6 +168,7 @@ final readonly class FormService
                 $field->condition === null ? null : new FieldCondition($field->condition->field, array_values(array_unique($field->condition->values))),
                 array_values(array_unique($field->types)),
                 $field->largest,
+                $field->pdfLinks,
             );
         }, $command->fields));
     }

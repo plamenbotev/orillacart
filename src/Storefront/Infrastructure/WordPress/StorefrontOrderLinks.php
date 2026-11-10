@@ -45,7 +45,7 @@ final readonly class StorefrontOrderLinks implements OrderLinks
         return add_query_arg(self::LOOKUP_QUERY, 'expired', $this->links->pageUrl($this->pages->pages()->account) ?? home_url('/'));
     }
 
-    public function downloadUrl(string $token): string
+    public function downloadUrl(#[\SensitiveParameter] string $token): string
     {
         return add_query_arg(ServeDownload::QUERY, rawurlencode($token), home_url('/'));
     }

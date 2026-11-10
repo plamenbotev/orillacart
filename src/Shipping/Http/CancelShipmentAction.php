@@ -7,6 +7,7 @@ namespace OrillaCart\Shipping\Http;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shipping\Application\Consignments;
@@ -17,6 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Cancels a booked shipment with the courier, as before it picks the parcel up.
  */
+#[Tool(unasked: 'a booking cancelled with the courier before pickup; the customer is not told')]
 #[Route('/shipments/{id}/cancel', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '\d+'])]
 final readonly class CancelShipmentAction implements RequestHandlerInterface
 {

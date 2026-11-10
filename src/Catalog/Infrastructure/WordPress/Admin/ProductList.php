@@ -41,6 +41,8 @@ final class ProductList
     private const string BULK = 'orillacart_bulk';
     /** What a bulk edit left as it was, for the list the browser comes back to. */
     private const string NOTICE = 'orillacart_bulk_refused_';
+    /** WordPress's own bulk edit fields that change products, for the change log. */
+    private const array BULK_FIELDS = ['post_status', 'post_author', 'comment_status', 'ping_status', 'post_password', 'tax_input', 'post_category', 'sticky', 'post_parent', 'menu_order'];
 
     /** @var array<int, ?ProductOffer> by product id, for the page being listed */
     private array $offers = [];
@@ -148,8 +150,8 @@ final class ProductList
             wp_die(esc_html__('The price was not saved: use a number such as 19.90.', 'orillacart'));
         }
         try {
+            // The change log has it with the rest of quick edit's fields (RecordProductPostSaves).
             $this->products->changePrice($postId, $price);
-            $this->logChange('PUT', '/products/{id}/quick-edit', "/products/{$postId}/quick-edit", ['price' => $price]);
         } catch (RuleViolation $e) {
             wp_die(esc_html(\sprintf(
                 /* translators: %s: why the price was refused */
@@ -211,13 +213,19 @@ final class ProductList
             ctype_digit($text('stockroom')) ? (int) $text('stockroom') : null,
             preg_match('/^-?\d{1,9}$/', $text('stock_by')) === 1 ? (int) $text('stock_by') : 0,
         );
+        $products = array_values(array_filter(array_map(intval(...), $updated), static fn(int $id): bool => get_post_type($id) === ProductPostType::NAME));
+        // WordPress's own fields, which it changed already: what it left as it was it took out.
+        $wordpress = array_intersect_key($shared, array_flip(self::BULK_FIELDS));
         if ($edit->price === null && $edit->sale === null && $edit->stock === null) {
+            if ($wordpress !== [] && $products !== []) {
+                $this->logChange('PUT', '/products/bulk-edit', '/products/bulk-edit', ['products' => $products] + $wordpress);
+            }
+
             return;
         }
-        $products = array_values(array_filter(array_map(intval(...), $updated), static fn(int $id): bool => get_post_type($id) === ProductPostType::NAME));
         try {
             $refused = array_map($this->translations->text(...), $this->bulk->apply($products, $edit, get_current_user_id()));
-            $this->logChange('PUT', '/products/bulk-edit', '/products/bulk-edit', array_filter([
+            $this->logChange('PUT', '/products/bulk-edit', '/products/bulk-edit', $wordpress + array_filter([
                 'products' => $products,
                 'price' => $edit->price === null ? null : [$edit->price, $edit->priceBy],
                 'sale' => $edit->sale === null ? null : [$edit->sale, $edit->saleBy],

@@ -17,8 +17,13 @@ namespace OrillaCart\Shared\Http\Routing;
  *     #[Tool(path: '/customers/{id}/addresses', name: 'add_customer_address')]
  *     #[Tool(method: 'PUT', name: 'finish_setup')]
  *
- * A DELETE route is Tool::DELETING without saying so; one that only clears a flag says Tool::NONE. The owner
- * chooses, per key, which risks need their yes.
+ * A route that changes something waits for the owner's yes: for the risk it names, for Tool::DELETING when it
+ * is a DELETE, and for Tool::CHANGES when it says nothing. One that need not wait says why, and that is the
+ * only way to run unasked:
+ *
+ *     #[Tool(unasked: 'a note for the shop only')]
+ *
+ * The owner chooses, per key, which risks need their yes.
  */
 #[\Attribute(\Attribute::TARGET_CLASS | \Attribute::IS_REPEATABLE)]
 final readonly class Tool
@@ -38,16 +43,17 @@ final readonly class Tool
     /** What customers read or agree to changes: a page of the shop goes live, changes while live, or comes down. */
     public const string PUBLISHING = 'publishing';
 
-    /** No risk to ask about, said where the route's method would give one: a DELETE that only clears a flag. */
-    public const string NONE = 'none';
+    /** Something else in the shop changes: what a tool that writes risks when nothing says what, or why not. */
+    public const string CHANGES = 'changes';
 
     /** @var list<string> */
-    public const array RISKS = [self::MONEY, self::DELETING, self::CUSTOMERS, self::OPENING, self::PUBLISHING];
+    public const array RISKS = [self::MONEY, self::DELETING, self::CUSTOMERS, self::OPENING, self::PUBLISHING, self::CHANGES];
 
     /**
      * @param string|null $name        the tool's name, when the action's would read badly or collide
      * @param string|null $description what the tool does, for a model, when the docblock is written for developers
-     * @param string|null $risk        one of RISKS, or NONE
+     * @param string|null $risk        one of RISKS
+     * @param string|null $unasked     why the change runs without the owner's yes: it then has no risk
      * @param string|null $leftOut     why the route is not a tool: it is then left out
      * @param string|null $path        the route this is about, when the action has several
      * @param string|null $method      the method this is about, when the route has several
@@ -62,9 +68,16 @@ final readonly class Tool
         public ?string $path = null,
         public ?string $method = null,
         public ?array $wholeBody = null,
+        public ?string $unasked = null,
     ) {
-        if ($risk !== null && $risk !== self::NONE && !\in_array($risk, self::RISKS, true)) {
-            throw new \InvalidArgumentException(\sprintf('Unknown risk "%s"; use one of %s, or none.', $risk, implode(', ', self::RISKS)));
+        if ($risk !== null && !\in_array($risk, self::RISKS, true)) {
+            throw new \InvalidArgumentException(\sprintf('Unknown risk "%s"; use one of %s.', $risk, implode(', ', self::RISKS)));
+        }
+        if ($unasked !== null && trim($unasked) === '') {
+            throw new \InvalidArgumentException('A tool that runs unasked says why.');
+        }
+        if ($unasked !== null && $risk !== null) {
+            throw new \InvalidArgumentException(\sprintf('A tool either risks "%s" or runs unasked, not both.', $risk));
         }
         if ($name !== null && preg_match('/^[a-z][a-z0-9_]{0,63}$/', $name) !== 1) {
             throw new \InvalidArgumentException(\sprintf('Tool name "%s" must be lower-case letters, digits and underscores.', $name));

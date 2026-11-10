@@ -35,7 +35,9 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   `orderPrices()`; 10 since e-invoice senders; 11 since gateways naming the account a payment is made in
   (`NamesAccounts`); 12 since mailing lists that delete contacts (`ForgetsSubscribers`); 13 since shipments
   booked but not collected (`Tracking::BOOKED`); 14 since settings the shop manager can test (`TestsSettings`); 19 since the customer's email in a `PaymentSession`;
-  20 since figures and "Needs you" lines on the Home screen (`Home\HomeContributor`).
+  20 since figures and "Needs you" lines on the Home screen (`Home\HomeContributor`); 23 since gateways whose
+  notifications the shop confirms with them (`ConfirmsNotifications`), `payBy` on `StartPayment` and
+  `PaymentSession`, the settings a secret goes with (`Setting::$goesWith`) and `AssistantTool::CHANGES`.
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.
@@ -48,6 +50,18 @@ shop's admin screen shows them, validates their kind, and keeps the values; the 
 `OrillaCart\Extension\Settings` (`text()`, `flag()`). Secrets never go back to the browser: the screen shows
 only that one is saved, and an empty field keeps it. A required setting must be filled before the method can be
 turned on.
+
+A secret says which settings tell where it goes or whose it is with `goesWith` (an address, a user name, an
+account id): when the manager changes one of those, the saved secret is forgotten unless typed again, so it is
+never sent somewhere it was not typed for. `goesWith: []` is for a secret that always goes to the same provider
+(the shop's PayPal and Stripe declare theirs); a secret that declares nothing goes with every other setting, so
+any change asks for it again.
+
+```php
+new Setting('endpoint', 'API address'),
+new Setting('username', 'User'),
+new Setting('password', 'Password', Setting::SECRET, required: true, goesWith: ['endpoint', 'username']),
+```
 
 A gateway or shipping method whose settings can be tried at the provider implements
 `OrillaCart\Extension\TestsSettings` (version 14): `test($settings)` returns null when they work, or what is
@@ -585,7 +599,9 @@ if ($registry->version() >= 15) {
 - **The description** is what the model reads first: say what the tool does and what it changes.
 - **The shop checks before `run()`**: the user's capability, the key's scope (a read-only key is offered only
   tools whose `readOnly()` is true), and the owner's choices for the key. A tool with a `risk()` the owner wants
-  to be asked about waits for their yes: `MONEY`, `DELETING`, `CUSTOMERS`, `OPENING` or `PUBLISHING`.
+  to be asked about waits for their yes: `MONEY`, `DELETING`, `CUSTOMERS`, `OPENING`, `PUBLISHING` or `CHANGES`.
+  A tool that does not only read and whose `risk()` is null is `CHANGES`: an add-on's change always waits for
+  the owner's yes where they ask about changes. Only tools that only read are WordPress abilities.
 - **Check the arguments yourself**, as the schema says: the shop passes them as the model sent them. Throw
   `ToolRefused` with what to correct, and details (each field) if it helps; the model reads both. Anything else
   thrown is logged, and the model is told the tool failed.
@@ -768,7 +784,7 @@ lets plugins adjust a few things through filters. Arguments are ids and plain va
 | filter | value | arguments |
 |---|---|---|
 | `orillacart_verify_request` | `true`; a `WP_Error` (or `false`) refuses one of the shop's public forms with its message, as a captcha does | the form (`accounts`, `account_links`, `coupons`, `checkout`, `session`), what it sent |
-| `orillacart_rate_limits` | `{form: [how many, in seconds]}` each address and each cart may send; leave a form out to count none | |
+| `orillacart_rate_limits` | `{form: [how many, in seconds]}` each address and each cart may send; a limit of the shop's left out or broken keeps the shop's own (raise it to loosen it), a guard of your own is counted once given a limit | |
 | `orillacart_email_attachments` | file paths | email kind, order number |
 | `orillacart_email_headers` | header lines | email kind, order number |
 | `orillacart_template_paths` | template folders an add-on brings | |

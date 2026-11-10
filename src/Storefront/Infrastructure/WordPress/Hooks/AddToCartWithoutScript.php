@@ -71,7 +71,9 @@ final readonly class AddToCartWithoutScript
 
     /**
      * Whether the browser says the form was on one of the site's pages: by its Origin, else by the origin of its
-     * Referer. A request with neither is taken at its word: browsers send Origin with every form they post.
+     * Referer. A request with neither is taken at its word: browsers send Origin with every form they post. An
+     * Origin of "null" is what a page under `Referrer-Policy: no-referrer` sends, and a sandboxed frame or a file
+     * too: it goes only where the browser also says the request is the site's own (`Sec-Fetch-Site: same-origin`).
      *
      * @param array<array-key, mixed> $server
      */
@@ -79,7 +81,11 @@ final readonly class AddToCartWithoutScript
     {
         $origin = $server['HTTP_ORIGIN'] ?? null;
         if (\is_string($origin) && $origin !== '') {
-            return $origin !== 'null' && $csrf->allowsOrigin($origin);
+            if ($origin === 'null') {
+                return ($server['HTTP_SEC_FETCH_SITE'] ?? null) === 'same-origin';
+            }
+
+            return $csrf->allowsOrigin($origin);
         }
         $referer = $server['HTTP_REFERER'] ?? null;
         if (!\is_string($referer) || $referer === '') {

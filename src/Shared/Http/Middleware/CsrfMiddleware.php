@@ -14,7 +14,10 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Requires a valid nonce for the route's nonce action on every request that changes something.
- * The nonce comes in the X-WP-Nonce header (REST) or the _wpnonce field (forms). Signed routes, which payment
+ * A logged-in user's nonce comes in the X-WP-Nonce header (REST) or the _wpnonce field (forms): WordPress checks
+ * it too, and takes a request without it for a visitor's. A visitor's comes in the shop's own header: theirs is
+ * made for this site (WordPressCsrfProtection), and WordPress would refuse it in its own header before the route
+ * runs. Signed routes, which payment
  * providers call, verify the provider's signature in their action instead. A browser's request that carries its
  * cookies and says it comes from another site (Origin) is refused before the nonce is looked at, and so is its
  * asking for the visitor's session (which hands out the nonce): a visitor's nonce is the same for every visitor,
@@ -23,6 +26,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class CsrfMiddleware implements MiddlewareInterface
 {
     public const string HEADER = 'X-WP-Nonce';
+
+    /** A visitor's nonce, which WordPress does not read: GET /session gives it. */
+    public const string VISITOR_HEADER = 'X-OrillaCart-Nonce';
     public const string FIELD = '_wpnonce';
 
     /**
@@ -55,9 +61,11 @@ final readonly class CsrfMiddleware implements MiddlewareInterface
 
     private function token(ServerRequestInterface $request): string
     {
-        $header = $request->getHeaderLine(self::HEADER);
-        if ($header !== '') {
-            return $header;
+        foreach ([self::HEADER, self::VISITOR_HEADER] as $name) {
+            $header = $request->getHeaderLine($name);
+            if ($header !== '') {
+                return $header;
+            }
         }
 
         $body = $request->getParsedBody();

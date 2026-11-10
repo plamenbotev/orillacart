@@ -1,22 +1,31 @@
 {#
- # The withdrawal function. email, name: a logged-in customer's, to start with.
+ # The withdrawal function. email, name: a logged-in customer's, to start with. token: the link emailed to the
+ # order's address, when the page was opened from it ('' when the browser no longer keeps it), or null.
  #}
 {% import 'storefront/_macros.html.twig' as shop %}
 <div class="orillacart-withdrawal">
     {{ shop.needs_script(__('Turn on JavaScript in your browser to withdraw here, or write to us: an email or a letter saying you withdraw is enough.')) }}
-    <form class="orillacart-form" data-orillacart-withdrawal novalidate>
-        <p>{{ __('Withdraw from a purchase, all of it or some items. Give the order’s number and the email you ordered with; we confirm your withdrawal by email at once.') }}</p>
-        <p class="orillacart-field">
-            <label for="withdrawal-name">{{ __('Your name') }}</label>
-            <input id="withdrawal-name" type="text" name="name" value="{{ name }}" autocomplete="name" required>
-        </p>
+    {% if token is null or token == '' %}
+    <form class="orillacart-form" data-orillacart-withdrawal-ask novalidate>
+        <p>{{ __('Withdraw from a purchase, all of it or some items. Give the order’s number and the email you ordered with: we email that address a link to choose what you withdraw from and confirm it. The withdrawal counts as sent now.') }}</p>
+        {% if token == '' %}<p class="orillacart-message">{{ __('The link no longer works here: ask for a new one.') }}</p>{% endif %}
         <p class="orillacart-field">
             <label for="withdrawal-number">{{ __('Order number') }}</label>
-            <input id="withdrawal-number" type="text" inputmode="numeric" name="number" required data-orillacart-withdrawal-order>
+            <input id="withdrawal-number" type="text" inputmode="numeric" name="number" required>
         </p>
         <p class="orillacart-field">
             <label for="withdrawal-email">{{ __('Email you ordered with') }}</label>
-            <input id="withdrawal-email" type="email" name="email" value="{{ email }}" autocomplete="email" required data-orillacart-withdrawal-order>
+            <input id="withdrawal-email" type="email" name="email" value="{{ email }}" autocomplete="email" required>
+        </p>
+        <p class="orillacart-message" role="alert" data-orillacart-message></p>
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Withdraw from contract') }}</button>
+    </form>
+    {% else %}
+    <form class="orillacart-form" data-orillacart-withdrawal="{{ token }}" novalidate>
+        <p>{{ __('Choose what you withdraw from, all of it unless you choose fewer, and confirm. We confirm your withdrawal by email at once.') }}</p>
+        <p class="orillacart-field">
+            <label for="withdrawal-name">{{ __('Your name') }}</label>
+            <input id="withdrawal-name" type="text" name="name" value="{{ name }}" autocomplete="name" required>
         </p>
         <p class="orillacart-field">
             <label for="withdrawal-confirmation">{{ __('Send the confirmation to') }}</label>
@@ -29,5 +38,6 @@
         <p class="orillacart-message" role="alert" data-orillacart-message></p>
         <button type="submit" class="wp-element-button orillacart-button">{{ __('Confirm withdrawal') }}</button>
     </form>
+    {% endif %}
     <div class="orillacart-withdrawal__done" data-orillacart-withdrawal-done tabindex="-1" hidden></div>
 </div>

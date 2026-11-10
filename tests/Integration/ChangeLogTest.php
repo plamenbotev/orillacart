@@ -69,4 +69,80 @@ final class ChangeLogTest extends RestTestCase
             wp_delete_post($id, true);
         }
     }
+
+    public function testASaveSentInTheAddressIsKeptWithWhatItSent(): void
+    {
+        $this->actAs('administrator');
+        $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => 'Lamp', 'post_status' => 'draft']);
+        self::assertIsInt($id);
+        try {
+            $request = new \WP_REST_Request('POST', '/wp/v2/' . ProductPostType::NAME . '/' . $id);
+            $request->set_query_params(['status' => 'publish', 'title' => 'Desk lamp', '_fields' => 'id']);
+            self::assertSame(200, rest_do_request($request)->get_status());
+
+            $records = $this->records('wp');
+            self::assertSame(['status' => 'publish', 'title' => 'Desk lamp'], $records[0]['values'] ?? null);
+        } finally {
+            wp_delete_post($id, true);
+        }
+    }
+
+    public function testAProductTrashedRestoredAndDeletedIsKeptHoweverItWasAskedFor(): void
+    {
+        $admin = $this->actAs('administrator');
+        $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => 'Lamp', 'post_status' => 'publish']);
+        self::assertIsInt($id);
+        wp_trash_post($id);
+        wp_untrash_post($id);
+        $request = new \WP_REST_Request('DELETE', '/wp/v2/' . ProductPostType::NAME . '/' . $id);
+        $request->set_query_params(['force' => true]);
+        self::assertSame(200, rest_do_request($request)->get_status());
+
+        $records = array_reverse($this->records('products'));
+        self::assertSame([
+            ['POST /products/{id}/trash', "/products/{$id}/trash", []],
+            ['POST /products/{id}/restore', "/products/{$id}/restore", []],
+            ['DELETE /products/{id}', "/products/{$id}", ['title' => 'Lamp']],
+        ], array_map(static fn(array $record): array => [$record['route'], $record['path'], $record['values']], $records));
+        self::assertSame([$admin, $admin, $admin], array_column($records, 'user_id'));
+    }
+
+    public function testQuickEditAndTheClassicEditingScreenAreKept(): void
+    {
+        $this->actAs('administrator');
+        $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => 'Lamp', 'post_status' => 'draft']);
+        self::assertIsInt($id);
+        $post = $_POST;
+        set_current_screen('edit-' . ProductPostType::NAME);
+        try {
+            $_POST = ['action' => 'inline-save', 'post_ID' => (string) $id, 'post_title' => 'Desk lamp', '_status' => 'publish', 'post_status' => 'publish', 'content' => 'As it was.', '_inline_edit' => 'nonce', 'screen' => 'edit-' . ProductPostType::NAME];
+            wp_update_post(['ID' => $id, 'post_title' => 'Desk lamp', 'post_status' => 'publish']);
+            $_POST = ['action' => 'editpost', 'post_ID' => (string) $id, 'post_title' => 'Brass lamp', 'content' => 'Warm light.', '_wpnonce' => 'nonce', 'tax_input' => ['orillacart_product_cat' => ['0', '7']]];
+            wp_update_post(['ID' => $id, 'post_title' => 'Brass lamp']);
+            $_POST = ['action' => 'heartbeat', 'post_ID' => (string) $id, 'post_title' => 'Autosaved'];
+            wp_update_post(['ID' => $id, 'post_title' => 'Brass lamp']);
+        } finally {
+            $_POST = $post;
+            wp_delete_post($id, true);
+        }
+
+        $records = array_values(array_filter(array_reverse($this->records('products')), static fn(array $record): bool => $record['route'] !== 'DELETE /products/{id}'));
+        self::assertSame([
+            ['PUT /products/{id}/quick-edit', ['post_title' => 'Desk lamp', 'post_status' => 'publish']],
+            ['PUT /products/{id}/edit', ['post_title' => 'Brass lamp', 'content' => 'Warm light.', 'tax_input' => ['orillacart_product_cat' => ['0', '7']]]],
+        ], array_map(static fn(array $record): array => [$record['route'], $record['values']], $records), 'not the form\'s own fields, nor a save that is neither');
+    }
+
+    /**
+     * The change log's records of an area, newest first.
+     *
+     * @return list<array<array-key, mixed>>
+     */
+    private function records(string $area): array
+    {
+        $records = $this->data($this->request('GET', "/change-log?area={$area}&per_page=100"))['records'];
+        self::assertIsArray($records);
+
+        return array_values(array_filter($records, \is_array(...)));
+    }
 }

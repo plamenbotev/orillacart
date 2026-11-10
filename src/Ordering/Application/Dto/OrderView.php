@@ -119,6 +119,8 @@ final readonly class OrderView
         public ?array $extensions = null,
         /** Placed to try the shop out (design 62): never emailed, not counted. */
         public bool $test = false,
+        /** While it waits for a payment online: when its payment window ends, and the shop cancels it unpaid. */
+        public ?string $payBy = null,
     ) {}
 
     /**
@@ -210,6 +212,7 @@ final readonly class OrderView
             $order->exchangeRate(),
             $order->buyerReference(),
             test: $order->isTest(),
+            payBy: $order->status() === OrderStatus::PendingPayment ? $order->awaitingPaymentSince()->add(new \DateInterval(Order::PAYMENT_WINDOW))->format(\DATE_ATOM) : null,
         );
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Security;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Platform\Domain\RateLimitWindow;
 use OrillaCart\Shared\Http\Security\RateLimiter;
@@ -12,9 +14,14 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 /**
  * Counts in fixed windows, atomically: in the site's external object cache where it has one (add, then incr),
  * else in a row per window of the rate_limits table, in one INSERT … ON DUPLICATE KEY UPDATE; never a read and
- * a write apart, which two requests at once could both make and count as one. The limits are
- * {guard: [how many, in seconds]}, changed with the filter orillacart_rate_limits; a guard without one is not
- * counted. The caller's address is ClientAddress's: behind a proxy the site trusts, the visitor's.
+ * a write apart, which two requests at once could both make and count as one. A count made while the shop's
+ * connection is inside a transaction is made on a connection of its own where the site's tables are on the
+ * database server WordPress is configured with, so a rollback (a failed checkout, an extension's run undone)
+ * does not undo it. The limits are {guard: [how many, in seconds]}, changed with the
+ * filter orillacart_rate_limits: a guard of the shop's keeps its own limit when the filter drops it or gives
+ * something that is no limit, so a filter can raise or lower a limit but not switch it off; a guard the shop does
+ * not know is counted only when the filter gives it a limit. The caller's address is ClientAddress's: behind a
+ * proxy the site trusts, the visitor's.
  */
 final readonly class TransientRateLimiter implements RateLimiter
 {
@@ -56,6 +63,8 @@ final readonly class TransientRateLimiter implements RateLimiter
         'tax_certificates' => [10, 3600],
         // Finding an order by its number and email, and declaring the withdrawal from it.
         'withdrawals' => [20, 3600],
+        // The links that open an order's withdrawal, mailed to its address, from everyone together.
+        'withdrawal_links' => [3, 86400],
         // Each asks a payment provider or courier, with the shop's keys.
         'settings_tests' => [20, 600],
         // An extension's routes, all of them together, per caller.
@@ -65,7 +74,21 @@ final readonly class TransientRateLimiter implements RateLimiter
         'extension_http' => [500, 3600],
         // OAuth for AI assistants: anyone may register an app or ask for tokens.
         'oauth_register' => [20, 3600],
+        // And from the network around the caller (an IPv6 /48, an IPv4 /24): the unconnected apps the shop keeps
+        // at once are a soft limit, which one provider's customer, with all of its /64s, must not fill alone.
+        'oauth_register_network' => [60, 3600],
         'oauth_token' => [120, 600],
+        // A guest's orders waiting for a transfer, per caller: each holds stock until it is paid or cancelled. A
+        // signed-in customer's are counted on their account, as the shop's setting says.
+        'unpaid_orders' => [5, 86400],
+        // Payment providers' webhooks, per caller: PayPal and Stripe send from few addresses, a flood from one is
+        // not theirs.
+        'payment_notifications' => [1200, 600],
+        // PayPal's webhook certificates fetched, and webhooks PayPal is asked to verify, by the whole site: each
+        // is a call out, whoever sent the webhook. And webhooks refused: the log tells of them only this often.
+        'paypal_certificates' => [10, 3600],
+        'paypal_verifications' => [60, 3600],
+        'paypal_refused_notifications' => [20, 3600],
     ];
 
     /**
@@ -89,12 +112,11 @@ final readonly class TransientRateLimiter implements RateLimiter
 
     public function hit(string $guard, string $caller): ?int
     {
-        $limits = apply_filters('orillacart_rate_limits', self::LIMITS);
-        $limit = \is_array($limits) ? ($limits[$guard] ?? null) : null;
-        if (!\is_array($limit) || !\is_int($limit[0] ?? null) || !\is_int($limit[1] ?? null) || $limit[1] < 1) {
+        $limit = self::limitOf(apply_filters('orillacart_rate_limits', self::LIMITS), $guard);
+        if ($limit === null) {
             return null;
         }
-        [$max, $seconds] = [$limit[0], $limit[1]];
+        [$max, $seconds] = $limit;
         $caller = self::network($caller);
         $now = time();
         $window = intdiv($now, $seconds);
@@ -106,21 +128,49 @@ final readonly class TransientRateLimiter implements RateLimiter
     }
 
     /**
-     * An IPv6 caller by its /64: one connection is given a whole /64 to pick addresses from, so counting each
-     * address would give one caller billions of tries. IPv4 addresses, and callers that are no address, as they are.
+     * The limit of a guard from what the filter gave: its own when it is one, else the shop's for that guard.
+     *
+     * @return array{int, int}|null how many, in how many seconds; null for a guard with no limit
+     */
+    public static function limitOf(mixed $limits, string $guard): ?array
+    {
+        $limit = \is_array($limits) ? ($limits[$guard] ?? null) : null;
+        if (\is_array($limit) && \is_int($limit[0] ?? null) && \is_int($limit[1] ?? null) && $limit[0] >= 0 && $limit[1] >= 1) {
+            return [$limit[0], $limit[1]];
+        }
+
+        return self::LIMITS[$guard] ?? null;
+    }
+
+    /**
+     * A caller as the limits count it. `ip:` an address: an IPv6 one by its /64, since one connection is given a
+     * whole /64 to pick addresses from and counting each address would give one caller billions of tries; an
+     * IPv4 one as it is, also when it comes written as IPv6 (`::ffff:a.b.c.d`, or the NAT64 prefix `64:ff9b::/96`),
+     * which would otherwise put every IPv4 caller of a dual-stack server in one /64. `net:` an address by the
+     * network around it, for limits on what a whole provider's customer could fill: an IPv6 /48 (what a site is
+     * given), an IPv4 /24. Callers that are no address, as they are.
      */
     public static function network(string $caller): string
     {
-        if (!str_starts_with($caller, 'ip:')) {
+        $wide = str_starts_with($caller, 'net:');
+        if (!$wide && !str_starts_with($caller, 'ip:')) {
             return $caller;
         }
-        $address = substr($caller, 3);
-        $binary = filter_var($address, \FILTER_VALIDATE_IP, \FILTER_FLAG_IPV6) === false ? false : @inet_pton($address);
-        if ($binary === false || \strlen($binary) !== 16) {
+        $address = substr($caller, $wide ? 4 : 3);
+        $binary = filter_var($address, \FILTER_VALIDATE_IP) === false ? false : @inet_pton($address);
+        if ($binary === false) {
             return $caller;
+        }
+        if (\strlen($binary) === 16 && (str_starts_with($binary, str_repeat("\0", 10) . "\xff\xff") || str_starts_with($binary, "\x00\x64\xff\x9b" . str_repeat("\0", 8)))) {
+            $binary = substr($binary, 12);
+        }
+        if (\strlen($binary) === 4) {
+            $ipv4 = (string) inet_ntop($binary);
+
+            return $wide ? 'net:' . (string) inet_ntop(substr($binary, 0, 3) . "\0") . '/24' : 'ip:' . $ipv4;
         }
 
-        return 'ip:' . bin2hex(substr($binary, 0, 8)) . '::/64';
+        return $wide ? 'net:' . bin2hex(substr($binary, 0, 6)) . '::/48' : 'ip:' . bin2hex(substr($binary, 0, 8)) . '::/64';
     }
 
     /** The count in the external object cache, whose add and incr are atomic; null for a site without one. */
@@ -142,8 +192,31 @@ final readonly class TransientRateLimiter implements RateLimiter
     private function counted(string $bucket, int $ends, int $now): int
     {
         $entityManager = ($this->entityManager)();
-        $connection = $entityManager->getConnection();
+        $shared = $entityManager->getConnection();
         $table = $entityManager->getClassMetadata(RateLimitWindow::class)->getTableName();
+        if (!$shared->isTransactionActive()) {
+            return self::count($shared, $table, $bucket, $ends, $now);
+        }
+        // The shop's connection is WordPress's, whose transaction would hold the count: a link of its own, made
+        // from the site's database settings without the shop's driver, commits it at once. Where the site's tables
+        // are not on that server (a network spread over several), the count goes with the transaction as before.
+        try {
+            // @phpstan-ignore argument.type (the parameters the shop's own connection was made with)
+            $own = DriverManager::getConnection($shared->getParams());
+        } catch (\Throwable) {
+            return self::count($shared, $table, $bucket, $ends, $now);
+        }
+        try {
+            return self::count($own, $table, $bucket, $ends, $now);
+        } catch (\Throwable) {
+            return self::count($shared, $table, $bucket, $ends, $now);
+        } finally {
+            $own->close();
+        }
+    }
+
+    private static function count(Connection $connection, string $table, string $bucket, int $ends, int $now): int
+    {
         $connection->executeStatement(
             "INSERT INTO {$table} (bucket, hits, expires_at) VALUES (?, LAST_INSERT_ID(1), ?) ON DUPLICATE KEY UPDATE hits = LAST_INSERT_ID(hits + 1)",
             [$bucket, gmdate('Y-m-d H:i:s', $ends)],

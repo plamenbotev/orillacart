@@ -11,6 +11,7 @@ import type { ApiResult, Violation } from './api';
  * @param names  Regions to replace.
  * @param url    The page to render them from.
  * @param signal Stops the call (a newer one replaces it): it then throws, and nothing on the page changes.
+ * @throws Error for an address on another site: only the shop's own pages are fetched, whatever a link says.
  * @return The regions on the page the fresh page did not have (a cart emptied meanwhile renders a page without
  *         the checkout's summary): those are left as they were, and the caller decides what to do.
  */
@@ -19,7 +20,11 @@ export async function reloadRegions(
 	url: string = window.location.href,
 	signal?: AbortSignal
 ): Promise< string[] > {
-	const response = await fetch( url, {
+	const page = new URL( url, window.location.href );
+	if ( page.origin !== window.location.origin ) {
+		throw new Error( "Only the shop's own pages are reloaded." );
+	}
+	const response = await fetch( page.href, {
 		credentials: 'same-origin',
 		cache: 'no-store',
 		signal: signal ?? null,

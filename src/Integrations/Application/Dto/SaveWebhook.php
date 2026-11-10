@@ -24,5 +24,8 @@ final readonly class SaveWebhook
         #[Assert\All([new Assert\Type('string')])]
         public array $topics = [],
         public bool $active = true,
+        /** How many events in a row it may fail, each after every try, before the shop switches it off; 0 for never. */
+        #[Assert\Range(min: 0, max: Webhook::MAX_FAILURE_LIMIT)]
+        public int $failureLimit = Webhook::DEFAULT_FAILURE_LIMIT,
     ) {}
 }

@@ -236,7 +236,7 @@ final readonly class OAuthServer
      *
      * @throws OAuthError
      */
-    public function token(array $form): array
+    public function token(#[\SensitiveParameter] array $form): array
     {
         $resource = $form['resource'] ?? null;
         if ($resource !== null && (!\is_string($resource) || !$this->isResource($resource))) {
@@ -258,7 +258,7 @@ final readonly class OAuthServer
      *
      * @return array{int, array<string, mixed>}
      */
-    public function tokenAnswer(array $form): array
+    public function tokenAnswer(#[\SensitiveParameter] array $form): array
     {
         try {
             return [200, $this->token($form)];
@@ -284,7 +284,7 @@ final readonly class OAuthServer
     }
 
     /** Who an access token acts as; null for one the shop has not, or one that ran out. */
-    public function authenticate(string $accessToken): ?AuthenticatedKey
+    public function authenticate(#[\SensitiveParameter] string $accessToken): ?AuthenticatedKey
     {
         if (preg_match('/^oat_[a-f0-9]{48}$/', $accessToken) !== 1) {
             return null;
@@ -340,7 +340,7 @@ final readonly class OAuthServer
      *
      * @return array<string, mixed>
      */
-    private function exchange(array $form, string $clientId): array
+    private function exchange(#[\SensitiveParameter] array $form, string $clientId): array
     {
         $code = \is_string($form['code'] ?? null) ? $form['code'] : '';
         $grant = $code === '' ? null : $this->codes->redeem($code);
@@ -377,7 +377,7 @@ final readonly class OAuthServer
      *
      * @return array<string, mixed>
      */
-    private function refresh(array $form, string $clientId): array
+    private function refresh(#[\SensitiveParameter] array $form, string $clientId): array
     {
         $given = \is_string($form['refresh_token'] ?? null) ? $form['refresh_token'] : '';
         $hash = preg_match('/^ort_[a-f0-9]{48}$/', $given) === 1 ? hash('sha256', $given) : null;
@@ -421,7 +421,7 @@ final readonly class OAuthServer
     }
 
     /** @return array<string, mixed> */
-    private static function answer(string $access, string $refresh, ApiKeyScope $scope): array
+    private static function answer(#[\SensitiveParameter] string $access, #[\SensitiveParameter] string $refresh, ApiKeyScope $scope): array
     {
         return [
             'access_token' => $access,

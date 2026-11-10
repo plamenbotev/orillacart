@@ -8,7 +8,8 @@ Bodies are JSON; field names are in snake_case. Answers are JSON, as the shop's 
 ## Who may call a route
 
 - **Anyone**: the storefront's routes (the cart, checkout, receipts, reviews). Changes need a nonce:
-  `GET /session` gives a visitor one, never cached; send it as `X-WP-Nonce`.
+  `GET /session` gives a visitor one, never cached; send it as `X-OrillaCart-Nonce` (not `X-WP-Nonce`,
+  which WordPress checks for its own).
 - **Logged-in customers** and **shop managers**: with WordPress's login cookie and a nonce
   (`X-WP-Nonce`, `wp_create_nonce('wp_rest')`), as the shop's screens do.
 - **Integrations**: with an API key from Shop → Integrations, `Authorization: Bearer oc_…` (or
@@ -215,7 +216,7 @@ Chooses what the AI assistant that uses a key is offered, and which risks wait f
   - `off_areas` (list<string>): at most 100 items; each at most 100 characters
   - `off` (list<string>): at most 1000 items
   - `list` (string): one of all, find; default 'all'
-  - `ask` (list<string>): each one of money, deleting, customers, opening, publishing
+  - `ask` (list<string>): each one of money, deleting, customers, opening, publishing, changes
   - `answer` (string): one of page, app; default 'page'
 
 ## /assistant
@@ -538,11 +539,11 @@ The shop adds a coupon code, or an automatic discount that needs no code, with i
   - `max_subtotal` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `min_quantity` (int): 0 or more; default 0
   - `countries` (list<string>): at most 300 items
-  - `product_ids` (list<int>): at most 1000 items
-  - `category_ids` (list<int>): at most 1000 items
-  - `brand_ids` (list<int>): at most 1000 items
-  - `excluded_product_ids` (list<int>): at most 1000 items
-  - `excluded_category_ids` (list<int>): at most 1000 items
+  - `product_ids` (list<int>): at most 1000 items; each more than 0
+  - `category_ids` (list<int>): at most 1000 items; each more than 0
+  - `brand_ids` (list<int>): at most 1000 items; each more than 0
+  - `excluded_product_ids` (list<int>): at most 1000 items; each more than 0
+  - `excluded_category_ids` (list<int>): at most 1000 items; each more than 0
   - `exclude_sale_items` (bool): default false
   - `combines` (bool): default false
   - `usage_limit` (int|null): more than 0
@@ -551,8 +552,8 @@ The shop adds a coupon code, or an automatic discount that needs no code, with i
   - `automatic` (bool): default false
   - `buy_quantity` (int): 0 to 1000; default 0
   - `get_quantity` (int): 0 to 1000; default 0
-  - `get_product_ids` (list<int>): at most 1000 items
-  - `get_category_ids` (list<int>): at most 1000 items
+  - `get_product_ids` (list<int>): at most 1000 items; each more than 0
+  - `get_category_ids` (list<int>): at most 1000 items; each more than 0
   - `gift_product_id` (int|null): more than 0
   - `overrides_price_rules` (bool): default false
   - `free_shipping_every_rate` (bool): default false
@@ -584,11 +585,11 @@ Changes a coupon's code, amount and rules; placed orders keep the code and amoun
   - `max_subtotal` (string|null): matches `/^\d{1,11}(\.\d{1,4})?$/`
   - `min_quantity` (int): 0 or more; default 0
   - `countries` (list<string>): at most 300 items
-  - `product_ids` (list<int>): at most 1000 items
-  - `category_ids` (list<int>): at most 1000 items
-  - `brand_ids` (list<int>): at most 1000 items
-  - `excluded_product_ids` (list<int>): at most 1000 items
-  - `excluded_category_ids` (list<int>): at most 1000 items
+  - `product_ids` (list<int>): at most 1000 items; each more than 0
+  - `category_ids` (list<int>): at most 1000 items; each more than 0
+  - `brand_ids` (list<int>): at most 1000 items; each more than 0
+  - `excluded_product_ids` (list<int>): at most 1000 items; each more than 0
+  - `excluded_category_ids` (list<int>): at most 1000 items; each more than 0
   - `exclude_sale_items` (bool): default false
   - `combines` (bool): default false
   - `usage_limit` (int|null): more than 0
@@ -597,8 +598,8 @@ Changes a coupon's code, amount and rules; placed orders keep the code and amoun
   - `automatic` (bool): default false
   - `buy_quantity` (int): 0 to 1000; default 0
   - `get_quantity` (int): 0 to 1000; default 0
-  - `get_product_ids` (list<int>): at most 1000 items
-  - `get_category_ids` (list<int>): at most 1000 items
+  - `get_product_ids` (list<int>): at most 1000 items; each more than 0
+  - `get_category_ids` (list<int>): at most 1000 items; each more than 0
   - `gift_product_id` (int|null): more than 0
   - `overrides_price_rules` (bool): default false
   - `free_shipping_every_rate` (bool): default false
@@ -658,6 +659,26 @@ Deletes a customer group: its customers leave it, and price rules for it no long
 
 - Who: shop managers; needs a nonce (not with an API key)
 
+## /customer-invitations
+
+### `GET /customer-invitations`
+
+The customers the shop invited to make an account who have not yet, the newest first; kept a month after their link stopped working.
+
+- Who: shop managers
+
+### `DELETE /customer-invitations/{id}`
+
+Withdraws an invitation: its link stops working.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
+### `POST /customer-invitations/{id}/resend`
+
+Sends an invitation's link again, as a new one: once a day at most, or once the last stopped working (422 orillacart_invitation_recent).
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /customer-settings
 
 ### `GET /customer-settings`
@@ -674,6 +695,7 @@ Sets whether customers can, must or cannot have accounts, and whether guests can
 - Body (JSON):
   - `accounts` (string): required; one of optional, required, disabled
   - `guest_orders` (bool|null)
+  - `roles` (array|null): each at most 100 characters; at most 50 items
 
 ## /customers
 
@@ -689,7 +711,7 @@ A page of the shop's customers, found by a search; nothing changes.
 
 ### `POST /customers`
 
-The shop makes a customer's account itself: an email that has none, a name, a password or none (the customer sets theirs through the lost-password link), and the groups it joins. Nobody is emailed: send_customer_welcome tells the customer.
+The shop makes a customer's account itself: an email that has none, a name, a password or none (the customer sets theirs through the lost-password link), and the groups it joins. Nobody is emailed: send_customer_welcome tells the customer. On a network of sites the shop's staff invite the customer instead, whoever has the email: the link to make the account goes to it, and the answer is 202 with the invitation, the same for every email; the network's administrators, who see all its users, make the account, or add a user of another site to this one.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -846,6 +868,14 @@ Tests a way of sending downloads and keeps it when it works. Answers 200 either 
 Where download files are kept and whether the web server would hand them out by itself; ?fresh=1 tests again.
 
 - Who: shop managers
+
+### `POST /download-storage/answer`
+
+Says whose a downloads folder the shop no longer knows as its own is, after the site was moved, restored or copied: adopt (it moved; the files are served from it again) or new (a copy; it starts an empty folder of its own and leaves the other alone). Answers with the folder as GET /download-storage shows it.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `answer` (string): required; one of adopt, new
 
 ## /email-settings
 
@@ -1041,7 +1071,7 @@ An extension as a file to keep or move: its id, name, version and files. Setting
 
 ### `PUT /extensions/{id}/files/{path}`
 
-Writes one file of an extension (a script ending in .ocs, or a template under templates/), making it when it is not there. An enabled extension keeps running its old files until it is enabled again; the answer's findings are the static check of the new ones.
+Writes one file of an extension (a script ending in .ocs, or a template under templates/), making it when it is not there. An enabled extension keeps running its old files until it is enabled again; the answer's findings are the static check of the new ones. What is written reaches no one until a manager enables it, which asks again, but it changes the extension's files, so the assistant asks.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1073,7 +1103,7 @@ Renders one of an enabled extension's views as the shop would show it (a page, a
 
 ### `POST /extensions/{id}/run`
 
-The console: runs one top-level function of an extension with the given arguments and its granted permissions; answers what it returned or how it failed, and what the run used.
+The console: runs one top-level function of an extension with the given arguments; an enabled one runs the files it was enabled with and its granted permissions, a draft or a disabled one its saved files with nothing granted. Answers what it returned or how it failed, and what the run used. A function run with arguments of the caller's choosing may mail customers, place orders or send their data to the extension's hosts, so the assistant asks.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1833,7 +1863,7 @@ Providers send customers back here after they paid; the customer then sees the o
 
 ### `POST /payments/{gateway}/webhook`
 
-Providers' notifications (webhooks). They carry no nonce: the gateway checks with the provider that it sent them before anything is read.
+Providers' notifications (webhooks). They carry no nonce: the gateway checks that the provider sent them before anything is read. Counted per caller, so a flood from one address is turned away before any gateway works.
 
 - Who: the payment provider, signed
 
@@ -1853,10 +1883,10 @@ The shop adds a price rule: its own prices for customer groups, by quantity or b
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
   - `tiers` (list<PriceTierData>): required; 1 to 20 items
-  - `group_ids` (list<int>): at most 100 items
-  - `product_ids` (list<int>): at most 1000 items
-  - `category_ids` (list<int>): at most 1000 items
-  - `brand_ids` (list<int>): at most 1000 items
+  - `group_ids` (list<int>): at most 100 items; each more than 0
+  - `product_ids` (list<int>): at most 1000 items; each more than 0
+  - `category_ids` (list<int>): at most 1000 items; each more than 0
+  - `brand_ids` (list<int>): at most 1000 items; each more than 0
   - `starts_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `ends_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `with_sales` (bool): default false
@@ -1872,10 +1902,10 @@ Changes a price rule's prices, dates and who and what it is for. Placed orders k
 - Body (JSON):
   - `name` (string): required; not empty; at most 100 characters
   - `tiers` (list<PriceTierData>): required; 1 to 20 items
-  - `group_ids` (list<int>): at most 100 items
-  - `product_ids` (list<int>): at most 1000 items
-  - `category_ids` (list<int>): at most 1000 items
-  - `brand_ids` (list<int>): at most 1000 items
+  - `group_ids` (list<int>): at most 100 items; each more than 0
+  - `product_ids` (list<int>): at most 1000 items; each more than 0
+  - `category_ids` (list<int>): at most 1000 items; each more than 0
+  - `brand_ids` (list<int>): at most 1000 items; each more than 0
   - `starts_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `ends_at` (string|null): a date and time, ISO 8601, such as 2026-10-26T09:30:00+02:00
   - `with_sales` (bool): default false
@@ -1992,7 +2022,7 @@ The product stops offering a download file; buyers who have it keep their downlo
 
 ### `GET /products/{id}/reviews`
 
-A page of a product's published reviews, as its page shows them to anyone.
+A page of a product's published reviews, as its page shows them to anyone: an empty one for a product that is not published or has a password, as for one that does not exist.
 
 - Who: anyone
 
@@ -2060,7 +2090,7 @@ A visitor with an expired receipt link asks for a new one: it goes to the order'
 
 - Who: anyone; needs a nonce (not with an API key); at most 5 an hour from each address
 - Body (JSON):
-  - `receipt` (string): required; matches `/^[0-9]{1,10}-[0-9]{1,6}-[a-f0-9]{32}$/`
+  - `receipt` (string): required; matches `/^([0-9]{1,10}-[0-9]{1,6}-[a-f0-9]{32}|kept-[0-9]{1,10})$/`
 
 ### `POST /receipts/lookup`
 
@@ -2338,7 +2368,7 @@ Shows the search engine the shop uses, how far behind its index is, and products
 
 ### `PUT /search-engine`
 
-Switches the search engine after checking OpenSearch answers; the view says what the check found. Pointing the shop at an OpenSearch server is the site administrator's (`manage_options`): its address may be anywhere on the server's network, and the shop sends it requests and reads the answers. A shop manager switches back to the database search.
+Switches the search engine after checking OpenSearch answers; the view says what the check found. Pointing the shop at an OpenSearch server is the site administrator's (`manage_options`): its address may be anywhere on the server's network, and the shop sends it requests and reads the answers. A shop manager switches back to the database search, which keeps the administrator's connection (address, user, password) as it was.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -2947,6 +2977,7 @@ The webhooks, and the topics they can listen to.
   - `url` (string): not empty; an address (URL); at most 500 characters
   - `topics` (list<string>): at least 1 items
   - `active` (bool): default true
+  - `failure_limit` (int): 0 to 1000; default 10
 
 ### `PUT /webhooks/{id}`
 
@@ -2958,6 +2989,7 @@ Changes a webhook, or deletes it with what it delivered.
   - `url` (string): not empty; an address (URL); at most 500 characters
   - `topics` (list<string>): at least 1 items
   - `active` (bool): default true
+  - `failure_limit` (int): 0 to 1000; default 10
 
 ### `DELETE /webhooks/{id}`
 
@@ -2969,6 +3001,7 @@ Changes a webhook, or deletes it with what it delivered.
   - `url` (string): not empty; an address (URL); at most 500 characters
   - `topics` (list<string>): at least 1 items
   - `active` (bool): default true
+  - `failure_limit` (int): 0 to 1000; default 10
 
 ### `GET /webhooks/{id}/deliveries`
 
@@ -2992,24 +3025,31 @@ A webhook's test (POST …/ping: a webhook.ping event, sent by the background jo
 
 ### `POST /withdrawals`
 
-"Confirm withdrawal": the consumer's declaration, acknowledged at once by email.
+"Confirm withdrawal", from the link emailed to the order's address: the consumer's declaration, acknowledged at once by email.
 
 - Who: anyone; needs a nonce (not with an API key); at most 20 an hour from each address
 - Body (JSON):
-  - `number` (int): required; more than 0
-  - `email` (string): required; not empty; an email
+  - `token` (string): required; not empty; at most 200 characters
   - `name` (string): required; not empty; at most 200 characters
   - `confirmation_email` (string): required; not empty; an email
   - `items` (list<ReturnItem>): at most 200 items
 
-### `POST /withdrawals/orders`
+### `POST /withdrawals/links`
 
-The withdrawal function's first step: the order by its number and email, and what of it is left to withdraw.
+The withdrawal function's first step: an order's number and email. The answer is the same whatever they are; the order's own address is sent the link that opens its withdrawal.
 
 - Who: anyone; needs a nonce (not with an API key); at most 20 an hour from each address
 - Body (JSON):
   - `number` (int): required; more than 0
   - `email` (string): required; not empty; an email
+
+### `POST /withdrawals/orders`
+
+The withdrawal function, from the link emailed to the order's address: what of the order is left to withdraw from.
+
+- Who: anyone; needs a nonce (not with an API key); at most 20 an hour from each address
+- Body (JSON):
+  - `token` (string): required; not empty; at most 200 characters
 
 ## /{kind}
 
@@ -3147,6 +3187,7 @@ The objects fields above take.
 - `condition` (SaveFieldCondition|null)
 - `types` (list<string>): each one of image/jpeg, image/png, image/webp, image/gif, application/pdf
 - `largest` (int): 1 to 20; default 10
+- `pdf_links` (bool): default false
 - `translations` (array|null): collection
 
 ### SaveNexusThreshold

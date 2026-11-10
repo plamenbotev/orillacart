@@ -19,6 +19,7 @@ final readonly class TableWorkerRegistry implements WorkerRegistry, LifecycleLis
 {
     public const string RESTART = 'orillacart_jobs_restart';
     public const string CRON = 'orillacart_jobs_cron';
+    public const string LEFT_OUT = 'orillacart_jobs_left_out';
     private const string MOMENT = JobTables::MOMENT;
 
     public function __construct(private JobTables $tables) {}
@@ -81,6 +82,21 @@ final readonly class TableWorkerRegistry implements WorkerRegistry, LifecycleLis
         update_option(self::CRON, (string) $at->getTimestamp(), false);
     }
 
+    public function leftOut(string $worker, string $reason, \DateTimeImmutable $at): void
+    {
+        update_option(self::LEFT_OUT, ['worker' => $worker, 'reason' => $reason, 'at' => $at->getTimestamp()], false);
+    }
+
+    public function leftOutBy(): ?array
+    {
+        $left = get_option(self::LEFT_OUT);
+        if (!\is_array($left) || !\is_string($left['worker'] ?? null) || !\is_string($left['reason'] ?? null) || !\is_int($left['at'] ?? null)) {
+            return null;
+        }
+
+        return ['worker' => $left['worker'], 'reason' => $left['reason'], 'at' => new \DateTimeImmutable('@' . $left['at'])];
+    }
+
     public function cronDisabled(): bool
     {
         return \defined('DISABLE_WP_CRON') && DISABLE_WP_CRON;
@@ -96,6 +112,7 @@ final readonly class TableWorkerRegistry implements WorkerRegistry, LifecycleLis
     {
         delete_option(self::RESTART);
         delete_option(self::CRON);
+        delete_option(self::LEFT_OUT);
     }
 
     private static function read(string $option): ?\DateTimeImmutable

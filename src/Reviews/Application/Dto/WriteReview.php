@@ -25,6 +25,7 @@ final readonly class WriteReview
         #[Assert\Email]
         #[Assert\Length(max: 100)]
         public ?string $email = null,
+        #[\SensitiveParameter]
         #[Assert\Regex(pattern: '/^' . ReviewTokens::PATTERN . '$/')]
         public ?string $token = null,
     ) {}

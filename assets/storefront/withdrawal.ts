@@ -1,6 +1,7 @@
 /**
- * The withdrawal function: the consumer gives their name, the order's number and email and where the
- * confirmation goes, chooses the items once the order is found (all of them unless they choose fewer), and
+ * The withdrawal function, in two steps. Asked by the order's number and email, the shop answers the same
+ * whatever they are and emails the order's own address a link. The link opens the page again: the consumer gives
+ * their name and where the confirmation goes, chooses the items (all of them unless they choose fewer), and
  * confirms. The shop answers with what was declared and when, which the confirmation email repeats.
  */
 import { __, _n, sprintf } from '@wordpress/i18n';
@@ -22,11 +23,55 @@ interface Withdrawn {
 }
 
 /**
- * Binds the withdrawal form.
+ * Binds the first step: the order's number and email, for the link.
  *
- * @param form The form, with data-orillacart-withdrawal.
+ * @param form The form, with data-orillacart-withdrawal-ask.
+ */
+export function bindWithdrawalAsk( form: HTMLFormElement ): void {
+	const field = ( name: string ) =>
+		form.querySelector< HTMLInputElement >( `[name="${ name }"]` );
+	form.addEventListener( 'submit', async ( event ) => {
+		event.preventDefault();
+		clearErrors( form );
+		const button = form.querySelector< HTMLButtonElement >(
+			'button[type="submit"]'
+		);
+		if ( button ) {
+			button.disabled = true;
+		}
+		const result = await api< { message: string } >(
+			'POST',
+			'/withdrawals/links',
+			{
+				number: Number( field( 'number' )?.value ) || 0,
+				email: field( 'email' )?.value ?? '',
+			}
+		);
+		if ( button ) {
+			button.disabled = false;
+		}
+		if ( ! result.ok ) {
+			const unplaced = showErrors( form, result.violations );
+			showMessage( form, failure( result, unplaced ), 'error' );
+			return;
+		}
+		showMessage(
+			form,
+			__(
+				'If an order has this number and email, the link to withdraw from it is on its way to that email. Follow it to choose what you withdraw from and confirm.',
+				'orillacart'
+			)
+		);
+	} );
+}
+
+/**
+ * Binds the second step, opened from the emailed link: the items, the name, and the confirmation.
+ *
+ * @param form The form, with data-orillacart-withdrawal holding the link's token.
  */
 export function bindWithdrawal( form: HTMLFormElement ): void {
+	const token = form.dataset.orillacartWithdrawal ?? '';
 	const field = ( name: string ) =>
 		form.querySelector< HTMLInputElement >( `[name="${ name }"]` );
 	const items = form.querySelector< HTMLElement >(
@@ -38,15 +83,10 @@ export function bindWithdrawal( form: HTMLFormElement ): void {
 	let found: Withdrawable | null = null;
 
 	const find = async () => {
-		const number = Number( field( 'number' )?.value );
-		const email = field( 'email' )?.value ?? '';
-		if ( ! number || ! email.includes( '@' ) ) {
-			return;
-		}
 		const result = await api< Withdrawable >(
 			'POST',
 			'/withdrawals/orders',
-			{ number, email }
+			{ token }
 		);
 		if ( ! result.ok ) {
 			found = null;
@@ -57,7 +97,6 @@ export function bindWithdrawal( form: HTMLFormElement ): void {
 			return;
 		}
 		found = result.data;
-		showMessage( form, '' );
 		if ( lines && items ) {
 			lines.replaceChildren(
 				...result.data.lines.map( ( line ) => {
@@ -82,9 +121,7 @@ export function bindWithdrawal( form: HTMLFormElement ): void {
 			items.hidden = false;
 		}
 	};
-	form.querySelectorAll< HTMLInputElement >(
-		'[data-orillacart-withdrawal-order]'
-	).forEach( ( input ) => input.addEventListener( 'change', find ) );
+	void find();
 
 	form.addEventListener( 'submit', async ( event ) => {
 		event.preventDefault();
@@ -102,9 +139,8 @@ export function bindWithdrawal( form: HTMLFormElement ): void {
 			quantity: Number( select.value ),
 		} ) );
 		const result = await api< Withdrawn >( 'POST', '/withdrawals', {
+			token,
 			name: field( 'name' )?.value ?? '',
-			number: Number( field( 'number' )?.value ) || 0,
-			email: field( 'email' )?.value ?? '',
 			confirmation_email: field( 'confirmation_email' )?.value ?? '',
 			// Every item unless the consumer chose fewer.
 			items:

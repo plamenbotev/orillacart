@@ -18,11 +18,12 @@ use Psr\Clock\ClockInterface;
 /**
  * Runs a script's own `test "name" { … } fn() { … }` declarations. Each test gets a fresh instance of the class
  * whose `http.*` answer from the test's `http` map and refuse anything not in it, whose `time.*` stand at the
- * test's `now`, whose `settings.get` reads the test's `settings` over the extension's, and whose `jobs.push`
+ * test's `now`, whose `settings.get` reads the test's `settings` over the grant's, and whose `jobs.push`
  * records instead of queuing. A function that reaches outside the shop runs as it says it does in tests (mail
  * held, an order placed as a test order) and is listed in the result's `effects`; one that says nothing, and
- * counts as email, refuses. Everything else is the shop's host; the package layer runs each test inside a
- * transaction it rolls back, so records and field values leave no trace. For a request that may only read, the
+ * counts as email, refuses. The stand-ins answer for what the script declares (`$declared`) though the grant may
+ * not hold it, since they reach no one; everything else is the shop's host, held to the grant. The package layer
+ * runs each test inside a transaction it rolls back, so records and field values leave no trace. For a request that may only read, the
  * package layer narrows the host so that every function that writes refuses, the recording stand-ins aside.
  */
 final readonly class ScriptTests
@@ -34,13 +35,14 @@ final readonly class ScriptTests
 
     /**
      * @param (callable(callable(): TestResult): TestResult)|null $isolate runs one test so that what it wrote is undone
-     * @param (\Closure(HostCatalog): HostCatalog)|null          $narrow  the host each test runs against, from the one with its stand-ins
+     * @param (\Closure(HostCatalog): HostCatalog)|null          $narrow   the host each test runs against, from the one with its stand-ins
+     * @param list<string>                                       $declared the permissions the script declares, which its stand-ins answer for
      *
      * @return list<TestResult>
      *
      * @throws \InvalidArgumentException when the source does not compile
      */
-    public function run(string $source, string $scope, Grant $grant, ?callable $isolate = null, ?\Closure $narrow = null): array
+    public function run(string $source, string $scope, Grant $grant, ?callable $isolate = null, ?\Closure $narrow = null, array $declared = []): array
     {
         $script = $this->scripts->load($source, $scope, new Budget(), $grant);
         $results = [];
@@ -48,7 +50,7 @@ final readonly class ScriptTests
             if ($declaration['kind'] !== 'test' || $declaration['handler'] === null) {
                 continue;
             }
-            $one = fn(): TestResult => $this->one($source, $scope, $grant, $declaration, $narrow);
+            $one = fn(): TestResult => $this->one($source, $scope, $grant, $declaration, $narrow, $declared);
             $results[] = $isolate === null ? $one() : $isolate($one);
         }
 
@@ -58,8 +60,9 @@ final readonly class ScriptTests
     /**
      * @param array{name: ?string, props: array<string, mixed>, handler: ?string} $declaration
      * @param (\Closure(HostCatalog): HostCatalog)|null                         $narrow
+     * @param list<string>                                                     $declared
      */
-    private function one(string $source, string $scope, Grant $grant, array $declaration, ?\Closure $narrow): TestResult
+    private function one(string $source, string $scope, Grant $grant, array $declaration, ?\Closure $narrow, array $declared): TestResult
     {
         $name = $declaration['name'] ?? 'test';
         $props = $declaration['props'];
@@ -77,13 +80,13 @@ final readonly class ScriptTests
                 $http[] = ['method' => strtoupper($method), 'url' => Ops::text($url), 'status' => $answer['status']];
 
                 return $answer;
-            }, 1, 2, '', 'http', HostFunction::HTTP);
+            }, 1, 2, '', 'http', HostFunction::HTTP, writes: true);
         }
         $fakes[] = new HostFunction('jobs.push', static function (Context $c, mixed $name, mixed $payload = null, mixed $at = null) use (&$jobs): null {
             $jobs[] = ['name' => Ops::text($name), 'payload' => Ops::plain($payload), 'at' => $at === null ? null : Ops::text($at)];
 
             return null;
-        }, 1, 3, '');
+        }, 1, 3, '', writes: true);
         if (isset($props['now'])) {
             try {
                 $now = new \DateTimeImmutable(Ops::text($props['now']));
@@ -108,6 +111,9 @@ final readonly class ScriptTests
             }
         }
         $testGrant = new Grant($grant->extension, $grant->permissions, $grant->hosts, $settings);
+        $fakes = array_map(static fn(HostFunction $f): HostFunction => $f->needs !== null && \in_array($f->needs, $declared, true)
+            ? new HostFunction($f->name, $f->callable, $f->leastArguments, $f->mostArguments, $f->summary, null, $f->counts, $f->inTests, $f->writes)
+            : $f, $fakes);
         $host = $this->scripts->catalog()->with($fakes);
         $script = $this->scripts->load($source, $scope, new Budget(), $testGrant, $narrow === null ? $host : $narrow($host));
         $handler = $declaration['handler'] ?? '';
@@ -153,7 +159,7 @@ final readonly class ScriptTests
                 $effects[] = ['function' => $name, 'arguments' => array_map(Ops::plain(...), array_values($arguments))];
 
                 return $inTests($c, ...$arguments);
-            }, $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, $inTests);
+            }, $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, $inTests, $function->writes);
         }
 
         return $doubles;

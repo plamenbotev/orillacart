@@ -36,12 +36,29 @@ final class InMemoryPendingAccounts implements PendingAccountRepository
         return null;
     }
 
+    public function find(int $id): ?PendingAccount
+    {
+        return array_find($this->accounts, static fn(PendingAccount $account): bool => $account->id() === $id);
+    }
+
+    public function invitations(): array
+    {
+        $invitations = array_values(array_filter($this->accounts, static fn(PendingAccount $account): bool => $account->isInvitation()));
+        usort($invitations, static fn(PendingAccount $a, PendingAccount $b): int => [$b->sentAt(), $b->id()] <=> [$a->sentAt(), $a->id()]);
+
+        return $invitations;
+    }
+
     public function save(PendingAccount $account): void
     {
         if (!\in_array($account, $this->accounts, true)) {
             $this->accounts[] = $account;
-            $this->hashes[spl_object_id($account)] = (fn(): string => $this->tokenHash)->call($account);
+            // An id, as the database gives one.
+            (function (int $id): void {
+                $this->id ??= $id;
+            })->call($account, \count($this->hashes) + 1);
         }
+        $this->hashes[spl_object_id($account)] = (fn(): string => $this->tokenHash)->call($account);
     }
 
     public function remove(PendingAccount $account): void
@@ -51,6 +68,7 @@ final class InMemoryPendingAccounts implements PendingAccountRepository
 
     public function removeExpired(\DateTimeImmutable $now): void
     {
-        $this->accounts = array_values(array_filter($this->accounts, static fn(PendingAccount $account): bool => !$account->isExpired($now)));
+        $kept = $now->modify('-30 days');
+        $this->accounts = array_values(array_filter($this->accounts, static fn(PendingAccount $account): bool => !$account->isExpired($now) || $account->isInvitation() && !$account->isExpired($kept)));
     }
 }

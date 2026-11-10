@@ -9,6 +9,7 @@ use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
+use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Server\RequestHandlerInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -37,7 +38,11 @@ final class RoutePass implements CompilerPassInterface
 
             foreach ($reflection->getAttributes(Route::class) as $attribute) {
                 try {
-                    $route = RouteDefinition::fromAttribute($id, $attribute->newInstance());
+                    $declared = $attribute->newInstance();
+                    $route = RouteDefinition::fromAttribute($id, $declared);
+                    // A key may call what its assistant may: a shop manager's route kept from the assistant is a
+                    // logged-in manager's only, unless it says keys may.
+                    $route = RouteDefinition::fromAttribute($id, $declared, !self::forManagers($route) || RouteTools::isTool($route));
                 } catch (\InvalidArgumentException $e) {
                     throw new InvalidArgumentException($e->getMessage(), 0, $e);
                 }
@@ -65,5 +70,11 @@ final class RoutePass implements CompilerPassInterface
             }
             $container->getDefinition(RouteTools::class)->setArgument('$tools', $tools);
         }
+    }
+
+    /** Whether the route is a shop manager's: neither for visitors or customers, nor a provider's signed call. */
+    private static function forManagers(RouteDefinition $route): bool
+    {
+        return !$route->signed && !\in_array($route->capability, [Route::PUBLIC, Capability::ACCOUNT], true);
     }
 }

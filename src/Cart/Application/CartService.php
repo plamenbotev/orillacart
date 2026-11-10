@@ -42,12 +42,14 @@ use OrillaCart\Extension\Cart\CheckedLine;
 use OrillaCart\Extension\Cart\KeptCharge;
 use OrillaCart\Extension\Cart\KeptItem;
 use OrillaCart\Extension\FailsClosed;
+use OrillaCart\Shared\Extension\ClosedFailures;
 use OrillaCart\Forms\Application\Dto\GivenAnswer;
 use OrillaCart\Forms\Application\FieldAnswers;
 use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Forms\Application\ShopForms;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Domain\EmailAddress;
 use OrillaCart\Shared\Domain\InvalidFields;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
@@ -85,6 +87,7 @@ final readonly class CartService
         private ProductContent $content,
         private FormUploads $uploads,
         private ProductTranslations $translations,
+        private ClosedFailures $closedFailures,
     ) {}
 
     public function cart(CartOwner $owner): CartResult
@@ -352,36 +355,67 @@ final readonly class CartService
     /**
      * The customer is at checkout with the cart: their email, and whether they ask to be reminded of the cart.
      *
+     * @param (\Closure(string): bool)|null $mayRemind asked once a cart, when it asks for the first time to be
+     *                                                reminded at an address (not again as the page sends the same
+     *                                                answer), whether the address may be reminded of one more cart;
+     *                                                no, and the cart keeps no reminder
+     *
      * @return string|null a new token for the browser, when it has to be given one
      */
-    public function atCheckout(CartOwner $owner, CheckoutContact $contact, ?string $locale): ?string
+    public function atCheckout(CartOwner $owner, CheckoutContact $contact, ?string $locale, ?\Closure $mayRemind = null): ?string
     {
         [$cart, $newToken] = $this->find($owner);
         if ($cart === null) {
             return null;
         }
         $email = $contact->email === null || trim($contact->email) === '' ? null : strtolower(trim($contact->email));
-        $cart->atCheckout($email, $contact->remind, $locale, $this->clock->now());
+        $remind = $contact->remind && $email !== null;
+        $already = $cart->remind() && $cart->contactEmail() !== null && $email !== null && EmailAddress::key($cart->contactEmail()) === EmailAddress::key($email);
+        if ($remind && !$already && $mayRemind !== null && !$mayRemind($email)) {
+            $remind = false;
+        }
+        $cart->atCheckout($email, $remind, $locale, $this->clock->now());
         $this->carts->save($cart);
 
         return $newToken;
     }
 
     /**
-     * The visitor's cart a reminder's link brings back, to this browser: a cart of a customer's account is theirs
-     * to log in to instead.
+     * The visitor's cart a reminder's link brings back, to this browser, once they confirmed it (a mail scanner
+     * opening the link brings nothing back): a cart of a customer's account is theirs to log in to instead. A
+     * browser that holds a filled cart keeps it, and what the reminded cart held joins it, as far as it has room;
+     * an empty one is replaced. The link works once either way.
+     *
+     * @param CartOwner|null $browser the cart this browser holds, if any
      *
      * @return string|null the token for the browser; null for no such cart
      */
-    public function recover(string $token): ?string
+    public function recover(#[\SensitiveParameter] string $token, ?CartOwner $browser = null): ?string
     {
         $cart = $this->carts->findByRecoverToken($token);
         if ($cart === null || $cart->customerId() !== null) {
             return null;
         }
+        $held = $browser === null || $browser->token === null || $browser->token === '' ? null : $this->carts->findByToken($browser->token);
         $newToken = self::token();
-        $cart->recovered($newToken);
-        $this->carts->save($cart);
+        if ($held === null || $held->id() === $cart->id() || $held->isEmpty() || $held->customerId() !== null && $held->customerId() !== $browser?->customerId) {
+            $cart->recovered($newToken);
+            $this->carts->save($cart);
+
+            return $newToken;
+        }
+        $held->takeFrom($cart, $this->clock->now(), FormUploads::MAX_HELD);
+        // The reminded cart lives on in this one: ordered, it counts as won back.
+        $abandonedId = $cart->abandonedId();
+        if ($held->abandonedId() === null && $abandonedId !== null) {
+            $held->abandon($abandonedId);
+        }
+        $held->rekey($newToken);
+        $this->keepAddOns($held);
+        $this->carts->remove($cart);
+        $this->carts->save($held);
+        $this->uploads->holdNamed($held->fileHashes());
+        $this->events->dispatch(new CartChanged($held->id(), $held->customerId()));
 
         return $newToken;
     }
@@ -749,7 +783,7 @@ final readonly class CartService
      * What the add-ons' cart rules refuse: messages by line, and those about the whole cart; and whether a rule
      * the shop cannot do without failed. A rule that fails is logged and left out, so one broken add-on does not
      * stop every cart; one that fails closed (FailsClosed: an age check, a licence, an export limit) refuses the
-     * whole cart for now instead.
+     * whole cart for now instead, and the shop manager hears of it on Home and the Status screen (ClosedFailures).
      *
      * @return array{array<int, string>, list<string>, bool}
      */
@@ -766,6 +800,7 @@ final readonly class CartService
                 if ($rule instanceof FailsClosed) {
                     $closed = true;
                     $whole[] = self::UNCHECKED;
+                    $this->closedFailures->failed('cart_rule:' . $rule->id(), \sprintf('The cart rule %s failed (%s): no cart can be ordered until it answers.', $rule->id(), mb_substr($e->getMessage(), 0, 200)));
                 }
                 continue;
             }

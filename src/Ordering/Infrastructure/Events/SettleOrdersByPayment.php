@@ -63,6 +63,8 @@ final readonly class SettleOrdersByPayment
     {
         try {
             $this->orders->hold($event->orderId, self::note('The provider holds the payment for review', $event));
+            // The money may be taken: the shop looks before the order ships, and the customer cannot pay it again.
+            $this->orders->needsAttention($event->orderId, \sprintf('The payment through %s (transaction %s) waits for the shop: the provider holds it for review, or it is not what the order asked. Look at it at the provider before the order ships, and mark the order paid once the money is there.', $event->gateway, $event->transactionId ?? 'none'));
         } catch (OrderNotFound) {
             $this->gone($event, 'is held for review');
         } catch (OrderRuleViolation $e) {

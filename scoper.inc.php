@@ -17,17 +17,26 @@ $wordpressExcludes = static function (string $kind): array {
     return array_values(array_filter((array) $names, 'is_string'));
 };
 
+/** @var array{php_excluded: list<string>, data: list<string>} $vendorFiles */
+$vendorFiles = require __DIR__ . '/bin/vendor-files.php';
+
 return [
     'prefix' => 'OrillaCart\\Vendor',
 
     'finders' => [
         Finder::create()->files()->in(['src', 'config', 'migrations', 'generated'])->name('*.php'),
+        // The libraries' files by allowlist (bin/vendor-files.php): their PHP, and the data files they read.
         Finder::create()
             ->files()
             ->ignoreVCS(true)
             ->in('vendor')
-            ->exclude(['bin', 'doc', 'docs', 'test', 'tests', 'Tests'])
-            ->notName('/\.(md|dist|neon|xml|yml|yaml|rst|txt)$|^(LICENSE|Makefile|composer\.(json|lock))$/'),
+            ->name('*.php')
+            ->notPath($vendorFiles['php_excluded']),
+        Finder::create()
+            ->files()
+            ->ignoreVCS(true)
+            ->in('vendor')
+            ->path($vendorFiles['data']),
         Finder::create()->append(['orillacart.php', 'network.php', 'uninstall.php']),
     ],
 

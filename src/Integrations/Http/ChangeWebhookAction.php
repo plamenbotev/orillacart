@@ -11,6 +11,7 @@ use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\Tool;
+use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -25,6 +26,7 @@ final readonly class ChangeWebhookAction implements RequestHandlerInterface
         private Webhooks $webhooks,
         private RequestMapper $input,
         private JsonResponder $responder,
+        private Authorization $authorization,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
@@ -36,6 +38,6 @@ final readonly class ChangeWebhookAction implements RequestHandlerInterface
             return $this->responder->noContent();
         }
 
-        return $this->responder->ok($this->webhooks->update($id, $this->input->body($request, SaveWebhook::class)));
+        return $this->responder->ok($this->webhooks->update($id, $this->input->body($request, SaveWebhook::class), $this->authorization->userId()));
     }
 }

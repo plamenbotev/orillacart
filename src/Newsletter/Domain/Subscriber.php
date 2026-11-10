@@ -147,10 +147,17 @@ class Subscriber
         return true;
     }
 
-    /** The person changed their email address: the sign-up follows it. */
-    public function changeEmail(string $email): void
+    /**
+     * The person changed their email address: the sign-up follows it, waiting for the new address's owner to
+     * confirm it, since nobody proved the address is theirs. One that left stays left.
+     */
+    public function moveTo(string $email): void
     {
         $this->email = self::normalize($email);
+        if ($this->unsubscribedAt === null) {
+            $this->pending = true;
+            $this->confirmedAt = null;
+        }
     }
 
     /** On the newsletter: signed up, confirmed when the shop asked for it, and not left. */

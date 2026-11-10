@@ -36,6 +36,7 @@ final readonly class FormField
      * @param bool              $whole   a number without decimals
      * @param list<string>      $types   the file types a file field takes, of FILE_TYPES
      * @param int               $largest a file's largest size in megabytes
+     * @param bool              $pdfLinks a PDF it takes may hold links to web addresses
      */
     public function __construct(
         public string $key,
@@ -55,6 +56,7 @@ final readonly class FormField
         public ?FieldCondition $condition = null,
         public array $types = self::FILE_TYPES,
         public int $largest = 10,
+        public bool $pdfLinks = false,
     ) {
         $refuse = static fn(string $message, int $limit = 0): FormRuleViolation => new FormRuleViolation($message, 'orillacart_invalid_form_field', values: [$label, $limit]);
         if (preg_match('/^[a-z][a-z0-9_]{0,29}$/', $key) !== 1) {
@@ -152,6 +154,7 @@ final readonly class FormField
             'condition' => $this->condition === null ? null : ['field' => $this->condition->field, 'values' => $this->condition->values],
             'types' => $this->types,
             'largest' => $this->largest,
+            'pdf_links' => $this->pdfLinks,
         ];
     }
 
@@ -160,7 +163,7 @@ final readonly class FormField
      */
     public static function fromRow(array $row): self
     {
-        /** @var array{key: string, label: string, kind: string, required: bool, help: string, placeholder: string, longest: int, choices: list<array{value: string, label: string, price: ?string}>, display: string, price: ?string, min: ?string, max: ?string, whole: bool, section: string, condition: ?array{field: string, values: list<string>}, types: list<string>, largest: int} $row */
+        /** @var array{key: string, label: string, kind: string, required: bool, help: string, placeholder: string, longest: int, choices: list<array{value: string, label: string, price: ?string}>, display: string, price: ?string, min: ?string, max: ?string, whole: bool, section: string, condition: ?array{field: string, values: list<string>}, types: list<string>, largest: int, pdf_links?: bool} $row */
         return new self(
             $row['key'],
             $row['label'],
@@ -179,6 +182,7 @@ final readonly class FormField
             $row['condition'] === null ? null : new FieldCondition($row['condition']['field'], $row['condition']['values']),
             $row['types'],
             $row['largest'],
+            $row['pdf_links'] ?? false,
         );
     }
 

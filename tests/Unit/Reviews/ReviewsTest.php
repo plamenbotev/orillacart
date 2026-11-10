@@ -51,22 +51,28 @@ final class ReviewsTest extends TestCase
 
         $written = $this->reviews->write(20, new WriteReview(5, 'Read it twice.'), $ada);
         self::assertSame('published', $written->status);
-        self::assertTrue($written->review->verified);
+        self::assertTrue($written->review?->verified);
         self::assertSame(ReviewInvitationView::REVIEWED, $this->reviews->invitation(20, $ada)->reason);
 
         $guest = $this->reviews->write(20, new WriteReview(2, 'Too short.', 'Bob', 'bob@example.com'), null);
-        self::assertFalse($guest->review->verified, 'a guest\'s email is not proof of buying');
+        self::assertFalse($guest->review?->verified, 'a guest\'s email is not proof of buying');
         self::assertSame('Bob', $guest->review->author);
 
-        $this->expectException(ReviewRuleViolation::class);
-        $this->reviews->write(20, new WriteReview(1, 'Again.', 'Bobby', 'BOB@example.com'), null);
+        $again = $this->reviews->write(20, new WriteReview(1, 'Again.', 'Bobby', 'BOB@example.com'), null);
+        self::assertSame(['held', null], [$again->status, $again->review], 'answered as waiting, and not kept');
+        self::assertCount(1, array_filter($this->store->reviews, static fn(array $kept): bool => strcasecmp($kept[1]->authorEmail, 'bob@example.com') === 0));
     }
 
-    public function testAGuestDoesNotReviewUnderACustomersEmail(): void
+    public function testAGuestDoesNotReviewUnderACustomersEmailNorLearnsThatItHasAnAccount(): void
     {
         $this->store->accountEmails = ['ada@example.com'];
-        $this->expectExceptionMessage('This email has an account: log in to review the product.');
-        $this->reviews->write(20, new WriteReview(1, 'Awful.', 'Ada', 'ada@example.com'), null);
+        $answer = $this->reviews->write(20, new WriteReview(1, 'Awful.', 'Ada', 'ada@example.com'), null);
+        $stranger = $this->reviews->write(20, new WriteReview(1, 'Awful.', 'Eve', 'eve@example.com'), null);
+
+        self::assertSame('held', $answer->status, 'as any guest whose review waits');
+        self::assertNull($answer->review, 'not kept');
+        self::assertNotNull($stranger->review, 'a guest\'s own email is taken');
+        self::assertFalse($this->store->hasReviewed(20, null, 'ada@example.com'));
     }
 
     public function testAnUnpaidOrderMakesNoBuyer(): void
@@ -89,7 +95,7 @@ final class ReviewsTest extends TestCase
         self::assertNull($this->reviews->invitation(20, null, $this->shop->receipts->issue($number))->author, 'a receipt\'s token is no review link');
 
         $written = $this->reviews->write(20, new WriteReview(4, 'Good.', 'Someone else', 'other@example.com', $token), null);
-        self::assertSame(['Grace H.', true], [$written->review->author, $written->review->verified], 'the order says who wrote it');
+        self::assertSame(['Grace H.', true], [$written->review?->author, $written->review?->verified], 'the order says who wrote it');
         self::assertSame('grace@example.com', $this->store->reviews[0][1]->authorEmail);
 
         try {
@@ -166,6 +172,41 @@ final class ReviewsTest extends TestCase
         self::assertSame(['4.3', 3, [5 => 1, 4 => 2, 3 => 0, 2 => 0, 1 => 0]], [$page->rating->average, $page->rating->count, $page->rating->stars]);
         self::assertSame(['Reader 2', 'Reader 1', 'Reader 0'], array_map(static fn($review): string => $review->author, $page->reviews), 'newest first');
         self::assertSame([20], array_keys($this->reviews->ratings([20, 30])), 'products without reviews are left out');
+    }
+
+    public function testAProductThatIsNotPublishedShowsNoReviewsAndTakesNone(): void
+    {
+        $this->reviews->write(20, new WriteReview(5, 'Fine.', 'Bob', 'bob@example.com'), null);
+        $this->store->unpublished = [20];
+
+        $page = $this->reviews->page(20, 1, forAnyone: true);
+        self::assertSame([null, [], 1, 1], [$page->rating, $page->reviews, $page->page, $page->pages], 'as for a product that does not exist');
+        self::assertSame([], $this->reviews->page(20)->reviews);
+        self::assertSame(ReviewInvitationView::CLOSED, $this->reviews->invitation(20, null)->reason);
+        $this->expectExceptionMessage('This product takes no reviews.');
+        $this->reviews->write(20, new WriteReview(1, 'Awful.', 'Eve', 'eve@example.com'), null);
+    }
+
+    public function testAProductWithAPasswordShowsItsReviewsOnlyToWhoGaveItAndNeverToAnyone(): void
+    {
+        $this->reviews->write(20, new WriteReview(5, 'Fine.', 'Bob', 'bob@example.com'), null);
+
+        $this->store->passwords = [20 => false];
+        self::assertNull($this->reviews->page(20)->rating);
+        self::assertSame([], $this->reviews->page(20)->reviews);
+        self::assertSame(ReviewInvitationView::CLOSED, $this->reviews->invitation(20, null)->reason);
+        try {
+            $this->reviews->write(20, new WriteReview(1, 'Awful.', 'Eve', 'eve@example.com'), null);
+            self::fail('a visitor without the password reviewed the product');
+        } catch (ReviewRuleViolation $e) {
+            self::assertSame('orillacart_reviews_closed', $e->errorCode);
+        }
+
+        $this->store->passwords = [20 => true];
+        self::assertCount(1, $this->reviews->page(20)->reviews, 'on the page the password opened');
+        self::assertTrue($this->reviews->invitation(20, null)->open);
+        self::assertSame([], $this->reviews->page(20, 1, forAnyone: true)->reviews, 'the answer anyone gets is the same for all');
+        self::assertNull($this->reviews->page(20, 1, forAnyone: true)->rating);
     }
 
     private function order(int $productId, string $email, ?int $customerId, bool $paid): int

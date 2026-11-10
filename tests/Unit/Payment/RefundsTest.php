@@ -22,6 +22,7 @@ use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Payment\PayPalNotifications;
 use PHPUnit\Framework\TestCase;
 
 final class RefundsTest extends TestCase
@@ -286,6 +287,43 @@ final class RefundsTest extends TestCase
         self::assertSame(['done', 'done', 'done', 'done', 'failed'], array_map(static fn($refund): string => $refund->status, $this->shop->refunds->forOrder($order)->refunds));
     }
 
+    public function testTheShopGivingUpOrRetryingARefundLocksTheOrderBeforeTheRefund(): void
+    {
+        $locks = $this->shop->transactions;
+        $order = $this->paidWithPayPal(3);
+        $paths = [];
+        foreach (['a retry PayPal does not answer' => true, 'a refund given up' => false] as $path => $retry) {
+            $this->shop->payPalApi->answerLost = true;
+            try {
+                $this->shop->refunds->refund($order, new MakeRefund('4'), 7);
+            } catch (PaymentRuleViolation) {
+            }
+            $pending = array_values(array_filter($this->shop->refunds->forOrder($order)->refunds, static fn($refund): bool => $refund->status === 'pending'))[0]->id;
+            $mark = \count($locks->locks);
+            if ($retry) {
+                try {
+                    $this->shop->refunds->retry($pending, 7);
+                } catch (PaymentRuleViolation) {
+                }
+                $this->shop->payPalApi->answerLost = false;
+                $this->shop->refunds->retry($pending, 7);
+            } else {
+                $this->shop->refunds->giveUp($pending);
+            }
+            $paths[$path] = \array_slice($locks->locks, $mark);
+        }
+
+        foreach ($paths as $path => $taken) {
+            $refundLocks = array_filter($taken, static fn(array $lock): bool => str_starts_with($lock[1], 'refund:'));
+            self::assertNotEmpty($refundLocks, $path);
+            foreach ($refundLocks as $at => [$transaction]) {
+                $before = array_filter(\array_slice($taken, 0, $at), static fn(array $lock): bool => $lock === [$transaction, "order:{$order}"]);
+                self::assertNotEmpty($before, "{$path}: the order is locked before the refund");
+            }
+        }
+        self::assertSame(['done', 'failed'], array_map(static fn($refund): string => $refund->status, $this->shop->refunds->forOrder($order)->refunds));
+    }
+
     public function testAGatewaysEmptyReferenceIsStoredAsNone(): void
     {
         $order = $this->paidWithPayPal(2);
@@ -355,7 +393,7 @@ final class RefundsTest extends TestCase
 
     private function refunded(string $refundId, string $amount, ?string $customId = null, ?string $eventId = null): Notification
     {
-        return new Notification(['paypal-transmission-id' => 'T-1'], (string) json_encode(array_filter(['id' => $eventId, 'event_type' => 'PAYMENT.CAPTURE.REFUNDED', 'resource' => array_filter([
+        return PayPalNotifications::of($this->shop, (string) json_encode(array_filter(['id' => $eventId, 'event_type' => 'PAYMENT.CAPTURE.REFUNDED', 'resource' => array_filter([
             'id' => $refundId,
             'status' => 'COMPLETED',
             'amount' => ['value' => $amount, 'currency_code' => 'EUR'],

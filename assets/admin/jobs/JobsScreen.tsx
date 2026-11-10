@@ -137,6 +137,7 @@ export function JobsScreen() {
 			{ overview !== null && (
 				<>
 					<Health overview={ overview } />
+					<LeftOut overview={ overview } />
 					<LanesCard overview={ overview } />
 					<WorkersCard
 						overview={ overview }
@@ -166,6 +167,68 @@ export function JobsScreen() {
 				</>
 			) }
 		</Page>
+	);
+}
+
+/**
+ * What a worker for the whole network leaves out: this site, or, on the site it starts on, the sites whose
+ * plugins or theme are not the ones it loaded. Their jobs need a worker of their own or WP-Cron.
+ *
+ * @param props          The props.
+ * @param props.overview The jobs overview.
+ */
+function LeftOut( { overview }: { overview: Overview } ) {
+	const apart = Object.entries( overview.leaves_out ?? {} );
+	return (
+		<>
+			{ overview.left_out && (
+				<Notice status="warning" isDismissible={ false }>
+					{ overview.left_out.reason === 'theme'
+						? sprintf(
+								/* translators: %s: the worker's name */
+								__(
+									'The network worker %s leaves this site out: its theme is not the one the worker loaded, so its emails and documents would come out wrong. Give this site a worker of its own (wp orillacart jobs work --loop --url=…), or let WP-Cron run its jobs.',
+									'orillacart'
+								),
+								overview.left_out.worker
+							)
+						: sprintf(
+								/* translators: %s: the worker's name */
+								__(
+									'The network worker %s leaves this site out: it has plugins of its own the worker did not load, so they would miss its jobs. Give this site a worker of its own (wp orillacart jobs work --loop --url=…), or turn those plugins on for the whole network.',
+									'orillacart'
+								),
+								overview.left_out.worker
+							) }
+				</Notice>
+			) }
+			{ apart.length > 0 && (
+				<Notice status="info" isDismissible={ false }>
+					{ sprintf(
+						/* translators: %s: the sites, such as "#3 (plugins of its own), #5 (another theme)" */
+						__(
+							'A network worker started on this site leaves out %s: each needs a worker of its own or WP-Cron.',
+							'orillacart'
+						),
+						apart
+							.map( ( [ site, reason ] ) =>
+								sprintf(
+									/* translators: 1: the site's id, 2: why it is left out */
+									__( '#%1$s (%2$s)', 'orillacart' ),
+									site,
+									reason === 'theme'
+										? __( 'another theme', 'orillacart' )
+										: __(
+												'plugins of its own',
+												'orillacart'
+											)
+								)
+							)
+							.join( ', ' )
+					) }
+				</Notice>
+			) }
+		</>
 	);
 }
 

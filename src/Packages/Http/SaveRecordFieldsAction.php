@@ -10,6 +10,7 @@ use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -20,6 +21,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * null clears one. Each value is checked as the extension's own `fields.set` would be; a field the extension
  * declared read-only is refused. Answers the extension's fields on the record afterwards.
  */
+#[Tool(unasked: 'an extension\'s fields on a product, an order or a customer, as the record\'s screen saves them; nobody is told')]
 #[Route('/{kind}/{id}/extensions/{extension}', methods: ['PUT'], capability: Capability::MANAGE_SHOP, requirements: ['kind' => 'products|orders|customers', 'id' => '\d+', 'extension' => '[a-z][a-z0-9_]*'])]
 final readonly class SaveRecordFieldsAction implements RequestHandlerInterface
 {

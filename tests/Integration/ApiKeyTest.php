@@ -46,6 +46,40 @@ final class ApiKeyTest extends RestTestCase
         self::assertSame('orillacart_api_key_forbidden', $this->data($this->request('GET', '/api-keys'))['code'], 'keys are a logged-in manager\'s to manage');
     }
 
+    public function testAManagerManagesOnlyTheirOwnKeys(): void
+    {
+        $this->actAs('administrator');
+        $admins = $this->data($this->request('POST', '/api-keys', ['name' => 'Administrator\'s assistant', 'scope' => 'read_write'], nonce: true));
+        $id = self::idOf($admins);
+        $this->actAs('orillacart_shop_manager');
+        $managers = $this->data($this->request('POST', '/api-keys', ['name' => 'Manager\'s assistant', 'scope' => 'read'], nonce: true));
+
+        $listed = $this->data($this->request('GET', '/api-keys'));
+        self::assertSame([self::idOf($managers)], array_column($listed, 'id'), 'a manager lists their own');
+        foreach ([['PUT', "/api-keys/{$id}/assistant", ['ask' => []]], ['GET', "/api-keys/{$id}/assistant", []], ['DELETE', "/api-keys/{$id}", []]] as [$method, $path, $body]) {
+            $refused = $this->request($method, $path, $body, nonce: $method !== 'GET');
+            self::assertSame('orillacart_unknown_api_key', $this->data($refused)['code'], "{$method} {$path}");
+        }
+
+        $this->actAs('administrator');
+        $ask = $this->data($this->request('GET', "/api-keys/{$id}/assistant"))['ask'] ?? null;
+        self::assertIsArray($ask);
+        self::assertContains(\OrillaCart\Shared\Http\Routing\Tool::MONEY, $ask, 'the administrator\'s choices are as they were');
+        self::assertSame(200, $this->request('PUT', '/api-keys/' . self::idOf($managers) . '/assistant', ['answer' => 'app'], nonce: true)->get_status(), 'an administrator manages any key');
+        self::assertSame(204, $this->request('DELETE', '/api-keys/' . self::idOf($managers), nonce: true)->get_status());
+        self::assertSame(204, $this->request('DELETE', "/api-keys/{$id}", nonce: true)->get_status());
+    }
+
+    /** @param array<array-key, mixed> $made */
+    private static function idOf(array $made): int
+    {
+        $key = $made['api_key'] ?? null;
+        self::assertIsArray($key);
+        self::assertIsInt($key['id'] ?? null);
+
+        return $key['id'];
+    }
+
     public function testOtherPluginsSeeAVisitorUntilWordPressServesTheRestRequest(): void
     {
         $admin = $this->actAs('administrator');
@@ -184,6 +218,8 @@ final class ApiKeyTest extends RestTestCase
             self::assertIsString($tests[0]['message']);
             self::assertStringContainsString('may only read', $tests[0]['message']);
             self::assertTrue($tests[1]['ok'], 'the test\'s HTTP answers only record: ' . wp_json_encode($tests[1]));
+            $sent = $this->request('POST', '/extensions/tested_ro/test', ['files' => ['main.ocs' => $source]]);
+            self::assertSame(403, $sent->get_status(), 'a read-only key tests the saved files only');
         } finally {
             $this->authenticate(null);
             $this->actAs('administrator');

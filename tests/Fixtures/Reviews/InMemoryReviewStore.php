@@ -11,7 +11,8 @@ use OrillaCart\Reviews\Domain\ReviewStatus;
 use OrillaCart\Reviews\Domain\ReviewStore;
 
 /**
- * Reviews as the comments would keep them: new ones published unless $hold, products open unless closed.
+ * Reviews as the comments would keep them: new ones published unless $hold, products open unless closed,
+ * published unless listed as not, and without a password unless given one.
  */
 final class InMemoryReviewStore implements ReviewStore
 {
@@ -19,12 +20,21 @@ final class InMemoryReviewStore implements ReviewStore
     public array $reviews = [];
     /** @var list<int> */
     public array $closed = [];
+    /** @var list<int> drafts, private products and those in the trash */
+    public array $unpublished = [];
+    /** @var array<int, bool> the products with a password, and whether the visitor gave it */
+    public array $passwords = [];
     public bool $hold = false;
     public bool $loginRequired = false;
 
     public function isOpen(int $productId): bool
     {
-        return !\in_array($productId, $this->closed, true);
+        return $this->isReadable($productId) && !\in_array($productId, $this->closed, true);
+    }
+
+    public function isReadable(int $productId, bool $byAnyone = false): bool
+    {
+        return !\in_array($productId, $this->unpublished, true) && (!isset($this->passwords[$productId]) || (!$byAnyone && $this->passwords[$productId]));
     }
 
     public function loginRequired(): bool

@@ -8,7 +8,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * What the consumer gives to withdraw: their name, which order (its number and email), where the confirmation
- * goes, and the items, all of them when none are chosen.
+ * goes, and the items, all of them when none are chosen. Made by WithdrawalRequests once the link emailed to the
+ * order's address was followed.
  */
 final readonly class DeclareWithdrawal
 {
@@ -30,5 +31,7 @@ final readonly class DeclareWithdrawal
         #[Assert\Count(max: 200)]
         #[Assert\Valid]
         public array $items = [],
+        /** When the consumer asked to withdraw, when that was before they confirmed; now when null. */
+        public ?\DateTimeImmutable $declaredAt = null,
     ) {}
 }

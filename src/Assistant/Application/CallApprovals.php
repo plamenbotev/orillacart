@@ -17,7 +17,7 @@ interface CallApprovals
     /** The approval of this caller's call, while it lasts. */
     public function find(Caller $caller, string $call): ?CallApproval;
 
-    public function byToken(string $token): ?CallApproval;
+    public function byToken(#[\SensitiveParameter] string $token): ?CallApproval;
 
     /** Puts the call up for the owner's answer, for $seconds. */
     public function ask(Caller $caller, string $call, string $title, string $risk, string $what, int $seconds): CallApproval;

@@ -72,7 +72,7 @@ final class MultiCurrencyTest extends TestCase
 
         $this->shop->orders->markPaidByShop($order->number, '', 7);
         $invoice = $this->shop->invoices->ofOrder($order->number)[0]->number;
-        $document = $this->shop->invoices->document($invoice, $this->shop->receipts->issue($order->number));
+        $document = $this->shop->invoices->issued($invoice);
         // 15.76 USD of tax (14.66 on the items, 1.10 on shipping) is 14.33 EUR at 1.1.
         self::assertSame(['EUR', '1.1', [['VAT', '20', '14.33']], '14.33'], [
             $document->inShopCurrency['currency'] ?? null,
@@ -86,7 +86,7 @@ final class MultiCurrencyTest extends TestCase
         // A credit note gives back its own tax, in the shop's currency at the same rate.
         $this->shop->refunds->refund($order->number, new MakeRefund('44', [new RefundLine(0, 1)]), 7);
         $credit = array_values(array_filter($this->shop->invoices->ofOrder($order->number), static fn($issued): bool => $issued->kind === 'credit_note'))[0]->number;
-        $given = $this->shop->invoices->document($credit, $this->shop->receipts->issue($order->number))->inShopCurrency;
+        $given = $this->shop->invoices->issued($credit)->inShopCurrency;
         self::assertSame('1.1', $given['rate'] ?? null);
         self::assertNotSame('0', $given['total'] ?? '0');
     }
@@ -108,7 +108,7 @@ final class MultiCurrencyTest extends TestCase
         $order = $this->shop->orders->order($placed->number);
         self::assertSame([null, null], [$order->shopCurrency, $order->exchangeRate]);
         $this->shop->orders->markPaidByShop($order->number, '', 7);
-        self::assertNull($this->shop->invoices->document($this->shop->invoices->ofOrder($order->number)[0]->number, $this->shop->receipts->issue($order->number))->inShopCurrency);
+        self::assertNull($this->shop->invoices->issued($this->shop->invoices->ofOrder($order->number)[0]->number)->inShopCurrency);
     }
 
     public function testCouponAmountsAndTheMinimumAreConvertedPercentagesAreNot(): void

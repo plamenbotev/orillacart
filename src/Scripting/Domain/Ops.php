@@ -305,7 +305,7 @@ final class Ops
 
     /**
      * A filter. What it would make is predicted first where it can grow past its input (`json`, `join`, `split`,
-     * `reverse`, `replace`), so a run out of room stops before the memory is spent, not after.
+     * `reverse`, `replace`, `number`), so a run out of room stops before the memory is spent, not after.
      *
      * @param list<mixed> $args
      * @param int         $room the bytes the run may still make
@@ -353,7 +353,14 @@ final class Ops
             case 'merge':
                 return array_merge(self::iterable($value), self::iterable($args[0] ?? []));
             case 'number':
-                return number_format(self::number($value, 'number'), self::decimals($args[0] ?? 0, 'number', 0), self::text($args[1] ?? '.'), self::text($args[2] ?? ','));
+                $number = self::number($value, 'number');
+                $decimals = self::decimals($args[0] ?? 0, 'number', 0);
+                [$point, $thousands] = [self::text($args[1] ?? '.'), self::text($args[2] ?? ',')];
+                // The separators are the script's and may be long: a thousands one goes between every three digits.
+                $digits = \strlen(number_format(abs($number), 0, '', ''));
+                self::fits(($number < 0 ? 1 : 0) + $digits + intdiv(max(0, $digits - 1), 3) * \strlen($thousands) + ($decimals > 0 ? \strlen($point) + $decimals : 0), $room);
+
+                return number_format($number, $decimals, $point, $thousands);
             case 'amount':
                 // Money (or a number) as decimal text for an API or a form: "1450.00", no thousands separator.
                 return number_format(self::number($value, 'amount'), self::decimals($args[0] ?? 2, 'amount', 0), '.', '');

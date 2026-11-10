@@ -21,6 +21,7 @@ use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
+use OrillaCart\Tests\Fixtures\Payment\PayPalNotifications;
 use PHPUnit\Framework\TestCase;
 
 final class PayPalGatewayTest extends TestCase
@@ -181,18 +182,96 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame('warning', $this->shop->logger->records[0]['level']);
     }
 
+    public function testAWebhookPayPalSignedIsVerifiedAgainstItsCertificateWithoutAskingPayPal(): void
+    {
+        $placed = $this->place();
+
+        $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
+
+        self::assertSame('processing', $this->orderStatus($placed));
+        self::assertSame(0, $this->shop->payPalApi->verifications);
+        self::assertSame([PayPalNotifications::CERTIFICATE_URL], $this->shop->payPalApi->fetchedCertificates);
+    }
+
     public function testOnlyNotificationsPayPalSignedForTheShopAreRead(): void
     {
         $placed = $this->place();
-        $this->shop->payPalApi->signed = false;
+        $approved = (string) json_encode(['id' => 'WH-X', 'event_type' => 'CHECKOUT.ORDER.APPROVED', 'resource' => ['id' => 'PAYPAL-1']]);
+        $signed = PayPalNotifications::of($this->shop, $approved);
+        $refused = [
+            'signed for another webhook' => PayPalNotifications::of($this->shop, $approved, 'WH-2'),
+            'a body PayPal did not sign' => new Notification($signed->headers, str_replace('WH-X', 'WH-Y', $approved)),
+            'another algorithm' => PayPalNotifications::of($this->shop, $approved, headers: ['paypal-auth-algo' => 'SHA1withRSA']),
+            'a certificate elsewhere' => PayPalNotifications::of($this->shop, $approved, headers: ['paypal-cert-url' => 'https://attacker.test/v1/notifications/certs/CERT-1']),
+            'a certificate on a look-alike host' => PayPalNotifications::of($this->shop, $approved, headers: ['paypal-cert-url' => 'https://api.paypal.com.attacker.test/v1/notifications/certs/CERT-1']),
+            'the sandbox\'s certificate for a live shop' => PayPalNotifications::of($this->shop, $approved, headers: ['paypal-cert-url' => 'https://api.sandbox.paypal.com/v1/notifications/certs/CERT-1']),
+            'in the clear' => PayPalNotifications::of($this->shop, $approved, headers: ['paypal-cert-url' => 'http://api.paypal.com/v1/notifications/certs/CERT-1']),
+            'sent a week ago' => PayPalNotifications::of($this->shop, $approved, headers: ['paypal-transmission-time' => $this->shop->clock->now()->modify('-7 days')->format('Y-m-d\\TH:i:s\\Z')]),
+            'no signature' => PayPalNotifications::of($this->shop, $approved, headers: ['paypal-transmission-sig' => '']),
+            'no headers' => new Notification(['paypal-transmission-id' => 'T-1'], $approved),
+        ];
 
-        try {
-            $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
-            self::fail('not signed');
-        } catch (PaymentRuleViolation $e) {
-            self::assertSame('orillacart_invalid_notification', $e->errorCode);
+        foreach ($refused as $why => $notification) {
+            try {
+                $this->shop->outcomes->notified('paypal', $notification);
+                self::fail($why);
+            } catch (PaymentRuleViolation $e) {
+                self::assertSame('orillacart_invalid_notification', $e->errorCode, $why);
+            }
         }
         self::assertSame('pending_payment', $this->orderStatus($placed));
+        self::assertSame([], $this->shop->payPalApi->captured);
+        self::assertSame(0, $this->shop->payPalApi->verifications, 'PayPal was never asked');
+        self::assertSame(array_fill(0, 2, PayPalNotifications::CERTIFICATE_URL), $this->shop->payPalApi->fetchedCertificates, 'only for what was in PayPal\'s shape');
+    }
+
+    public function testRefusedWebhooksAreLoggedInTheSameWordsAndOnlyAFewTimesAnHour(): void
+    {
+        $this->place();
+        $this->shop->rateLimiter->limits['paypal_refused_notifications'] = 2;
+
+        for ($i = 0; $i < 4; ++$i) {
+            try {
+                $this->shop->outcomes->notified('paypal', PayPalNotifications::signed($this->shop, 'CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1'], 'WH-' . $i . '-other'));
+            } catch (PaymentRuleViolation) {
+            }
+        }
+
+        $refusals = array_values(array_filter($this->shop->logger->records, static fn(array $record): bool => str_starts_with($record['message'], 'A PayPal webhook was refused')));
+        self::assertSame(['A PayPal webhook was refused: {why}.', 'A PayPal webhook was refused: {why}.'], array_column($refusals, 'message'));
+    }
+
+    public function testACertificateThatIsNotPayPalsHasPayPalAskedAFewTimesAnHourForTheWholeSite(): void
+    {
+        $placed = $this->place();
+        $this->shop->rateLimiter->limits['paypal_verifications'] = 1;
+        $denied = $this->notification('PAYMENT.CAPTURE.DENIED', []);
+        $notification = $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']);
+        // PayPal's address answers with something that is not its certificate.
+        $this->shop->payPalApi->certificates[PayPalNotifications::CERTIFICATE_URL] = 'not a certificate';
+
+        $this->shop->outcomes->notified('paypal', $denied);
+        self::assertSame(1, $this->shop->payPalApi->verifications, 'PayPal verified it');
+
+        try {
+            $this->shop->outcomes->notified('paypal', $notification);
+            self::fail('asked PayPal past the limit');
+        } catch (PaymentRuleViolation $e) {
+            self::assertSame('orillacart_payment_provider_unavailable', $e->errorCode, 'PayPal sends it again later');
+        }
+        self::assertSame(1, $this->shop->payPalApi->verifications);
+        self::assertSame('pending_payment', $this->orderStatus($placed));
+    }
+
+    public function testThePayPalIdsCarryTheSitesMarkSoACopyOfTheShopNeverCollidesWithIt(): void
+    {
+        $placed = $this->place();
+        $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
+
+        $mark = substr(hash('sha256', $this->shop->paymentUrls->notificationUrl('paypal')), 0, 12);
+        $request = $this->shop->payPalApi->created[0];
+        self::assertSame(["orillacart-{$mark}-payment-1", "orillacart-{$mark}-{$placed->number}-1"], [$request->requestId, $request->invoiceId]);
+        self::assertSame(["orillacart-{$mark}-capture-PAYPAL-1"], $this->shop->payPalApi->captureRequests);
     }
 
     public function testACustomerWhoGivesUpCancelsThePaymentNotTheOrder(): void
@@ -246,7 +325,7 @@ final class PayPalGatewayTest extends TestCase
      */
     private function notification(string $type, array $resource): Notification
     {
-        return new Notification(['paypal-transmission-id' => 'T-1'], (string) json_encode(['event_type' => $type, 'resource' => $resource]));
+        return PayPalNotifications::signed($this->shop, $type, $resource);
     }
 
     private function capture(string $type, string $status, string $order, string $amount): Notification

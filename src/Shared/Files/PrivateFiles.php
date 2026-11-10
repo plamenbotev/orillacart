@@ -23,4 +23,13 @@ interface PrivateFiles
     public function delete(string $key): void;
 
     public function check(bool $fresh = false): StorageCheck;
+
+    /**
+     * The shop manager's answer about a folder the shop no longer knows as its own (StorageCheck::$claim):
+     * StorageCheck::ADOPT, the site moved and the folder is its; StorageCheck::START_NEW, the site is a copy and
+     * starts a folder of its own. Nothing is served, stored or deleted until they answer.
+     *
+     * @throws \DomainException when the answer does not fit, such as adopting a folder that is gone
+     */
+    public function answer(string $answer): StorageCheck;
 }

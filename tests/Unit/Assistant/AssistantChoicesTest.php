@@ -24,10 +24,10 @@ final class AssistantChoicesTest extends TestCase
 
     public function testARiskThatCameLaterIsAskedAboutOnChoicesSavedBeforeIt(): void
     {
-        // Saved when there were four risks, with only deleting ticked: publishing was never theirs to untick.
+        // Saved when there were four risks, with only deleting ticked: publishing and changes were never theirs to untick.
         $stored = ['ask' => [Tool::DELETING], 'risks' => [Tool::MONEY, Tool::DELETING, Tool::CUSTOMERS, Tool::OPENING]];
 
-        self::assertSame([Tool::DELETING, Tool::PUBLISHING], AssistantChoices::fromArray($stored)->ask);
+        self::assertSame([Tool::DELETING, Tool::PUBLISHING, Tool::CHANGES], AssistantChoices::fromArray($stored)->ask);
     }
 
     public function testPublishingIsNotEmailingCustomers(): void

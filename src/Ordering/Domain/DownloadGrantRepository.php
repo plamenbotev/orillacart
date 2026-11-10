@@ -6,7 +6,7 @@ namespace OrillaCart\Ordering\Domain;
 
 interface DownloadGrantRepository
 {
-    public function findByToken(string $token): ?DownloadGrant;
+    public function findByToken(#[\SensitiveParameter] string $token): ?DownloadGrant;
 
     /**
      * Counts one download, unless none are left: safe when two downloads start at the same moment.

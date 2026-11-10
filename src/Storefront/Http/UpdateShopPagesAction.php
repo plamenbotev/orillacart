@@ -7,6 +7,7 @@ namespace OrillaCart\Storefront\Http;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Storefront\Application\Dto\UpdateShopPages;
 use OrillaCart\Storefront\Application\ShopPagesService;
@@ -18,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
  * Sets which published pages the shop, cart, checkout and account are on; none for a page leaves that part without
  * one.
  */
+#[Tool(risk: Tool::PUBLISHING)]
 #[Route('/shop-pages', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateShopPagesAction implements RequestHandlerInterface
 {

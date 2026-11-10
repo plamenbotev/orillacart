@@ -9,12 +9,14 @@ use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Sets whether customers can, must or cannot have accounts, and whether guests can order. */
+#[Tool(unasked: 'settings')]
 #[Route('/customer-settings', methods: ['PUT'], capability: Capability::MANAGE_SHOP)]
 final readonly class UpdateCustomerSettingsAction implements RequestHandlerInterface
 {

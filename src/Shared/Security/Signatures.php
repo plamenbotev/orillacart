@@ -24,7 +24,7 @@ final readonly class Signatures
         return substr(hash_hmac('sha256', $data, $this->key($purpose)), 0, self::LENGTH);
     }
 
-    public function verify(string $purpose, string $data, string $signature): bool
+    public function verify(string $purpose, string $data, #[\SensitiveParameter] string $signature): bool
     {
         return \strlen($signature) === self::LENGTH && hash_equals($this->sign($purpose, $data), $signature);
     }

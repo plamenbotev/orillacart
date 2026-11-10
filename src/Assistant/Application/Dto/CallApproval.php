@@ -16,6 +16,7 @@ final readonly class CallApproval
 
     public function __construct(
         /** What the approval page is found by: random, never the call itself. */
+        #[\SensitiveParameter]
         public string $token,
         public int $userId,
         public ?int $keyId,

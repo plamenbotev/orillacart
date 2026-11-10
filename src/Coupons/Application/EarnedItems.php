@@ -8,33 +8,38 @@ use OrillaCart\Catalog\Domain\ProductContent;
 use OrillaCart\Coupons\Domain\Basket;
 use OrillaCart\Coupons\Domain\BasketLine;
 use OrillaCart\Coupons\Domain\CouponRepository;
+use OrillaCart\GiftCards\Application\GiftCardProducts;
 use OrillaCart\Shared\Domain\Money;
 
 /**
  * How many items a coupon still gives for what is kept of an order (Coupon::earns()), by the coupon as it is now:
  * for what becomes of an item it gave when items it came with go back. Products are judged by their categories
- * and brands as they are now.
+ * and brands as they are now, and what is kept as the order was: in its currency at its rate, with gift cards
+ * counting towards no minimum, as at checkout.
  */
 final readonly class EarnedItems
 {
     public function __construct(
         private CouponRepository $coupons,
         private ProductContent $content,
+        private GiftCardProducts $giftCards,
     ) {}
 
     /**
      * @param list<array{product_id: int, quantity: int, total: string}> $kept the items kept, but those given:
      *                                                                         what they cost before discounts
+     * @param string                                                      $rate units of the order's currency for one of the shop's
      *
      * @return int|null null when the coupon is gone: nothing to judge by
      */
-    public function earned(string $code, array $kept, string $currency): ?int
+    public function earned(string $code, array $kept, string $currency, string $rate): ?int
     {
         $coupon = $this->coupons->findByCodes([$code])[$code] ?? null;
         if ($coupon === null) {
             return null;
         }
-        return $coupon->earns(new Basket($this->lines($kept), $currency));
+
+        return $coupon->earns(new Basket($this->lines($kept), $currency, $rate));
     }
 
     /**
@@ -43,17 +48,18 @@ final readonly class EarnedItems
      *
      * @param list<array{product_id: int, quantity: int, total: string}> $kept the items kept, but those given:
      *                                                                         what they cost before discounts
+     * @param string                                                      $rate units of the order's currency for one of the shop's
      *
      * @return bool|null null when the coupon is gone: nothing to judge by
      */
-    public function stillMet(string $code, array $kept, string $currency): ?bool
+    public function stillMet(string $code, array $kept, string $currency, string $rate): ?bool
     {
         $coupon = $this->coupons->findByCodes([$code])[$code] ?? null;
         if ($coupon === null) {
             return null;
         }
 
-        return $coupon->stillMet(new Basket($this->lines($kept), $currency));
+        return $coupon->stillMet(new Basket($this->lines($kept), $currency, $rate));
     }
 
     /**
@@ -64,10 +70,11 @@ final readonly class EarnedItems
     private function lines(array $kept): array
     {
         $lines = [];
+        $giftCards = $this->giftCards->ids();
         foreach ($kept as $line) {
             if ($line['quantity'] > 0) {
                 $terms = $this->content->termIds($line['product_id']);
-                $lines[] = new BasketLine($line['product_id'], $line['quantity'], Money::of($line['total']), false, $terms['categories'], $terms['brands']);
+                $lines[] = new BasketLine($line['product_id'], $line['quantity'], Money::of($line['total']), false, $terms['categories'], $terms['brands'], sized: !\in_array($line['product_id'], $giftCards, true));
             }
         }
 

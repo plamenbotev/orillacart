@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Platform\WordPress;
 
 use OrillaCart\Ordering\Application\ReceiptLinks;
+use OrillaCart\Platform\WordPress\Admin\SecretsHealth;
 use OrillaCart\Platform\WordPress\Security\SiteSignatures;
 use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
@@ -76,5 +77,14 @@ final class SiteSignaturesTest extends TestCase
         self::assertFalse($own->sealedWithCurrentKey($sealed), 'doctor --fix seals it again');
         self::assertNull($salted->open($own->seal('stripe-key')), 'the salts alone do not open what the own key sealed');
         self::assertNull(SiteSignatures::secrets('a long random phrase', $salt, static fn(): int => 4)->open($own->seal('stripe-key')), 'another site of the network');
+    }
+
+    public function testDefiningTheOwnKeyIsNotGoodUntilNothingIsLeftSealedWithTheSalts(): void
+    {
+        self::assertSame(SecretsHealth::STALE, SecretsHealth::finding(true, true, 2), 'the key is defined, the credentials still open with the salts');
+        self::assertSame(SecretsHealth::OWN_KEY, SecretsHealth::finding(true, true, 0), 'sealed again');
+        self::assertSame(SecretsHealth::STALE, SecretsHealth::finding(false, false, 1), 'one never sealed, or under an earlier key');
+        self::assertSame(SecretsHealth::SALTS, SecretsHealth::finding(false, false, 0));
+        self::assertSame(SecretsHealth::DATABASE, SecretsHealth::finding(false, true, 0));
     }
 }
