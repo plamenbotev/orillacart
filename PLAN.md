@@ -871,12 +871,12 @@ categories made and changed by extensions, as the import makes them; tests that 
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 577 | P2 | `Registry::productWriting()`: create (a draft), change, add and change variations, publish, unpublish, trash, through the import's row | |
-| ✅ | 578 | P2 | `Registry::attributeSets()` and `categories()`; `Products::search()`; `ProductSummary` published and attributes | |
-| ✅ | 579 | P2 | Scripts: `shop.products.search/create/change/add_variation/change_variation/publish/unpublish/trash`, `shop.attributes.sets/save_set`, `shop.categories.list/ensure`; `products: publish` its own permission | |
-| ✅ | 580 | P2 | A test's writes and the object cache: nothing added while it runs, the groups it writes let go after (`RolledBackCaches`) | |
-| ✅ | 581 | P1 | The import refused a new product whose row gave a stock level: the level is read after the save | |
-| ✅ | 582 | P3 | Docs: extensions.md "Making products", the guide's §14 and tests, design 69 | |
+| ✅ | 577 | P2 | `Registry::productWriting()`: create (a draft), change, add and change variations, publish, unpublish, trash, through the import's row | 3821a901 |
+| ✅ | 578 | P2 | `Registry::attributeSets()` and `categories()`; `Products::search()`; `ProductSummary` published and attributes | 3821a901 |
+| ✅ | 579 | P2 | Scripts: `shop.products.search/create/change/add_variation/change_variation/publish/unpublish/trash`, `shop.attributes.sets/save_set`, `shop.categories.list/ensure`; `products: publish` its own permission | 3821a901 |
+| ✅ | 580 | P2 | A test's writes and the object cache: nothing added while it runs, the groups it writes let go after (`RolledBackCaches`) | 3821a901 |
+| ✅ | 581 | P1 | The import refused a new product whose row gave a stock level: the level is read after the save | 3821a901 |
+| ✅ | 582 | P3 | Docs: extensions.md "Making products", the guide's §14 and tests, design 69 | 3821a901 |
 
 ## Deliberately not carried over
 
