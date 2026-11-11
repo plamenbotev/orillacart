@@ -66,6 +66,8 @@ final class Compiler
     private array $needs = [];
     /** @var list<array{text: string, plural: ?string, context: string, line: int}> what the calls of WORDS mark for translation */
     private array $words = [];
+    /** The debug build (design 71): every statement gives the debugger its variables. */
+    private bool $debug = false;
 
     /**
      * The functions that translate words (design 57), with the arguments that are the words: the text, the plural,
@@ -77,9 +79,11 @@ final class Compiler
 
     /**
      * @param string $classSuffix what tells this class from every other: the package's id and checksum
+     * @param bool   $debug       the debug build: each statement reports its variables to a recording (design 71)
      */
-    public function compile(Program $program, string $classSuffix, string $namespace): Compiled
+    public function compile(Program $program, string $classSuffix, string $namespace, bool $debug = false): Compiled
     {
+        $this->debug = $debug;
         $this->findings = [];
         $this->methods = [];
         $this->methodCount = 0;
@@ -103,7 +107,7 @@ final class Compiler
         $manifest = [];
         foreach ($program->declarations as $declaration) {
             if ($declaration->kind === 'fn' && $declaration->name !== null && $declaration->handler !== null) {
-                $this->method($this->topFunctions[$declaration->name], $declaration->handler);
+                $this->method($this->topFunctions[$declaration->name], $declaration->handler, $declaration->name);
                 continue;
             }
             $manifest[] = $this->declaration($declaration);
@@ -161,12 +165,13 @@ final class Compiler
     private function declaration(Declaration $declaration): array
     {
         $props = [];
+        $head = self::label($declaration->kind, $declaration->words, $declaration->name);
         foreach ($declaration->props as $key => $value) {
-            $props[$key] = $this->declarative($value);
+            $props[$key] = $this->declarative($value, $head . ': ' . $key);
         }
         $functions = [];
         foreach ($declaration->functions as $name => $function) {
-            $functions[$name] = $this->method(null, $function);
+            $functions[$name] = $this->method(null, $function, $head . ': ' . $name);
         }
 
         return [
@@ -176,12 +181,27 @@ final class Compiler
             'props' => $props,
             'functions' => $functions,
             'nested' => array_map($this->declaration(...), $declaration->nested),
-            'handler' => $declaration->handler === null ? null : $this->method(null, $declaration->handler),
+            'handler' => $declaration->handler === null ? null : $this->method(null, $declaration->handler, $head),
         ];
     }
 
+    /**
+     * A declaration as the script names it: `route GET /tickets`, `on order_paid`, `test "totals"`; a name that is
+     * not one word in quotes, as written.
+     *
+     * @param list<string> $words
+     */
+    public static function label(string $kind, array $words, ?string $name): string
+    {
+        if ($name !== null && preg_match('#^[A-Za-z0-9_./{}:-]+$#', $name) !== 1) {
+            $name = '"' . $name . '"';
+        }
+
+        return implode(' ', array_filter([$kind, ...$words, $name], static fn(?string $part): bool => $part !== null && $part !== ''));
+    }
+
     /** A declaration's value as data: literals, lists, maps, specs, and functions as their method names. */
-    private function declarative(Expr $expr): mixed
+    private function declarative(Expr $expr, string $label = 'fn'): mixed
     {
         if ($expr instanceof Literal) {
             return $expr->value;
@@ -190,7 +210,7 @@ final class Compiler
             return $expr->value;
         }
         if ($expr instanceof ListLit) {
-            return array_map($this->declarative(...), $expr->items);
+            return array_map(fn(Expr $item): mixed => $this->declarative($item, $label), $expr->items);
         }
         if ($expr instanceof MapLit) {
             $map = [];
@@ -199,7 +219,7 @@ final class Compiler
                     $this->finding($key, 'A declaration\'s keys are words or strings');
                     continue;
                 }
-                $map[$key->value] = $this->declarative($value);
+                $map[$key->value] = $this->declarative($value, $label . '.' . $key->value);
             }
 
             return $map;
@@ -207,13 +227,13 @@ final class Compiler
         if ($expr instanceof Spec) {
             $spec = ['$spec' => $expr->name];
             foreach ($expr->props as $key => $value) {
-                $spec[$key] = $this->declarative($value);
+                $spec[$key] = $this->declarative($value, $label . '.' . $key);
             }
 
             return $spec;
         }
         if ($expr instanceof FnExpr) {
-            return $this->method(null, $expr);
+            return $this->method(null, $expr, $label);
         }
         if ($expr instanceof Unary && $expr->op === '-' && $expr->operand instanceof Literal && is_numeric($expr->operand->value)) {
             return -$expr->operand->value;
@@ -223,16 +243,21 @@ final class Compiler
         return null;
     }
 
-    /** Compiles a function to a method of the class; returns the method's name. */
-    private function method(?string $name, FnExpr $fn): string
+    /**
+     * Compiles a function to a method of the class; returns the method's name. Every function tells the context
+     * where it starts and ends (design 71), so an error says where it happened and what called it.
+     *
+     * @param string $label the function as the script names it: `price_for`, `on order_paid`, `cart_rule x: check`
+     */
+    private function method(?string $name, FnExpr $fn, string $label): string
     {
         $name ??= 'm_' . ++$this->methodCount;
         $scope = new Scope($fn->params);
-        $body = $this->body($fn->body, $scope, 2);
+        $body = $this->body($fn->body, $scope, 3);
         $params = implode(', ', array_map(static fn(string $param): string => '$v_' . $param, $fn->params));
         $declared = array_diff($scope->declared(), $fn->params);
-        $init = $declared === [] ? '' : '        $v_' . implode(' = $v_', $declared) . " = null;\n";
-        $this->methods[] = "    public function {$name}({$params})\n    {\n        \$this->c->step();\n{$init}{$body}        return null;\n    }\n";
+        $init = $declared === [] ? '' : '            $v_' . implode(' = $v_', $declared) . " = null;\n";
+        $this->methods[] = "    public function {$name}({$params})\n    {\n        \$this->c->step();\n        \$this->c->enter(" . self::literal($label) . ", {$fn->line});\n        try {\n{$init}{$body}            return \$this->c->result(null);\n        } finally {\n            \$this->c->leave();\n        }\n    }\n";
 
         return $name;
     }
@@ -253,6 +278,20 @@ final class Compiler
     private function statement(Stmt $statement, Scope $scope, int $depth): string
     {
         $pad = str_repeat('    ', $depth);
+
+        return $pad . '$this->c->at(' . $statement->line . ($this->debug ? ', ' . $this->variables($scope) : '') . ");\n" . $this->code($statement, $scope, $depth, $pad);
+    }
+
+    /** The variables in scope as a map of their names, for the debug build. */
+    private function variables(Scope $scope): string
+    {
+        $pairs = array_map(static fn(string $name): string => self::literal($name) . ' => $v_' . $name, $scope->declared());
+
+        return '[' . implode(', ', $pairs) . ']';
+    }
+
+    private function code(Stmt $statement, Scope $scope, int $depth, string $pad): string
+    {
         if ($statement instanceof LetStmt) {
             $value = $this->expr($statement->value, $scope);
             $scope->declare($statement->name);
@@ -297,7 +336,7 @@ final class Compiler
             return "{$pad}while (" . self::OPS . "::truthy({$test})) {\n{$pad}    \$this->c->step();\n{$body}{$pad}}\n";
         }
         if ($statement instanceof ReturnStmt) {
-            return $pad . 'return ' . ($statement->value === null ? 'null' : $this->expr($statement->value, $scope)) . ";\n";
+            return $pad . 'return $this->c->result(' . ($statement->value === null ? 'null' : $this->expr($statement->value, $scope)) . ");\n";
         }
         if ($statement instanceof BreakStmt || $statement instanceof ContinueStmt) {
             $word = $statement instanceof BreakStmt ? 'break' : 'continue';
@@ -571,14 +610,14 @@ final class Compiler
     private function lambda(FnExpr $fn, Scope $outer): string
     {
         $scope = new Scope([...$outer->declared(), ...$fn->params]);
-        $body = $this->body($fn->body, $scope, 3);
+        $body = $this->body($fn->body, $scope, 4);
         $params = implode(', ', array_map(static fn(string $param): string => '$v_' . $param, $fn->params));
         $captured = array_diff($outer->declared(), $fn->params);
         $use = $captured === [] ? '' : ' use ($v_' . implode(', $v_', $captured) . ')';
         $declared = array_diff($scope->declared(), $outer->declared(), $fn->params);
-        $init = $declared === [] ? '' : '            $v_' . implode(' = $v_', $declared) . " = null;\n";
+        $init = $declared === [] ? '' : '                $v_' . implode(' = $v_', $declared) . " = null;\n";
 
-        return "(function ({$params}){$use} {\n            \$this->c->step();\n{$init}{$body}            return null;\n        })";
+        return "(function ({$params}){$use} {\n            \$this->c->step();\n            \$this->c->enter('fn', {$fn->line});\n            try {\n{$init}{$body}                return \$this->c->result(null);\n            } finally {\n                \$this->c->leave();\n            }\n        })";
     }
 
     /**

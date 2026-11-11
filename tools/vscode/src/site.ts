@@ -4,6 +4,8 @@
  * Node's fetch, so the language server and the client share this file.
  */
 
+import type { Recording } from '../../../assets/admin/extensions/editor/replay';
+
 export interface Finding {
 	file: string;
 	line: number;
@@ -35,6 +37,28 @@ export interface TestResult {
 	file: string | null;
 	line: number | null;
 	http: { method: string; url: string; status: number }[];
+	/** The run recorded for the debugger: only on the test named in `debug`, and null when the shop kept none. */
+	recording?: ( Recording & { id: number | null } ) | null;
+}
+
+/** An answer of `POST /extensions/{id}/run`. */
+export interface RunAnswer {
+	ok: boolean;
+	result: unknown;
+	failure: string | null;
+	stopped: string | null;
+	recording: ( Recording & { id?: number | null } ) | null;
+}
+
+/** A recording the shop keeps, summed up: from a debugged test, the console or a live capture. */
+export interface RecordingSummary {
+	id: number;
+	source: 'test' | 'console' | 'live';
+	what: string;
+	outcome: string;
+	message: string | null;
+	steps: number;
+	recorded_at: string;
 }
 
 export interface ExtensionFile {
@@ -78,11 +102,43 @@ export class Site {
 		return this.call( 'POST', '/script/check', { files, id } );
 	}
 
+	/**
+	 * Runs an extension's tests over `files`, or over its saved files when null; `debug` names a test to record.
+	 */
 	test(
 		id: string,
-		files: Record< string, string >
+		files: Record< string, string > | null,
+		debug?: string
 	): Promise< { tests: TestResult[] } > {
-		return this.call( 'POST', `/extensions/${ id }/test`, { files } );
+		return this.call( 'POST', `/extensions/${ id }/test`, {
+			...( files === null ? {} : { files } ),
+			...( debug === undefined ? {} : { debug } ),
+		} );
+	}
+
+	/** Runs one of an extension's functions with a recording for the debugger. */
+	run( id: string, fn: string, args: unknown[] ): Promise< RunAnswer > {
+		return this.call( 'POST', `/extensions/${ id }/run`, {
+			function: fn,
+			arguments: args,
+			debug: true,
+		} );
+	}
+
+	recordings(
+		id: string
+	): Promise< { recordings: RecordingSummary[]; capture: unknown } > {
+		return this.call( 'GET', `/extensions/${ id }/recordings` );
+	}
+
+	recording(
+		id: string,
+		recording: number
+	): Promise< Omit< Recording, 'steps' > & { steps: unknown } > {
+		return this.call(
+			'GET',
+			`/extensions/${ id }/recordings/${ recording }`
+		);
 	}
 
 	reference(): Promise< Reference > {

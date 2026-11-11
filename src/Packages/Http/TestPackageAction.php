@@ -12,7 +12,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-/** Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back, and with a read-only key every function that writes refuses. */
+/** Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back, and with a read-only key every function that writes refuses. With `debug`, a test's name, that test is recorded for the debugger (design 71) and its result has the recording. */
 #[Route('/extensions/{id}/test', methods: ['POST'], capability: Capability::MANAGE_SHOP, requirements: ['id' => '[a-z][a-z0-9_]*'], changes: false)]
 final readonly class TestPackageAction implements RequestHandlerInterface
 {
@@ -31,6 +31,8 @@ final readonly class TestPackageAction implements RequestHandlerInterface
             }
         }
 
-        return $this->responder->ok(['tests' => $this->tests->run(ShowPackageAction::id($request), $files)]);
+        $debug = \is_array($body) && \is_string($body['debug'] ?? null) ? $body['debug'] : null;
+
+        return $this->responder->ok(['tests' => $this->tests->run(ShowPackageAction::id($request), $files, $debug)]);
     }
 }

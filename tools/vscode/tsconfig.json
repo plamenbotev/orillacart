@@ -12,5 +12,5 @@
 		"noEmit": true,
 		"types": ["node", "vscode"]
 	},
-	"include": ["src/**/*.ts", "../../assets/admin/extensions/editor/suggest.ts", "../../assets/admin/extensions/editor/ocs.ts"]
+	"include": ["src/**/*.ts", "../../assets/admin/extensions/editor/replay.ts", "../../assets/admin/extensions/editor/suggest.ts", "../../assets/admin/extensions/editor/ocs.ts"]
 }

@@ -243,6 +243,31 @@ class Package
         return implode("\n", $parts);
     }
 
+    /**
+     * The `.ocs` files as saved, in the order their source joins them.
+     *
+     * @return array<string, string> path → content
+     */
+    public function savedScripts(): array
+    {
+        $scripts = [];
+        foreach ($this->scripts() as $file) {
+            $scripts[$file->path()] = $file->content();
+        }
+
+        return $scripts;
+    }
+
+    /**
+     * The `.ocs` files it runs (running()), in the order runningSource() joins them.
+     *
+     * @return array<string, string> path → content
+     */
+    public function runningScripts(): array
+    {
+        return array_filter($this->running(), static fn(string $path): bool => str_ends_with($path, '.ocs'), \ARRAY_FILTER_USE_KEY);
+    }
+
     /** @return list<PackageFile> */
     public function scripts(): array
     {

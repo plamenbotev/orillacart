@@ -16,6 +16,7 @@ use OrillaCart\Packages\Application\Dto\PackageView;
 use OrillaCart\Packages\Application\Dto\RunFunction;
 use OrillaCart\Packages\Application\Dto\RunResult;
 use OrillaCart\Packages\Application\Dto\SavePackageSettings;
+use OrillaCart\Packages\Domain\ExtensionRecording;
 use OrillaCart\Packages\Domain\ExtensionRun;
 use OrillaCart\Packages\Domain\Package;
 use OrillaCart\Packages\Domain\PackageFile;
@@ -30,6 +31,7 @@ use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Compiled;
 use OrillaCart\Scripting\Application\Dto\Finding;
 use OrillaCart\Scripting\Application\Dto\Grant;
+use OrillaCart\Scripting\Application\Recorder;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Domain\Ast\Str;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
@@ -61,6 +63,7 @@ final readonly class PackageService
         private ?TemplateWords $templateWords = null,
         private ?PackageArchives $archives = null,
         private ?ExtensionAssets $assets = null,
+        private ?Recordings $recordings = null,
     ) {}
 
     /** @return list<PackageView> */
@@ -174,6 +177,7 @@ final readonly class PackageService
         $package = $this->get($slug);
         $this->objects?->forgetExtension($slug);
         $this->runs?->forgetExtension($slug);
+        $this->recordings?->forgetExtension($slug);
         $this->versions?->forget($package);
         $this->translations?->forget($package);
         $this->assets?->forget($slug);
@@ -213,27 +217,40 @@ final readonly class PackageService
         if (!$compiled->ok()) {
             throw new PackageRuleViolation('The extension does not compile: %s', 'orillacart_extension_does_not_compile', values: [implode('; ', $this->findings($package, $compiled))]);
         }
-        $script = $this->scripts->load($source, $package->slug(), new Budget(), $this->grantOf($package));
+        $scripts = self::approved($package) ? $package->runningScripts() : $package->savedScripts();
+        $recorder = $command->debug ? new Recorder(Debugging::secrets($package, $this->manifest($package))) : null;
+        $script = $this->scripts->load($source, $package->slug(), new Budget(), $this->grantOf($package), recorder: $recorder);
         $method = 'fn_' . $command->function;
         if (!method_exists($script, $method)) {
             throw new PackageRuleViolation('The extension has no top-level function "%s".', 'orillacart_extension_no_function', values: [$command->function]);
         }
         $what = 'console: ' . $command->function;
+        // What it ended with: the outcome, the message, and the answer's value, failure or stop.
         try {
             $result = $script->run($method, ...array_values($command->arguments));
-            $this->runs?->record($slug, $what, ExtensionRun::OK, null, $this->used($script), $this->clock->now());
-
-            return new RunResult(true, Ops::plain($result), null, null, $this->used($script));
+            [$outcome, $message, $answer] = [ExtensionRun::OK, null, new RunResult(true, Ops::plain($result), null, null, [])];
         } catch (Catchable $e) {
             $value = $e->value();
-            $this->runs?->record($slug, $what, \is_string($value['kind'] ?? null) && \in_array($value['kind'], [ExtensionRun::REFUSED, ExtensionRun::UNAVAILABLE], true) ? $value['kind'] : ExtensionRun::ERROR, $e->getMessage(), $this->used($script), $this->clock->now());
-
-            return new RunResult(false, null, $value, null, $this->used($script));
+            $outcome = \is_string($value['kind'] ?? null) && \in_array($value['kind'], [ExtensionRun::REFUSED, ExtensionRun::UNAVAILABLE], true) ? $value['kind'] : ExtensionRun::ERROR;
+            [$message, $answer] = [$e->getMessage(), new RunResult(false, null, $value, null, [])];
         } catch (BudgetExceeded $e) {
-            $this->runs?->record($slug, $what, ExtensionRun::STOPPED, $e->getMessage(), $this->used($script), $this->clock->now());
-
-            return new RunResult(false, null, null, $e->getMessage(), $this->used($script));
+            [$outcome, $message, $answer] = [ExtensionRun::STOPPED, $e->getMessage(), new RunResult(false, null, null, $e->getMessage(), [])];
         }
+        $context = new \ReflectionProperty(CompiledScript::class, 'c')->getValue($script);
+        $stack = $outcome !== ExtensionRun::OK && $context instanceof \OrillaCart\Scripting\Application\Context ? $context->stack() : [];
+        $this->runs?->record($slug, $what, $outcome, $message === null || $outcome !== ExtensionRun::ERROR && $outcome !== ExtensionRun::STOPPED ? $message : Debugging::located($message, $scripts, $stack), $this->used($script), $this->clock->now());
+        $recording = null;
+        if ($recorder !== null) {
+            if ($message !== null && $outcome !== ExtensionRun::OK) {
+                $recorder->failed($message, $stack[0]['line'] ?? 0, \count($stack));
+            }
+            $recording = Debugging::recording($recorder, $scripts, $what, $outcome, $message, $stack);
+            $saved = new ExtensionRecording($slug, ExtensionRecording::CONSOLE, $what, $outcome, $message, $recording, $this->clock->now());
+            $this->recordings?->save($saved);
+            $recording = ['id' => $saved->id() === 0 ? null : $saved->id()] + $recording;
+        }
+
+        return new RunResult($answer->ok, $answer->result, $answer->failure, $answer->stopped, $this->used($script), Debugging::stack($scripts, $stack), $recording);
     }
 
     public function export(string $slug): PackageExport

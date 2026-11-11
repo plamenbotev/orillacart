@@ -1094,6 +1094,33 @@ saved files are tested; files sent with the request are refused. Inside a test:
 requests made and the budget used. The editor runs the tests over the files as they are on screen, saved or not,
 and the VS Code command sends the folder's files the same way.
 
+### Debugging
+
+A run on the shop is never paused: it is recorded, and you step through the recording afterwards, backwards as
+well as forwards. The debug build of the extension records every line it reached with the variables there, the
+functions it entered and what they returned, each call to the shop with its arguments and answer, and what
+`debug(value)` marked; the normal build the shop runs records nothing, and `debug()` there only answers its value,
+so it may stay in.
+
+- **A test:** "Debug" next to a test in the editor, F5 in VS Code, or `POST /extensions/<id>/test` with
+  `{ debug: "test name" }`.
+- **A console run:** "Debug" in the console, or `POST /extensions/<id>/run` with `debug: true`.
+- **Live runs:** Recordings → Capture records the next runs of the extension's handlers as the shop makes them, up
+  to 20 in up to 60 minutes, only those whose name starts with what you give (`cart_rule age`, `on order_paid`):
+  `POST /extensions/<id>/capture { what, runs, minutes }`, `DELETE` to stop. It ends by itself.
+- **Stepping:** in the editor's debugger or VS Code: step in, over and out, back and back over, run to a
+  breakpoint forwards or backwards, the call stack with each function's variables, and the shop's answers.
+- **For an agent:** `debug_package` runs a test with a recording, or opens one, and answers where it ended, the
+  variables there, the last steps and the calls to the shop.
+
+A recording keeps at most 10,000 steps (it says so when the run went on past them), texts cut at 200 characters,
+lists and maps their first 50 items. Secrets never show: a secret setting's value, wherever it is in a text, and
+anything under a key that names a password, a token or a key is `•••`. Recordings of live runs hold what those runs
+saw, customers' data among it: they are kept 24 hours, the latest 20 per extension, then deleted.
+
+Every failure, recorded or not, says where it happened and what called it: the run log's message ends with
+`(at price.ocs:4 in price, from main.ocs:6 in total)`, a failed test has its `stack`, and so does a console run.
+
 **Seeing a screen without a browser.** `POST /extensions/<id>/preview` (the assistant's `preview_package`)
 renders one of the extension's views as the shop would show it and answers the HTML with the handler's data:
 `{ kind: "page" | "admin_page" | "slot" | "route", name, query, body, arguments }`, with `name` the page's or

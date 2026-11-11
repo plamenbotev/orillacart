@@ -99,6 +99,7 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 - _n("one", "many", count): the form the count takes in the language shown
 - _nx("one", "many", count, "context"): as _n(), with a context
 - _x("words", "context"): as __(), told apart from the same words meaning something else by the context
+- debug(value): marks the value in a debugger's recording (design 71) and answers it; does nothing in a run not recorded, so it may stay in
 - error(message, data?): the error value of a problem to log
 - keys(map): its keys as a list
 - language(): the locale words are shown in, as "de_DE"

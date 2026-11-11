@@ -22,5 +22,9 @@ final readonly class TestResult
         public array $jobs,
         public array $used,
         public array $effects = [],
+        /** @var list<array{fn: string, line: int}> where a failed test was, innermost first (design 71) */
+        public array $stack = [],
+        /** The test's recording, when it was the one debugged */
+        public ?\OrillaCart\Scripting\Application\Recorder $recorder = null,
     ) {}
 }

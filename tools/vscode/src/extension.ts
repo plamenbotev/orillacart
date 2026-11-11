@@ -1,11 +1,5 @@
-import {
-	mkdirSync,
-	readdirSync,
-	readFileSync,
-	statSync,
-	writeFileSync,
-} from 'node:fs';
-import { basename, dirname, join, relative } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 import * as vscode from 'vscode';
 import {
@@ -15,13 +9,16 @@ import {
 	type ServerOptions,
 } from 'vscode-languageclient/node';
 
+import { registerDebugger } from './debugging';
+import { extensionFiles, extensionFolder, extensionId } from './folder';
 import { Site, SiteError } from './site';
 
 /**
  * The client: starts the language server for `.ocs` files and adds three commands. Pull writes an extension's
  * files from the site into a folder named after it; push sends a folder's files back, installing the extension
  * when the site has none of that id; check asks the server to check the open scripts now; run tests sends the
- * folder's files and runs the extension's own tests on the site, the outcomes in an output channel.
+ * folder's files and runs the extension's own tests on the site, the outcomes in an output channel. The debugger
+ * (debugging.ts) steps through recordings of runs on the site.
  */
 
 let client: LanguageClient | undefined;
@@ -56,6 +53,7 @@ export function activate( context: vscode.ExtensionContext ): void {
 		vscode.commands.registerCommand( 'orillacart.pushExtension', push ),
 		vscode.commands.registerCommand( 'orillacart.runTests', runTests )
 	);
+	registerDebugger( context, site, failure );
 }
 
 export function deactivate(): Thenable< void > | undefined {
@@ -127,7 +125,11 @@ function current(
 ): { id: string; folder: string; files: Record< string, string > } | null {
 	const active = vscode.window.activeTextEditor?.document.uri.fsPath;
 	const folder = active
-		? dirname( active )
+		? extensionFolder(
+				active,
+				vscode.workspace.getWorkspaceFolder( vscode.Uri.file( active ) )
+					?.uri.fsPath
+			)
 		: vscode.workspace.workspaceFolders?.[ 0 ]?.uri.fsPath;
 	if ( ! folder ) {
 		void vscode.window.showErrorMessage(
@@ -135,35 +137,14 @@ function current(
 		);
 		return null;
 	}
-	const id = basename( folder )
-		.toLowerCase()
-		.replace( /[^a-z0-9_]+/g, '_' )
-		.replace( /^[^a-z]+/, '' );
-	if ( id === '' ) {
+	const id = extensionId( folder );
+	if ( id === null ) {
 		void vscode.window.showErrorMessage(
 			"The folder's name is the extension's id: lower-case letters, digits and underscores."
 		);
 		return null;
 	}
-	const files: Record< string, string > = {};
-	const walk = ( dir: string ) => {
-		for ( const name of readdirSync( dir ) ) {
-			const path = join( dir, name );
-			if ( statSync( path ).isDirectory() ) {
-				if ( name !== 'node_modules' && ! name.startsWith( '.' ) ) {
-					walk( path );
-				}
-			} else if (
-				name.endsWith( '.ocs' ) ||
-				name.endsWith( '.twig' ) ||
-				name.endsWith( '.html' )
-			) {
-				files[ relative( folder, path ).split( '\\' ).join( '/' ) ] =
-					readFileSync( path, 'utf8' );
-			}
-		}
-	};
-	walk( folder );
+	const files = extensionFiles( folder );
 	if ( Object.keys( files ).length === 0 ) {
 		void vscode.window.showErrorMessage(
 			'No .ocs or template files here.'

@@ -113,7 +113,7 @@ final class ScriptTestsTest extends TestCase
         self::assertStringContainsString('The test has no answer for POST https://api.courier.test/quote', (string) $byName['an unanswered request']->message);
         self::assertFalse($byName['a provider down']->ok);
         self::assertSame('Failed with unavailable: Courier answered 503', $byName['a provider down']->message);
-        self::assertNull($byName['a provider down']->line);
+        self::assertSame(5, $byName['a provider down']->line, 'where it failed: the fail statement');
     }
 
     public function testWhatReachesOutsideTheShopIsHeldInTestsAndListed(): void

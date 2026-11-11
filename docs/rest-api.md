@@ -1056,6 +1056,22 @@ An extension as a zip to keep, edit or install on another shop: its files, and a
 
 - Who: shop managers
 
+### `POST /extensions/{id}/capture`
+
+Records the extension's next runs as the shop makes them, for its debugger: `runs` of them (at most 20) within `minutes` (at most 60), only the handlers whose name starts with `what` when given (`cart_rule age`, `on order_paid`). The recordings hold what those runs saw, customers' data among it, and are kept a day.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `what` (string|null): at most 120 characters
+  - `runs` (int): 1 to 20; default 5
+  - `minutes` (int): 1 to 60; default 15
+
+### `DELETE /extensions/{id}/capture`
+
+Ends a live capture of the extension's runs before its runs or minutes are used up.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ### `POST /extensions/{id}/check`
 
 Runs the static check over an extension's files: syntax, unknown names and functions, arities, permissions it uses but did not declare. Changes nothing.
@@ -1067,6 +1083,16 @@ Runs the static check over an extension's files: syntax, unknown names and funct
 The records an extension keeps (its objects), as JSON to keep before uninstalling it.
 
 - Who: shop managers
+
+### `POST /extensions/{id}/debug`
+
+Debugs an extension: runs one of its tests (`test`, by name, over the saved files or `files` sent) with a recording, or opens a recording (`recording`, by id, from a debugged run or a live capture), and answers where it ended and how it got there: the outcome and message, the place and the stack, the variables at the last line, the last steps by file and line, and the calls to the shop with their answers. Changes nothing: a test's writes are rolled back.
+
+- Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `test` (string|null): 1 to 200 characters
+  - `recording` (int|null): more than 0
+  - `files` (array|null)
 
 ### `POST /extensions/{id}/disable`
 
@@ -1120,6 +1146,24 @@ Renders one of an enabled extension's views as the shop would show it (a page, a
   - `body` (array)
   - `arguments` (list<mixed>)
 
+### `GET /extensions/{id}/recordings`
+
+The recordings an extension's runs left for its debugger, newest first (kept a day), and the live capture armed for it, if any.
+
+- Who: shop managers
+
+### `GET /extensions/{id}/recordings/{recording}`
+
+One recording of an extension's run, whole: the files it ran, every step with its line and variables, the calls to the shop with their answers, and where it failed.
+
+- Who: shop managers
+
+### `DELETE /extensions/{id}/recordings/{recording}`
+
+Removes one recording of an extension's run before its day is out.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ### `POST /extensions/{id}/run`
 
 The console: runs one top-level function of an extension with the given arguments; an enabled one runs the files it was enabled with and its granted permissions, a draft or a disabled one its saved files with nothing granted. Answers what it returned or how it failed, and what the run used. A function run with arguments of the caller's choosing may mail customers, place orders or send their data to the extension's hosts, so the assistant asks.
@@ -1128,6 +1172,7 @@ The console: runs one top-level function of an extension with the given argument
 - Body (JSON):
   - `function` (string): required; matches `/^[A-Za-z_][A-Za-z0-9_]*$/`
   - `arguments` (list<mixed>)
+  - `debug` (bool): default false
 
 ### `GET /extensions/{id}/runs`
 
@@ -1145,7 +1190,7 @@ Saves the values of the settings an extension declares: those sent change, those
 
 ### `POST /extensions/{id}/test`
 
-Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back, and with a read-only key every function that writes refuses.
+Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back, and with a read-only key every function that writes refuses. With `debug`, a test's name, that test is recorded for the debugger (design 71) and its result has the recording.
 
 - Who: shop managers; needs a nonce (not with an API key)
 

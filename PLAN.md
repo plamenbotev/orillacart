@@ -878,6 +878,21 @@ categories made and changed by extensions, as the import makes them; tests that 
 | ✅ | 581 | P1 | The import refused a new product whose row gave a stock level: the level is read after the save | 3821a901 |
 | ✅ | 582 | P3 | Docs: extensions.md "Making products", the guide's §14 and tests, design 69 | 3821a901 |
 
+## Debugging extensions (2026-11-12)
+
+[Design 71](docs/designs/71-debugging-extensions.md): an extension's runs recorded and stepped through afterwards, backwards too; every failure says where.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 616 | P1 | Every failure says where it happened and what called it: functions tell the context where they start and end, statements their line; the run log, failed tests and console runs carry it | |
+| ✅ | 617 | P2 | The debug build and the recorder: lines with their variables, functions entered and left, calls to the shop with their answers, `debug(value)`; bounded, secrets hidden; both builds through the gate | |
+| ✅ | 618 | P2 | Debugging a test (`debug` on /test) and a console run (`debug` on /run); recordings kept a day, the latest 20 (`extension_recordings`) | |
+| ✅ | 619 | P2 | Live captures: the next runs of an extension's handlers, by name, up to 20 in 60 minutes, ending by themselves; free when none is armed | |
+| ✅ | 620 | P2 | The assistant's `debug_package`: a test debugged or a recording opened, summed up for a model; recordings listed, opened, removed | |
+| ✅ | 621 | P2 | The Extensions screen's debugger: steps both ways, breakpoints, stack, variables, the shop's answers; Debug on tests and the console; Recordings and captures | |
+| ✅ | 622 | P2 | The VS Code debugger: a Debug Adapter Protocol adapter replaying the shop's recording, with step back | |
+| ✅ | 623 | P3 | The stepping shared by both (`editor/replay.ts`), the guide's Debugging, design 71 | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

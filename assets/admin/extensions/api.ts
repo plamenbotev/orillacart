@@ -1,5 +1,7 @@
 import apiFetch from '@wordpress/api-fetch';
 
+import type { Recording } from './editor/replay';
+
 const BASE = '/orillacart/v1';
 
 export type ExtensionState = 'draft' | 'enabled' | 'disabled' | 'stopped';
@@ -101,12 +103,26 @@ export interface ExtensionRoute {
 	who: string;
 }
 
+/** A function on a failed run's stack: innermost first. */
+export interface StackEntry {
+	fn: string;
+	file: string;
+	line: number;
+}
+
+/** A recording as a debugged run answers it (design 71): its id once kept, null when it was not. */
+export type DebugRecording = Recording & { id: number | null };
+
 export interface RunResult {
 	ok: boolean;
 	result: unknown;
 	failure: { kind: string; message: string; data: unknown } | null;
 	stopped: string | null;
 	used: Record< string, number >;
+	/** Where it failed, innermost first; empty for a run that did not. */
+	stack?: StackEntry[];
+	/** The run's recording, when it was debugged. */
+	recording?: DebugRecording | null;
 }
 
 export interface TestResult {
@@ -118,7 +134,35 @@ export interface TestResult {
 	http: { method: string; url: string; status: number }[];
 	jobs: { name: string; payload: unknown; at: string | null }[];
 	used: Record< string, number >;
+	effects?: unknown;
+	/** Where it failed, innermost first. */
+	stack?: StackEntry[];
+	/** The test's recording, for the one test debugged. */
+	recording?: DebugRecording | null;
 }
+
+/** A recording kept for the debugger, as the list shows it. */
+export interface RecordingSummary {
+	id: number;
+	source: 'test' | 'console' | 'live';
+	what: string;
+	outcome: string;
+	message: string | null;
+	/** How many steps it holds. */
+	steps: number;
+	recorded_at: string;
+}
+
+/** The live capture armed for an extension: what it records, how many runs are left, until when. */
+export interface Capture {
+	what: string | null;
+	left: number;
+	until: string;
+}
+
+/** A recording as opened: its summary with the whole run. */
+export type KeptRecording = Omit< RecordingSummary, 'steps' > &
+	Recording & { id: number };
 
 export interface Reference {
 	language: string;
@@ -222,11 +266,26 @@ export const saveSettings = (
 		data: { settings },
 	} );
 
-export const runFunction = ( id: string, fn: string, args: unknown[] ) =>
+/**
+ * Runs one of the extension's functions from the console.
+ *
+ * @param id    The extension's id.
+ * @param fn    The function's name.
+ * @param args  Its arguments.
+ * @param debug Whether to record the run for the debugger.
+ */
+export const runFunction = (
+	id: string,
+	fn: string,
+	args: unknown[],
+	debug = false
+) =>
 	apiFetch< RunResult >( {
 		path: `${ BASE }/extensions/${ id }/run`,
 		method: 'POST',
-		data: { function: fn, arguments: args },
+		data: debug
+			? { function: fn, arguments: args, debug: true }
+			: { function: fn, arguments: args },
 	} );
 
 /**
@@ -234,12 +293,74 @@ export const runFunction = ( id: string, fn: string, args: unknown[] ) =>
  *
  * @param id    The extension's id.
  * @param files The files by path, in place of the saved ones.
+ * @param debug A test's name: that test is recorded for the debugger.
  */
-export const runTests = ( id: string, files?: Record< string, string > ) =>
+export const runTests = (
+	id: string,
+	files?: Record< string, string >,
+	debug?: string
+) =>
 	apiFetch< { tests: TestResult[] } >( {
 		path: `${ BASE }/extensions/${ id }/test`,
 		method: 'POST',
-		data: files ? { files } : {},
+		data: {
+			...( files ? { files } : {} ),
+			...( debug ? { debug } : {} ),
+		},
+	} );
+
+/**
+ * The recordings kept of the extension's runs, newest first, and its live capture, if one is armed.
+ *
+ * @param id The extension's id.
+ */
+export const fetchRecordings = ( id: string ) =>
+	apiFetch< { recordings: RecordingSummary[]; capture: Capture | null } >( {
+		path: `${ BASE }/extensions/${ id }/recordings`,
+	} );
+
+/**
+ * One recording, whole.
+ *
+ * @param id        The extension's id.
+ * @param recording The recording's id.
+ */
+export const fetchRecording = ( id: string, recording: number ) =>
+	apiFetch< KeptRecording >( {
+		path: `${ BASE }/extensions/${ id }/recordings/${ recording }`,
+	} );
+
+export const deleteRecording = ( id: string, recording: number ) =>
+	apiFetch< { deleted: boolean } >( {
+		path: `${ BASE }/extensions/${ id }/recordings/${ recording }`,
+		method: 'DELETE',
+	} );
+
+/**
+ * Records the extension's next real runs (live): customers' data among what they hold.
+ *
+ * @param id              The extension's id.
+ * @param capture         What to record: the handlers whose name starts with `what`, how many runs, for how long.
+ * @param capture.what    The handlers' names start with this; every handler when empty.
+ * @param capture.runs    How many runs, 1 to 20.
+ * @param capture.minutes For how many minutes at most, 1 to 60.
+ */
+export const startCapture = (
+	id: string,
+	capture: { what?: string; runs: number; minutes: number }
+) =>
+	apiFetch< { capture: Capture | null } >( {
+		path: `${ BASE }/extensions/${ id }/capture`,
+		method: 'POST',
+		data: capture.what
+			? capture
+			: { runs: capture.runs, minutes: capture.minutes },
+	} );
+
+export const stopCapture = ( id: string ) =>
+	apiFetch< { capture: null } >( {
+		path: `${ BASE }/extensions/${ id }/capture`,
+		method: 'DELETE',
 	} );
 
 export const fetchVersions = ( id: string ) =>

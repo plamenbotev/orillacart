@@ -63,6 +63,7 @@ final readonly class Builtins implements HostNamespace
                 return $c->grant->settings[Ops::text($key)] ?? null;
             }, 1, 1, 'settings.get(key): the value of one of the extension\'s settings, as the manager saved it; null when none'),
             new HostFunction('json.text', static fn(Context $c, mixed $value): string => $c->text((string) json_encode(Ops::plain($value, $c->room()), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)), 1, 1, 'json.text(value): the value as JSON'),
+            new HostFunction('debug', static fn(Context $c, mixed $value): mixed => $c->noted($value), 1, 1, 'debug(value): marks the value in a debugger\'s recording (design 71) and answers it; does nothing in a run not recorded, so it may stay in'),
         ]);
     }
 

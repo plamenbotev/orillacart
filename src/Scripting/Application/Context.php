@@ -25,6 +25,19 @@ final class Context
     private int $bytes = 0;
     private float $startedAt;
 
+    /**
+     * The functions running, outermost first, each with the line it is at (design 71): where an error happened
+     * and what called it, in every run.
+     *
+     * @var list<array{fn: string, line: int, returned: bool}>
+     */
+    private array $frames = [];
+
+    /** @var list<array{fn: string, line: int}>|null the stack as it was where an error left the innermost function */
+    private ?array $failedAt = null;
+
+    private ?Recorder $recorder = null;
+
     public function __construct(
         private readonly HostCatalog $catalog,
         private readonly Budget $budget = new Budget(),
@@ -42,6 +55,91 @@ final class Context
         if (($this->steps & 63) === 0 && hrtime(true) / 1e9 - $this->startedAt > $this->budget->seconds) {
             throw new BudgetExceeded(\sprintf('The script ran longer than %s seconds', $this->budget->seconds));
         }
+    }
+
+    /** Records this run for its debugger (design 71); the script's debug build reports its variables. */
+    public function record(Recorder $recorder): void
+    {
+        $this->recorder = $recorder;
+    }
+
+    public function recorder(): ?Recorder
+    {
+        return $this->recorder;
+    }
+
+    /** A function of the script starts: its name as the script wrote it, and its line. */
+    public function enter(string $function, int $line): void
+    {
+        $this->frames[] = ['fn' => $function, 'line' => $line, 'returned' => false];
+        $this->recorder?->enter($function, $line, \count($this->frames));
+    }
+
+    /**
+     * The script is at a line; the debug build gives its variables there.
+     *
+     * @param array<string, mixed>|null $vars
+     */
+    public function at(int $line, ?array $vars = null): void
+    {
+        $top = \count($this->frames) - 1;
+        if ($top >= 0) {
+            $this->frames[$top]['line'] = $line;
+        }
+        // Past an error the script caught: it is no longer where the run failed.
+        $this->failedAt = null;
+        if ($vars !== null) {
+            $this->recorder?->line($line, $top + 1, $vars);
+        }
+    }
+
+    /** What the function returns, on its way out. */
+    public function result(mixed $value): mixed
+    {
+        $top = \count($this->frames) - 1;
+        if ($top >= 0) {
+            $this->frames[$top]['returned'] = true;
+        }
+        $this->recorder?->returned($value, $top + 1);
+
+        return $value;
+    }
+
+    /** The function ends, by its return or by an error going through it. */
+    public function leave(): void
+    {
+        $frame = array_pop($this->frames);
+        if ($frame !== null && !$frame['returned']) {
+            // An error goes through: the stack is kept as it was where the error left the innermost function.
+            $this->failedAt ??= array_map(static fn(array $f): array => ['fn' => $f['fn'], 'line' => $f['line']], [...$this->frames, $frame]);
+            $this->recorder?->unwound(\count($this->frames) + 1);
+        }
+    }
+
+    /**
+     * Where the run is, or where it failed: innermost first, each function with its line.
+     *
+     * @return list<array{fn: string, line: int}>
+     */
+    public function stack(): array
+    {
+        $frames = $this->failedAt ?? array_map(static fn(array $f): array => ['fn' => $f['fn'], 'line' => $f['line']], $this->frames);
+
+        return array_reverse($frames);
+    }
+
+    /** The line the run is at, or failed at; 0 before the first. */
+    public function line(): int
+    {
+        return $this->stack()[0]['line'] ?? 0;
+    }
+
+    /** What `debug(value)` marked: kept in a recording, nothing otherwise. */
+    public function noted(mixed $value): mixed
+    {
+        $this->recorder?->noted($value, $this->line(), \count($this->frames));
+
+        return $value;
     }
 
     /** Counts bytes a string or list took; the generated code calls it for what can grow (`~`, filters). */
@@ -97,8 +195,20 @@ final class Context
         $this->step();
         // The time host calls waited (HTTP, mail, queries) is the script's own: none starts once it is spent.
         $this->secondsLeft();
+        // A recording keeps the calls that reach the shop or past it, not the language's own helpers.
+        if ($this->recorder === null || ($function->needs === null && $function->counts === HostFunction::CALL && $function->writes !== true)) {
+            return ($function->callable)($this, ...$captured, ...$args);
+        }
+        try {
+            $result = ($function->callable)($this, ...$captured, ...$args);
+        } catch (\Throwable $e) {
+            $this->recorder->call($name, $args, null, $e->getMessage(), $this->line(), \count($this->frames));
 
-        return ($function->callable)($this, ...$captured, ...$args);
+            throw $e;
+        }
+        $this->recorder->call($name, $args, $result, null, $this->line(), \count($this->frames));
+
+        return $result;
     }
 
     /**

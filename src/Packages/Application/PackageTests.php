@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Packages\Application\Dto\PackageManifest;
+use OrillaCart\Packages\Domain\ExtensionRecording;
+use OrillaCart\Packages\Domain\ExtensionRun;
 use OrillaCart\Packages\Domain\PackageNotFound;
 use OrillaCart\Packages\Domain\PackageRepository;
 use OrillaCart\Packages\Domain\PackageRuleViolation;
@@ -38,14 +40,18 @@ final readonly class PackageTests
         private ObjectDefinitions $definitions,
         private ?ReadOnlyRequest $readOnly = null,
         private ?RolledBackCaches $caches = null,
+        private ?Recordings $recordings = null,
+        private ?\Psr\Clock\ClockInterface $clock = null,
     ) {}
 
     /**
      * @param array<string, string>|null $files path → content, instead of the saved files
      *
-     * @return list<array{name: string, ok: bool, message: ?string, file: ?string, line: ?int, http: list<array{method: string, url: string, status: int}>, jobs: list<array{name: string, payload: mixed, at: ?string}>, used: array<string, int|float>, effects: list<array{function: string, arguments: list<mixed>}>}>
+     * @param string|null                $debug the test to record for the debugger (design 71), by name
+     *
+     * @return list<array{name: string, ok: bool, message: ?string, file: ?string, line: ?int, http: list<array{method: string, url: string, status: int}>, jobs: list<array{name: string, payload: mixed, at: ?string}>, used: array<string, int|float>, effects: list<array{function: string, arguments: list<mixed>}>, stack: list<array{fn: string, file: string, line: int}>, recording: array<string, mixed>|null}>
      */
-    public function run(string $slug, ?array $files = null): array
+    public function run(string $slug, ?array $files = null, ?string $debug = null): array
     {
         $package = $this->packages->find($slug) ?? throw new PackageNotFound($slug);
         $readOnly = $this->readOnly?->readOnly() === true;
@@ -98,13 +104,19 @@ final readonly class PackageTests
                     return $result;
                 }
             };
-            $results = $this->tests->run($source, $scope, $grant, $isolate, $narrow, $manifest->needs());
+            $results = $this->tests->run($source, $scope, $grant, $isolate, $narrow, $manifest->needs(), $debug, Debugging::secrets($package, $manifest));
         } finally {
             $this->definitions->forget($slug);
         }
 
-        return array_map(static function (TestResult $result) use ($scripts): array {
+        return array_map(function (TestResult $result) use ($scripts, $slug): array {
             $placed = $result->line === null ? null : (PackageService::locate($scripts, [new Finding($result->line, 1, '')])[0] ?? null);
+            $recording = null;
+            if ($result->recorder !== null) {
+                $outcome = $result->ok ? ExtensionRun::OK : ExtensionRun::ERROR;
+                $recording = Debugging::recording($result->recorder, $scripts, 'test "' . $result->name . '"', $outcome, $result->message, $result->stack);
+                $recording = ['id' => $this->keep($slug, 'test "' . $result->name . '"', $outcome, $result->message, $recording)] + $recording;
+            }
 
             return [
                 'name' => $result->name,
@@ -116,7 +128,26 @@ final readonly class PackageTests
                 'jobs' => $result->jobs,
                 'used' => $result->used,
                 'effects' => $result->effects,
+                'stack' => Debugging::stack($scripts, $result->stack),
+                'recording' => $recording,
             ];
         }, $results);
+    }
+
+    /**
+     * Keeps a test's recording for the debugger to open again; a read-only key keeps none, nor does a run whose
+     * database refused a write (the tests after it are not run either).
+     *
+     * @param array<string, mixed> $recording
+     */
+    private function keep(string $slug, string $what, string $outcome, ?string $message, array $recording): ?int
+    {
+        if ($this->recordings === null || $this->readOnly?->readOnly() === true || !$this->objects->intact()) {
+            return null;
+        }
+        $saved = new ExtensionRecording($slug, ExtensionRecording::TEST, mb_substr($what, 0, ExtensionRun::MAX_WHAT_LENGTH), $outcome, $message, $recording, $this->clock?->now() ?? new \DateTimeImmutable());
+        $this->recordings->save($saved);
+
+        return $saved->id();
     }
 }

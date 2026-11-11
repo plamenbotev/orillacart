@@ -5,6 +5,7 @@ import apiFetch from '@wordpress/api-fetch';
 
 import { ExtensionsScreen } from '../ExtensionsScreen';
 import type { Extension } from '../api';
+import recorded from '../editor/test/recording.json';
 
 jest.mock( '@wordpress/api-fetch' );
 // CodeMirror needs a layout engine jsdom has not; the screen's tests see a plain textarea in its place.
@@ -26,6 +27,12 @@ jest.mock( '../editor/CodeEditor', () => ( {
 			onChange={ ( event ) => onChange( event.target.value ) }
 			disabled={ disabled }
 		/>
+	),
+} ) );
+// The debugger's source view is CodeMirror too: its tests are the debugger's own.
+jest.mock( '../editor/SourceView', () => ( {
+	SourceView: ( { label, value }: { label: string; value: string } ) => (
+		<pre aria-label={ label }>{ value }</pre>
 	),
 } ) );
 const mockedFetch = apiFetch as jest.MockedFunction< typeof apiFetch >;
@@ -147,6 +154,12 @@ function serve(
 					},
 				],
 			} );
+		}
+		if (
+			request.path === '/orillacart/v1/extensions/greeter/recordings' &&
+			request.method === undefined
+		) {
+			return Promise.resolve( { recordings: [], capture: null } );
 		}
 		if (
 			request.path === '/orillacart/v1/extensions/greeter/translations'
@@ -302,6 +315,218 @@ describe( 'ExtensionsScreen', () => {
 		).toBeVisible();
 		const files = ( sent as { files: Record< string, string > } ).files;
 		expect( files[ 'main.ocs' ] ).toMatch( / y$/ );
+	} );
+
+	it( 'debugs one test over the files as edited and opens its recording', async () => {
+		let sent: unknown = null;
+		serve( ( { path, method, data } ) => {
+			if (
+				method === 'POST' &&
+				path === '/orillacart/v1/extensions/greeter/test'
+			) {
+				sent = data;
+				const debugged =
+					( data as { debug?: string } ).debug === 'quotes';
+				return Promise.resolve( {
+					tests: [
+						{
+							name: 'quotes',
+							ok: false,
+							message: 'refused: 503',
+							file: 'price.ocs',
+							line: 6,
+							http: [],
+							jobs: [],
+							used: {},
+							stack: [],
+							recording: debugged ? { ...recorded, id: 4 } : null,
+						},
+					],
+				} );
+			}
+			return undefined;
+		} );
+		const user = userEvent.setup();
+		render( <ExtensionsScreen /> );
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Greeter' } )
+		);
+		await user.click( await screen.findByLabelText( 'main.ocs' ) );
+		await user.keyboard( ' y' );
+		await user.click( screen.getByRole( 'button', { name: 'Run tests' } ) );
+		await user.click(
+			await screen.findByRole( 'button', {
+				name: 'Debug the test quotes: run it again recorded',
+			} )
+		);
+
+		expect(
+			await screen.findByRole( 'group', { name: 'Debugger' } )
+		).toBeVisible();
+		expect(
+			screen.getByText( 'fn total', { selector: 'code' } )
+		).toBeVisible();
+		expect( screen.getByLabelText( 'main.ocs as it ran' ) ).toBeVisible();
+		const request = sent as {
+			files: Record< string, string >;
+			debug: string;
+		};
+		expect( request.debug ).toBe( 'quotes' );
+		expect( request.files[ 'main.ocs' ] ).toMatch( / y$/ );
+
+		await user.click(
+			screen.getByRole( 'button', { name: 'Close the debugger' } )
+		);
+		expect(
+			screen.queryByRole( 'group', { name: 'Debugger' } )
+		).not.toBeInTheDocument();
+	} );
+
+	it( 'debugs a console run', async () => {
+		let sent: unknown = null;
+		serve( ( { path, method, data } ) => {
+			if (
+				method === 'POST' &&
+				path === '/orillacart/v1/extensions/greeter/run'
+			) {
+				sent = data;
+				return Promise.resolve( {
+					ok: false,
+					result: null,
+					failure: {
+						kind: 'error',
+						message: 'refused: 503',
+						data: null,
+					},
+					stopped: null,
+					used: { steps: 14 },
+					stack: [],
+					recording: { ...recorded, id: 5 },
+				} );
+			}
+			return undefined;
+		} );
+		const user = userEvent.setup();
+		render( <ExtensionsScreen /> );
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Greeter' } )
+		);
+		await user.type( await screen.findByLabelText( 'Function' ), 'total' );
+		await user.click(
+			screen.getByRole( 'button', {
+				name: 'Run the function recorded, and open the recording in the debugger',
+			} )
+		);
+
+		expect(
+			await screen.findByRole( 'group', { name: 'Debugger' } )
+		).toBeVisible();
+		expect( sent ).toEqual( {
+			function: 'total',
+			arguments: [],
+			debug: true,
+		} );
+	} );
+
+	it( 'lists the recordings to open or delete, and records the next runs live', async () => {
+		const asked: string[] = [];
+		let capture: unknown = null;
+		serve( ( { path, method, data } ) => {
+			const base = '/orillacart/v1/extensions/greeter';
+			if ( path === `${ base }/recordings` && method === undefined ) {
+				return Promise.resolve( {
+					recordings: [
+						{
+							id: 7,
+							source: 'live',
+							what: 'on order_paid',
+							outcome: 'error',
+							message: 'refused: 503',
+							steps: 14,
+							recorded_at: '2026-11-11T10:00:00+00:00',
+						},
+					],
+					capture: null,
+				} );
+			}
+			if ( path === `${ base }/recordings/7` ) {
+				asked.push( `${ method ?? 'GET' } ${ path }` );
+				return Promise.resolve(
+					method === 'DELETE'
+						? { deleted: true }
+						: {
+								...recorded,
+								id: 7,
+								source: 'live',
+								recorded_at: '2026-11-11T10:00:00+00:00',
+							}
+				);
+			}
+			if ( path === `${ base }/capture` ) {
+				capture = data ?? null;
+				return Promise.resolve( {
+					capture:
+						method === 'POST'
+							? {
+									what: 'on order_paid',
+									left: 3,
+									until: '2026-11-11T11:00:00+00:00',
+								}
+							: null,
+				} );
+			}
+			return undefined;
+		} );
+		const user = userEvent.setup();
+		render( <ExtensionsScreen /> );
+		await user.click(
+			await screen.findByRole( 'button', { name: 'Greeter' } )
+		);
+
+		await user.click(
+			await screen.findByRole( 'button', {
+				name: 'Open the recording of on order_paid in the debugger',
+			} )
+		);
+		expect(
+			await screen.findByRole( 'group', { name: 'Debugger' } )
+		).toBeVisible();
+		await user.click(
+			screen.getByRole( 'button', {
+				name: 'Delete the recording of on order_paid',
+			} )
+		);
+		expect(
+			await screen.findByText( 'Recording deleted.', TOAST )
+		).toBeVisible();
+		expect( asked ).toEqual( [
+			'GET /orillacart/v1/extensions/greeter/recordings/7',
+			'DELETE /orillacart/v1/extensions/greeter/recordings/7',
+		] );
+
+		expect(
+			screen.getByText( /customers’ data among it/, NOTICE )
+		).toBeVisible();
+		await user.type( screen.getByLabelText( 'Handlers' ), 'on order_paid' );
+		await user.clear( screen.getByLabelText( 'Runs' ) );
+		await user.type( screen.getByLabelText( 'Runs' ), '3' );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Start recording' } )
+		);
+		expect(
+			await screen.findByText( /Recording 3 more runs of on order_paid/ )
+		).toBeVisible();
+		expect( capture ).toEqual( {
+			what: 'on order_paid',
+			runs: 3,
+			minutes: 15,
+		} );
+		await user.click(
+			screen.getByRole( 'button', { name: 'Stop recording' } )
+		);
+		expect(
+			await screen.findByRole( 'button', { name: 'Start recording' } )
+		).toBeVisible();
 	} );
 
 	it( 'lists the versions with a restore and the recent runs', async () => {

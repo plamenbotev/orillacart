@@ -28,9 +28,12 @@ final readonly class Scripts
      *
      * @param string $scope what the class is for: the extension's slug, or `check/<id>`, `cli`; the store's site and
      *                      the source's checksum are added, so a class is one site's and one source's
+     * @param bool   $debug the debug build, which reports its variables to a recording (design 71): a class of its
+     *                      own, never the one the shop runs
      */
-    public function compile(string $source, string $scope): Compiled
+    public function compile(string $source, string $scope, bool $debug = false): Compiled
     {
+        $scope = self::scoped($scope, $debug);
         $suffix = preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . self::checksum($source);
         try {
             $program = Parser::parse($source);
@@ -38,7 +41,7 @@ final readonly class Scripts
             return new Compiled($this->namespace() . '\\Script_' . $suffix, null, [new Dto\Finding($e->sourceLine, $e->sourceColumn, preg_replace('/ \(line \d+, column \d+\)$/', '', $e->getMessage()) ?? $e->getMessage())]);
         }
 
-        $compiled = $this->compiler->compile($program, $suffix, $this->namespace());
+        $compiled = $this->compiler->compile($program, $suffix, $this->namespace(), $debug);
         if ($compiled->source !== null && ($refused = GeneratedCodeGate::refuse($compiled->source, $this->store->site())) !== null) {
             // The compiler made code outside its own grammar: a bug of the compiler's, never run.
             return new Compiled($compiled->className, null, [...$compiled->findings, new Dto\Finding(1, 1, 'The compiled code was refused (' . $refused . '); the script cannot be run until the compiler is fixed')]);
@@ -50,26 +53,37 @@ final readonly class Scripts
     /**
      * The compiled class, loaded from the store or compiled and kept, as an instance with its own run context.
      *
-     * @param HostCatalog|null $catalog the host the instance calls; the shop's when null, a test's fakes otherwise
+     * @param HostCatalog|null $catalog  the host the instance calls; the shop's when null, a test's fakes otherwise
+     * @param Recorder|null    $recorder records the run from the debug build (design 71)
      *
      * @throws \InvalidArgumentException when the source does not compile; the message lists the findings
      */
-    public function load(string $source, string $scope, Budget $budget = new Budget(), Grant $grant = new Grant(), ?HostCatalog $catalog = null): CompiledScript
+    public function load(string $source, string $scope, Budget $budget = new Budget(), Grant $grant = new Grant(), ?HostCatalog $catalog = null, ?Recorder $recorder = null): CompiledScript
     {
-        $key = self::key($this->store->site(), $scope, $source);
-        $className = $this->namespace() . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', $scope) . '_' . self::checksum($source);
+        $debug = $recorder !== null;
+        $key = self::key($this->store->site(), self::scoped($scope, $debug), $source);
+        $className = $this->namespace() . '\\Script_' . preg_replace('/[^A-Za-z0-9]+/', '_', self::scoped($scope, $debug)) . '_' . self::checksum($source);
         if (!class_exists($className, false) && !$this->store->load($key, $className)) {
-            $compiled = $this->compile($source, $scope);
+            $compiled = $this->compile($source, $scope, $debug);
             if (!$compiled->ok() || $compiled->source === null) {
                 throw new \InvalidArgumentException("The script does not compile:\n" . implode("\n", array_map(strval(...), $compiled->findings)));
             }
             $this->store->put($key, $className, $compiled->source);
         }
         $context = new Context($catalog ?? $this->catalog, $budget, $grant);
+        if ($recorder !== null) {
+            $context->record($recorder);
+        }
         $script = new $className($context);
         \assert($script instanceof CompiledScript);
 
         return $script;
+    }
+
+    /** A debug build's scope: its class and its store key are its own. */
+    private static function scoped(string $scope, bool $debug): string
+    {
+        return $debug ? $scope . '/debug' : $scope;
     }
 
     public function catalog(): HostCatalog

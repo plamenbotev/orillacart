@@ -37,12 +37,14 @@ final readonly class ScriptTests
      * @param (callable(callable(): TestResult, string): TestResult)|null $isolate runs one test (by its name) so that what it wrote is undone
      * @param (\Closure(HostCatalog): HostCatalog)|null          $narrow   the host each test runs against, from the one with its stand-ins
      * @param list<string>                                       $declared the permissions the script declares, which its stand-ins answer for
+     * @param string|null                                        $debug    the test to record for its debugger (design 71), by name
+     * @param list<string>                                       $secrets  values a recording never shows: the extension's secret settings
      *
      * @return list<TestResult>
      *
      * @throws \InvalidArgumentException when the source does not compile
      */
-    public function run(string $source, string $scope, Grant $grant, ?callable $isolate = null, ?\Closure $narrow = null, array $declared = []): array
+    public function run(string $source, string $scope, Grant $grant, ?callable $isolate = null, ?\Closure $narrow = null, array $declared = [], ?string $debug = null, array $secrets = []): array
     {
         $script = $this->scripts->load($source, $scope, new Budget(), $grant);
         $results = [];
@@ -50,7 +52,8 @@ final readonly class ScriptTests
             if ($declaration['kind'] !== 'test' || $declaration['handler'] === null) {
                 continue;
             }
-            $one = fn(): TestResult => $this->one($source, $scope, $grant, $declaration, $narrow, $declared);
+            $recorder = $debug !== null && ($declaration['name'] ?? 'test') === $debug ? new Recorder($secrets) : null;
+            $one = fn(): TestResult => $this->one($source, $scope, $grant, $declaration, $narrow, $declared, $recorder);
             $results[] = $isolate === null ? $one() : $isolate($one, $declaration['name'] ?? 'test');
         }
 
@@ -62,7 +65,7 @@ final readonly class ScriptTests
      * @param (\Closure(HostCatalog): HostCatalog)|null                         $narrow
      * @param list<string>                                                     $declared
      */
-    private function one(string $source, string $scope, Grant $grant, array $declaration, ?\Closure $narrow, array $declared): TestResult
+    private function one(string $source, string $scope, Grant $grant, array $declaration, ?\Closure $narrow, array $declared, ?Recorder $recorder = null): TestResult
     {
         $name = $declaration['name'] ?? 'test';
         $props = $declaration['props'];
@@ -115,7 +118,7 @@ final readonly class ScriptTests
             ? new HostFunction($f->name, $f->callable, $f->leastArguments, $f->mostArguments, $f->summary, null, $f->counts, $f->inTests, $f->writes)
             : $f, $fakes);
         $host = $this->scripts->catalog()->with($fakes);
-        $script = $this->scripts->load($source, $scope, new Budget(), $testGrant, $narrow === null ? $host : $narrow($host));
+        $script = $this->scripts->load($source, $scope, new Budget(), $testGrant, $narrow === null ? $host : $narrow($host), $recorder);
         $handler = $declaration['handler'] ?? '';
         try {
             $script->run($handler);
@@ -131,8 +134,14 @@ final readonly class ScriptTests
             $outcome = [false, 'The host broke: ' . $e->getMessage(), null];
         }
         $context = new \ReflectionProperty(CompiledScript::class, 'c')->getValue($script);
+        $stack = $context instanceof Context && !$outcome[0] ? $context->stack() : [];
+        // An error without a line of its own is where the run was when it failed.
+        $line = $outcome[2] ?? ($stack[0]['line'] ?? null);
+        if (!$outcome[0] && $recorder !== null) {
+            $recorder->failed((string) $outcome[1], $line ?? 0, \count($stack));
+        }
 
-        return new TestResult($name, $outcome[0], $outcome[1], $outcome[2], $http, $jobs, $context instanceof Context ? $context->used() : [], $effects);
+        return new TestResult($name, $outcome[0], $outcome[1], $line, $http, $jobs, $context instanceof Context ? $context->used() : [], $effects, $stack, $recorder);
     }
 
     /**

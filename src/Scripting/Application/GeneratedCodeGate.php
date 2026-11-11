@@ -25,7 +25,7 @@ final class GeneratedCodeGate
         '\\' . Catchable::class => T_CATCH,
     ];
     private const array OPS_METHODS = ['truthy', 'get', 'assign', 'eq', 'cmp', 'add', 'sub', 'mul', 'div', 'intdiv', 'mod', 'neg', 'concat', 'in', 'startsWith', 'endsWith', 'range', 'iterable', 'invoke', 'key', 'failure', 'assert', 'filter', 'test'];
-    private const array CONTEXT_METHODS = ['step', 'bytes', 'room', 'call'];
+    private const array CONTEXT_METHODS = ['step', 'bytes', 'room', 'call', 'enter', 'at', 'result', 'leave'];
     private const array WORDS = ['strict_types', 'NULL', 'null', 'true', 'false'];
     private const array PUNCTUATION = ['(', ')', '=', ';', '{', '}', ':', '[', ']', ',', '>', '<', '!', '?'];
     private const array KINDS = [
@@ -33,7 +33,7 @@ final class GeneratedCodeGate
         T_RETURN, T_LNUMBER, T_DNUMBER, T_DOUBLE_ARROW, T_OBJECT_OPERATOR, T_DOUBLE_COLON, T_IS_GREATER_OR_EQUAL,
         T_IS_SMALLER_OR_EQUAL, T_IS_EQUAL, T_IS_NOT_EQUAL, T_IS_IDENTICAL, T_IS_NOT_IDENTICAL, T_BOOLEAN_AND,
         T_BOOLEAN_OR, T_COALESCE, T_WHILE, T_IF, T_ELSE, T_ELSEIF, T_CONTINUE, T_BREAK, T_FOREACH, T_AS, T_USE,
-        T_ELLIPSIS, T_TRY, T_THROW, T_CATCH,
+        T_ELLIPSIS, T_TRY, T_THROW, T_CATCH, T_FINALLY,
     ];
     private const string COMMENT = '/** Generated from a script package: do not edit. */';
 

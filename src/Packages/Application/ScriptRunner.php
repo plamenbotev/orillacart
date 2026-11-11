@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Packages\Application\Dto\LoadedPackage;
+use OrillaCart\Packages\Domain\ExtensionRecording;
 use OrillaCart\Packages\Domain\ExtensionRun;
 use OrillaCart\Packages\Domain\HandlerFailed;
+use OrillaCart\Scripting\Application\Context;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Application\Dto\HostFunction;
 use OrillaCart\Scripting\Application\HostCatalog;
+use OrillaCart\Scripting\Application\Recorder;
 use OrillaCart\Scripting\Application\Scripts;
 use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\ScriptError;
@@ -33,6 +36,8 @@ final readonly class ScriptRunner
         private ?RunLog $log = null,
         private ?ClockInterface $clock = null,
         private ?ReadOnlyRequest $readOnly = null,
+        private ?Captures $captures = null,
+        private ?Recordings $recordings = null,
     ) {}
 
     /**
@@ -55,8 +60,11 @@ final readonly class ScriptRunner
         $package = $loaded->package;
         $grant = new Grant($package->slug(), $package->granted(), $loaded->manifest->hosts(), $package->settings());
         $script = null;
+        $now = $this->clock?->now() ?? new \DateTimeImmutable();
+        // A live capture armed for the extension records this run from its debug build (design 71).
+        $recorder = $this->captures?->take($package->slug(), self::what($loaded, $method), $now) === true ? new Recorder(Debugging::secrets($package, $loaded->manifest)) : null;
         try {
-            $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $grant, $this->readOnly?->readOnly() === true ? self::readingOnly($this->scripts->catalog()) : null);
+            $script = $this->scripts->load($package->runningSource(), $package->slug(), new Budget(), $grant, $this->readOnly?->readOnly() === true ? self::readingOnly($this->scripts->catalog()) : null, $recorder);
             $result = $script->run($method, ...$args);
         } catch (ScriptFailure $e) {
             // Saying "unavailable" or "refused" is an answer, not a failure of the extension.
@@ -87,22 +95,41 @@ final readonly class ScriptRunner
 
     private function record(LoadedPackage $loaded, string $method, string $outcome, ?string $message, ?\OrillaCart\Scripting\Application\CompiledScript $script): void
     {
-        if ($this->log === null) {
-            return;
-        }
         $used = [];
+        $stack = [];
+        $recorder = null;
         if ($script !== null) {
             $context = new \ReflectionProperty(\OrillaCart\Scripting\Application\CompiledScript::class, 'c')->getValue($script);
-            $used = $context instanceof \OrillaCart\Scripting\Application\Context ? $context->used() : [];
+            if ($context instanceof Context) {
+                $used = $context->used();
+                $stack = $outcome === ExtensionRun::OK ? [] : $context->stack();
+                $recorder = $context->recorder();
+            }
         }
-        $this->log->record($loaded->package->slug(), self::what($loaded, $method), $outcome, $message, $used, $this->clock?->now() ?? new \DateTimeImmutable());
+        $scripts = $loaded->package->runningScripts();
+        $what = self::what($loaded, $method);
+        $now = $this->clock?->now() ?? new \DateTimeImmutable();
+        // An error says where it happened; a refusal or "unavailable" is an answer, said as the script said it.
+        $located = $message !== null && \in_array($outcome, [ExtensionRun::ERROR, ExtensionRun::STOPPED], true) ? Debugging::located($message, $scripts, $stack) : $message;
+        $this->log?->record($loaded->package->slug(), $what, $outcome, $located, $used, $now);
+        if ($recorder !== null && $this->recordings !== null) {
+            if ($message !== null && $outcome !== ExtensionRun::OK) {
+                $recorder->failed($message, $stack[0]['line'] ?? 0, \count($stack));
+            }
+            try {
+                $this->recordings->save(new ExtensionRecording($loaded->package->slug(), ExtensionRecording::LIVE, mb_substr($what, 0, ExtensionRun::MAX_WHAT_LENGTH), $outcome, $message, Debugging::recording($recorder, $scripts, $what, $outcome, $message, $stack), $now));
+            } catch (\Throwable $e) {
+                // A recording is the developer's; the shop's run goes on without it.
+                $this->logger->warning('The capture of "{extension}" could not be saved: {message}', ['extension' => $loaded->package->slug(), 'message' => $e->getMessage()]);
+            }
+        }
     }
 
     /** What the method is in the script's own words: `shipping_method dpd: rates`, `on order_placed`, `job remind`, or the method. */
     public static function what(LoadedPackage $loaded, string $method): string
     {
         foreach ($loaded->manifest->all() as $declaration) {
-            $head = trim($declaration['kind'] . ' ' . implode(' ', $declaration['words']) . ($declaration['name'] === null ? '' : ' ' . $declaration['name']));
+            $head = \OrillaCart\Scripting\Application\Compiler::label($declaration['kind'], $declaration['words'], $declaration['name']);
             if ($declaration['handler'] === $method) {
                 return $head;
             }

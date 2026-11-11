@@ -16,5 +16,7 @@ final readonly class RunFunction
         #[Assert\Regex(pattern: '/^[A-Za-z_][A-Za-z0-9_]*$/')]
         public string $function,
         public array $arguments = [],
+        /** Records the run for its debugger (design 71): the answer has its recording. */
+        public bool $debug = false,
     ) {}
 }

@@ -31,12 +31,15 @@ import {
 	checkExtension,
 	checkFiles,
 	deleteFile,
+	deleteRecording,
 	disableExtension,
 	enableExtension,
 	fetchArchive,
 	fetchExtension,
 	fetchExtensions,
 	fetchOriginal,
+	fetchRecording,
+	fetchRecordings,
 	fetchReference,
 	fetchRuns,
 	withContents,
@@ -50,8 +53,11 @@ import {
 	runTests,
 	saveSettings,
 	saveTranslations,
+	startCapture,
+	stopCapture,
 	uninstallExtension,
 	writeFile,
+	type Capture,
 	type Extension,
 	type ExtensionFile,
 	type ExtensionRun,
@@ -59,12 +65,16 @@ import {
 	type ExtensionVersion,
 	type ExtensionWords,
 	type Finding,
+	type RecordingSummary,
 	type Reference,
 	type RunResult,
 	type TestResult,
 } from './api';
 import { CodeEditor } from './editor/CodeEditor';
+import { Debugger } from './editor/Debugger';
+import { outcomeTone } from './editor/debugging';
 import { Diff } from './editor/Diff';
+import type { Recording } from './editor/replay';
 
 const STATES: Record< Extension[ 'state' ], { label: string; tone: Tone } > = {
 	draft: { label: __( 'Draft', 'orillacart' ), tone: 'neutral' },
@@ -403,7 +413,14 @@ function ExtensionEditor( {
 	const [ granting, setGranting ] = useState< string[] | null >( null );
 	const [ removing, setRemoving ] = useState( false );
 	const [ live, setLive ] = useState< Finding[] | null >( null );
+	const [ debugging, setDebugging ] = useState< Recording | null >( null );
+	// Counts the recordings made here, so the list reads them again.
+	const [ recorded, setRecorded ] = useState( 0 );
 	const reference = useReference();
+	const debug = ( recording: Recording ) => {
+		setDebugging( recording );
+		setRecorded( ( count ) => count + 1 );
+	};
 	const current = files.find( ( file ) => file.path === path );
 	const dirty = current !== undefined && current.content !== content;
 	// The files as saved with this buffer in place of its file: what the check and the tests run over.
@@ -686,6 +703,13 @@ function ExtensionEditor( {
 				) }
 			</Section>
 
+			{ debugging !== null && (
+				<Debugger
+					recording={ debugging }
+					onClose={ () => setDebugging( null ) }
+				/>
+			) }
+
 			<Versions
 				extension={ extension }
 				onChange={ onChange }
@@ -707,6 +731,14 @@ function ExtensionEditor( {
 			<Console
 				extension={ extension }
 				files={ edited }
+				onError={ setError }
+				onDebug={ debug }
+			/>
+
+			<Recordings
+				extension={ extension }
+				recorded={ recorded }
+				onOpen={ setDebugging }
 				onError={ setError }
 			/>
 
@@ -1053,10 +1085,12 @@ function Console( {
 	extension,
 	files,
 	onError,
+	onDebug,
 }: {
 	extension: Extension;
 	files: Record< string, string >;
 	onError: ( message: string ) => void;
+	onDebug: ( recording: Recording ) => void;
 } ) {
 	const [ fn, setFn ] = useState( '' );
 	const [ args, setArgs ] = useState( '[]' );
@@ -1064,6 +1098,9 @@ function Console( {
 	const [ busy, setBusy ] = useState( false );
 	const [ tests, setTests ] = useState< TestResult[] | null >( null );
 	const [ testing, setTesting ] = useState( false );
+	const [ debuggingTest, setDebuggingTest ] = useState< string | null >(
+		null
+	);
 
 	const test = () => {
 		setTesting( true );
@@ -1073,7 +1110,31 @@ function Console( {
 			.finally( () => setTesting( false ) );
 	};
 
-	const run = () => {
+	// One test again over the same files, recorded: its result replaces the list's and its recording opens.
+	const debugTest = ( name: string ) => {
+		setDebuggingTest( name );
+		runTests( extension.id, files, name )
+			.then( ( answer ) => {
+				setTests( answer.tests );
+				const recording = answer.tests.find(
+					( t ) => t.name === name
+				)?.recording;
+				if ( recording ) {
+					onDebug( recording );
+				} else {
+					onError(
+						__(
+							'The test ran but left no recording to debug.',
+							'orillacart'
+						)
+					);
+				}
+			} )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setDebuggingTest( null ) );
+	};
+
+	const run = ( debug = false ) => {
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse( args || '[]' );
@@ -1096,8 +1157,20 @@ function Console( {
 			return;
 		}
 		setBusy( true );
-		runFunction( extension.id, fn, parsed )
-			.then( setResult )
+		runFunction( extension.id, fn, parsed, debug )
+			.then( ( answer ) => {
+				setResult( answer );
+				if ( debug && answer.recording ) {
+					onDebug( answer.recording );
+				} else if ( debug ) {
+					onError(
+						__(
+							'The function ran but left no recording to debug.',
+							'orillacart'
+						)
+					);
+				}
+			} )
 			.catch( ( e ) => onError( errorMessage( e ) ) )
 			.finally( () => setBusy( false ) );
 	};
@@ -1131,11 +1204,25 @@ function Console( {
 				<Field size="xs" className="oc-field--aligned">
 					<Button
 						variant="secondary"
-						onClick={ run }
+						onClick={ () => run() }
 						isBusy={ busy }
 						disabled={ busy || fn === '' }
 					>
 						{ __( 'Run', 'orillacart' ) }
+					</Button>
+				</Field>
+				<Field size="xs" className="oc-field--aligned">
+					<Button
+						variant="tertiary"
+						onClick={ () => run( true ) }
+						disabled={ busy || fn === '' }
+						label={ __(
+							'Run the function recorded, and open the recording in the debugger',
+							'orillacart'
+						) }
+						showTooltip
+					>
+						{ __( 'Debug', 'orillacart' ) }
 					</Button>
 				</Field>
 			</Row>
@@ -1184,12 +1271,34 @@ function Console( {
 					</p>
 				</Field>
 			</Row>
-			{ tests && <TestResults tests={ tests } /> }
+			{ tests && (
+				<TestResults
+					tests={ tests }
+					debugging={ debuggingTest }
+					onDebug={ debugTest }
+				/>
+			) }
 		</Section>
 	);
 }
 
-function TestResults( { tests }: { tests: TestResult[] } ) {
+/**
+ * The tests' outcomes, each with a button that runs it again recorded, for the debugger.
+ *
+ * @param props
+ * @param props.tests     The tests' results.
+ * @param props.debugging The test being run for the debugger, if one is.
+ * @param props.onDebug   Runs a test, by name, for the debugger.
+ */
+function TestResults( {
+	tests,
+	debugging = null,
+	onDebug,
+}: {
+	tests: TestResult[];
+	debugging?: string | null;
+	onDebug?: ( name: string ) => void;
+} ) {
 	if ( tests.length === 0 ) {
 		return (
 			<Notice status="info" isDismissible={ false }>
@@ -1258,6 +1367,27 @@ function TestResults( { tests }: { tests: TestResult[] } ) {
 										)
 										.join( ', ' ) }
 							</span>
+						) }
+						{ onDebug && (
+							<>
+								{ ' ' }
+								<Button
+									variant="link"
+									isBusy={ debugging === t.name }
+									disabled={ debugging !== null }
+									label={ sprintf(
+										/* translators: %s: a test's name */
+										__(
+											'Debug the test %s: run it again recorded',
+											'orillacart'
+										),
+										t.name
+									) }
+									onClick={ () => onDebug( t.name ) }
+								>
+									{ __( 'Debug', 'orillacart' ) }
+								</Button>
+							</>
 						) }
 					</li>
 				) ) }
@@ -1704,6 +1834,322 @@ function Runs( { extension }: { extension: Extension } ) {
 			/>
 		</Section>
 	);
+}
+
+const SOURCES: Record< RecordingSummary[ 'source' ], string > = {
+	test: __( 'Test', 'orillacart' ),
+	console: __( 'Console', 'orillacart' ),
+	live: __( 'Live', 'orillacart' ),
+};
+
+/**
+ * The recordings kept of the extension's runs for the debugger (design 71), each to open or delete, and the form
+ * that records its next real runs live.
+ *
+ * @param props
+ * @param props.extension The extension.
+ * @param props.recorded  Counts the recordings made on this screen: a change reads the list again.
+ * @param props.onOpen    Opens a recording in the debugger.
+ * @param props.onError   Takes a message when a request fails.
+ */
+function Recordings( {
+	extension,
+	recorded,
+	onOpen,
+	onError,
+}: {
+	extension: Extension;
+	recorded: number;
+	onOpen: ( recording: Recording ) => void;
+	onError: ( message: string ) => void;
+} ) {
+	const [ recordings, setRecordings ] = useState< RecordingSummary[] | null >(
+		null
+	);
+	const [ capture, setCapture ] = useState< Capture | null >( null );
+	const [ what, setWhat ] = useState( '' );
+	const [ runs, setRuns ] = useState( '5' );
+	const [ minutes, setMinutes ] = useState( '15' );
+	const [ busy, setBusy ] = useState( false );
+	const [ opening, setOpening ] = useState< number | null >( null );
+
+	const load = () => {
+		fetchRecordings( extension.id )
+			.then( ( answer ) => {
+				setRecordings( answer.recordings );
+				setCapture( answer.capture );
+			} )
+			.catch( ( e ) => {
+				setRecordings( [] );
+				onError( errorMessage( e ) );
+			} );
+	};
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	useEffect( load, [ extension.id, recorded ] );
+
+	const open = ( id: number ) => {
+		setOpening( id );
+		fetchRecording( extension.id, id )
+			.then( onOpen )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setOpening( null ) );
+	};
+	const remove = ( id: number ) => {
+		setBusy( true );
+		deleteRecording( extension.id, id )
+			.then( () => {
+				setRecordings( ( list ) =>
+					( list ?? [] ).filter( ( item ) => item.id !== id )
+				);
+				notify( __( 'Recording deleted.', 'orillacart' ) );
+			} )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setBusy( false ) );
+	};
+	const start = () => {
+		setBusy( true );
+		startCapture( extension.id, {
+			what: what.trim(),
+			runs: clamp( runs, 1, 20, 5 ),
+			minutes: clamp( minutes, 1, 60, 15 ),
+		} )
+			.then( ( answer ) => {
+				setCapture( answer.capture );
+				notify( __( 'Recording the next runs.', 'orillacart' ) );
+			} )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setBusy( false ) );
+	};
+	const stop = () => {
+		setBusy( true );
+		stopCapture( extension.id )
+			.then( () => {
+				setCapture( null );
+				notify( __( 'Live recording stopped.', 'orillacart' ) );
+			} )
+			.catch( ( e ) => onError( errorMessage( e ) ) )
+			.finally( () => setBusy( false ) );
+	};
+
+	return (
+		<Section
+			title={ __( 'Recordings', 'orillacart' ) }
+			description={ __(
+				'Runs recorded for the debugger: a test or a console run debugged, and the real runs recorded live. Open one to step through it, forwards and backwards. Each is kept 24 hours.',
+				'orillacart'
+			) }
+			action={
+				<Button variant="tertiary" onClick={ load }>
+					{ __( 'Refresh', 'orillacart' ) }
+				</Button>
+			}
+		>
+			<DataTable
+				caption={ __( 'Recordings', 'orillacart' ) }
+				columns={ [
+					{
+						id: 'at',
+						label: __( 'When', 'orillacart' ),
+						nowrap: true,
+						render: ( r: RecordingSummary ) =>
+							new Date( r.recorded_at ).toLocaleString(),
+					},
+					{
+						id: 'source',
+						label: __( 'From', 'orillacart' ),
+						render: ( r: RecordingSummary ) => (
+							<Badge
+								tone={
+									r.source === 'live' ? 'warning' : 'neutral'
+								}
+							>
+								{ SOURCES[ r.source ] ?? r.source }
+							</Badge>
+						),
+					},
+					{
+						id: 'what',
+						label: __( 'What ran', 'orillacart' ),
+						render: ( r: RecordingSummary ) => (
+							<code>{ r.what }</code>
+						),
+					},
+					{
+						id: 'outcome',
+						label: __( 'Outcome', 'orillacart' ),
+						render: ( r: RecordingSummary ) => (
+							<>
+								<Badge tone={ outcomeTone( r.outcome ) }>
+									{ r.outcome }
+								</Badge>
+								{ r.message && (
+									<span className="oc-muted">
+										{ ' ' + r.message }
+									</span>
+								) }
+							</>
+						),
+					},
+					{
+						id: 'steps',
+						label: __( 'Steps', 'orillacart' ),
+						align: 'end',
+						render: ( r: RecordingSummary ) => r.steps,
+					},
+					{
+						id: 'actions',
+						label: '',
+						align: 'end',
+						nowrap: true,
+						render: ( r: RecordingSummary ) => (
+							<>
+								<Button
+									variant="tertiary"
+									isBusy={ opening === r.id }
+									disabled={ opening !== null }
+									label={ sprintf(
+										/* translators: %s: what ran, such as "fn total" */
+										__(
+											'Open the recording of %s in the debugger',
+											'orillacart'
+										),
+										r.what
+									) }
+									onClick={ () => open( r.id ) }
+								>
+									{ __( 'Open', 'orillacart' ) }
+								</Button>
+								<Button
+									variant="tertiary"
+									isDestructive
+									disabled={ busy }
+									label={ sprintf(
+										/* translators: %s: what ran, such as "fn total" */
+										__(
+											'Delete the recording of %s',
+											'orillacart'
+										),
+										r.what
+									) }
+									onClick={ () => remove( r.id ) }
+								>
+									{ __( 'Delete', 'orillacart' ) }
+								</Button>
+							</>
+						),
+					},
+				] }
+				rows={ recordings ?? [] }
+				rowKey={ ( r ) => r.id }
+				loading={ recordings === null }
+				empty={ __(
+					'No recordings. Debug a test or a console run, or record the next real runs below.',
+					'orillacart'
+				) }
+			/>
+
+			<h3>{ __( 'Record the next real runs', 'orillacart' ) }</h3>
+			<Notice status="warning" isDismissible={ false }>
+				{ __(
+					'A live recording holds everything those runs saw, customers’ data among it: names, addresses, orders. Recordings are deleted after 24 hours; delete one sooner once it has served.',
+					'orillacart'
+				) }
+			</Notice>
+			{ capture ? (
+				<>
+					<p>
+						{ sprintf(
+							/* translators: 1: how many runs are left; 2: what is recorded, such as "on order_paid", or "every handler"; 3: a date and time */
+							__(
+								'Recording %1$d more runs of %2$s, until %3$s.',
+								'orillacart'
+							),
+							capture.left,
+							capture.what
+								? capture.what
+								: __( 'every handler', 'orillacart' ),
+							new Date( capture.until ).toLocaleString()
+						) }
+					</p>
+					<div className="oc-actions">
+						<Button
+							variant="secondary"
+							isDestructive
+							onClick={ stop }
+							disabled={ busy }
+						>
+							{ __( 'Stop recording', 'orillacart' ) }
+						</Button>
+					</div>
+				</>
+			) : (
+				<Row>
+					<Field size="m">
+						<TextControl
+							__next40pxDefaultSize
+							label={ __( 'Handlers', 'orillacart' ) }
+							help={ __(
+								'Only the handlers whose name starts with this, such as on order_paid; every handler when empty.',
+								'orillacart'
+							) }
+							value={ what }
+							onChange={ setWhat }
+						/>
+					</Field>
+					<Field size="xs">
+						<TextControl
+							__next40pxDefaultSize
+							type="number"
+							min={ 1 }
+							max={ 20 }
+							label={ __( 'Runs', 'orillacart' ) }
+							help={ __( '1 to 20', 'orillacart' ) }
+							value={ runs }
+							onChange={ setRuns }
+						/>
+					</Field>
+					<Field size="xs">
+						<TextControl
+							__next40pxDefaultSize
+							type="number"
+							min={ 1 }
+							max={ 60 }
+							label={ __( 'Minutes', 'orillacart' ) }
+							help={ __( '1 to 60', 'orillacart' ) }
+							value={ minutes }
+							onChange={ setMinutes }
+						/>
+					</Field>
+					<Field size="xs" className="oc-field--aligned">
+						<Button
+							variant="secondary"
+							onClick={ start }
+							isBusy={ busy }
+							disabled={ busy }
+						>
+							{ __( 'Start recording', 'orillacart' ) }
+						</Button>
+					</Field>
+				</Row>
+			) }
+		</Section>
+	);
+}
+
+/**
+ * A number typed in a field, kept within bounds; the fallback when it is no number.
+ *
+ * @param value    What was typed.
+ * @param min      The least.
+ * @param max      The most.
+ * @param fallback When it is no number.
+ */
+function clamp( value: string, min: number, max: number, fallback: number ) {
+	const number = Math.round( Number( value ) );
+	if ( value.trim() === '' || ! Number.isFinite( number ) ) {
+		return fallback;
+	}
+	return Math.max( min, Math.min( max, number ) );
 }
 
 function slugOf( name: string ): string {

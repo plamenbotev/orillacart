@@ -1,0 +1,293 @@
+{
+	"what": "fn total",
+	"outcome": "error",
+	"message": "refused: 503",
+	"cut": false,
+	"sources": {
+		"main.ocs": "extension \"quote\" { name: \"Quote\", needs: { http: [\"api.example\"] } }\n\nfn total(items) {\n  let sum = 0\n  for item in items {\n    sum = sum + price(item)\n  }\n  return sum\n}",
+		"price.ocs": "fn price(item) {\n  let unit = item.unit\n  debug(unit)\n  if unit > 5 {\n    let answer = http.get(\"https://api.example/check\")\n    fail error(\"refused: \" ~ answer.status)\n  }\n  return unit * item.qty\n}"
+	},
+	"steps": [
+		{
+			"file": "main.ocs",
+			"line": 3,
+			"k": "enter",
+			"fn": "total",
+			"depth": 1
+		},
+		{
+			"file": "main.ocs",
+			"line": 4,
+			"k": "line",
+			"depth": 1,
+			"vars": {
+				"items": [
+					{
+						"unit": 2,
+						"qty": 3
+					},
+					{
+						"unit": 9,
+						"qty": 1
+					}
+				]
+			}
+		},
+		{
+			"file": "main.ocs",
+			"line": 5,
+			"k": "line",
+			"depth": 1,
+			"vars": {
+				"items": [
+					{
+						"unit": 2,
+						"qty": 3
+					},
+					{
+						"unit": 9,
+						"qty": 1
+					}
+				],
+				"sum": 0
+			}
+		},
+		{
+			"file": "main.ocs",
+			"line": 6,
+			"k": "line",
+			"depth": 1,
+			"vars": {
+				"items": [
+					{
+						"unit": 2,
+						"qty": 3
+					},
+					{
+						"unit": 9,
+						"qty": 1
+					}
+				],
+				"sum": 0,
+				"item": {
+					"unit": 2,
+					"qty": 3
+				}
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 1,
+			"k": "enter",
+			"fn": "price",
+			"depth": 2
+		},
+		{
+			"file": "price.ocs",
+			"line": 2,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 2,
+					"qty": 3
+				}
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 3,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 2,
+					"qty": 3
+				},
+				"unit": 2
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 3,
+			"k": "debug",
+			"value": 2,
+			"depth": 2
+		},
+		{
+			"file": "price.ocs",
+			"line": 4,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 2,
+					"qty": 3
+				},
+				"unit": 2
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 8,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 2,
+					"qty": 3
+				},
+				"unit": 2,
+				"answer": null
+			}
+		},
+		{
+			"k": "return",
+			"value": 6,
+			"depth": 2
+		},
+		{
+			"file": "main.ocs",
+			"line": 6,
+			"k": "line",
+			"depth": 1,
+			"vars": {
+				"items": [
+					{
+						"unit": 2,
+						"qty": 3
+					},
+					{
+						"unit": 9,
+						"qty": 1
+					}
+				],
+				"sum": 6,
+				"item": {
+					"unit": 9,
+					"qty": 1
+				}
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 1,
+			"k": "enter",
+			"fn": "price",
+			"depth": 2
+		},
+		{
+			"file": "price.ocs",
+			"line": 2,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 9,
+					"qty": 1
+				}
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 3,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 9,
+					"qty": 1
+				},
+				"unit": 9
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 3,
+			"k": "debug",
+			"value": 9,
+			"depth": 2
+		},
+		{
+			"file": "price.ocs",
+			"line": 4,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 9,
+					"qty": 1
+				},
+				"unit": 9
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 5,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 9,
+					"qty": 1
+				},
+				"unit": 9
+			}
+		},
+		{
+			"file": "price.ocs",
+			"line": 5,
+			"k": "call",
+			"name": "http.get",
+			"args": [ "https://api.example/check" ],
+			"result": {
+				"status": 503
+			},
+			"error": null,
+			"depth": 2
+		},
+		{
+			"file": "price.ocs",
+			"line": 6,
+			"k": "line",
+			"depth": 2,
+			"vars": {
+				"item": {
+					"unit": 9,
+					"qty": 1
+				},
+				"unit": 9,
+				"answer": {
+					"status": 503
+				}
+			}
+		},
+		{
+			"k": "unwind",
+			"depth": 2
+		},
+		{
+			"k": "unwind",
+			"depth": 1
+		},
+		{
+			"file": "price.ocs",
+			"line": 6,
+			"k": "error",
+			"message": "refused: 503",
+			"depth": 2
+		}
+	],
+	"stack": [
+		{
+			"fn": "price",
+			"file": "price.ocs",
+			"line": 6
+		},
+		{
+			"fn": "total",
+			"file": "main.ocs",
+			"line": 6
+		}
+	]
+}
