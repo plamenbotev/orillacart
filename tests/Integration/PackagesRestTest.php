@@ -114,6 +114,32 @@ final class PackagesRestTest extends RestTestCase
         $this->request('DELETE', '/extensions/tested', nonce: true);
     }
 
+    public function testATestNamingAProductTheShopHasNotFailsAloneAndTheOthersStillRun(): void
+    {
+        $script = <<<'OCS'
+            extension "priced" { name: "Priced" }
+            object "price" { fields: { product: product, note: text } }
+
+            test "prices a product of another shop" fn() {
+              objects.price.create({ product: 987654, note: "elsewhere" })
+            }
+            test "keeps a price without a product" fn() {
+              objects.price.create({ note: "kept" })
+              assert objects.price.count({}) == 1
+            }
+            OCS;
+        $installed = $this->request('POST', '/extensions', ['id' => 'priced', 'name' => 'Priced', 'files' => ['main.ocs' => $script]], nonce: true);
+        self::assertSame(201, $installed->get_status(), (string) wp_json_encode($installed->get_data()));
+
+        $tests = $this->rows($this->data($this->request('POST', '/extensions/priced/test', [], nonce: true))['tests']);
+
+        self::assertFalse($tests[0]['ok']);
+        self::assertIsString($tests[0]['message']);
+        self::assertStringContainsString('There is no product 987654 in this shop', $tests[0]['message'], 'refused before the database, with which');
+        self::assertSame([true, null], [$tests[1]['ok'], $tests[1]['message']], 'the next test still reaches the database');
+        $this->request('DELETE', '/extensions/priced', nonce: true);
+    }
+
     public function testAnExtensionIsInstalledCheckedEnabledRunAndUninstalled(): void
     {
         $installed = $this->request('POST', '/extensions', ['id' => 'greeter', 'name' => 'Greeter draft', 'files' => ['main.ocs' => self::SCRIPT]], nonce: true);

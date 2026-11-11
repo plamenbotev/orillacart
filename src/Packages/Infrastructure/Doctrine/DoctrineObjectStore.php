@@ -24,6 +24,7 @@ final readonly class DoctrineObjectStore implements ObjectStore
 
     public function create(string $extension, string $type, array $data, array $indexed): array
     {
+        $this->referencesExist($data);
         $object = new ExtensionObject($extension, $type, $data, $this->clock->now());
         $this->entityManager->persist($object);
         $this->entityManager->flush();
@@ -43,6 +44,7 @@ final readonly class DoctrineObjectStore implements ObjectStore
         if ($object === null) {
             return null;
         }
+        $this->referencesExist($data + $object->data());
         $object->change($data + $object->data(), $this->clock->now());
         $this->entityManager->flush();
         $this->index($object, $indexed);
@@ -147,6 +149,28 @@ final readonly class DoctrineObjectStore implements ObjectStore
         } finally {
             $connection->rollBack();
             $this->entityManager->clear();
+        }
+    }
+
+    public function intact(): bool
+    {
+        return $this->entityManager->isOpen();
+    }
+
+    /**
+     * A record's product and order must be the shop's: the database would refuse one that is not, and nothing could
+     * be written after it in the request. Refused here instead, with which.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function referencesExist(array $data): void
+    {
+        $prefix = substr($this->entityManager->getClassMetadata(ExtensionObject::class)->getTableName(), 0, -\strlen('extension_objects'));
+        foreach (['product' => 'products', 'order' => 'orders'] as $kind => $table) {
+            $id = ExtensionObject::reference($data, $kind);
+            if ($id !== null && $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM ' . $prefix . $table . ' WHERE id = ?', [$id]) === false) {
+                throw new ScriptError(\sprintf('There is no %s %d in this shop: a record\'s "%s" is one of the shop\'s %ss.', $kind, $id, $kind, $kind));
+            }
         }
     }
 

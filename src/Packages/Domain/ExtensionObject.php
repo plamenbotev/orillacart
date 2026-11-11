@@ -110,7 +110,7 @@ class ExtensionObject
     /**
      * @param array<string, mixed> $data
      */
-    private static function reference(array $data, string $kind): ?int
+    public static function reference(array $data, string $kind): ?int
     {
         foreach ($data as $value) {
             if (\is_array($value) && ($value['$ref'] ?? null) === $kind && \is_int($value['id'] ?? null)) {

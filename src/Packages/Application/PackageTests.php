@@ -76,7 +76,28 @@ final readonly class PackageTests
         $this->definitions->use($slug, $manifest);
         try {
             $narrow = $readOnly ? static fn(HostCatalog $host): HostCatalog => ScriptRunner::readingOnly($host, ScriptTests::RECORDED) : null;
-            $results = $this->tests->run($source, $scope, $grant, fn(callable $one): TestResult => $this->objects->isolated($one), $narrow, $manifest->needs());
+            $objects = $this->objects;
+            // Once the shop's database refused a write, it takes no more in this request: the tests after are not run.
+            $isolate = new class ($objects) {
+                private ?string $broken = null;
+
+                public function __construct(private readonly ObjectStore $objects) {}
+
+                /** @param callable(): TestResult $one */
+                public function __invoke(callable $one, string $name): TestResult
+                {
+                    if ($this->broken !== null) {
+                        return new TestResult($name, false, \sprintf('Not run: the shop\'s database refused a write in "%s", and nothing more can be written until the tests run again.', $this->broken), null, [], [], []);
+                    }
+                    $result = $this->objects->isolated($one);
+                    if (!$this->objects->intact()) {
+                        $this->broken = $result->name;
+                    }
+
+                    return $result;
+                }
+            };
+            $results = $this->tests->run($source, $scope, $grant, $isolate, $narrow, $manifest->needs());
         } finally {
             $this->definitions->forget($slug);
         }

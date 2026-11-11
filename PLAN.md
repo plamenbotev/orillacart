@@ -853,6 +853,17 @@ for templates nobody vetted as PHP, and blocks for the whole site.
 | ⬜ | 560 | P2 | `bin/smoke-test-release` "the receipt page does not show the order": the emailed receipt link now keeps its key in a cookie and goes on to `?orillacart_order=kept` (63f4fab1); the smoke test opens it without cookies or redirects. Bring the check to the new flow and confirm the receipt shows | |
 | ⬜ | 561 | P3 | `wp orillacart sample-data add` without `--user` ends in an uncaught 401 from its REST calls: say to run it as a shop manager | |
 
+## An extension's tests on another shop (2026-11-11)
+
+The trade extension, exported from one site and tested on another: one record naming a product the shop has not
+reached the database, which refused it and closed the connection, so the 24 tests after failed with "The EntityManager is
+closed".
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 575 | P1 | A record's product or order must be the shop's: refused before the database with "There is no product 137 in this shop", in tests and on the live shop alike | |
+| ✅ | 576 | P2 | Should the database still refuse a test's write, the tests after it are reported "Not run" with which one broke it, not as the host's failures | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

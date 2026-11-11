@@ -69,6 +69,12 @@ interface ObjectStore
      */
     public function isolated(callable $work): mixed;
 
+    /**
+     * Whether the shop's database can still be written in this request: a write it refused (a broken constraint)
+     * leaves nothing written after it, so the tests after one that did that cannot run.
+     */
+    public function intact(): bool;
+
     /** Everything of the extension: on uninstalling. */
     public function forgetExtension(string $extension): void;
 

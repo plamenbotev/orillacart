@@ -1052,7 +1052,11 @@ saved files are tested; files sent with the request are refused. Inside a test:
 - `settings.get` reads the test's `settings` only: the saved settings, secrets among them, are never read in a test.
 - `jobs.push` records the job instead of queuing it; the result lists what was pushed.
 - `objects.*` and `fields.*` work on the shop's database inside a transaction rolled back after the test, so a test
-  may create records and read them back and leaves none behind.
+  may create records and read them back and leaves none behind. Tests run on this shop's data: a record naming a
+  product or order the shop has not fails with which (`There is no product 137 in this shop`), so a test that must
+  run on any shop places the orders it needs (`shop.orders.create`) instead of naming ids of the shop it was
+  written on. Should the
+  database still refuse a write, the tests after it are reported `Not run`, naming the one that broke it.
 - `shop.email.send` holds the mail: it answers true and sends nothing. `shop.orders.create` places a test order
   (never emailed, never invoiced) inside the same rolled-back transaction. The result's `effects` lists each such
   call with its arguments, so a test can be checked for what it would have sent.

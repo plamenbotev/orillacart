@@ -34,7 +34,7 @@ final readonly class ScriptTests
     public function __construct(private Scripts $scripts) {}
 
     /**
-     * @param (callable(callable(): TestResult): TestResult)|null $isolate runs one test so that what it wrote is undone
+     * @param (callable(callable(): TestResult, string): TestResult)|null $isolate runs one test (by its name) so that what it wrote is undone
      * @param (\Closure(HostCatalog): HostCatalog)|null          $narrow   the host each test runs against, from the one with its stand-ins
      * @param list<string>                                       $declared the permissions the script declares, which its stand-ins answer for
      *
@@ -51,7 +51,7 @@ final readonly class ScriptTests
                 continue;
             }
             $one = fn(): TestResult => $this->one($source, $scope, $grant, $declaration, $narrow, $declared);
-            $results[] = $isolate === null ? $one() : $isolate($one);
+            $results[] = $isolate === null ? $one() : $isolate($one, $declaration['name'] ?? 'test');
         }
 
         return $results;

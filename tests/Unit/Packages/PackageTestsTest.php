@@ -61,6 +61,8 @@ final class PackageTestsTest extends TestCase
 
     private Package $package;
     private bool $readOnly = false;
+    /** How many tests run before the shop's database refuses a write; null: never. */
+    private ?int $breaksAfter = null;
     /** @var list<string> */
     private array $sent = [];
 
@@ -104,6 +106,20 @@ final class PackageTestsTest extends TestCase
 
         self::assertTrue($results['sees no stored secret']['ok'], (string) $results['sees no stored secret']['message']);
         self::assertTrue($results['sees its own settings']['ok'], (string) $results['sees its own settings']['message']);
+    }
+
+    public function testAfterATestTheDatabaseRefusedTheOthersAreNotRunAndSayWhy(): void
+    {
+        $this->breaksAfter = 2;
+
+        $results = array_values($this->results());
+
+        self::assertCount(6, $results);
+        self::assertStringNotContainsString('Not run', (string) $results[1]['message'], 'the test that broke it says its own failure');
+        foreach (\array_slice($results, 2) as $result) {
+            self::assertFalse($result['ok']);
+            self::assertSame('Not run: the shop\'s database refused a write in "reads a customer", and nothing more can be written until the tests run again.', $result['message']);
+        }
     }
 
     public function testACallerThatMayOnlyReadCannotSendFiles(): void
@@ -169,7 +185,16 @@ final class PackageTestsTest extends TestCase
             public function remove(Package $package): void {}
         };
         $objects = self::createStub(ObjectStore::class);
-        $objects->method('isolated')->willReturnCallback(static fn(callable $work): mixed => $work());
+        $ran = 0;
+        $breaksAfter = $this->breaksAfter;
+        $objects->method('isolated')->willReturnCallback(static function (callable $work) use (&$ran): mixed {
+            ++$ran;
+
+            return $work();
+        });
+        $objects->method('intact')->willReturnCallback(static function () use (&$ran, $breaksAfter): bool {
+            return $breaksAfter === null || $ran < $breaksAfter;
+        });
         $definitions = new ObjectDefinitions(new \ReflectionClass(PackageService::class)->newInstanceWithoutConstructor());
         $readOnly = $this->readOnly;
 
