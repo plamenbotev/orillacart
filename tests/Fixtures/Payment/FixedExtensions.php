@@ -31,6 +31,9 @@ use OrillaCart\Shared\Extension\InstalledExtensions;
  */
 final class FixedExtensions implements InstalledExtensions
 {
+    /** @var list<\OrillaCart\Extension\Storefront\TemplateFilter> */
+    public array $templateFilters = [];
+
     /** @var list<PriceAdjuster> */
     public array $adjusters = [];
     /** @var list<CartRule> */
@@ -180,5 +183,20 @@ final class FixedExtensions implements InstalledExtensions
     public function homeContributors(): array
     {
         return [];
+    }
+
+    public function siteBlocks(): array
+    {
+        return [];
+    }
+
+    public function untrustedTemplateFolders(): array
+    {
+        return [];
+    }
+
+    public function templateFilters(): array
+    {
+        return $this->templateFilters;
     }
 }

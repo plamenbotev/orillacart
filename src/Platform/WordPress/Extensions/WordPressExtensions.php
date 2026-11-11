@@ -39,10 +39,15 @@ use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Storefront\ProductBlock;
+use OrillaCart\Extension\Storefront\SiteBlock;
+use OrillaCart\Extension\Storefront\TemplateFilter;
+use OrillaCart\Extension\Storefront\Templates;
+use OrillaCart\Extension\Storefront\UntrustedTemplateFolders;
 use OrillaCart\Extension\Tax\TaxProvider;
 use OrillaCart\Extension\Version;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Packages\Application\ExtensionEmails;
+use OrillaCart\Platform\Twig\AddOnTemplates;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shared\Extension\Registrant;
 use Psr\Log\LoggerInterface;
@@ -108,6 +113,12 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $productBlocks = [];
     /** @var array<string, HomeContributor> */
     private array $homeContributors = [];
+    /** @var array<string, SiteBlock> */
+    private array $siteBlocks = [];
+    /** @var list<UntrustedTemplateFolders> */
+    private array $untrustedFolders = [];
+    /** @var array<string, TemplateFilter> */
+    private array $templateFilters = [];
     private bool $collected = false;
     private bool $collecting = false;
     /** @var array<string, true> the action's callbacks when it ran, by priority and key */
@@ -122,6 +133,7 @@ final class WordPressExtensions implements Registry, InstalledExtensions
      * @param \Closure(): Customers     $customers       a closure, as orders (design 61)
      * @param \Closure(): Emails        $emails          a closure, as orders
      * @param \Closure(): CreatesOrders $orderCreation   a closure, as orders
+     * @param \Closure(): Templates     $templates       a closure: the storefront's templates are set up with what is registered
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
@@ -141,6 +153,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly \Closure $emails,
         #[AutowireServiceClosure(ExtensionOrders::class)]
         private readonly \Closure $orderCreation,
+        #[AutowireServiceClosure(AddOnTemplates::class)]
+        private readonly \Closure $templates,
         /** @var iterable<Registrant> */
         #[AutowireIterator(Registrant::TAG)]
         private readonly iterable $registrants = [],
@@ -319,7 +333,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
 
     public function productBlock(ProductBlock $block): void
     {
-        if ($this->accepts('product block', $block->id(), $this->productBlocks[$block->id()] ?? null, $block)) {
+        // Product and site blocks share the add-ons' block names (orillacart-addon/{id}).
+        if ($this->accepts('product block', $block->id(), $this->productBlocks[$block->id()] ?? $this->siteBlocks[$block->id()] ?? null, $block)) {
             $this->productBlocks[$block->id()] = $block;
         }
     }
@@ -329,6 +344,57 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->productBlocks);
+    }
+
+    public function siteBlock(SiteBlock $block): void
+    {
+        if ($this->accepts('site block', $block->id(), $this->siteBlocks[$block->id()] ?? $this->productBlocks[$block->id()] ?? null, $block)) {
+            $this->siteBlocks[$block->id()] = $block;
+        }
+    }
+
+    public function siteBlocks(): array
+    {
+        $this->collect();
+
+        return array_values($this->siteBlocks);
+    }
+
+    public function untrustedTemplates(UntrustedTemplateFolders $folders): void
+    {
+        if (!$this->collecting) {
+            throw new \LogicException(\sprintf('Register untrusted template folders on the %s action.', self::ACTION));
+        }
+        $this->untrustedFolders[] = $folders;
+    }
+
+    public function untrustedTemplateFolders(): array
+    {
+        $this->collect();
+
+        return $this->untrustedFolders;
+    }
+
+    public function templateFilter(TemplateFilter $filter): void
+    {
+        if ($this->accepts('template filter', $filter->name(), $this->templateFilters[$filter->name()] ?? null, $filter)) {
+            $this->templateFilters[$filter->name()] = $filter;
+        }
+    }
+
+    public function templateFilters(): array
+    {
+        $this->collect();
+
+        return array_values($this->templateFilters);
+    }
+
+    public function templates(): Templates
+    {
+        $templates = ($this->templates)();
+        \assert($templates instanceof Templates);
+
+        return $templates;
     }
 
     public function homeContributor(HomeContributor $contributor): void

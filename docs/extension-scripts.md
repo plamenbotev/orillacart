@@ -73,6 +73,7 @@ the problem on the Extensions screen.
 - `home "id" { fn tiles(); fn needs_you() }`: tiles and lines on the Home screen, with home.tile() and home.line()
 - `assistant_tool "name" { title, description, input, read_only, risk; fn run(arguments, call) }`: a tool of the assistant
 - `product_block "id" { title, description; fn render(product, settings) }`: a block for product pages, its HTML cleaned
+- `site_block "id" { title, description, settings: { key: text|number|boolean|choice { label, help, of } }; fn render(settings) }`: a block for anywhere on the site (the editor and the Site Editor), its settings filled by the owner in the block's sidebar, its HTML cleaned
 - `mailing_list "id" { name; fn subscribe(subscriber); fn unsubscribe(email); fn forget(email) }`: a list the newsletter signs up to
 - `route METHOD "/path/{param}" { who: public|account|manager, tool: true|false|"name", title, description, input, risk } fn(request)`: a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html(); a browser sends the REST nonce on anything but GET, an app its key or token
 - `page "/path" { template } fn(request)`: a storefront page of the extension's own, with a URL of the site's, rendered by the shop's Extension page block: place the block on a WordPress page (the editor, or the assistant's create_landing_page then publish_page with the content <!-- wp:orillacart/extension-page {"extension":"<id>","path":"/path"} /-->); the handler's map is the template's data

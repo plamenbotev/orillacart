@@ -32,6 +32,10 @@ use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Storefront\ProductBlock;
+use OrillaCart\Extension\Storefront\SiteBlock;
+use OrillaCart\Extension\Storefront\TemplateFilter;
+use OrillaCart\Extension\Storefront\Templates;
+use OrillaCart\Extension\Storefront\UntrustedTemplateFolders;
 use OrillaCart\Extension\Tax\TaxProvider;
 
 /**
@@ -134,6 +138,18 @@ interface Registry
 
     /** Figures and "Needs you" lines on the Home screen (version 20). */
     public function homeContributor(HomeContributor $contributor): void;
+
+    /** A block for anywhere on the site, with settings the owner fills. Since version 24. */
+    public function siteBlock(SiteBlock $block): void;
+
+    /** Folders of storefront templates rendered in the sandbox, ahead of the theme's. Since version 24. */
+    public function untrustedTemplates(UntrustedTemplateFolders $folders): void;
+
+    /** A filter for every storefront template, the sandboxed ones included. Since version 24. */
+    public function templateFilter(TemplateFilter $filter): void;
+
+    /** Renders the storefront's templates as the shop does. Since version 24. */
+    public function templates(): Templates;
 
     /** Writes to the shop's log, where the shop manager looks when something went wrong. */
     public function log(): Log;

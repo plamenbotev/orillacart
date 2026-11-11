@@ -34,7 +34,10 @@ final class Version
      * (Order\CreatesOrders). 23: gateways whose notifications the shop confirms with them before taking the money
      * (Payment\ConfirmsNotifications), when an unpaid order's payment must be made by (payBy on StartPayment and
      * PaymentSession), the settings a secret goes with (Setting::$goesWith), and the risk of a tool that changes
-     * something else in the shop (AssistantTool::CHANGES).
+     * something else in the shop (AssistantTool::CHANGES). 24: blocks for the whole site (Storefront\SiteBlock),
+     * folders of storefront templates rendered in the sandbox (Storefront\UntrustedTemplateFolders), filters for
+     * every storefront template (Storefront\TemplateFilter), and rendering the storefront's templates
+     * (Storefront\Templates).
      */
-    public const int CURRENT = 23;
+    public const int CURRENT = 24;
 }

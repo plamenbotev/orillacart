@@ -261,6 +261,11 @@ final class ScriptedProvidersTest extends RestTestCase
               title: "Shelf note", description: "Where to find it in the shop."
               fn render(product, settings) { return "<p class='shelf'>" ~ html.escape(product.name) ~ " <script>alert(1)</script></p>" }
             }
+            site_block "store_banner" {
+              title: "Store banner", description: "A line for every page."
+              settings: { heading: text { label: "Heading" }, size: choice { label: "Size", of: { small: "Small", big: "Big" } }, loud: boolean { label: "Loud" } }
+              fn render(settings) { return "<p class='banner " ~ (settings.size ?? "small") ~ "'>" ~ html.escape(settings.heading ?? "") ~ "<script>alert(1)</script></p>" }
+            }
             mailing_list "crm" {
               name: "The CRM"
               fn subscribe(subscriber) { if subscriber.email ends with "@bounce.example" { fail unavailable("CRM down") } }
@@ -321,6 +326,13 @@ final class ScriptedProvidersTest extends RestTestCase
         self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedHomeContributor::class, $home);
         self::assertSame(['Pallets', '12'], [$home->tiles()[0]->label ?? null, $home->tiles()[0]->value ?? null]);
         self::assertSame('info', $home->needsYou()[0]->tone ?? null);
+
+        $banner = $this->provider('store_banner');
+        self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedSiteBlock::class, $banner);
+        self::assertSame(['Store banner', 'A line for every page.'], [$banner->title(), $banner->description()]);
+        self::assertSame([['heading', 'text', 'Heading'], ['size', 'choice', 'Size'], ['loud', 'boolean', 'Loud']], array_map(static fn($s): array => [$s->key, $s->type, $s->label], $banner->settings()));
+        self::assertSame(['small' => 'Small', 'big' => 'Big'], $banner->settings()[1]->choices);
+        self::assertSame('<p class="banner big">Hi &amp; welcomealert(1)</p>', $banner->render(['heading' => 'Hi & welcome', 'size' => 'big']), 'cleaned as a post: the script tag goes');
 
         $tool = $this->provider('warehouse_lookup');
         self::assertInstanceOf(\OrillaCart\Packages\Application\Adapters\ScriptedAssistantTool::class, $tool);

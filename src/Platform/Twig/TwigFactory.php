@@ -8,14 +8,19 @@ use OrillaCart\Packages\Application\ExtensionAssets;
 use OrillaCart\Packages\Application\ExtensionTranslations;
 use OrillaCart\Platform\CacheFolders;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Shared\Extension\InstalledExtensions;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Twig\Environment;
 use Twig\Extension\SandboxExtension;
 use Twig\Loader\ChainLoader;
 use Twig\Loader\FilesystemLoader;
 
 /**
- * Builds the Twig environment for storefront templates. Templates are looked up in the child theme's
- * orillacart/ folder, then the parent theme's, then the plugin's templates/ folder, so themes override by file name.
+ * Builds the Twig environment for storefront templates. Templates are looked up in the scripted extensions', then
+ * the folders add-ons do not trust with PHP (extension API 24), then the child theme's orillacart/ folder, the
+ * parent theme's and the plugin's templates/ folder, so themes override by file name. The extensions' and the
+ * untrusted folders' templates render in the sandbox and on a budget.
  */
 final readonly class TwigFactory
 {
@@ -28,13 +33,24 @@ final readonly class TwigFactory
         private ?PackageTemplateLoader $packages = null,
         private ?ExtensionTranslations $words = null,
         private ?ExtensionAssets $assets = null,
+        private ?InstalledExtensions $installed = null,
+        private LoggerInterface $logger = new NullLogger(),
     ) {}
 
     public function create(): Environment
     {
         $debug = \defined('WP_DEBUG') && WP_DEBUG;
 
-        $loader = $this->packages === null ? new FilesystemLoader($this->templatePaths()) : new ChainLoader([$this->packages, new FilesystemLoader($this->templatePaths())]);
+        $loaders = [];
+        if ($this->packages !== null) {
+            $loaders[] = $this->packages;
+        }
+        $addOns = $this->addOns();
+        if ($addOns !== null) {
+            $loaders[] = new UntrustedTemplateLoader(fn(): array => $this->untrustedFolders($addOns));
+        }
+        $loaders[] = new FilesystemLoader($this->templatePaths());
+        $loader = \count($loaders) === 1 ? $loaders[0] : new ChainLoader($loaders);
         $twig = new Environment($loader, [
             'autoescape' => 'html',
             // Strict everywhere: on a live site TwigRenderer logs what strictness finds and renders leniently.
@@ -49,9 +65,11 @@ final readonly class TwigFactory
         }
         // The storefront's slots are open to every template here; the email environment keeps them to email_.
         $twig->addGlobal(ShopExtension::STOREFRONT, true);
-        if ($this->packages !== null) {
-            // The sandbox is on for the extensions' templates only: the loader is the source policy that says which.
-            $twig->addExtension(new SandboxExtension(StorefrontSandbox::policy(), false, $this->packages));
+        $policy = null;
+        if ($this->packages !== null || $addOns !== null) {
+            // The sandbox is on for the extensions' and the untrusted folders' templates only: their sources say which.
+            $policy = StorefrontSandbox::policy();
+            $twig->addExtension(new SandboxExtension($policy, false, new SandboxedSources($this->packages)));
             // And on a budget: capped ranges and formats, and loop turns counted per render.
             $twig->addExtension(new TemplateBudgetExtension());
             if ($this->words !== null) {
@@ -64,7 +82,41 @@ final readonly class TwigFactory
             }
         }
 
+        if ($addOns !== null) {
+            // Last, so the shop's filters are all known when the add-ons' are checked against them.
+            $twig->addExtension(new AddOnFiltersExtension($addOns, $twig, $policy, $this->logger));
+        }
+
         return $twig;
+    }
+
+    /** The add-ons, inside WordPress: outside it (a build, a unit test) nothing registers, and nothing is asked. */
+    private function addOns(): ?InstalledExtensions
+    {
+        return \function_exists('do_action') ? $this->installed : null;
+    }
+
+    /**
+     * The add-ons' untrusted template folders that are there (extension API 24).
+     *
+     * @return list<string>
+     */
+    private function untrustedFolders(InstalledExtensions $addOns): array
+    {
+        $folders = [];
+        foreach ($addOns->untrustedTemplateFolders() as $provider) {
+            try {
+                foreach ($provider->folders() as $folder) {
+                    if (\is_string($folder) && $folder !== '' && is_dir($folder)) {
+                        $folders[] = rtrim($folder, '/');
+                    }
+                }
+            } catch (\Throwable $e) {
+                $this->logger->error('An add-on\'s untrusted template folders failed: {message}', ['message' => $e->getMessage()]);
+            }
+        }
+
+        return array_values(array_unique($folders));
     }
 
     /**

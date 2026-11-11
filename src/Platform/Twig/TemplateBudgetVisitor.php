@@ -7,9 +7,9 @@ namespace OrillaCart\Platform\Twig;
 use Twig\Compiler;
 use Twig\Environment;
 use Twig\Error\SyntaxError;
+use Twig\Node\BlockNode;
 use Twig\Node\Expression\AbstractExpression;
 use Twig\Node\Expression\ArrowFunctionExpression;
-use Twig\Node\BlockNode;
 use Twig\Node\Expression\Binary\ConcatBinary;
 use Twig\Node\Expression\Binary\RangeBinary;
 use Twig\Node\Expression\FilterExpression;
@@ -38,7 +38,7 @@ final class TemplateBudgetVisitor implements NodeVisitorInterface
     public function enterNode(Node $node, Environment $env): Node
     {
         if ($node instanceof ModuleNode) {
-            $this->extension = PackageTemplateLoader::extensionOf($node->getSourceContext()?->getPath() ?? '') !== null;
+            $this->extension = SandboxedSources::budgeted($node->getSourceContext()?->getPath() ?? '');
         }
 
         return $node;

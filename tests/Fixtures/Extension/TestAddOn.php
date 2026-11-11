@@ -158,5 +158,63 @@ final class TestAddOn
                 }
             });
         }
+        if ($registry->version() >= 24) {
+            $registry->siteBlock(new class implements \OrillaCart\Extension\Storefront\SiteBlock {
+                public function id(): string
+                {
+                    return 'test_banner';
+                }
+
+                public function title(): string
+                {
+                    return 'Test banner';
+                }
+
+                public function description(): string
+                {
+                    return 'A line of text.';
+                }
+
+                public function settings(): array
+                {
+                    return [
+                        new \OrillaCart\Extension\Setting('heading', 'Heading'),
+                        new \OrillaCart\Extension\Setting('times', 'Times', \OrillaCart\Extension\Setting::NUMBER),
+                        new \OrillaCart\Extension\Setting('loud', 'Loud', \OrillaCart\Extension\Setting::BOOLEAN),
+                        new \OrillaCart\Extension\Setting('tone', 'Tone', \OrillaCart\Extension\Setting::CHOICE, choices: ['warm' => 'Warm', 'cool' => 'Cool']),
+                        new \OrillaCart\Extension\Setting('key', 'Key', \OrillaCart\Extension\Setting::SECRET),
+                    ];
+                }
+
+                public function render(array $settings): string
+                {
+                    return '<p class="test-banner">' . esc_html((string) wp_json_encode($settings)) . '</p>';
+                }
+            });
+            $registry->templateFilter(new class implements \OrillaCart\Extension\Storefront\TemplateFilter {
+                public function name(): string
+                {
+                    return 'shout';
+                }
+
+                public function apply(mixed $value, array $arguments): mixed
+                {
+                    return strtoupper(\is_string($value) ? $value : '') . str_repeat('!', \is_int($arguments[0] ?? null) ? $arguments[0] : 1);
+                }
+
+                public function isHtml(): bool
+                {
+                    return false;
+                }
+            });
+            $registry->untrustedTemplates(new class implements \OrillaCart\Extension\Storefront\UntrustedTemplateFolders {
+                public function folders(): array
+                {
+                    $folder = getenv('ORILLACART_TEST_UNTRUSTED_TEMPLATES');
+
+                    return \is_string($folder) && $folder !== '' ? [$folder] : [];
+                }
+            });
+        }
     }
 }

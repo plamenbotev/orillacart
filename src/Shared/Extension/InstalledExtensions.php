@@ -25,6 +25,9 @@ use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
 use OrillaCart\Extension\Storefront\ProductBlock;
+use OrillaCart\Extension\Storefront\SiteBlock;
+use OrillaCart\Extension\Storefront\TemplateFilter;
+use OrillaCart\Extension\Storefront\UntrustedTemplateFolders;
 use OrillaCart\Extension\Tax\TaxProvider;
 
 /**
@@ -149,4 +152,25 @@ interface InstalledExtensions
      * @return list<HomeContributor>
      */
     public function homeContributors(): array;
+
+    /**
+     * Add-ons' blocks for the whole site, by id (extension API 24).
+     *
+     * @return list<SiteBlock>
+     */
+    public function siteBlocks(): array;
+
+    /**
+     * Add-ons' untrusted template folders (extension API 24).
+     *
+     * @return list<UntrustedTemplateFolders>
+     */
+    public function untrustedTemplateFolders(): array;
+
+    /**
+     * Add-ons' filters for the storefront's templates, by name (extension API 24).
+     *
+     * @return list<TemplateFilter>
+     */
+    public function templateFilters(): array;
 }

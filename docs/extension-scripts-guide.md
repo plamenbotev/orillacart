@@ -537,6 +537,15 @@ product_block "lead_time" {
   }
 }
 
+site_block "notice" {
+  title: "Notice"
+  description: "A line of news for any page"
+  settings: { text: text { label: "Text" }, tone: choice { label: "Tone", of: { info: "Info", sale: "Sale" } } }
+  fn render(settings) {
+    return "<p class=\"notice " ~ (settings.tone ?? "info") ~ "\">" ~ html.escape(settings.text ?? "") ~ "</p>"
+  }
+}
+
 mailing_list "newsletter" {
   name: "Our newsletter"
   fn subscribe(subscriber) { http.post("https://mail.example/subscribe", { json: { email: subscriber.email, name: subscriber.name } }) }
@@ -558,6 +567,10 @@ mailing_list "newsletter" {
   is shown to the assistant as the tool's refusal.
 - A `product_block` is a block the editor can place on product pages. `render(product, settings)` answers HTML,
   which the shop cleans (tags and attributes a post may hold) before printing. Escape text with `html.escape`.
+- A `site_block` is a block the editor and the Site Editor can place anywhere. `settings` declares what the owner
+  fills in the block's sidebar, as the extension's own settings are declared (text, number, boolean, choice);
+  `render(settings)` gets what was set (a setting never set is missing) and answers HTML, cleaned as a product
+  block's.
 - A `mailing_list` is a list the newsletter sign-up can subscribe to. `subscriber` has `email` and `name`.
 
 ## 9. Routes and pages

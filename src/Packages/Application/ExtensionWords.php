@@ -20,7 +20,7 @@ use OrillaCart\Scripting\Application\Scripts;
 final readonly class ExtensionWords
 {
     /** The declarations whose `name` the shop shows (the provider's title), with their `label`, where they have one. */
-    public const array NAMED = ['payment_gateway', 'shipping_method', 'cart_rule', 'order_fee', 'price_adjuster', 'order_adjuster', 'checkout_field', 'order_action', 'order_column', 'product_column', 'order_filter', 'product_filter', 'home', 'product_block', 'mailing_list'];
+    public const array NAMED = ['payment_gateway', 'shipping_method', 'cart_rule', 'order_fee', 'price_adjuster', 'order_adjuster', 'checkout_field', 'order_action', 'order_column', 'product_column', 'order_filter', 'product_filter', 'home', 'product_block', 'site_block', 'mailing_list'];
 
     public function __construct(private Scripts $scripts, private ?TemplateWords $templates = null) {}
 
@@ -83,10 +83,13 @@ final readonly class ExtensionWords
                 }
             } elseif (\in_array($kind, self::NAMED, true)) {
                 foreach (['name', 'label', 'help', 'title', 'description'] as $prop) {
-                    if ($prop === 'description' && $kind !== 'product_block') {
+                    if ($prop === 'description' && $kind !== 'product_block' && $kind !== 'site_block') {
                         continue;
                     }
                     $add(self::text($props[$prop] ?? null), \sprintf('%s: %s', $head, $prop));
+                }
+                if ($kind === 'site_block' && \is_array($props['settings'] ?? null)) {
+                    self::settings($props['settings'], $head . ': settings', $add);
                 }
                 if ($kind === 'checkout_field') {
                     foreach (self::labels($props['choices'] ?? null) as $label) {

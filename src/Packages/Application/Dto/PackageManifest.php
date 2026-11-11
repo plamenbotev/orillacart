@@ -91,33 +91,48 @@ final readonly class PackageManifest
     {
         $settings = [];
         foreach ($this->ofKind('settings') as $block) {
-            foreach ($block['props'] as $key => $spec) {
-                if (!\is_array($spec) || !\is_string($spec['$spec'] ?? null)) {
-                    continue;
-                }
-                $type = $spec['$spec'];
-                if (!\in_array($type, [Setting::TEXT, Setting::SECRET, Setting::BOOLEAN, Setting::NUMBER, Setting::CHOICE], true)) {
-                    continue;
-                }
-                $choices = [];
-                foreach (\is_array($spec['of'] ?? null) ? $spec['of'] : [] as $value => $label) {
-                    if (!\is_string($label) && !is_numeric($label)) {
-                        continue;
-                    }
-                    $choices[\is_int($value) ? (string) $label : $value] = (string) $label;
-                }
-                // A secret's `goes_with` names the settings that say where it goes; without one, every setting does.
-                $goesWith = $type === Setting::SECRET && \is_array($spec['goes_with'] ?? null) ? array_values(array_filter($spec['goes_with'], static fn(mixed $other): bool => \is_string($other) && $other !== (string) $key && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $other) === 1)) : null;
-                $settings[] = new Setting(
-                    (string) $key,
-                    \is_string($spec['label'] ?? null) ? $spec['label'] : ucfirst(str_replace('_', ' ', (string) $key)),
-                    $type,
-                    ($spec['required'] ?? false) === true,
-                    \is_string($spec['help'] ?? null) ? $spec['help'] : '',
-                    $choices,
-                    $goesWith,
-                );
+            $settings = [...$settings, ...self::settingsOf($block['props'])];
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Settings as a `settings` block or a declaration's `settings` prop declares them: key → type { label, … }.
+     *
+     * @param array<mixed> $props
+     *
+     * @return list<Setting>
+     */
+    public static function settingsOf(array $props): array
+    {
+        $settings = [];
+        foreach ($props as $key => $spec) {
+            if (!\is_array($spec) || !\is_string($spec['$spec'] ?? null)) {
+                continue;
             }
+            $type = $spec['$spec'];
+            if (!\in_array($type, [Setting::TEXT, Setting::SECRET, Setting::BOOLEAN, Setting::NUMBER, Setting::CHOICE], true)) {
+                continue;
+            }
+            $choices = [];
+            foreach (\is_array($spec['of'] ?? null) ? $spec['of'] : [] as $value => $label) {
+                if (!\is_string($label) && !is_numeric($label)) {
+                    continue;
+                }
+                $choices[\is_int($value) ? (string) $label : $value] = (string) $label;
+            }
+            // A secret's `goes_with` names the settings that say where it goes; without one, every setting does.
+            $goesWith = $type === Setting::SECRET && \is_array($spec['goes_with'] ?? null) ? array_values(array_filter($spec['goes_with'], static fn(mixed $other): bool => \is_string($other) && $other !== (string) $key && preg_match('/^[a-z][a-z0-9_]{0,39}$/', $other) === 1)) : null;
+            $settings[] = new Setting(
+                (string) $key,
+                \is_string($spec['label'] ?? null) ? $spec['label'] : ucfirst(str_replace('_', ' ', (string) $key)),
+                $type,
+                ($spec['required'] ?? false) === true,
+                \is_string($spec['help'] ?? null) ? $spec['help'] : '',
+                $choices,
+                $goesWith,
+            );
         }
 
         return $settings;

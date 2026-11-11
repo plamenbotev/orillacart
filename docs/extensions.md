@@ -637,6 +637,71 @@ if ($registry->version() >= 16) {
   price while on sale, whether it is for sale, how many are in stock, its stars and number of reviews.
 - **Escape what you return.** An empty string shows nothing; anything thrown is logged and shows nothing.
 
+## Site blocks
+
+Version 24 lets an add-on give the whole site a block, beside its product blocks: a banner, a newsletter form, a
+store locator, placed anywhere the editor or the Site Editor takes blocks, with settings the owner fills in the
+block's sidebar (Shopify's app blocks).
+
+```php
+if ($registry->version() >= 24) {
+    $registry->siteBlock(new class implements OrillaCart\Extension\Storefront\SiteBlock {
+        public function id(): string { return 'acme_banner'; }
+        public function title(): string { return __('Banner', 'my-addon'); }
+        public function description(): string { return __('A line of news for every page.', 'my-addon'); }
+        public function settings(): array
+        {
+            return [
+                new OrillaCart\Extension\Setting('text', __('Text', 'my-addon')),
+                new OrillaCart\Extension\Setting('tone', __('Tone', 'my-addon'), OrillaCart\Extension\Setting::CHOICE, choices: ['info' => 'Info', 'sale' => 'Sale']),
+            ];
+        }
+
+        public function render(array $settings): string
+        {
+            return '<p class="acme-banner ' . esc_attr($settings['tone'] ?? 'info') . '">' . esc_html($settings['text'] ?? '') . '</p>';
+        }
+    });
+}
+```
+
+- **The shop registers it** as `orillacart-addon/{id}`, the name product blocks have too, so an id is one add-on
+  block's, product or site.
+- **Settings** are text, number, boolean and choice settings (a secret is not a block's). The block's sidebar shows
+  them; `render()` gets what the owner set, checked against them: text up to 2000 characters, a number, on or off,
+  one of the choices. One never set, or set to what it does not take, is missing.
+- **Escape what you return.** An empty string shows nothing; anything thrown is logged and shows nothing.
+
+## Templates others write
+
+Version 24 lets an add-on bring storefront templates it does not trust with PHP, render the storefront's
+templates itself, and give templates a filter:
+
+```php
+if ($registry->version() >= 24) {
+    // A theme the shop's owner uploaded: its orillacart/ folder overrides the shop's templates, in the sandbox.
+    $registry->untrustedTemplates(new class implements OrillaCart\Extension\Storefront\UntrustedTemplateFolders {
+        public function folders(): array { return [get_stylesheet_directory() . '/orillacart']; }
+    });
+    $registry->templateFilter(new class implements OrillaCart\Extension\Storefront\TemplateFilter {
+        public function name(): string { return 't'; }
+        public function apply(mixed $value, array $arguments): mixed { return my_words()[$value] ?? $value; }
+        public function isHtml(): bool { return false; }
+    });
+    $html = $registry->templates()->render('sections/hero.twig', ['heading' => 'Fresh from the kiln']);
+}
+```
+
+- **Untrusted folders** are looked in before the theme's and the shop's own, by the same names
+  (`storefront/_product_card.html.twig`). Their templates render as an extension's: in the sandbox (the
+  storefront's tags, filters and functions, no methods or properties, no PHP functions such as `constant`) and on
+  its budget of loop turns. They are compiled and cached apart from trusted templates of the same file.
+- **`templates()->render(name, context)`** renders a template as the shop does, from the extensions', the untrusted
+  folders', the theme's or the shop's own; `exists(name)` says whether one is found. A missing template, or one
+  the sandbox refuses, throws `TemplateFailed`.
+- **A template filter** reaches every storefront template, the sandboxed ones too. Its answer is escaped unless
+  `isHtml()`. One named as a filter the shop has is left out, and logged.
+
 ## Products in several languages
 
 With Polylang or WPML, a product's translation is a WordPress post of its own that holds the product's text in

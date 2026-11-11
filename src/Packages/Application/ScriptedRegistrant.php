@@ -23,6 +23,7 @@ use OrillaCart\Packages\Application\Adapters\ScriptedProductBlock;
 use OrillaCart\Packages\Application\Adapters\ScriptedProvider;
 use OrillaCart\Packages\Application\Adapters\ScriptedRefundingGateway;
 use OrillaCart\Packages\Application\Adapters\ScriptedShippingMethod;
+use OrillaCart\Packages\Application\Adapters\ScriptedSiteBlock;
 use OrillaCart\Packages\Application\Dto\LoadedPackage;
 use OrillaCart\Shared\Extension\Registrant;
 use Psr\Log\LoggerInterface;
@@ -37,7 +38,7 @@ use Psr\Log\LoggerInterface;
 final readonly class ScriptedRegistrant implements Registrant
 {
     /** The declaration kinds and what they are registered as. */
-    public const array KINDS = ['payment_gateway', 'shipping_method', 'cart_rule', 'order_fee', 'price_adjuster', 'order_adjuster', 'checkout_field', 'order_action', 'order_column', 'product_column', 'order_filter', 'product_filter', 'home', 'assistant_tool', 'product_block', 'mailing_list'];
+    public const array KINDS = ['payment_gateway', 'shipping_method', 'cart_rule', 'order_fee', 'price_adjuster', 'order_adjuster', 'checkout_field', 'order_action', 'order_column', 'product_column', 'order_filter', 'product_filter', 'home', 'assistant_tool', 'product_block', 'site_block', 'mailing_list'];
 
     public function __construct(
         private PackageService $packages,
@@ -89,6 +90,7 @@ final readonly class ScriptedRegistrant implements Registrant
                 'home' => new ScriptedHomeContributor($loaded, $declaration, $this->runner),
                 'assistant_tool' => new ScriptedAssistantTool($loaded, $declaration, $this->runner),
                 'product_block' => new ScriptedProductBlock($loaded, $declaration, $this->runner, $this->cleaner),
+                'site_block' => new ScriptedSiteBlock($loaded, $declaration, $this->runner, $this->cleaner),
                 'mailing_list' => new ScriptedMailingList($loaded, $declaration, $this->runner),
                 default => null,
             };
@@ -145,6 +147,7 @@ final readonly class ScriptedRegistrant implements Registrant
             $provider instanceof ScriptedHomeContributor => $registry->homeContributor($provider),
             $provider instanceof ScriptedAssistantTool => $registry->assistantTool($provider),
             $provider instanceof ScriptedProductBlock => $registry->productBlock($provider),
+            $provider instanceof ScriptedSiteBlock => $registry->siteBlock($provider),
             $provider instanceof ScriptedMailingList => $registry->mailingList($provider),
             default => null,
         };

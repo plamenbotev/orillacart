@@ -831,6 +831,18 @@ What held back the session building an extension over MCP; each was read in the 
 | ✅ | 525 | P2 | The order map had the shipping option's name only: `shipping_option` is its id (`rate:4`, `carrier:12:express`, `pickup:12:3`), as `order_fee`'s query and `shop.orders.create` name it (API 23) | 8bf08e99 |
 | ✅ | 526 | P2 | A customer whose account keeps no address (a guest's orders taken into an account, "don't remember") read as without one. Their latest order's addresses then, with `addresses_from_order` its number (API 23) | 8bf08e99 |
 
+## Templates others write, and site blocks (2026-11-11)
+
+[Design 65](docs/designs/65-templates-others-write-and-site-blocks.md), extension API 24: general extension points
+for templates nobody vetted as PHP, and blocks for the whole site.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 545 | P1 | Untrusted template folders: looked in before the theme's and the shop's own, rendered in the sandbox and on the budget, compiled and cached apart from trusted templates of the same file, asked for on the first lookup | |
+| ✅ | 546 | P2 | `Registry::templates()`: render a storefront template as the shop does; `TemplateFailed` for a missing or refused one | |
+| ✅ | 547 | P2 | Template filters for every storefront template, the sandboxed ones included; one named as a shop's filter left out and logged | |
+| ✅ | 548 | P2 | Site blocks (`SiteBlock`, `site_block` in scripts): `orillacart-addon/{id}` anywhere the editor takes blocks, settings in the sidebar checked before `render()`, scripts' HTML cleaned | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

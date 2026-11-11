@@ -26,6 +26,7 @@ import { fetchTerms, type Named, TermTokens } from '../shared/CatalogTokens';
 import './product-blocks';
 import './shop-blocks';
 import './listing-blocks';
+import './site-blocks';
 
 type ProductsAttributes = {
 	perPage: number;
