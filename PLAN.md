@@ -825,11 +825,11 @@ What held back the session building an extension over MCP; each was read in the 
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 522 | P2 | Every file save (and delete, check, enable, disable, settings save) answered with the whole extension, every file's content in it (~115 KB a save). A save answers with the file saved; the others are listed without content (`null`), which the editor keeps from what it read (`withContents`); reading, installing, importing and restoring answer with all | 8bf08e99 |
-| ✅ | 523 | P1 | Saving one setting stored the untouched ones as empty or off (`SettingValues::accept` read a setting left out as sent empty), so `save_package_settings` with one key broke a live offer; the same for payment and shipping settings. A setting left out keeps its saved value (one an update no longer takes is as never saved); sent empty or false, it is cleared | 8bf08e99 |
-| ✅ | 524 | P3 | A secret without `goes_with` goes with every other setting, so a one-setting save still forgets it, by design. The static check now says so where the secret is declared, naming `goes_with: [...]` or `[]` | 8bf08e99 |
-| ✅ | 525 | P2 | The order map had the shipping option's name only: `shipping_option` is its id (`rate:4`, `carrier:12:express`, `pickup:12:3`), as `order_fee`'s query and `shop.orders.create` name it (API 23) | 8bf08e99 |
-| ✅ | 526 | P2 | A customer whose account keeps no address (a guest's orders taken into an account, "don't remember") read as without one. Their latest order's addresses then, with `addresses_from_order` its number (API 23) | 8bf08e99 |
+| ✅ | 522 | P2 | Every file save (and delete, check, enable, disable, settings save) answered with the whole extension, every file's content in it (~115 KB a save). A save answers with the file saved; the others are listed without content (`null`), which the editor keeps from what it read (`withContents`); reading, installing, importing and restoring answer with all | d7b7508f |
+| ✅ | 523 | P1 | Saving one setting stored the untouched ones as empty or off (`SettingValues::accept` read a setting left out as sent empty), so `save_package_settings` with one key broke a live offer; the same for payment and shipping settings. A setting left out keeps its saved value (one an update no longer takes is as never saved); sent empty or false, it is cleared | d7b7508f |
+| ✅ | 524 | P3 | A secret without `goes_with` goes with every other setting, so a one-setting save still forgets it, by design. The static check now says so where the secret is declared, naming `goes_with: [...]` or `[]` | d7b7508f |
+| ✅ | 525 | P2 | The order map had the shipping option's name only: `shipping_option` is its id (`rate:4`, `carrier:12:express`, `pickup:12:3`), as `order_fee`'s query and `shop.orders.create` name it (API 23) | d7b7508f |
+| ✅ | 526 | P2 | A customer whose account keeps no address (a guest's orders taken into an account, "don't remember") read as without one. Their latest order's addresses then, with `addresses_from_order` its number (API 23) | d7b7508f |
 
 ## Templates others write, and site blocks (2026-11-11)
 
@@ -838,17 +838,17 @@ for templates nobody vetted as PHP, and blocks for the whole site.
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 545 | P1 | Untrusted template folders: looked in before the theme's and the shop's own, rendered in the sandbox and on the budget, compiled and cached apart from trusted templates of the same file, asked for on the first lookup | |
-| ✅ | 546 | P2 | `Registry::templates()`: render a storefront template as the shop does; `TemplateFailed` for a missing or refused one | |
-| ✅ | 547 | P2 | Template filters for every storefront template, the sandboxed ones included; one named as a shop's filter left out and logged | |
-| ✅ | 548 | P2 | Site blocks (`SiteBlock`, `site_block` in scripts): `orillacart-addon/{id}` anywhere the editor takes blocks, settings in the sidebar checked before `render()`, scripts' HTML cleaned | |
+| ✅ | 545 | P1 | Untrusted template folders: looked in before the theme's and the shop's own, rendered in the sandbox and on the budget, compiled and cached apart from trusted templates of the same file, asked for on the first lookup | 1142359f |
+| ✅ | 546 | P2 | `Registry::templates()`: render a storefront template as the shop does; `TemplateFailed` for a missing or refused one | 1142359f |
+| ✅ | 547 | P2 | Template filters for every storefront template, the sandboxed ones included; one named as a shop's filter left out and logged | 1142359f |
+| ✅ | 548 | P2 | Site blocks (`SiteBlock`, `site_block` in scripts): `orillacart-addon/{id}` anywhere the editor takes blocks, settings in the sidebar checked before `render()`, scripts' HTML cleaned | 1142359f |
 
 ## The release build (2026-11-11)
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 558 | P1 | The release build failed since Symfony 8.1.11 (9b4683d3) brought symfony/polyfill-deepclone: prefixed, its global `deepclone_to_array()` was not found by VarExporter. Exposed as `trigger_deprecation()` is; `bin/check-build.php` loads the plugin's own `scoper-autoload.php`, as orillacart.php does, so it checks what runs | |
-| ✅ | 559 | P3 | `bin/smoke-test-release` took the newest `orillacart-*.zip` in dist/, whatever zip that was; and ordered with an `example.com` address, which design 62 never emails | |
+| ✅ | 558 | P1 | The release build failed since Symfony 8.1.11 (9b4683d3) brought symfony/polyfill-deepclone: prefixed, its global `deepclone_to_array()` was not found by VarExporter. Exposed as `trigger_deprecation()` is; `bin/check-build.php` loads the plugin's own `scoper-autoload.php`, as orillacart.php does, so it checks what runs | ed7795b2 |
+| ✅ | 559 | P3 | `bin/smoke-test-release` took the newest `orillacart-*.zip` in dist/, whatever zip that was; and ordered with an `example.com` address, which design 62 never emails | ed7795b2 |
 | ⬜ | 560 | P2 | `bin/smoke-test-release` "the receipt page does not show the order": the emailed receipt link now keeps its key in a cookie and goes on to `?orillacart_order=kept` (63f4fab1); the smoke test opens it without cookies or redirects. Bring the check to the new flow and confirm the receipt shows | |
 | ⬜ | 561 | P3 | `wp orillacart sample-data add` without `--user` ends in an uncaught 401 from its REST calls: say to run it as a shop manager | |
 
