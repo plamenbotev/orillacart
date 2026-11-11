@@ -10,7 +10,7 @@ set -euo pipefail
 # the writer's SIGPIPE would fail a check that passed.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ZIP="${1:-$(ls -t "$ROOT"/dist/orillacart-*.zip | head -1)}"
+ZIP="${1:-$(ls -t "$ROOT"/dist/orillacart-[0-9]*.zip | head -1)}"
 # The images by digest and WP-CLI by its SHA-256, so the test runs on what was checked, not on what a tag
 # points at today (the tag is said beside each).
 MYSQL_IMAGE="mysql@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902" # mysql:8.4
@@ -206,7 +206,8 @@ visitor() { docker exec "$WP" curl -s -b /tmp/cart -c /tmp/cart -H "Origin: $ori
 visitor -X POST -d "{\"product_id\":$product,\"quantity\":2}" "$API/cart/items" | grep -q '"items":2' \
     || fail "a visitor could not add to the cart"
 docker exec "$WP" grep -q 'orillacart_cart' /tmp/cart || fail "the cart cookie was not set"
-placed="$(visitor -X POST -d "{\"email\":\"ada@example.com\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"shipping_option\":\"rate:$rate\",\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
+# A real-looking address: one reserved for examples is never emailed (design 62); the test site logs mail, sends none.
+placed="$(visitor -X POST -d "{\"email\":\"ada@orillacart-smoke.dev\",\"billing\":{\"first_name\":\"Ada\",\"last_name\":\"Lovelace\",\"street\":\"1 Main St\",\"city\":\"Sofia\",\"postcode\":\"1000\",\"country\":\"BG\",\"phone\":\"+359 2 000 0000\"},\"shipping_option\":\"rate:$rate\",\"payment\":\"cash_on_delivery\"}" "$API/checkout")"
 grep -q '"status":"on_hold"' <<< "$placed" || fail "the order was not placed: $placed"
 # The receipt link is signed: the order number, the day, and a signature, in the receipt address.
 key="$(echo "$placed" | sed -n 's/.*orillacart_order=\([0-9]*-[0-9]*-[a-f0-9]*\).*/\1/p')"
@@ -223,7 +224,7 @@ wp cron event run orillacart_cancel_abandoned_orders orillacart_forget_abandoned
 
 # Emails are jobs; this Apache answers before nothing, so cron or a worker sends them.
 wp orillacart jobs work > /dev/null || fail "the jobs did not run"
-docker exec "$WP" grep -q 'ada@example.com: .* We received your order' /var/www/html/wp-content/mail.log \
+docker exec "$WP" grep -q 'ada@orillacart-smoke.dev: .* We received your order' /var/www/html/wp-content/mail.log \
     || fail "the customer was not emailed about the order"
 
 # Invoices go to customers as PDFs, printed by the bundled dompdf under the plugin's prefix, its fonts included.

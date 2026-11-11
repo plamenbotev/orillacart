@@ -37,7 +37,8 @@ if ($pluginDir === '' || !is_file($pluginDir . '/vendor/autoload.php')) {
     exit(1);
 }
 
-require $pluginDir . '/vendor/autoload.php';
+// As the plugin loads it (orillacart.php): with PHP-Scoper's aliases of the global functions libraries call.
+require is_file($pluginDir . '/vendor/scoper-autoload.php') ? $pluginDir . '/vendor/scoper-autoload.php' : $pluginDir . '/vendor/autoload.php';
 
 $fail = static function (string $message): never {
     fwrite(STDERR, $message . "\n");

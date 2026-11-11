@@ -48,7 +48,9 @@ return [
     ),
 
     // The plugin's own code keeps its namespace; only libraries move under OrillaCart\Vendor.
-    'exclude-namespaces' => ['/^OrillaCart(?!\\\\Vendor)(\\\\|$)/i'],
+    // DeepClone: symfony/polyfill-deepclone's stand-ins for the deepclone extension's classes, which Symfony's
+    // VarExporter catches by their global names, as it calls the functions below.
+    'exclude-namespaces' => ['/^OrillaCart(?!\\\\Vendor)(\\\\|$)/i', '/^DeepClone$/'],
 
     // WordPress is global and shared with every other plugin, so it is never prefixed.
     'exclude-classes' => [
@@ -70,6 +72,8 @@ return [
         'ORILLACART_VERSION',
         // WPML's, by which the shop knows it is there.
         'ICL_SITEPRESS_VERSION',
+        // symfony/polyfill-deepclone's, as the extension names them.
+        'DEEPCLONE_HYDRATE_CALL_HOOKS', 'DEEPCLONE_HYDRATE_NO_LAZY_INIT', 'DEEPCLONE_HYDRATE_PRESERVE_REFS',
     ],
 
     'patchers' => [
@@ -238,5 +242,7 @@ return [
     // OrillaCart\Vendor and the calls find nothing: the first deprecation a library notices is a fatal error.
     // Exposing it keeps the declaration prefixed and has scoper-autoload.php declare the global name as an alias
     // when no other plugin's copy did.
-    'expose-functions' => ['trigger_deprecation'],
+    // So does symfony/polyfill-deepclone with deepclone_to_array() and deepclone_from_array(), which VarExporter calls
+    // by their global names, as the deepclone extension names them.
+    'expose-functions' => ['trigger_deprecation', 'deepclone_to_array', 'deepclone_from_array'],
 ];

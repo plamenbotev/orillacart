@@ -843,6 +843,15 @@ for templates nobody vetted as PHP, and blocks for the whole site.
 | ✅ | 547 | P2 | Template filters for every storefront template, the sandboxed ones included; one named as a shop's filter left out and logged | |
 | ✅ | 548 | P2 | Site blocks (`SiteBlock`, `site_block` in scripts): `orillacart-addon/{id}` anywhere the editor takes blocks, settings in the sidebar checked before `render()`, scripts' HTML cleaned | |
 
+## The release build (2026-11-11)
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 558 | P1 | The release build failed since Symfony 8.1.11 (9b4683d3) brought symfony/polyfill-deepclone: prefixed, its global `deepclone_to_array()` was not found by VarExporter. Exposed as `trigger_deprecation()` is; `bin/check-build.php` loads the plugin's own `scoper-autoload.php`, as orillacart.php does, so it checks what runs | |
+| ✅ | 559 | P3 | `bin/smoke-test-release` took the newest `orillacart-*.zip` in dist/, whatever zip that was; and ordered with an `example.com` address, which design 62 never emails | |
+| ⬜ | 560 | P2 | `bin/smoke-test-release` "the receipt page does not show the order": the emailed receipt link now keeps its key in a cookie and goes on to `?orillacart_order=kept` (63f4fab1); the smoke test opens it without cookies or redirects. Bring the check to the new flow and confirm the receipt shows | |
+| ⬜ | 561 | P3 | `wp orillacart sample-data add` without `--user` ends in an uncaught 401 from its REST calls: say to run it as a shop manager | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
