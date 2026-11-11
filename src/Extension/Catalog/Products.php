@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace OrillaCart\Extension\Catalog;
 
 /**
- * The shop's products, for add-ons marking them for their filters (ProductFilter, since version 8) and reading them
- * (find, since version 22).
+ * The shop's products, for add-ons marking them for their filters (ProductFilter, since version 8), reading them
+ * (find, since version 22) and finding them (search, since 26).
  */
 interface Products
 {
@@ -29,4 +29,12 @@ interface Products
 
     /** The product as shoppers see it now, or null for none such (API 22). */
     public function find(int $productId): ?ProductSummary;
+
+    /**
+     * Products by SKU (a variation's finds its product), words in the name, or category, whichever are given and
+     * all of them, published or not; at most $limit, newest first (API 26).
+     *
+     * @return list<ProductSummary>
+     */
+    public function search(?string $sku = null, ?string $words = null, ?int $categoryId = null, int $limit = 20): array;
 }

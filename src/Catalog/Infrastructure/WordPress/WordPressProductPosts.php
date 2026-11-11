@@ -83,6 +83,13 @@ final readonly class WordPressProductPosts implements ProductPosts
         wp_delete_post($id, true);
     }
 
+    public function trash(int $id): void
+    {
+        if (get_post_type($id) !== ProductPostType::NAME || wp_trash_post($id) === false) {
+            throw new \InvalidArgumentException(\sprintf('Product %d could not be moved to the trash.', $id));
+        }
+    }
+
     public function asUser(?int $userId, \Closure $work): mixed
     {
         $was = get_current_user_id();
@@ -101,7 +108,7 @@ final readonly class WordPressProductPosts implements ProductPosts
     }
 
     /** The category a path names, made with its parents where missing. */
-    private static function category(string $path): int
+    public static function category(string $path): int
     {
         $parent = 0;
         foreach (array_filter(array_map(trim(...), explode('>', $path)), static fn(string $name): bool => $name !== '') as $name) {

@@ -60,7 +60,7 @@ final class ReadOnlyHostTest extends TestCase
         }
         sort($writing);
 
-        self::assertSame(['fields.set', 'http.delete', 'http.get', 'http.patch', 'http.post', 'http.put', 'jobs.push', 'objects.*.create', 'objects.*.delete', 'objects.*.update', 'shop.email.send', 'shop.orders.create', 'shop.orders.mark', 'shop.orders.unmark', 'shop.products.mark', 'shop.products.unmark'], $writing);
+        self::assertSame(['fields.set', 'http.delete', 'http.get', 'http.patch', 'http.post', 'http.put', 'jobs.push', 'objects.*.create', 'objects.*.delete', 'objects.*.update', 'shop.attributes.save_set', 'shop.categories.ensure', 'shop.email.send', 'shop.orders.create', 'shop.orders.mark', 'shop.orders.unmark', 'shop.products.add_variation', 'shop.products.change', 'shop.products.change_variation', 'shop.products.create', 'shop.products.mark', 'shop.products.publish', 'shop.products.trash', 'shop.products.unmark', 'shop.products.unpublish'], $writing);
     }
 
     public function testTheReadingHostRefusesWritesAndKeepsWhatItIsTold(): void

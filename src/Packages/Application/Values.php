@@ -6,8 +6,14 @@ namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
+use OrillaCart\Extension\Catalog\AttributeDraft;
+use OrillaCart\Extension\Catalog\AttributeSetSummary;
+use OrillaCart\Extension\Catalog\AttributeSummary;
+use OrillaCart\Extension\Catalog\CategorySummary;
+use OrillaCart\Extension\Catalog\ProductDraft;
 use OrillaCart\Extension\Catalog\ProductSummary;
 use OrillaCart\Extension\Catalog\ProductVariationSummary;
+use OrillaCart\Extension\Catalog\VariationDraft;
 use OrillaCart\Extension\Checkout\FeeQuery;
 use OrillaCart\Extension\Customer\CustomerSummary;
 use OrillaCart\Extension\Order\NewOrderItem;
@@ -206,16 +212,175 @@ final class Values
             'for_sale' => $product->forSale,
             'available' => $product->available,
             'on_backorder' => $product->onBackorder,
-            'variations' => array_map(static fn(ProductVariationSummary $variation): array => [
-                'id' => $variation->id,
-                'label' => $variation->label,
-                'sku' => $variation->sku,
-                'price' => Money::of($variation->price),
-                'regular_price' => $variation->regularPrice === null ? null : Money::of($variation->regularPrice),
-                'for_sale' => $variation->forSale,
-                'available' => $variation->available,
-            ], $product->variations),
+            'variations' => array_map(self::variation(...), $product->variations),
+            'published' => $product->published,
+            'attributes' => array_map(self::attribute(...), $product->attributes),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public static function variation(ProductVariationSummary $variation): array
+    {
+        return [
+            'id' => $variation->id,
+            'label' => $variation->label,
+            'sku' => $variation->sku,
+            'price' => Money::of($variation->price),
+            'regular_price' => $variation->regularPrice === null ? null : Money::of($variation->regularPrice),
+            'for_sale' => $variation->forSale,
+            'available' => $variation->available,
+        ];
+    }
+
+    /** @return array{id: int, name: string, required: bool, options: list<array{id: int, name: string}>} */
+    public static function attribute(AttributeSummary $attribute): array
+    {
+        return ['id' => $attribute->id, 'name' => $attribute->name, 'required' => $attribute->required, 'options' => array_map(static fn(int $id, string $name): array => ['id' => $id, 'name' => $name], array_keys($attribute->options), array_values($attribute->options))];
+    }
+
+    /** @return array<string, mixed> */
+    public static function attributeSet(AttributeSetSummary $set): array
+    {
+        return ['id' => $set->id, 'name' => $set->name, 'active' => $set->active, 'attributes' => array_map(self::attribute(...), $set->attributes)];
+    }
+
+    /** @return array<string, mixed> */
+    public static function category(CategorySummary $category): array
+    {
+        return ['id' => $category->id, 'name' => $category->name, 'parent_id' => $category->parentId, 'path' => $category->path, 'products' => $category->products];
+    }
+
+    /** What a product map may give, for shop.products.create and change (design 69). */
+    public const array PRODUCT_KEYS = ['name', 'price', 'type', 'sku', 'sale_price', 'description', 'short_description', 'categories', 'tags', 'stock', 'stockrooms', 'stock_mode', 'weight', 'featured', 'attributes', 'attribute_set_ids'];
+
+    /** What a variation map may give, for shop.products.add_variation and change_variation. */
+    public const array VARIATION_KEYS = ['options', 'price', 'sku', 'sale_price', 'stock'];
+
+    /**
+     * @param array<mixed> $map
+     *
+     * @throws ScriptError for a key the map may not have, or a value of the wrong kind
+     */
+    public static function productDraft(array $map): ProductDraft
+    {
+        self::only($map, self::PRODUCT_KEYS, 'A product');
+        $stockrooms = null;
+        if (isset($map['stockrooms'])) {
+            if (!\is_array($map['stockrooms'])) {
+                throw new ScriptError('stockrooms is a map of stockroom id → level: { "2": 5 }.');
+            }
+            $stockrooms = [];
+            foreach ($map['stockrooms'] as $room => $level) {
+                $stockrooms[(int) $room] = self::whole($level, 'stockrooms');
+            }
+        }
+
+        return new ProductDraft(
+            name: self::optionalText($map['name'] ?? null),
+            price: self::amount($map['price'] ?? null),
+            type: self::optionalText($map['type'] ?? null),
+            sku: self::optionalText($map['sku'] ?? null),
+            salePrice: \array_key_exists('sale_price', $map) ? (self::amount($map['sale_price']) ?? '') : null,
+            description: self::optionalText($map['description'] ?? null),
+            shortDescription: self::optionalText($map['short_description'] ?? null),
+            categories: self::texts($map, 'categories'),
+            tags: self::texts($map, 'tags'),
+            stock: isset($map['stock']) ? self::whole($map['stock'], 'stock') : null,
+            stockrooms: $stockrooms,
+            stockMode: self::optionalText($map['stock_mode'] ?? null),
+            weight: self::optionalText($map['weight'] ?? null),
+            featured: isset($map['featured']) ? $map['featured'] === true : null,
+            attributes: isset($map['attributes']) ? self::attributeDrafts($map['attributes']) : null,
+            attributeSetIds: isset($map['attribute_set_ids']) ? array_map(static fn(mixed $id): int => self::whole($id, 'attribute_set_ids'), \is_array($map['attribute_set_ids']) ? array_values($map['attribute_set_ids']) : throw new ScriptError('attribute_set_ids is a list of ids.')) : null,
+        );
+    }
+
+    /**
+     * @param array<mixed> $map
+     *
+     * @throws ScriptError
+     */
+    public static function variationDraft(array $map): VariationDraft
+    {
+        self::only($map, self::VARIATION_KEYS, 'A variation');
+        $options = [];
+        if (isset($map['options'])) {
+            if (!\is_array($map['options'])) {
+                throw new ScriptError('options is a map of attribute → option: { Colour: "Red" }.');
+            }
+            foreach ($map['options'] as $attribute => $option) {
+                $options[(string) $attribute] = self::text($option);
+            }
+        }
+
+        return new VariationDraft(
+            $options,
+            self::amount($map['price'] ?? null),
+            self::optionalText($map['sku'] ?? null),
+            \array_key_exists('sale_price', $map) ? (self::amount($map['sale_price']) ?? '') : null,
+            isset($map['stock']) ? self::whole($map['stock'], 'stock') : null,
+        );
+    }
+
+    /**
+     * `[{ name, options: [..], required }]` as attribute drafts.
+     *
+     * @return list<AttributeDraft>
+     *
+     * @throws ScriptError
+     */
+    public static function attributeDrafts(mixed $list): array
+    {
+        if (!\is_array($list) || !array_is_list($list)) {
+            throw new ScriptError('attributes is a list: [{ name: "Colour", options: ["Red", "Blue"], required: true }].');
+        }
+
+        return array_map(static function (mixed $attribute): AttributeDraft {
+            if (!\is_array($attribute) || !\is_array($attribute['options'] ?? null)) {
+                throw new ScriptError('An attribute is { name, options: [..], required }.');
+            }
+            self::only($attribute, ['name', 'options', 'required'], 'An attribute');
+
+            return new AttributeDraft(self::text($attribute['name'] ?? ''), array_values(array_map(self::text(...), $attribute['options'])), ($attribute['required'] ?? false) === true);
+        }, $list);
+    }
+
+    /**
+     * @param array<mixed> $map
+     * @param list<string> $keys
+     */
+    private static function only(array $map, array $keys, string $what): void
+    {
+        $unknown = array_diff(array_map(strval(...), array_keys($map)), $keys);
+        if ($unknown !== []) {
+            throw new ScriptError(\sprintf('%s has no "%s": it takes %s.', $what, implode('", "', $unknown), implode(', ', $keys)));
+        }
+    }
+
+    /**
+     * @param array<mixed> $map
+     *
+     * @return list<string>|null
+     */
+    private static function texts(array $map, string $key): ?array
+    {
+        if (!isset($map[$key])) {
+            return null;
+        }
+        if (!\is_array($map[$key])) {
+            throw new ScriptError(\sprintf('%s is a list of names.', $key));
+        }
+
+        return array_values(array_map(self::text(...), $map[$key]));
+    }
+
+    private static function whole(mixed $value, string $key): int
+    {
+        if (\is_int($value) || (\is_float($value) && floor($value) === $value) || (\is_string($value) && preg_match('/^-?\d+$/', $value) === 1)) {
+            return (int) $value;
+        }
+
+        throw new ScriptError(\sprintf('%s is a whole number.', $key));
     }
 
     /** @return array<string, mixed> */

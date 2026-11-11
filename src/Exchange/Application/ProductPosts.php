@@ -33,6 +33,13 @@ interface ProductPosts
     public function delete(int $id): void;
 
     /**
+     * Moves the product to the trash, where the shop can restore it (design 69).
+     *
+     * @throws \InvalidArgumentException for no such product
+     */
+    public function trash(int $id): void;
+
+    /**
      * Runs the work as the user, and as who ran before after it: WordPress writes posts as theirs (their name as
      * the author, the HTML they may use). Nobody (null) runs it as no user.
      *

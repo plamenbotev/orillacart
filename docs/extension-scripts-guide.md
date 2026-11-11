@@ -889,6 +889,12 @@ timezone and write moments as ISO 8601 text.
 | `shop.orders.create(order)`                               | `orders: create`           | the order placed, its map       |
 | `shop.products.find(id)`                                  | `products: read`           | the product map, or null        |
 | `shop.products.mark(id, filter)`, `unmark`, `is_marked`   | `products: write` / `read` | the extension's product filters |
+| `shop.products.search({ sku, words, category_id, limit })` | `products: read`          | product maps, drafts too        |
+| `shop.products.create(product)`, `change(id, product)`    | `products: write`          | the product map                 |
+| `shop.products.add_variation(id, v)`, `change_variation(id, variation_id, v)` | `products: write` | the variation map |
+| `shop.products.publish(id)`, `unpublish`, `trash`          | `products: publish`        | null                            |
+| `shop.attributes.sets()`, `save_set(set)`                 | `products: read` / `write` | attribute set maps              |
+| `shop.categories.list()`, `ensure(path)`                  | `products: read` / `write` | category maps / the id          |
 | `shop.customers.find(id)`                                 | `customers: read`          | the customer map, or null       |
 | `shop.email.send(to, subject, html, reply_to?)`           | `email: send`              | true when the mail system took it |
 | `settings.get(key)`                                       |                            | one of the extension's settings |
@@ -896,8 +902,9 @@ timezone and write moments as ISO 8601 text.
 
 **The product map**: id, name, type, sku, price (money, today's, before tax; a variable product's lowest),
 regular_price (money while a sale runs, else null), for_sale, available (null when stock does not limit it),
-on_backorder, variations[{id, label, sku, price, regular_price, for_sale, available}]. A product's translation
-reads as its original.
+on_backorder, variations[{id, label, sku, price, regular_price, for_sale, available}], published (whether shoppers
+see it), attributes[{id, name, required, options[{id, name}]}] (every attribute it offers, its sets' too). A
+product's translation reads as its original.
 
 **The customer map**: id, email, first_name, last_name, registered_at, billing and shipping_address (as the
 order map's, or null), group_ids, orders (how many they placed), addresses_from_order. Where the account keeps no
@@ -920,9 +927,25 @@ emailed, no invoice number, not counted, removed with the shop's test data; an o
 anyway. The order map's `test` says which an order is, so an `on order_paid` handler can leave test orders out. It answers the order map; what the shop refuses (an item out of stock, a way to pay
 it does not offer) is a refusal the script may catch or pass on.
 
+**Making products.** `shop.products.create({ name, price, type, sku, sale_price, description, short_description,
+categories: ["Lighting > Desk lamps"], tags, stock, stockrooms: { "2": 5 }, stock_mode, weight, featured,
+attributes: [{ name: "Colour", options: ["Red", "Blue"], required: true }], attribute_set_ids })` makes the product
+as one row of an import would: every value checked as a cell is, a refused call changing nothing, categories made
+with their parents where missing, `stock` the level in the shop's first stockroom. It is a draft, seen by nobody but
+the shop, until `shop.products.publish(id)`, which needs `products: publish` of its own, as do `unpublish` and
+`trash`. `change(id, { … })` changes what the map gives; `attributes` replace the product's own and keep the ids
+of those named alike, so variations and orders naming their options stay right. `add_variation(id, { options:
+{ Colour: "Blue" }, price, sku, sale_price, stock })` adds one of the options the product offers.
+`shop.attributes.save_set({ id, name, attributes, active })` makes a set (no id) or replaces one's attributes the
+same way, and `shop.categories.ensure("A > B")` answers a category's id, made where missing. Descriptions take the
+HTML a post may hold, cleaned as for an author without unfiltered HTML whoever's request runs the extension. A key
+the map may not have is an error that names those it may. What the shop refuses (a SKU another product has, an
+option the product does not offer) is a refusal.
+
 Writing to the shop's own records stays narrow: an extension marks and annotates, places orders as the shop
-would, and does not change prices, stock or statuses behind the shop's back. What else it needs to change it
-does through the contracts in §8, where the shop stays in charge.
+would, makes and changes products with the permissions for it, and does not change stock or statuses of orders
+behind the shop's back. What else it needs to change it does through the contracts in §8, where the shop stays in
+charge.
 
 ## 15. Words in other languages
 
@@ -1054,8 +1077,10 @@ saved files are tested; files sent with the request are refused. Inside a test:
 - `objects.*` and `fields.*` work on the shop's database inside a transaction rolled back after the test, so a test
   may create records and read them back and leaves none behind. Tests run on this shop's data: a record naming a
   product or order the shop has not fails with which (`There is no product 137 in this shop`), so a test that must
-  run on any shop places the orders it needs (`shop.orders.create`) instead of naming ids of the shop it was
-  written on. Should the
+  run on any shop makes the products and orders it needs (`shop.products.create`, `shop.orders.create`) or looks
+  them up (`shop.products.search`) instead of naming ids of the shop it was written on. Products, variations,
+  attribute sets and categories a test makes are undone with it, and listed in its `effects`; the object cache
+  forgets what the test put in it. Should the
   database still refuse a write, the tests after it are reported `Not run`, naming the one that broke it.
 - `shop.email.send` holds the mail: it answers true and sends nothing. `shop.orders.create` places a test order
   (never emailed, never invoiced) inside the same rolled-back transaction. The result's `effects` lists each such

@@ -38,6 +38,8 @@ final class Version
      * folders of storefront templates rendered in the sandbox (Storefront\UntrustedTemplateFolders), filters for
      * every storefront template (Storefront\TemplateFilter), and rendering the storefront's templates
      * (Storefront\Templates). 25: the shop's own templates' names and sources (Templates::names, Templates::original).
+     * 26: making and changing products, variations, attribute sets and categories (Registry::productWriting,
+     * attributeSets, categories), finding products (Products::search), and ProductSummary's published and attributes.
      */
-    public const int CURRENT = 25;
+    public const int CURRENT = 26;
 }

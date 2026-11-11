@@ -393,6 +393,47 @@ can read back what it took off a placed order. Use it
 from the `orillacart_order_…` actions listed below, which pass only the number; keep the registry the
 `orillacart_extensions` action gave you.
 
+## Making products
+
+From API 26 an add-on makes and changes the shop's products as its import does: a catalogue kept in step with a
+supplier or an ERP, a product made for a quote, a test's own product (design 69).
+
+```php
+use OrillaCart\Extension\Catalog\AttributeDraft;
+use OrillaCart\Extension\Catalog\ProductDraft;
+use OrillaCart\Extension\Catalog\VariationDraft;
+
+$products = $registry->productWriting();
+$mug = $products->create(new ProductDraft(
+    name: 'Stoneware mug',
+    price: '12.50',
+    sku: 'MUG-1',
+    categories: ['Kitchen > Mugs'],
+    stock: 20,
+    attributes: [new AttributeDraft('Colour', ['Sand', 'Slate'], required: true)],
+));
+$slate = $products->addVariation($mug->id, new VariationDraft(['Colour' => 'Slate'], price: '13.50', stock: 5));
+$products->change($mug->id, new ProductDraft(salePrice: '9.90'));
+$products->publish($mug->id);
+```
+
+`create()` makes a draft, seen by nobody but the shop, until `publish()`; `unpublish()` takes it back and `trash()`
+moves it to the trash. A `ProductDraft` gives what it sets and leaves the rest null: on `change()` it stays as it
+is. Every value is checked as an import's cell is (amounts as decimal strings, a SKU no other product has, a type
+the shop has), and a refused call changes nothing; the refusal is an `\InvalidArgumentException` saying why.
+Categories are paths, made with their parents where missing; `stock` is the level in the shop's first stockroom,
+`stockrooms` levels by id. `attributes` are the product's own and replace those it had, and `attributeSetIds` the
+sets whose attributes it offers; an attribute or option named as one there is keeps its id, so variations and
+placed orders that name it stay right. Descriptions take the HTML a post may hold, cleaned as for an author without
+unfiltered HTML, whoever's request runs the add-on. The `ProductSummary` answered has, from API 26, `published` and
+`attributes` (every attribute the product offers, with its options' ids).
+
+`$registry->products()->search(sku: 'MUG-1')` finds products by SKU (a variation's finds its product), words in the
+name or a category, drafts too, newest first. `$registry->attributeSets()` reads (`all()`) and saves (`save($id,
+$name, $attributes, $active)`, a null id making one) attribute sets, keeping ids the same way, and
+`$registry->categories()` lists the categories by path (`all()`) and answers one's id, made where missing
+(`ensure('Kitchen > Mugs')`).
+
 ## Export columns
 
 Version 4 lets an add-on add columns to the shop's exports. The shop manager sees them beside the shop's own in

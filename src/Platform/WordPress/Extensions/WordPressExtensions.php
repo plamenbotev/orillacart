@@ -4,19 +4,25 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Extensions;
 
+use OrillaCart\Catalog\Application\AddOnAttributeSets;
 use OrillaCart\Catalog\Application\AddOnProducts;
 use OrillaCart\Catalog\Application\ProductTranslations;
+use OrillaCart\Catalog\Infrastructure\WordPress\AddOnCategories;
 use OrillaCart\Checkout\Application\AddOnOrderPrices;
 use OrillaCart\Checkout\Application\ExtensionOrders;
 use OrillaCart\Customers\Application\CustomerSummaries;
+use OrillaCart\Exchange\Application\AddOnProductWriting;
 use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\AttributeSets;
+use OrillaCart\Extension\Catalog\Categories;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Catalog\ProductFilter;
 use OrillaCart\Extension\Catalog\ProductLanguages;
 use OrillaCart\Extension\Catalog\Products;
+use OrillaCart\Extension\Catalog\WritesProducts;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
@@ -134,6 +140,9 @@ final class WordPressExtensions implements Registry, InstalledExtensions
      * @param \Closure(): Emails        $emails          a closure, as orders
      * @param \Closure(): CreatesOrders $orderCreation   a closure, as orders
      * @param \Closure(): Templates     $templates       a closure: the storefront's templates are set up with what is registered
+     * @param \Closure(): WritesProducts $productWriting a closure, as orders (design 69)
+     * @param \Closure(): AttributeSets  $attributeSets  a closure, as orders
+     * @param \Closure(): Categories     $categories     a closure, as orders
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
@@ -155,6 +164,12 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly \Closure $orderCreation,
         #[AutowireServiceClosure(AddOnTemplates::class)]
         private readonly \Closure $templates,
+        #[AutowireServiceClosure(AddOnProductWriting::class)]
+        private readonly \Closure $productWriting,
+        #[AutowireServiceClosure(AddOnAttributeSets::class)]
+        private readonly \Closure $attributeSets,
+        #[AutowireServiceClosure(AddOnCategories::class)]
+        private readonly \Closure $categories,
         /** @var iterable<Registrant> */
         #[AutowireIterator(Registrant::TAG)]
         private readonly iterable $registrants = [],
@@ -443,6 +458,30 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         \assert($orders instanceof CreatesOrders);
 
         return $orders;
+    }
+
+    public function productWriting(): WritesProducts
+    {
+        $writing = ($this->productWriting)();
+        \assert($writing instanceof WritesProducts);
+
+        return $writing;
+    }
+
+    public function attributeSets(): AttributeSets
+    {
+        $sets = ($this->attributeSets)();
+        \assert($sets instanceof AttributeSets);
+
+        return $sets;
+    }
+
+    public function categories(): Categories
+    {
+        $categories = ($this->categories)();
+        \assert($categories instanceof Categories);
+
+        return $categories;
     }
 
     public function productLanguages(): ProductLanguages

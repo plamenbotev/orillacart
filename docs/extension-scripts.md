@@ -206,6 +206,10 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 
 ### shop
 
+- shop.attributes.save_set({ id, name, attributes: [{ name, options, required }], active }): makes an attribute set (no id) or replaces one's attributes, keeping the ids of those named alike [needs products:write]
+- shop.attributes.sets(): the attribute sets, each { id, name, active, attributes: [{ id, name, required, options: [{ id, name }] }] } [needs products:read]
+- shop.categories.ensure("Lighting > Desk lamps"): the category's id, made with its parents where missing [needs products:write]
+- shop.categories.list(): every product category { id, name, parent_id, path, products }, by path [needs products:read]
 - shop.customers.find(customer_id): the customer ({ id, email, first_name, last_name, registered_at, billing, shipping_address, group_ids, orders, addresses_from_order }), or null; where the account keeps no address, billing and shipping_address are their latest order's and addresses_from_order its number (else null) [needs customers:read]
 - shop.email.send(to, subject, html, reply_to?): an email in the shop's layout, from its address; true when the mail system took it [needs email:send]
 - shop.orders.create({ email, customer_id, billing, shipping_address, items: [{ product_id, quantity, option_ids, unit_price }], shipping_option, payment, paid, note, fields }): places the order as the shop does by hand, and answers the order map [needs orders:create]
@@ -213,10 +217,18 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 - shop.orders.is_marked(number, filter_id): whether the order is under the filter [needs orders:read]
 - shop.orders.mark(number, filter_id): puts the order under the extension's order filter; false when there is no such order [needs orders:write]
 - shop.orders.unmark(number, filter_id): takes the order out of the filter [needs orders:write]
+- shop.products.add_variation(product_id, { options: { Colour: "Red" }, price, sku, sale_price, stock }): a variation of the options the product offers; price is the product's when left out [needs products:write]
+- shop.products.change(product_id, { …as create }): changes what the map gives; attributes replace the product's own, keeping the ids of those named alike [needs products:write]
+- shop.products.change_variation(product_id, variation_id, { price, sku, sale_price, stock }) [needs products:write]
+- shop.products.create({ name, price, type, sku, sale_price, description, short_description, categories: ["A > B"], tags, stock, stockrooms: { id: level }, stock_mode, weight, featured, attributes: [{ name, options, required }], attribute_set_ids }): makes a draft product, as an import row would, and answers the product map; shop.products.publish puts it on sale [needs products:write]
 - shop.products.find(product_id): the product as shoppers see it now ({ id, name, type, sku, price, regular_price, for_sale, available, on_backorder, variations[{ id, label, sku, price, regular_price, for_sale, available }] }), or null [needs products:read]
 - shop.products.is_marked(product_id, filter_id): whether the product is under the filter [needs products:read]
 - shop.products.mark(product_id, filter_id): puts the product under the extension's product filter [needs products:write]
+- shop.products.publish(product_id): puts the product on sale; shoppers see it [needs products:publish]
+- shop.products.search({ sku, words, category_id, limit }): products by SKU, name or category, drafts too, newest first; up to limit (20, at most 100) [needs products:read]
+- shop.products.trash(product_id): moves it to the trash; placed orders keep it [needs products:publish]
 - shop.products.unmark(product_id, filter_id): takes the product out of the filter [needs products:write]
+- shop.products.unpublish(product_id): takes it back to a draft [needs products:publish]
 
 ### time
 

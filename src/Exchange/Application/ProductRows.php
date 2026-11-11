@@ -55,7 +55,7 @@ final readonly class ProductRows
      * @param array<string, string>                                     $row     the row's cells by column id, as the file has them
      * @param array<string, Column<ProductRow>|ProductColumn>|null $columns the file's columns, ProductColumns::all(), built once for many rows
      *
-     * @return array{bool, ?string} whether it added a product, and what add-ons refused of a row saved otherwise
+     * @return array{bool, ?string, int} whether it added a product, what add-ons refused of a row saved otherwise, and the product's id
      *
      * @throws \OrillaCart\Shared\Domain\RuleViolation|\InvalidArgumentException why the row is refused
      */
@@ -94,13 +94,14 @@ final readonly class ProductRows
             try {
                 $saved = $this->products->save($productId, SaveProduct::unchanged($this->products->product($productId), $changes));
                 $this->posts->change($productId, new ProductPostChange(null, $status ?? 'publish', $row['description'] ?? null, $row['short_description'] ?? null, ...$lists));
-                $this->changeLevels(StockItemRef::product($productId), $levels, $userId);
+                // Read again: saved as counted, the product starts at 0 in the active stockroom (StartCountingStock).
+                $this->changeLevels(StockItemRef::product($productId), $this->levels(StockItemRef::product($productId), $row), $userId);
             } catch (\Throwable $e) {
                 $this->posts->delete($productId);
 
                 throw $e;
             }
-            return [true, $this->addOns($row, $saved, null, $columns)];
+            return [true, $this->addOns($row, $saved, null, $columns), $productId];
         }
         if ($variationId === null) {
             $this->products->save($productId, SaveProduct::unchanged($product, $changes));
@@ -113,7 +114,7 @@ final readonly class ProductRows
             $this->products->changeVariation($productId, $variationId, SaveVariation::unchanged(self::variation($product, $variationId), $changes));
             $this->changeLevels(StockItemRef::variation($variationId), $levels, $userId);
         }
-        return [false, $this->addOns($row, $this->products->product($productId), $variationId, $columns)];
+        return [false, $this->addOns($row, $this->products->product($productId), $variationId, $columns), $productId];
     }
 
     /**

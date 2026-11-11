@@ -864,6 +864,20 @@ closed".
 | ✅ | 575 | P1 | A record's product or order must be the shop's: refused before the database with "There is no product 137 in this shop", in tests and on the live shop alike | e23bbf4f |
 | ✅ | 576 | P2 | Should the database still refuse a test's write, the tests after it are reported "Not run" with which one broke it, not as the host's failures | e23bbf4f |
 
+## Extensions make products (2026-11-11)
+
+[Design 69](docs/designs/69-extensions-make-products.md), extension API 26: products, variations, attribute sets and
+categories made and changed by extensions, as the import makes them; tests that make their own leave nothing.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 577 | P2 | `Registry::productWriting()`: create (a draft), change, add and change variations, publish, unpublish, trash, through the import's row | |
+| ✅ | 578 | P2 | `Registry::attributeSets()` and `categories()`; `Products::search()`; `ProductSummary` published and attributes | |
+| ✅ | 579 | P2 | Scripts: `shop.products.search/create/change/add_variation/change_variation/publish/unpublish/trash`, `shop.attributes.sets/save_set`, `shop.categories.list/ensure`; `products: publish` its own permission | |
+| ✅ | 580 | P2 | A test's writes and the object cache: nothing added while it runs, the groups it writes let go after (`RolledBackCaches`) | |
+| ✅ | 581 | P1 | The import refused a new product whose row gave a stock level: the level is read after the save | |
+| ✅ | 582 | P3 | Docs: extensions.md "Making products", the guide's §14 and tests, design 69 | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

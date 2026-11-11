@@ -37,6 +37,7 @@ final readonly class PackageTests
         private ObjectStore $objects,
         private ObjectDefinitions $definitions,
         private ?ReadOnlyRequest $readOnly = null,
+        private ?RolledBackCaches $caches = null,
     ) {}
 
     /**
@@ -78,10 +79,10 @@ final readonly class PackageTests
             $narrow = $readOnly ? static fn(HostCatalog $host): HostCatalog => ScriptRunner::readingOnly($host, ScriptTests::RECORDED) : null;
             $objects = $this->objects;
             // Once the shop's database refused a write, it takes no more in this request: the tests after are not run.
-            $isolate = new class ($objects) {
+            $isolate = new class ($objects, $this->caches) {
                 private ?string $broken = null;
 
-                public function __construct(private readonly ObjectStore $objects) {}
+                public function __construct(private readonly ObjectStore $objects, private readonly ?RolledBackCaches $caches) {}
 
                 /** @param callable(): TestResult $one */
                 public function __invoke(callable $one, string $name): TestResult
@@ -89,7 +90,7 @@ final readonly class PackageTests
                     if ($this->broken !== null) {
                         return new TestResult($name, false, \sprintf('Not run: the shop\'s database refused a write in "%s", and nothing more can be written until the tests run again.', $this->broken), null, [], [], []);
                     }
-                    $result = $this->objects->isolated($one);
+                    $result = $this->caches === null ? $this->objects->isolated($one) : $this->caches->around(fn(): TestResult => $this->objects->isolated($one));
                     if (!$this->objects->intact()) {
                         $this->broken = $result->name;
                     }

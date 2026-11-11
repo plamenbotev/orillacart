@@ -64,6 +64,12 @@ final class InMemoryProductPosts implements ProductPosts
         $this->deleted[] = $id;
     }
 
+    public function trash(int $id): void
+    {
+        $post = $this->posts[$id] ?? throw new \InvalidArgumentException(\sprintf('Product %d could not be moved to the trash.', $id));
+        $this->posts[$id] = new ProductPost('trash', $post->description, $post->shortDescription, $post->categories, $post->brands, $post->tags);
+    }
+
     public function asUser(?int $userId, \Closure $work): mixed
     {
         $was = $this->user;

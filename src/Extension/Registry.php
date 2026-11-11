@@ -7,11 +7,14 @@ namespace OrillaCart\Extension;
 use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
+use OrillaCart\Extension\Catalog\AttributeSets;
+use OrillaCart\Extension\Catalog\Categories;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Catalog\ProductFilter;
 use OrillaCart\Extension\Catalog\ProductLanguages;
 use OrillaCart\Extension\Catalog\Products;
+use OrillaCart\Extension\Catalog\WritesProducts;
 use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\CheckoutField;
 use OrillaCart\Extension\Checkout\OrderFee;
@@ -112,7 +115,7 @@ interface Registry
     /** Reads the shop's orders, and marks them for order filters (since version 8). Since version 2. */
     public function orders(): Orders;
 
-    /** Marks the shop's products for product filters (since version 8), and reads them (since version 22). */
+    /** Marks the shop's products for product filters (since version 8), reads them (since version 22) and finds them (since 26). */
     public function products(): Products;
 
     /** Reads the shop's customers. Since version 22. */
@@ -123,6 +126,15 @@ interface Registry
 
     /** Places orders as the shop does by hand. Since version 22. */
     public function orderCreation(): CreatesOrders;
+
+    /** Makes and changes the shop's products as its import does: drafts until published (API 26). */
+    public function productWriting(): WritesProducts;
+
+    /** The shop's attribute sets, read, made and changed (API 26). */
+    public function attributeSets(): AttributeSets;
+
+    /** The shop's product categories, read and made by path (API 26). */
+    public function categories(): Categories;
 
     /** Which post is the product where Polylang or WPML translates products. Since version 17. */
     public function productLanguages(): ProductLanguages;

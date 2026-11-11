@@ -17,6 +17,8 @@ final readonly class ProductSummary
      * @param bool                         $forSale      published, purchasable, its price shown, and something of it available
      * @param int|null                     $available    how many can be sold; null when stock does not limit it
      * @param list<ProductVariationSummary> $variations
+     * @param bool|null                    $published   whether shoppers see it, a draft or a trashed one not (API 26; null before)
+     * @param list<AttributeSummary>       $attributes  every attribute it offers, its sets' and its own, with the options' ids (API 26)
      */
     public function __construct(
         public int $id,
@@ -29,5 +31,7 @@ final readonly class ProductSummary
         public ?int $available,
         public bool $onBackorder,
         public array $variations = [],
+        public ?bool $published = null,
+        public array $attributes = [],
     ) {}
 }
