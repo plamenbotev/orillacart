@@ -861,8 +861,8 @@ closed".
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 575 | P1 | A record's product or order must be the shop's: refused before the database with "There is no product 137 in this shop", in tests and on the live shop alike | |
-| ✅ | 576 | P2 | Should the database still refuse a test's write, the tests after it are reported "Not run" with which one broke it, not as the host's failures | |
+| ✅ | 575 | P1 | A record's product or order must be the shop's: refused before the database with "There is no product 137 in this shop", in tests and on the live shop alike | e23bbf4f |
+| ✅ | 576 | P2 | Should the database still refuse a test's write, the tests after it are reported "Not run" with which one broke it, not as the host's failures | e23bbf4f |
 
 ## Deliberately not carried over
 
