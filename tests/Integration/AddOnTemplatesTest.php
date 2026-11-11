@@ -57,6 +57,19 @@ final class AddOnTemplatesTest extends RestTestCase
         $templates->render('sections/nothing.twig');
     }
 
+    public function testAnAddOnReadsTheShopsOwnTemplatesWhateverOverridesThem(): void
+    {
+        $templates = TestAddOn::$registry?->templates();
+        self::assertInstanceOf(AddOnTemplates::class, $templates);
+        $names = $templates->names();
+        self::assertContains('storefront/products.html.twig', $names);
+        self::assertContains('emails/layout.html.twig', $names);
+        self::assertSame([], array_filter($names, static fn(string $name): bool => !str_starts_with($name, 'storefront/') && !str_starts_with($name, 'emails/')), 'only what an override may replace');
+        self::assertStringContainsString('There are no products here yet.', (string) $templates->original('storefront/products.html.twig'));
+        self::assertNull($templates->original('../../wp-config.php'));
+        self::assertNull($templates->original('admin/nothing.twig'));
+    }
+
     public function testAnAddOnsSiteBlockIsRegisteredWithItsSettingsAndRendersWhatTheyTake(): void
     {
         $block = \WP_Block_Type_Registry::get_instance()->get_registered('orillacart-addon/test-banner');

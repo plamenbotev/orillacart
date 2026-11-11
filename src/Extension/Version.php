@@ -37,7 +37,7 @@ final class Version
      * something else in the shop (AssistantTool::CHANGES). 24: blocks for the whole site (Storefront\SiteBlock),
      * folders of storefront templates rendered in the sandbox (Storefront\UntrustedTemplateFolders), filters for
      * every storefront template (Storefront\TemplateFilter), and rendering the storefront's templates
-     * (Storefront\Templates).
+     * (Storefront\Templates). 25: the shop's own templates' names and sources (Templates::names, Templates::original).
      */
-    public const int CURRENT = 24;
+    public const int CURRENT = 25;
 }

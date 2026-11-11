@@ -699,6 +699,9 @@ if ($registry->version() >= 24) {
 - **`templates()->render(name, context)`** renders a template as the shop does, from the extensions', the untrusted
   folders', the theme's or the shop's own; `exists(name)` says whether one is found. A missing template, or one
   the sandbox refuses, throws `TemplateFailed`.
+- **`templates()->names()`** (version 25) lists the shop's own storefront and email templates, those an override may
+  replace; **`original(name)`** gives the shop's own source of one as it ships, whatever overrides it: what an
+  override starts from.
 - **A template filter** reaches every storefront template, the sandboxed ones too. Its answer is escaped unless
   `isHtml()`. One named as a filter the shop has is left out, and logged.
 

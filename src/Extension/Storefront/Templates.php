@@ -24,4 +24,18 @@ interface Templates
 
     /** Whether a template of that name is found. */
     public function exists(string $name): bool;
+
+    /**
+     * The shop's own storefront and email templates, by name ("storefront/account.html.twig"): those a theme or an
+     * untrusted folder may override. Since version 25.
+     *
+     * @return list<string>
+     */
+    public function names(): array;
+
+    /**
+     * The shop's own source of a template, as it ships, whatever overrides it: what an override starts from. Null for
+     * a name that is none of the shop's. Since version 25.
+     */
+    public function original(string $name): ?string;
 }

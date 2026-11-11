@@ -30,6 +30,10 @@ the Site Editor takes one, registered as `orillacart-addon/{id}` beside the prod
 product or site), with text, number, boolean and choice settings the owner fills in its sidebar. `render()` gets
 what was set, checked against the settings; a script's HTML is cleaned as a product block's.
 
+**The shop's own templates, to start an override from** (API 25). `Templates::names()` lists the shop's own
+storefront and email templates, the ones an override may replace, and `Templates::original(name)` gives one's source
+as it ships, whatever overrides it now: what an editor of a theme or an untrusted folder starts from.
+
 ## Left out
 
 Product context for site blocks (product blocks have it). Image and colour settings (text holds an address or a

@@ -842,6 +842,7 @@ for templates nobody vetted as PHP, and blocks for the whole site.
 | ✅ | 546 | P2 | `Registry::templates()`: render a storefront template as the shop does; `TemplateFailed` for a missing or refused one | 1142359f |
 | ✅ | 547 | P2 | Template filters for every storefront template, the sandboxed ones included; one named as a shop's filter left out and logged | 1142359f |
 | ✅ | 548 | P2 | Site blocks (`SiteBlock`, `site_block` in scripts): `orillacart-addon/{id}` anywhere the editor takes blocks, settings in the sidebar checked before `render()`, scripts' HTML cleaned | 1142359f |
+| ✅ | 570 | P3 | `Templates::names()` and `Templates::original(name)` (API 25): the shop's own storefront and email templates, and the source one ships with, for whoever writes an override | |
 
 ## The release build (2026-11-11)
 
