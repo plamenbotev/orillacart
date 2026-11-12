@@ -160,7 +160,8 @@ class Order
 
     /**
      * Where a guest placed it from, while it waits unpaid for a transfer: a key of the caller (CallerKeys), not an
-     * address, by which the orders one place holds at once are counted. Forgotten once it is paid or closed.
+     * address, by which the orders one place holds at once are counted; or, for a guest who confirmed their email
+     * at a place that was full, a key of that mailbox, by which theirs are. Forgotten once it is paid or closed.
      */
     #[ORM\Column(length: 32, nullable: true)]
     private ?string $callerKey = null;
@@ -1643,8 +1644,8 @@ class Order
     }
 
     /**
-     * Keeps where a guest placed it from, as a key of the caller; only as it is placed, for an order that waits
-     * for a transfer.
+     * Keeps where a guest placed it from, or the mailbox they confirmed, as a key of the caller; only as it is
+     * placed, for an order that waits for a transfer.
      */
     public function placedByCaller(string $caller): void
     {

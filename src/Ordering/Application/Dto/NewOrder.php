@@ -61,7 +61,7 @@ final readonly class NewOrder
         public array $shopFields = [],
         /** Placed to try the shop out (design 62): never emailed, not counted. */
         public bool $test = false,
-        /** Where a guest places an order that waits for a transfer from, as a key of the caller (CallerKeys). */
+        /** Where a guest places an order that waits for a transfer from, or the mailbox they confirmed, as a key of the caller (CallerKeys). */
         public ?string $callerKey = null,
     ) {}
 }

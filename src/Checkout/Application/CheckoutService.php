@@ -54,6 +54,7 @@ use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Domain\GuestsAtUnpaidLimit;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\Text;
@@ -110,6 +111,7 @@ final readonly class CheckoutService
         private ShopOpening $opening,
         private GivenItems $given,
         private CallerKeys $callers,
+        private EmailConfirmations $emailConfirmations,
     ) {}
 
     /**
@@ -437,12 +439,16 @@ final readonly class CheckoutService
      *                                    shipping rate or payment method, stock that ran out, an address in a
      *                                    country the shop does not sell to, a shop that only shows its catalog,
      *                                    or a price an add-on that fails closed could not set
-     * @param string $caller who places it, as the rate limits count callers ("ip:203.0.113.7"): a guest's orders
-     *                       waiting for a transfer are counted by a key of it, up to the shop's setting
+     * @param string                       $caller  who places it, as the rate limits count callers
+     *                                              ("ip:203.0.113.7"): a guest's orders waiting for a transfer
+     *                                              are counted by a key of it, up to the shop's setting
+     * @param (\Closure(string): bool)|null $mayMail asked, with the email, before a link to confirm it goes:
+     *                                              whether one more may be sent, so ordering is no way to flood
+     *                                              an address
      *
      * @throws PaymentProviderUnavailable when the payment cannot start; the order is then cancelled
      */
-    public function placeOrder(CartOwner $owner, PlaceOrder $command, string $caller = ''): PlacedOrderView
+    public function placeOrder(CartOwner $owner, PlaceOrder $command, string $caller = '', ?\Closure $mayMail = null): PlacedOrderView
     {
         if ($this->settings->current()->catalogOnly) {
             throw new CheckoutRuleViolation('The shop does not take orders online.', 'orillacart_catalog_only');
@@ -546,17 +552,36 @@ final readonly class CheckoutService
         }
         // Orders waiting for a transfer keep their stock: one shopper holds no more than a few at once, so a limited
         // run is not bought up by orders never paid. Counted by account, or for a guest by where they order from
-        // (the order keeps a key of it while it waits), never by email, which anyone can type to lock its owner
-        // out. Only orders that were placed and still wait count: one paid or cancelled makes room, a try that
-        // was refused takes none. An order paid online now, or on delivery, holds nothing unpaid, and is never
+        // (the order keeps a key of it while it waits), never by an email as typed, which anyone can type to lock
+        // its owner out. Only orders that were placed and still wait count: one paid or cancelled makes room, a try
+        // that was refused takes none. An order paid online now, or on delivery, holds nothing unpaid, and is never
         // refused. The words tell nothing of anyone's orders.
         $most = $this->settings->current()->unpaidOrdersEach;
         $offline = $gateway !== null && \in_array($gateway, $this->paymentOptions->paidOffline(), true);
         $callerKey = $offline && !$test && $owner->customerId === null && $caller !== '' ? $this->callers->of($caller) : null;
-        if ($most !== null && $offline && !$test && ($owner->customerId !== null
-            ? $this->orders->countUnpaidOnHold($owner->customerId, $this->paymentOptions->paidOffline()) >= $most
-            : $callerKey !== null && $this->orders->countUnpaidOnHoldOfCaller($callerKey, $this->paymentOptions->paidOffline()) >= $most)) {
-            throw new CheckoutRuleViolation('Too many orders wait for a payment like this one. Choose another way to pay, or pay for the orders that wait first.', 'orillacart_too_many_unpaid_orders');
+        $tooMany = static fn(): CheckoutRuleViolation => new CheckoutRuleViolation('Too many orders wait for a payment like this one. Choose another way to pay, or pay for the orders that wait first.', 'orillacart_too_many_unpaid_orders');
+        if ($most !== null && $offline && !$test && $owner->customerId !== null && $this->orders->countUnpaidOnHold($owner->customerId, $this->paymentOptions->paidOffline()) >= $most) {
+            throw $tooMany();
+        }
+        if ($most !== null && $callerKey !== null && $this->orders->countUnpaidOnHoldOfCaller($callerKey, $this->paymentOptions->paidOffline()) >= $most) {
+            // The place is full, which people who share an address (an office, a campus) fill between them. A
+            // guest who shows the mailbox is theirs, by the link sent to it and followed on whatever device reads
+            // the mail, is counted by that mailbox instead: the order keeps a key of it in place of the address's.
+            if ($this->settings->current()->guestsAtUnpaidLimit !== GuestsAtUnpaidLimit::ConfirmEmail->value) {
+                throw $tooMany();
+            }
+            if (!$this->emailConfirmations->confirmed($command->email, $owner->token)) {
+                if ($owner->token === null || ($mayMail !== null && !$mayMail($command->email))) {
+                    throw $tooMany();
+                }
+                $this->emailConfirmations->send($command->email, $owner->token, $this->languages->current());
+
+                throw new CheckoutRuleViolation('Too many orders wait for a payment like this one. To order this way, confirm your email: we sent a link to %s. Follow it, on any device, then place the order again here; or choose another way to pay.', 'orillacart_confirm_email', values: [$command->email]);
+            }
+            $callerKey = $this->callers->of(EmailConfirmations::shopper($command->email));
+            if ($this->orders->countUnpaidOnHoldOfCaller($callerKey, $this->paymentOptions->paidOffline()) >= $most) {
+                throw $tooMany();
+            }
         }
         $order = $this->transactions->runRetrying(fn(): OrderView => $this->claimed($contents, fn(): OrderView => $this->redeemed($priced, $plan, $owner, $command->email, $this->orders->place(new NewOrder(
             $owner->customerId,

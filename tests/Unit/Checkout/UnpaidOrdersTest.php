@@ -9,6 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
+use OrillaCart\Checkout\Application\EmailConfirmations;
 use OrillaCart\Checkout\Application\UnpaidOrders;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Inventory\Application\Dto\SaveStockroom;
@@ -113,6 +114,7 @@ final class UnpaidOrdersTest extends TestCase
     public function testAGuestHoldsAsManyOrdersWaitingForATransferFromOnePlaceAsTheShopSays(): void
     {
         $this->stocked();
+        $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, guestsAtUnpaidLimit: 'refuse'));
         $orders = [];
         for ($i = 0; $i < 3; ++$i) {
             $orders[] = $this->place("guest{$i}@example.com", caller: 'ip:198.51.100.9');
@@ -136,12 +138,96 @@ final class UnpaidOrdersTest extends TestCase
         $this->shop->orders->cancel($orders[1]->number);
         self::assertSame('on_hold', $this->place('guest5@example.com', caller: 'ip:198.51.100.9')->status, 'and one cancelled');
 
-        $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, unpaidOrdersEach: 5));
+        $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, unpaidOrdersEach: 5, guestsAtUnpaidLimit: 'refuse'));
         self::assertSame('on_hold', $this->place('guest6@example.com', caller: 'ip:198.51.100.9')->status, 'the shop allows five');
         self::assertSame('on_hold', $this->place('guest7@example.com', caller: 'ip:198.51.100.9')->status);
         $refused('five wait');
         $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, unpaidOrdersEach: null));
         self::assertSame('on_hold', $this->place('guest8@example.com', caller: 'ip:198.51.100.9')->status, 'or any number');
+    }
+
+    public function testAGuestAtAFullPlaceConfirmsTheirEmailAndIsCountedByIt(): void
+    {
+        $this->stocked();
+        for ($i = 0; $i < 3; ++$i) {
+            $this->place("guest{$i}@example.com", caller: 'ip:198.51.100.9');
+        }
+        $confirmations = $this->shop->emailConfirmations;
+        $cart = $this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken;
+        self::assertNotNull($cart);
+        $refused = function (string $code, string $email, ?string $cart, string $why, ?\Closure $mayMail = null): void {
+            try {
+                $this->place($email, caller: 'ip:198.51.100.9', mayMail: $mayMail, cart: $cart);
+                self::fail($why);
+            } catch (CheckoutRuleViolation $e) {
+                self::assertSame($code, $e->errorCode, $why);
+            }
+        };
+
+        try {
+            $this->place('Grace@example.com', caller: 'ip:198.51.100.9', cart: $cart);
+            self::fail('the place is full');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame(['orillacart_confirm_email', 'Too many orders wait for a payment like this one. To order this way, confirm your email: we sent a link to Grace@example.com. Follow it, on any device, then place the order again here; or choose another way to pay.'], [$e->errorCode, $e->getMessage()]);
+        }
+        $this->shop->jobs->runAll();
+        $sent = $this->shop->mail->ofKind('email_confirmation');
+        self::assertSame(['Grace@example.com: [Lamp Shop] Confirm your email to order'], array_map(static fn($email): string => "{$email->to}: {$email->subject}", $sent));
+        self::assertSame(1, preg_match('/orillacart_email=(' . EmailConfirmations::PATTERN . ')"/', $sent[0]->html, $link), 'as the checkout page knows it');
+        $token = $link[1];
+        self::assertStringNotContainsString($cart, $token, 'the link names neither the cart nor the mailbox');
+
+        $refused('orillacart_confirm_email', 'Grace@example.com', $cart, 'a link sent confirms nothing until it is followed');
+        // Followed wherever the mail is read: the shop keeps it, the browser that asked orders.
+        $confirmations->confirm($token);
+        $first = $this->place('Grace@example.com', caller: 'ip:198.51.100.9', cart: $cart);
+        self::assertSame('on_hold', $first->status, 'the mailbox is hers');
+        self::assertSame(new CallerKeys($this->shop->signatures)->of(EmailConfirmations::shopper('grace@example.com')), $this->shop->orderRecords->find($first->number)?->callerKey(), 'the order is counted by the mailbox, not the place');
+        self::assertSame('on_hold', $this->place('grace+shop@example.com', caller: 'ip:198.51.100.9', cart: $cart)->status, 'however the address is written');
+        self::assertSame('on_hold', $this->place('grace@example.com', caller: 'ip:198.51.100.9', cart: $cart)->status);
+        $refused('orillacart_too_many_unpaid_orders', 'grace@example.com', $cart, 'three of hers wait');
+        $this->shop->orders->markPaid($first->number, null);
+        self::assertSame('on_hold', $this->place('grace@example.com', caller: 'ip:198.51.100.9', cart: $cart)->status, 'one paid makes room');
+
+        $this->shop->mail->emails = [];
+        $refused('orillacart_confirm_email', 'heidi@example.com', $cart, 'another mailbox is asked itself');
+        $refused('orillacart_confirm_email', 'grace@example.com', null, 'and so is another browser typing her email');
+        $refused('orillacart_too_many_unpaid_orders', 'judy@example.com', $cart, 'no more links may go: refused as before', static fn(string $email): bool => false);
+        $this->shop->jobs->runAll();
+        self::assertSame(['heidi@example.com', 'grace@example.com'], array_map(static fn($email): string => $email->to, $this->shop->mail->ofKind('email_confirmation')));
+
+        foreach (['no link', '1.' . str_repeat('a', 32) . '.' . str_repeat('b', 32), substr($token, 0, -1) . (str_ends_with($token, '0') ? '1' : '0')] as $forged) {
+            try {
+                $confirmations->confirm($forged);
+                self::fail('not a link the shop made');
+            } catch (\OrillaCart\Shared\Domain\NotFound $e) {
+                self::assertSame('orillacart_email_link_invalid', $e->errorCode);
+            }
+        }
+        $this->shop->clock->modify('+25 hours');
+        self::assertFalse($confirmations->confirmed('grace@example.com', $cart), 'confirmed for a day');
+        try {
+            $confirmations->confirm($token);
+            self::fail('and the link works for a day');
+        } catch (\OrillaCart\Shared\Domain\NotFound) {
+        }
+        $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, guestsAtUnpaidLimit: 'refuse'));
+        $refused('orillacart_too_many_unpaid_orders', 'kim@example.com', $cart, 'the shop asks nobody to confirm');
+    }
+
+    public function testOrdersPlacedInSomeonesEmailDoNotCountOnceTheyConfirmIt(): void
+    {
+        $this->stocked();
+        // Someone places transfers in Ada's email from elsewhere; her own place is full of others' orders.
+        for ($i = 0; $i < 3; ++$i) {
+            $this->place('ada@example.com', caller: 'ip:203.0.113.7');
+            $this->place("guest{$i}@example.com", caller: 'ip:198.51.100.9');
+        }
+        $cart = $this->shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken;
+        self::assertNotNull($cart);
+        $this->shop->emailConfirmations->confirm($this->shop->emailConfirmations->token('ada@example.com', $cart, $this->shop->clock->now()->getTimestamp()));
+
+        self::assertSame('on_hold', $this->place(caller: 'ip:198.51.100.9', cart: $cart)->status);
     }
 
     public function testATryThatPlacedNoOrderTakesNoRoom(): void
@@ -193,10 +279,14 @@ final class UnpaidOrdersTest extends TestCase
         $this->shop->stock->setLevels(StockItemRef::product(20), new SetStockLevels([new SetStockLevel($this->room, 50)]));
     }
 
-    private function place(string $email = 'ada@example.com', ?int $customer = null, string $caller = '', string $payment = 'bank_transfer', string $postcode = '1000'): PlacedOrderView
+    private function place(string $email = 'ada@example.com', ?int $customer = null, string $caller = '', string $payment = 'bank_transfer', string $postcode = '1000', ?\Closure $mayMail = null, ?string $cart = null): PlacedOrderView
     {
-        $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $customer), new AddToCart(20))->newToken, $customer);
+        // A cart of the browser's own, or the one it has, filled again.
+        $owner = new CartOwner($cart ?? $this->shop->carts->add(new CartOwner(null, $customer), new AddToCart(20))->newToken, $customer);
+        if ($cart !== null && ($this->shop->carts->contents($owner)->lines ?? []) === []) {
+            $this->shop->carts->add($owner, new AddToCart(20));
+        }
 
-        return $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', $postcode, 'BG', '+359 2 000 0000'), payment: $payment), $caller);
+        return $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', $postcode, 'BG', '+359 2 000 0000'), payment: $payment), $caller, $mayMail);
     }
 }

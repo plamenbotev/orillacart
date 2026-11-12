@@ -456,6 +456,8 @@ The change log, newest first: ?area=payment-methods&user_id=1&page=2.
 
 ### `POST /checkout`
 
+Places the order. A guest ordering by transfer from an address where as many orders wait unpaid as one shopper may is refused with `orillacart_confirm_email` and emailed a link (at most 5 a day from each address, 3 a day to one email). Followed on any device and confirmed there (`POST /checkout/email-confirmation`), it lets the browser that asked place the order again, counted by that mailbox.
+
 - Who: anyone; needs a nonce (not with an API key); at most 30 every ten minutes from each address
 - Body (JSON):
   - `email` (string): required; not empty; an email; at most 200 characters
@@ -484,6 +486,14 @@ What the add-ons' address checks say of the addresses on the checkout form, befo
 - Body (JSON):
   - `billing` (AddressData): required
   - `shipping_address` (AddressData|null)
+
+### `POST /checkout/email-confirmation`
+
+Confirms a guest's email for ordering, with the token of the link sent to it (`orillacart_confirm_email` of `POST /checkout`): from whatever device the mail is read on. The browser that asked then places its order.
+
+- Who: anyone; needs a nonce (not with an API key); at most 20 an hour from each address
+- Body (JSON):
+  - `token` (string): required; not empty; matches `/^\d{1,12}\.[a-f0-9]{32}\.[a-f0-9]{32}$/`
 
 ### `POST /checkout/summary`
 
@@ -2537,6 +2547,7 @@ Replaces all the shop's settings in one go, so every field must be sent. It can 
   - `free_items_on_return` (string): one of spread, charged, come_back, stay_free; default 'spread'
   - `history_days` (int): 90 to 3650; default 365
   - `unpaid_orders_each` (int|null): 1 to 100; default 3
+  - `guests_at_unpaid_limit` (string): one of confirm_email, refuse; default 'confirm_email'
 
 ## /settings-archive
 

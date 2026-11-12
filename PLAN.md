@@ -893,6 +893,20 @@ categories made and changed by extensions, as the import makes them; tests that 
 | ✅ | 622 | P2 | The VS Code debugger: a Debug Adapter Protocol adapter replaying the shop's recording, with step back | 3ad9911a |
 | ✅ | 623 | P3 | The stepping shared by both (`editor/replay.ts`), the guide's Debugging, design 71 | 3ad9911a |
 
+## Guests confirm their email where too many orders wait (2026-11-12)
+
+[Design 72](docs/designs/72-guests-confirm-their-email.md): guests who share an address no longer refuse each other orders by transfer. With it, what kept the workflow's tests failing.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 624 | P1 | CI: imports sorted in 10 files; the integration tests uninstall the extensions they installed (`RestTestCase`), which had changed the shop the end-to-end tests open | |
+| ✅ | 625 | P1 | CI: the test site raises the rate limits (a filter can no longer switch them off), lets mail reach the tests' example.com addresses, and counts no unpaid orders for visitors; the setup test withdraws by the emailed link | |
+| ✅ | 626 | P2 | A guest at an address that holds `unpaid_orders_each` orders waiting for a transfer is refused with `orillacart_confirm_email` and emailed a link; confirmed, their orders are counted by the mailbox (`EmailConfirmations`, `Order::callerKey()`) | |
+| ✅ | 627 | P2 | The link works on any device and network: signed for a key of mailbox and cart, 24 hours; its page has a button (`POST /checkout/email-confirmation`), the shop keeps the confirmation (`ConfirmedEmails`), the browser with that cart orders | |
+| ✅ | 628 | P2 | Links counted: 5 a day from one address, 3 a day to one email (`email_confirmations`, `email_confirmation_address`) | |
+| ✅ | 629 | P2 | Setting `guests_at_unpaid_limit` (`confirm_email` by default, or `refuse`), on the Settings screen | |
+| ✅ | 630 | P3 | Tests: unit (`UnpaidOrdersTest`), end to end (storefront); REST docs, design 72 | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

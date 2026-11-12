@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Scheduling;
 
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\WordPress\ScheduledTask;
-use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 

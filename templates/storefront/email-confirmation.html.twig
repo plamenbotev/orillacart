@@ -1,0 +1,18 @@
+{#
+ # The checkout page opened from the link that confirms a guest's email for ordering, on whatever device their
+ # mail is read. token: the link's, or '' for what is no link of the shop's.
+ #}
+{% import 'storefront/_macros.html.twig' as shop %}
+<div class="orillacart-email-confirmation">
+    {{ shop.needs_script(__('Turn on JavaScript in your browser to confirm your email here.')) }}
+    {% if token == '' %}
+        <p class="orillacart-notice orillacart-notice--error">{{ __('This link does not work any more: place the order again for a new one.') }}</p>
+    {% else %}
+    <form class="orillacart-form" data-orillacart-email-confirmation="{{ token }}" novalidate>
+        <p>{{ __('Confirm that this email is yours to place your order.') }}</p>
+        <p class="orillacart-message" role="alert" data-orillacart-message></p>
+        <button type="submit" class="wp-element-button orillacart-button">{{ __('Confirm my email') }}</button>
+    </form>
+    <p class="orillacart-notice" role="status" data-orillacart-email-confirmed tabindex="-1" hidden>{{ __('Your email is confirmed. Go back to where you filled in your order and place it.') }}</p>
+    {% endif %}
+</div>

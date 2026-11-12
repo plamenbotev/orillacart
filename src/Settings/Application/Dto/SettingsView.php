@@ -59,6 +59,8 @@ final readonly class SettingsView
         public int $historyDays = StoreSettings::DEFAULT_HISTORY_DAYS,
         /** Orders on hold unpaid one shopper may have at once; null for no limit. */
         public ?int $unpaidOrdersEach = StoreSettings::DEFAULT_UNPAID_ORDERS_EACH,
+        /** What a guest is told once the place they order from holds that many: "confirm_email" or "refuse". */
+        public string $guestsAtUnpaidLimit = 'confirm_email',
     ) {}
 
     public static function fromSettings(StoreSettings $settings): self
@@ -92,6 +94,7 @@ final readonly class SettingsView
             $settings->freeItemsOnReturn->value,
             $settings->historyDays,
             $settings->unpaidOrdersEach,
+            $settings->guestsAtUnpaidLimit->value,
         );
     }
 }

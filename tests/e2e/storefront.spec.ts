@@ -697,6 +697,99 @@ test.describe( 'A visitor', () => {
 		).toBeVisible();
 	} );
 
+	test( 'is asked to confirm their email where too many orders wait for a transfer, and orders once they did on another device', async ( {
+		page,
+		context,
+		browser,
+		requestUtils,
+	} ) => {
+		const {
+			weight_units: weightUnits,
+			dimension_units: dimensionUnits,
+			currency_positions: currencyPositions,
+			price_decimals: decimals,
+			currency_decimals: currencyDecimals,
+			report_days: reportDays,
+			...settings
+		} = await requestUtils.rest< Record< string, unknown > >( {
+			path: '/orillacart/v1/settings',
+		} );
+		await requestUtils.rest( {
+			method: 'PUT',
+			path: '/orillacart/v1/settings',
+			data: {
+				...settings,
+				unpaid_orders_each: 1,
+				guests_at_unpaid_limit: 'confirm_email',
+			},
+		} );
+		const toCheckout = async ( email: string ) => {
+			await page.goto( shop.lampUrl );
+			await page.getByRole( 'button', { name: 'Add to cart' } ).click();
+			await expect( page.getByRole( 'status' ) ).toHaveText( /Added/ );
+			await page.goto( shop.urls.checkout );
+			await fillBilling( page, email );
+			await page.getByRole( 'radio', { name: 'Bank transfer' } ).check();
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+		};
+		const placed = page.getByRole( 'heading', {
+			name: 'Thank you for your order',
+		} );
+		try {
+			// Someone's order waits for its transfer, placed from the address every visitor here has.
+			await toCheckout( `e2e-first-${ Date.now() }@example.com` );
+			await expect( placed ).toBeVisible();
+
+			// The test site counts no such orders for visitors, but for a browser with this cookie.
+			await context.addCookies( [
+				{
+					name: 'orillacart_e2e_unpaid_limit',
+					value: '1',
+					url: new URL( '/', shop.urls.shop ).href,
+				},
+			] );
+			const email = `e2e-confirm-email-${ Date.now() }@example.com`;
+			await toCheckout( email );
+			await expect(
+				page.getByText(
+					`confirm your email: we sent a link to ${ email }`
+				)
+			).toBeVisible();
+
+			// The mail is read on another device: a browser with nothing of this one's.
+			runJobs();
+			const phone = await browser.newContext();
+			try {
+				const mail = await phone.newPage();
+				await mail.goto(
+					mailedLink(
+						email,
+						/href="([^"]*orillacart_email=[^"]+)"/,
+						'Confirm your email to order'
+					)
+				);
+				await mail
+					.getByRole( 'button', { name: 'Confirm my email' } )
+					.click();
+				await expect(
+					mail.getByText( 'Your email is confirmed.' )
+				).toBeVisible();
+			} finally {
+				await phone.close();
+			}
+
+			// Back where the order was filled in, it is placed.
+			await page.getByRole( 'button', { name: 'Place order' } ).click();
+			await expect( placed ).toBeVisible();
+		} finally {
+			await requestUtils.rest( {
+				method: 'PUT',
+				path: '/orillacart/v1/settings',
+				data: settings,
+			} );
+		}
+	} );
+
 	test( 'tells Google Tag Manager what it views, adds and buys, when the shop says so', async ( {
 		page,
 		requestUtils,

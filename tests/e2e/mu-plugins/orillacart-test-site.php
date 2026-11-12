@@ -4,8 +4,10 @@
  * Plugin Name: OrillaCart test site
  * Description: The wp-env test site only. Keeps the mail WordPress sends in the option orillacart_test_mail, the
  * last twenty, for the end-to-end tests to read, and sends none (the site makes no outbound calls at all: its
- * .wp-env.json blocks every host but its own and the tests' OpenSearch); and counts no rate limits, which the
- * tests' many orders from one address would reach; and checks addresses as an add-on would.
+ * .wp-env.json blocks every host but its own and the tests' OpenSearch); and raises the rate limits, which the
+ * tests' many orders from one address would reach, and lifts how many orders one shopper has waiting for a
+ * transfer, for the same reason; and lets mail go to the tests' example.com addresses; and checks addresses as an
+ * add-on would.
  */
 
 declare(strict_types=1);
@@ -26,7 +28,26 @@ add_filter('pre_wp_mail', static function (mixed $short, array $mail): mixed {
     return true;
 }, 5, 2);
 
-add_filter('orillacart_rate_limits', static fn(): array => []);
+// The tests' example.com addresses get their mail (kept above), whichever sends it, a request or the worker on
+// the command line: the shop holds mail to reserved names back.
+add_filter('orillacart_undeliverable_address', '__return_false');
+
+// For the browser's requests only: the integration tests run on the command line, where the shop's limits count
+// and the settings read as stored.
+if (PHP_SAPI !== 'cli') {
+    // A filter cannot switch a limit off, only raise it: each to more than a run of the tests makes.
+    add_filter('orillacart_rate_limits', static fn(mixed $limits): array => array_map(
+        static fn(mixed $limit): array => [1000000, is_array($limit) && is_int($limit[1] ?? null) ? $limit[1] : 600],
+        is_array($limits) ? $limits : [],
+    ));
+
+    // The setting "unpaid orders each", off for visitors: every guest of the tests orders from the one address it
+    // counts by. The admin reads and saves the setting as stored, and a test's browser with this cookie orders
+    // under it.
+    add_filter('option_orillacart_settings', static fn(mixed $stored): mixed => is_array($stored) && did_action('init') > 0 && !is_user_logged_in() && ($_COOKIE['orillacart_e2e_unpaid_limit'] ?? '') !== '1'
+        ? ['unpaid_orders_each' => null] + $stored
+        : $stored);
+}
 
 // An address register as an add-on brings one: it knows one street of the tests', and corrects it.
 add_action('orillacart_extensions', static function (OrillaCart\Extension\Registry $registry): void {

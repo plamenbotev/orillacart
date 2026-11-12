@@ -34,6 +34,7 @@ import {
 	startPromotions,
 } from './shop-blocks';
 import { startWishlist } from './wishlist';
+import { bindEmailConfirmation } from './email-confirmation';
 import { bindWithdrawal, bindWithdrawalAsk } from './withdrawal';
 
 declare global {
@@ -110,6 +111,11 @@ function start(): void {
 			'form[data-orillacart-withdrawal-ask]'
 		)
 		.forEach( bindWithdrawalAsk );
+	document
+		.querySelectorAll< HTMLFormElement >(
+			'form[data-orillacart-email-confirmation]'
+		)
+		.forEach( bindEmailConfirmation );
 	// Choosing a currency reloads the page in it; the button is for browsers without the script.
 	document
 		.querySelectorAll< HTMLFormElement >(

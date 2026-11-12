@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\Health;
 
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use OrillaCart\Shared\Container\LocatedServices;
 use OrillaCart\Shared\WordPress\HealthCheck;
 use OrillaCart\Shared\WordPress\HealthStatus;
-use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 

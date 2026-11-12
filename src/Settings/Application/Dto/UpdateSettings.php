@@ -7,6 +7,7 @@ namespace OrillaCart\Settings\Application\Dto;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\FreeItemsOnReturn;
+use OrillaCart\Settings\Domain\GuestsAtUnpaidLimit;
 use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\StoreSettings;
 use OrillaCart\Settings\Domain\WeightUnit;
@@ -72,5 +73,11 @@ final readonly class UpdateSettings
         /** Orders on hold unpaid one shopper may have at once; null for no limit. */
         #[Assert\Range(min: 1, max: StoreSettings::MOST_UNPAID_ORDERS_EACH)]
         public ?int $unpaidOrdersEach = StoreSettings::DEFAULT_UNPAID_ORDERS_EACH,
+        /**
+         * A guest ordering from a place that holds that many: "confirm_email" (a link sent to their email, after
+         * which their orders are counted by that mailbox), or "refuse".
+         */
+        #[Assert\Choice(callback: [GuestsAtUnpaidLimit::class, 'values'])]
+        public string $guestsAtUnpaidLimit = 'confirm_email',
     ) {}
 }

@@ -60,6 +60,7 @@ final class RouteSecurityGateTest extends TestCase
         // Only the browser's own cart: the email given at checkout, and whether to be reminded of the cart.
         'POST /cart/checkout-contact',
         'POST /checkout',
+        'POST /checkout/email-confirmation',
         'POST /checkout/summary',
         // What add-ons' address checks say of the addresses typed; changes nothing, and is rate limited.
         'POST /checkout/addresses',

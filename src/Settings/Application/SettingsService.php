@@ -11,6 +11,7 @@ use OrillaCart\Settings\Application\Dto\UpdateSettings;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\FreeItemsOnReturn;
+use OrillaCart\Settings\Domain\GuestsAtUnpaidLimit;
 use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\SettingsChanged;
 use OrillaCart\Settings\Domain\SettingsRepository;
@@ -74,6 +75,7 @@ final readonly class SettingsService
             FreeItemsOnReturn::from($command->freeItemsOnReturn),
             $command->historyDays,
             $command->unpaidOrdersEach,
+            GuestsAtUnpaidLimit::from($command->guestsAtUnpaidLimit),
         );
 
         if (!$current->equals($previous)) {
@@ -117,6 +119,7 @@ final readonly class SettingsService
             $current->freeItemsOnReturn,
             $current->historyDays,
             $current->unpaidOrdersEach,
+            $current->guestsAtUnpaidLimit,
         ));
     }
 
@@ -154,6 +157,7 @@ final readonly class SettingsService
             $current->freeItemsOnReturn,
             $current->historyDays,
             $current->unpaidOrdersEach,
+            $current->guestsAtUnpaidLimit,
         ));
     }
 
@@ -190,6 +194,7 @@ final readonly class SettingsService
             $current->freeItemsOnReturn,
             $current->historyDays,
             $current->unpaidOrdersEach,
+            $current->guestsAtUnpaidLimit,
         ));
     }
 }

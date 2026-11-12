@@ -1,0 +1,15 @@
+{% extends 'emails/layout.html.twig' %}
+{#
+ # To a guest whose order waits to be placed until they confirm their email (the place they order from holds as
+ # many orders waiting for a transfer as one shopper may). link: opens the checkout page, where a button confirms
+ # the email; hours: how long it works.
+ #}
+{# translators: %s: site name -#}
+{% block subject %}{{ __('[%s] Confirm your email to order')|format(site_name) }}{% endblock %}
+{% block heading %}{{ __('Confirm your email') }}{% endblock %}
+{% block intro %}<p>{{ __('Someone, we hope you, is placing an order with this email. Follow the link to confirm the email is yours.') }}</p>{% endblock %}
+{% block content %}
+<p><a href="{{ link }}" style="display:inline-block;padding:10px 18px;background:#2271b1;color:#ffffff;border-radius:4px;text-decoration:none;">{{ __('Confirm my email') }}</a></p>
+{# translators: %d: hours -#}
+<p style="color:#71717a;font-size:13px;">{{ __('The link works on any device, for %d hours. Then go back to where you filled in your order and place it. If you are not ordering, ignore this email: nothing changes.')|format(hours) }}</p>
+{% endblock %}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Jobs\Application\JobRunner;
+use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
@@ -25,6 +26,19 @@ abstract class RestTestCase extends TestCase
         $lifecycle = self::kernel()->container()->get(PluginLifecycle::class);
         self::assertInstanceOf(PluginLifecycle::class, $lifecycle);
         $lifecycle->activate();
+    }
+
+    /**
+     * The extensions a class's tests installed go with it: one left behind would put its pages, slots and
+     * template overrides on the shop the tests after it (and the end-to-end tests after the suite) open.
+     */
+    public static function tearDownAfterClass(): void
+    {
+        $packages = self::kernel()->container()->get(PackageService::class);
+        self::assertInstanceOf(PackageService::class, $packages);
+        foreach ($packages->all() as $package) {
+            $packages->uninstall($package->id);
+        }
     }
 
     /** @var list<array{to: string, subject: string, message: string, headers: list<string>, attachments: list<string>, named: array<string, string>}> mail the plugin sent during the test */

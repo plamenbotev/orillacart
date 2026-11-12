@@ -7,6 +7,7 @@ namespace OrillaCart\Settings\Infrastructure\WordPress;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Settings\Domain\DimensionUnit;
 use OrillaCart\Settings\Domain\FreeItemsOnReturn;
+use OrillaCart\Settings\Domain\GuestsAtUnpaidLimit;
 use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Settings\Domain\SettingsRepository;
 use OrillaCart\Settings\Domain\StoreSettings;
@@ -60,6 +61,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
                 self::optionalInt($stored, 'history_days') ?? StoreSettings::DEFAULT_HISTORY_DAYS,
                 // Stored empty, the shop chose no limit; not stored, the default.
                 \array_key_exists('unpaid_orders_each', $stored) ? self::optionalInt($stored, 'unpaid_orders_each') : StoreSettings::DEFAULT_UNPAID_ORDERS_EACH,
+                GuestsAtUnpaidLimit::tryFrom(self::optionalString($stored, 'guests_at_unpaid_limit') ?? '') ?? GuestsAtUnpaidLimit::ConfirmEmail,
             );
         } catch (RuleViolation|\ValueError|\UnexpectedValueException $e) {
             $this->logger->warning('Stored shop settings are not valid, using the defaults: {message}', ['message' => $e->getMessage(), 'exception' => $e]);
@@ -93,6 +95,7 @@ final readonly class OptionSettingsRepository implements SettingsRepository, Lif
             'free_items_on_return' => $settings->freeItemsOnReturn->value,
             'history_days' => $settings->historyDays,
             'unpaid_orders_each' => $settings->unpaidOrdersEach,
+            'guests_at_unpaid_limit' => $settings->guestsAtUnpaidLimit->value,
         ], true);
     }
 

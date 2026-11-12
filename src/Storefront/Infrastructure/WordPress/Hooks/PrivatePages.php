@@ -9,6 +9,7 @@ use OrillaCart\Shared\WordPress\AsHook;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontAccountLinks;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontEmailConfirmationLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks;
 
@@ -36,7 +37,7 @@ final readonly class PrivatePages
 
     public function __invoke(): void
     {
-        if (isset($_GET[StorefrontOrderLinks::RECEIPT_QUERY]) || isset($_GET[StorefrontAccountLinks::CONFIRM_QUERY]) || isset($_GET[ReviewLinks::QUERY]) || isset($_GET[StorefrontWithdrawalLinks::QUERY])) {
+        if (isset($_GET[StorefrontOrderLinks::RECEIPT_QUERY]) || isset($_GET[StorefrontAccountLinks::CONFIRM_QUERY]) || isset($_GET[ReviewLinks::QUERY]) || isset($_GET[StorefrontWithdrawalLinks::QUERY]) || isset($_GET[StorefrontEmailConfirmationLinks::QUERY])) {
             self::private();
             header('Cache-Control: no-store, private');
             header('Referrer-Policy: no-referrer');

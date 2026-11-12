@@ -33,6 +33,7 @@ export interface Settings {
 	unpaid_hold_days: number | null;
 	/** Orders on hold unpaid one shopper may have at once; null for no limit. */
 	unpaid_orders_each: number | null;
+	guests_at_unpaid_limit: 'confirm_email' | 'refuse';
 	/** Customers ask to return items this many days after their order shipped; null takes no returns. */
 	return_days: number | null;
 	/** The least the items may come to, after discounts, to order; null for no least. */
@@ -69,6 +70,7 @@ export type SettingsInput = Pick<
 	| 'low_stock_threshold'
 	| 'unpaid_hold_days'
 	| 'unpaid_orders_each'
+	| 'guests_at_unpaid_limit'
 	| 'return_days'
 	| 'history_days'
 	| 'minimum_order'
@@ -99,6 +101,7 @@ export function settingsInput( settings: Settings ): SettingsInput {
 		low_stock_threshold: settings.low_stock_threshold,
 		unpaid_hold_days: settings.unpaid_hold_days,
 		unpaid_orders_each: settings.unpaid_orders_each,
+		guests_at_unpaid_limit: settings.guests_at_unpaid_limit,
 		return_days: settings.return_days,
 		history_days: settings.history_days,
 		minimum_order: settings.minimum_order,

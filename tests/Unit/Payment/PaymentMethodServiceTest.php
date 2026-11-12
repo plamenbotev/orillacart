@@ -7,10 +7,10 @@ namespace OrillaCart\Tests\Unit\Payment;
 use OrillaCart\Payment\Application\Dto\PaymentMethodView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Application\Dto\TestPaymentSettings;
+use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Payment\Domain\PaymentMethodNotFound;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;
 use OrillaCart\Shared\Domain\RuleViolation;
-use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 

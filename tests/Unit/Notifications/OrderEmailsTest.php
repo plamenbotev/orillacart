@@ -24,8 +24,8 @@ use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
-use OrillaCart\Tests\Fixtures\Payment\PayPalNotifications;
 use OrillaCart\Tests\Fixtures\Jobs\RecordedProgress;
+use OrillaCart\Tests\Fixtures\Payment\PayPalNotifications;
 use PHPUnit\Framework\TestCase;
 
 final class OrderEmailsTest extends TestCase

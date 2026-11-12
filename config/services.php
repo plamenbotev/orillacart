@@ -579,6 +579,8 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(GiftCardMail::class, GiftCardEmails::class);
     $services->alias(AccountLinks::class, StorefrontAccountLinks::class);
     $services->alias(\OrillaCart\Returns\Application\WithdrawalLinks::class, \OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks::class);
+    $services->alias(\OrillaCart\Checkout\Application\EmailConfirmationLinks::class, \OrillaCart\Storefront\Infrastructure\WordPress\StorefrontEmailConfirmationLinks::class);
+    $services->alias(\OrillaCart\Checkout\Application\ConfirmedEmails::class, \OrillaCart\Checkout\Infrastructure\WordPress\TransientConfirmedEmails::class);
     $services->alias(PriceRuleRepository::class, DoctrinePriceRuleRepository::class);
     $services->alias(ShopperGroups::class, GroupsOfShoppers::class);
     $services->alias(RedemptionRepository::class, DoctrineRedemptionRepository::class);

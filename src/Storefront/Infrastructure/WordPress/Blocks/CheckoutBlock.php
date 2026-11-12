@@ -7,6 +7,7 @@ namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
+use OrillaCart\Checkout\Application\EmailConfirmations;
 use OrillaCart\Checkout\Application\PayNow;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Customers\Application\CustomerService;
@@ -37,6 +38,7 @@ use OrillaCart\Storefront\Infrastructure\WordPress\Hooks\PrivatePages;
 use OrillaCart\Storefront\Infrastructure\WordPress\ReviewLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\Shopper;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontEmailConfirmationLinks;
 use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontOrderLinks;
 use OrillaCart\Tax\Application\ExemptionCertificates;
 
@@ -86,6 +88,15 @@ final readonly class CheckoutBlock implements BlockDefinition
         $receipt = KeptTokens::token(StorefrontOrderLinks::RECEIPT_QUERY);
         if ($receipt !== null) {
             return $this->receipt($receipt);
+        }
+
+        // From the link that confirms a guest's email for ordering, on whatever device their mail is read: a
+        // button confirms it, so a mail program that only fetches the link confirms nothing.
+        $confirming = $_GET[StorefrontEmailConfirmationLinks::QUERY] ?? null;
+        if (\is_string($confirming)) {
+            $token = sanitize_text_field(wp_unslash($confirming));
+
+            return $this->templates->render('storefront/email-confirmation.html.twig', ['token' => preg_match('/^' . EmailConfirmations::PATTERN . '$/', $token) === 1 ? $token : '']);
         }
 
         if ($this->settings->current()->catalogOnly) {

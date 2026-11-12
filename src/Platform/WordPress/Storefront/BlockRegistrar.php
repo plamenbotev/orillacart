@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Storefront;
 
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use OrillaCart\Platform\PluginContext;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\Container\LocatedServices;
 use OrillaCart\Shared\WordPress\BlockContext;
 use OrillaCart\Shared\WordPress\BlockDefinition;
-use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 

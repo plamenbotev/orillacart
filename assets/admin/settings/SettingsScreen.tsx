@@ -584,6 +584,44 @@ export function SettingsScreen() {
 									}
 								/>
 							</Field>
+							{ form.unpaid_orders_each !== null && (
+								<Field size="m">
+									<SelectControl
+										__next40pxDefaultSize
+										label={ __(
+											'A guest ordering from where that many wait',
+											'orillacart'
+										) }
+										help={ __(
+											'Guests who share an address (an office, a campus) fill it between them. Asked to confirm their email by a link sent to it, each is then counted by their own mailbox.',
+											'orillacart'
+										) }
+										value={ form.guests_at_unpaid_limit }
+										options={ [
+											{
+												value: 'confirm_email',
+												label: __(
+													'Is asked to confirm their email',
+													'orillacart'
+												),
+											},
+											{
+												value: 'refuse',
+												label: __(
+													'Is refused',
+													'orillacart'
+												),
+											},
+										] }
+										onChange={ ( value ) =>
+											update(
+												'guests_at_unpaid_limit',
+												value as SettingsInput[ 'guests_at_unpaid_limit' ]
+											)
+										}
+									/>
+								</Field>
+							) }
 							<Field size="xs">
 								<TextControl
 									__next40pxDefaultSize

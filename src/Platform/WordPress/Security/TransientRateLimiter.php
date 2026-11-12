@@ -66,6 +66,12 @@ final readonly class TransientRateLimiter implements RateLimiter
         'withdrawals' => [20, 3600],
         // The links that open an order's withdrawal, mailed to its address, from everyone together.
         'withdrawal_links' => [3, 86400],
+        // The links that confirm a guest's email for ordering: from one caller, which is how many mailboxes one
+        // place may order by a day, and to one address from everyone.
+        'email_confirmations' => [5, 86400],
+        'email_confirmation_address' => [3, 86400],
+        // And the links followed and confirmed.
+        'email_confirmed' => [20, 3600],
         // Each asks a payment provider or courier, with the shop's keys.
         'settings_tests' => [20, 600],
         // An extension's routes, all of them together, per caller.

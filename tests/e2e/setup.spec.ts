@@ -6,7 +6,14 @@
 import { expect, test } from '@wordpress/e2e-test-utils-playwright';
 import type { RequestUtils } from '@wordpress/e2e-test-utils-playwright';
 
-import { remove, setUpShop, type Shop, tearDownShop } from './shop';
+import {
+	mailedLink,
+	remove,
+	runJobs,
+	setUpShop,
+	type Shop,
+	tearDownShop,
+} from './shop';
 
 let shop: Shop;
 
@@ -362,14 +369,30 @@ test( 'sets up a German shop for consumers in the EU, opens it, and a visitor bu
 	await visit
 		.getByRole( 'link', { name: 'Withdraw from contract here' } )
 		.click();
-	await visit.getByLabel( 'Your name' ).fill( 'Ada Lovelace' );
 	await visit.getByLabel( 'Order number' ).fill( String( placed ) );
 	await visit
 		.getByLabel( 'Email you ordered with' )
 		.fill( 'e2e-visitor@example.com' );
+	const asked = visit.waitForResponse(
+		( response ) =>
+			response.url().includes( 'withdrawals' ) &&
+			response.request().method() === 'POST'
+	);
 	await visit
-		.getByLabel( 'Email you ordered with' )
-		.dispatchEvent( 'change' );
+		.getByRole( 'button', { name: 'Withdraw from contract' } )
+		.click();
+	expect( ( await asked ).status() ).toBe( 202 );
+
+	// The link that opens the order's withdrawal goes to the order's address.
+	runJobs();
+	await visit.goto(
+		mailedLink(
+			'e2e-visitor@example.com',
+			/href="([^"]*orillacart_withdrawal=[^"]+)"/,
+			'Withdraw from order'
+		)
+	);
+	await visit.getByLabel( 'Your name' ).fill( 'Ada Lovelace' );
 	await expect( visit.getByLabel( 'E2E Lamp' ) ).toHaveValue( '1' );
 	await visit
 		.getByLabel( 'Send the confirmation to' )

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Integration;
 
-use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Shared\Http\SiteCookies;
 
 /**

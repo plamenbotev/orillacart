@@ -77,6 +77,8 @@ final readonly class StoreSettings
          * they order from, may have at once: each holds its stock until paid; null for no limit.
          */
         public ?int $unpaidOrdersEach = self::DEFAULT_UNPAID_ORDERS_EACH,
+        /** What a guest is told once the place they order from holds that many: confirm your email, or no. */
+        public GuestsAtUnpaidLimit $guestsAtUnpaidLimit = GuestsAtUnpaidLimit::ConfirmEmail,
     ) {
         if ($minimumOrder !== null && ($minimumOrder->isNegative() || $minimumOrder->isZero())) {
             throw new RuleViolation('A minimum order is more than nothing; leave it empty for none.', 'orillacart_invalid_minimum_order');
@@ -159,6 +161,7 @@ final readonly class StoreSettings
             && $this->reportDay === $other->reportDay
             && $this->freeItemsOnReturn === $other->freeItemsOnReturn
             && $this->historyDays === $other->historyDays
-            && $this->unpaidOrdersEach === $other->unpaidOrdersEach;
+            && $this->unpaidOrdersEach === $other->unpaidOrdersEach
+            && $this->guestsAtUnpaidLimit === $other->guestsAtUnpaidLimit;
     }
 }

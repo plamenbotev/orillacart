@@ -35,6 +35,7 @@ use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\AddressRules;
 use OrillaCart\Checkout\Application\CheckoutFields;
 use OrillaCart\Checkout\Application\CheckoutService;
+use OrillaCart\Checkout\Application\EmailConfirmations;
 use OrillaCart\Checkout\Application\GivenItems;
 use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
@@ -305,6 +306,7 @@ final class TestShop
     public readonly AddressChecks $addressChecks;
     public readonly Returns $returns;
     public readonly \OrillaCart\Returns\Application\WithdrawalRequests $withdrawals;
+    public readonly EmailConfirmations $emailConfirmations;
     public readonly Reorder $reorder;
     public readonly InMemoryCustomerNotes $customerNoteRecords;
     public readonly CustomerNotes $customerNotes;
@@ -621,6 +623,7 @@ final class TestShop
             $this->opening = new ShopOpening(new InMemoryOpening(), $this->visitor = new FakeAuthorization()),
             $this->givenItems = new GivenItems($this->carts, $this->pricing, $quotes, $this->currencies, $this->discounts),
             new CallerKeys($this->signatures),
+            $this->emailConfirmations = new EmailConfirmations($this->signatures, $this->jobs->jobs, $this->clock, new InMemoryConfirmedEmails()),
         );
         $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
         $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);
@@ -658,6 +661,7 @@ final class TestShop
         $this->sentEmails = new InMemorySentEmails();
         $this->writer = new EmailWriter($this->emailTemplates, $this->emailSettings, $this->site = new FakeSite(), $this->languages);
         $this->jobs->with(new SendNewsletterConfirmation($this->newsletter, new RecordingConfirmations(), $this->writer, $this->mail));
+        $this->jobs->with(new \OrillaCart\Notifications\Application\SendEmailConfirmation(new FakeEmailConfirmationLinks(), $this->writer, $this->mail));
         $this->jobs->with(new \OrillaCart\Notifications\Application\SendWithdrawalLink($this->orders, new \OrillaCart\Tests\Fixtures\Returns\FakeWithdrawalLinks(), $this->writer, $this->mail));
         $this->eInvoices = new EInvoices($this->invoiceSettings, $settings, $geography, $this->writer, new SofiaCalendar());
         $this->sendEInvoices = new SendEInvoices($this->invoices, $this->eInvoices, $this->extensions, $this->jobs->jobs);

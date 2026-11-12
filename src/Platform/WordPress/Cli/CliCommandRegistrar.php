@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Platform\WordPress\Cli;
 
+use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use OrillaCart\Platform\WordPress\Registrar;
 use OrillaCart\Shared\WordPress\CliCommand;
-use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use Symfony\Component\DependencyInjection\Attribute\AutowireLocator;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
