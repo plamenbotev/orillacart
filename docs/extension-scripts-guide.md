@@ -769,12 +769,15 @@ what they say; `count({ where })` counts. `query({ where, order_by, limit, after
 is a field name, or a field name, a space and one of `= != < <= > >=`: `{ "priority >=": 5 }`. `order_by` is an
 indexed field, `id`, `created_at` or `updated_at`, with a leading `-` for descending. `limit` is 1 to 200, 50
 by default; `after` is the last id of the previous page, for the next one. A reference field holds the id, and a
-record whose `customer` is erased under a personal data request goes with the customer.
+record whose `customer` is erased under a personal data request goes with the customer. The id must be the shop's:
+a product or order it has, a customer who is one of its customers (not its staff, not another site's user);
+another is refused with which (`There is no customer 2 in this shop`).
 
 `fields on product|order|customer` adds fields to the shop's own records. `fields.get(kind, id, field)`,
 `fields.set(kind, id, field, value)` (null clears) and `fields.of(kind, id)` read and write them; `kind` is
 `"product"`, `"order"` or `"customer"` and `id` the product's id, the order's number or the customer's id. On
-the order they are also in `order.fields` for templates and columns.
+the order they are also in `order.fields` for templates and columns. A value is written only on a record the shop
+has: `fields.set("customer", 999999, …)` is refused as a record's reference is.
 
 The shop shows and uses the fields without a line of script for it:
 
@@ -887,6 +890,7 @@ timezone and write moments as ISO 8601 text.
 | `shop.orders.find(number)`                                | `orders: read`             | the order map (§8), or null     |
 | `shop.orders.mark(number, filter)`, `unmark`, `is_marked` | `orders: write` / `read`   | the extension's order filters   |
 | `shop.orders.create(order)`                               | `orders: create`           | the order placed, its map       |
+| `shop.orders.quote(order)`                                | `orders: read`             | what it would cost, how it ships |
 | `shop.products.find(id)`                                  | `products: read`           | the product map, or null        |
 | `shop.products.mark(id, filter)`, `unmark`, `is_marked`   | `products: write` / `read` | the extension's product filters |
 | `shop.products.search({ sku, words, category_id, limit })` | `products: read`          | product maps, drafts too        |
@@ -896,6 +900,8 @@ timezone and write moments as ISO 8601 text.
 | `shop.attributes.sets()`, `save_set(set)`                 | `products: read` / `write` | attribute set maps              |
 | `shop.categories.list()`, `ensure(path)`                  | `products: read` / `write` | category maps / the id          |
 | `shop.customers.find(id)`                                 | `customers: read`          | the customer map, or null       |
+| `shop.customers.search({ email, words, limit })`          | `customers: read`          | customer maps                   |
+| `shop.customers.create(customer)`                         | `customers: create`        | the customer made, its map      |
 | `shop.email.send(to, subject, html, reply_to?)`           | `email: send`              | true when the mail system took it |
 | `settings.get(key)`                                       |                            | one of the extension's settings |
 | `fields.*`, `objects.*`                                   |                            | the extension's own data (§11)  |
@@ -911,6 +917,19 @@ order map's, or null), group_ids, orders (how many they placed), addresses_from_
 address but they ordered, billing and shipping_address are their latest order's and `addresses_from_order` is
 that order's number; it is null when the addresses are the account's. Nothing of their login.
 
+**Finding and making customers.** `shop.customers.search({ email: "ada@example.com" })` answers the shop's
+customer with that whole address, any case, as a list of one or none; `{ words: "Lovelace" }` matches words in
+their email or name, newest first, up to `limit` (20, at most 100). Staff and another site's users are never
+customers. `shop.customers.create({ email, first_name, last_name, billing, shipping_address, test })` makes the
+account as the shop does by hand: no sign-up email, nobody told, a password nobody knows until the customer sets
+theirs with the lost-password link. `billing` and `shipping_address` are optional addresses as the order map has
+them; given, they are saved in the account's address book as where checkout starts (the billing one for shipping
+too when only it is given); left out, the account keeps none, and `billing` stays null until the customer orders.
+It needs `customers: create`, a permission of its own granted on purpose. `test: true` makes a test customer
+(never emailed, its orders test orders); on a network of sites a customer is invited instead, unless it is a test
+customer with an address of a domain kept for tests (`@example.com`, `.test`). An email that has an account
+already is a refusal.
+
 **Sending email.** `shop.email.send("buyer@example.com", "Your quote is ready", "<p>…</p>")` writes the body into
 the shop's own email layout, from its address, in the site's language; the body is cleaned as a product block
 is (paragraphs, lists, links, tables; no scripts). It answers whether the mail system took it, and five go per
@@ -925,10 +944,18 @@ says so. The customer is emailed only when `email_customer` is true, which is ma
 needs `email: send` as well and counts against the run's emails and the extension's emails an hour. `test: true` makes it a test order: never
 emailed, no invoice number, not counted, removed with the shop's test data; an order of a test customer is one
 anyway. The order map's `test` says which an order is, so an `on order_paid` handler can leave test orders out. It answers the order map; what the shop refuses (an item out of stock, a way to pay
-it does not offer) is a refusal the script may catch or pass on.
+it does not offer, a product that is not published) is a refusal the script may catch or pass on, and says which.
+
+An order whose items all ship nothing (a `virtual` product, a download) takes no `shipping_option` and, unpaid, no
+`payment`. One that ships needs a `shipping_option` the shop offers for its address, and those differ from shop to
+shop (`"rate:4"`, `"pickup:5:shop"`): `shop.orders.quote({ …the same map })` answers `{ needs_shipping,
+shipping_options: [{ id, carrier, name, price, tax, total, to_pickup_point }], shipping_option, payments,
+subtotal, shipping, tax, total, currency }` for it, nothing placed, so a script picks an option the shop has
+(`quote.shipping_options[0].id`). A shop that ships nowhere to the address answers no options.
 
 **Making products.** `shop.products.create({ name, price, type, sku, sale_price, description, short_description,
-categories: ["Lighting > Desk lamps"], tags, stock, stockrooms: { "2": 5 }, stock_mode, weight, featured,
+categories: ["Lighting > Desk lamps"], tags, stock, stockrooms: { "2": 5 }, stock_mode (`tracked`,
+`always_available` or `unavailable`), weight, featured,
 attributes: [{ name: "Colour", options: ["Red", "Blue"], required: true }], attribute_set_ids })` makes the product
 as one row of an import would: every value checked as a cell is, a refused call changing nothing, categories made
 with their parents where missing, `stock` the level in the shop's first stockroom. It is a draft, seen by nobody but
@@ -1075,13 +1102,11 @@ saved files are tested; files sent with the request are refused. Inside a test:
 - `settings.get` reads the test's `settings` only: the saved settings, secrets among them, are never read in a test.
 - `jobs.push` records the job instead of queuing it; the result lists what was pushed.
 - `objects.*` and `fields.*` work on the shop's database inside a transaction rolled back after the test, so a test
-  may create records and read them back and leaves none behind. Tests run on this shop's data: a record naming a
-  product or order the shop has not fails with which (`There is no product 137 in this shop`), so a test that must
-  run on any shop makes the products and orders it needs (`shop.products.create`, `shop.orders.create`) or looks
-  them up (`shop.products.search`) instead of naming ids of the shop it was written on. Products, variations,
-  attribute sets and categories a test makes are undone with it, and listed in its `effects`; the object cache
-  forgets what the test put in it. Should the
-  database still refuse a write, the tests after it are reported `Not run`, naming the one that broke it.
+  may create records and read them back and leaves none behind. Tests run on this shop's data: a record or field
+  naming a product, order or customer the shop has not fails with which (`There is no customer 2 in this shop`),
+  so a test that must run on any shop makes what it needs (below) or looks it up (`shop.products.search`,
+  `shop.customers.search`) instead of naming ids of the shop it was written on. Should the database still refuse a
+  write, the tests after it are reported `Not run`, naming the one that broke it.
 - `shop.email.send` holds the mail: it answers true and sends nothing. `shop.orders.create` places a test order
   (never emailed, never invoiced) inside the same rolled-back transaction. The result's `effects` lists each such
   call with its arguments, so a test can be checked for what it would have sent.
@@ -1092,7 +1117,47 @@ saved files are tested; files sent with the request are refused. Inside a test:
 
 `assert test, message?` is the check; `fail`, an error or a budget used up also fail the test. The result lists the
 requests made and the budget used. The editor runs the tests over the files as they are on screen, saved or not,
-and the VS Code command sends the folder's files the same way.
+and the VS Code command sends the folder's files the same way. Files sent to test or debug (`POST
+/extensions/{id}/test`, `/debug`, the assistant's `test_package` and `debug_package`) lie over the saved ones: a
+path sent stands in for its saved file or is added, `null` removes one, and the files not sent stay as saved, so
+sending one changed file is enough.
+
+#### Making what a test needs
+
+A test that runs on any shop, an empty one too, makes its customers, products and orders:
+
+```
+extension "trade" { name: "Trade accounts", needs: { customers: read } }
+
+test "a trade customer orders" fn() {
+  let address = { first_name: "Ada", last_name: "Lovelace", street: "1 Navy Way", city: "Arlington", postcode: "22201", country: "US", state: "VA", phone: "555" }
+  let buyer = shop.customers.create({ email: "buyer@example.com", first_name: "Ada", last_name: "Lovelace", billing: address })
+  let walk_in = shop.customers.create({ email: "walk-in@example.com" })
+  let guide = shop.products.create({ name: "Trade guide", price: "9.00", type: "virtual", stock_mode: "always_available" })
+  shop.products.publish(guide.id)
+  let order = shop.orders.create({ email: buyer.email, customer_id: buyer.id, billing: buyer.billing, items: [{ product_id: guide.id, quantity: 2 }] })
+  shop.orders.create({ email: walk_in.email, customer_id: walk_in.id, billing: address, items: [{ product_id: guide.id, quantity: 1 }] })
+  assert shop.customers.find(walk_in.id).addresses_from_order != null, "the walk-in's address is their order's"
+  assert order.customer_id == buyer.id
+}
+```
+
+- `shop.customers.create`, `shop.products.create` and `shop.orders.create` need no permission when called in a
+  test's own body (and in functions written inside it): what they make is the test's, undone with it. Outside a
+  test's body, in a helper function the test calls, they take their permission as anywhere else: `customers:
+  create`, `products: write`, `orders: create`. The reference marks them `in tests: none`.
+- `shop.products.publish` and `shop.products.add_variation` need no permission in a test's body for a product the
+  same test made; for any other product they take `products: publish` and `products: write`. An order is placed
+  only for a published product, so a test publishes the one it made.
+- A customer made in a test is a test customer and its orders test orders: never emailed, never invoiced. A product
+  made in a test is a draft until it publishes it.
+- Each is listed in the test's `effects` with its arguments, a call the shop refused too, and none of them is in the
+  shop after the test: the customers' accounts, the products with their categories and attribute sets, the orders
+  with the stock they took. The object cache forgets what the test put in it.
+- Use an `@example.com` or `.test` address for a test's customers: on a network of sites only those make test
+  customers, and they are never mailed.
+- An order of `virtual` products needs no `shipping_option`; to test shipping, pick one the shop offers with
+  `shop.orders.quote` (§14), which needs `orders: read`.
 
 ### Debugging
 

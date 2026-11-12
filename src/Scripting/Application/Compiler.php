@@ -64,6 +64,9 @@ final class Compiler
     private array $topFunctions = [];
     /** @var list<string> the permissions the package declares */
     private array $needs = [];
+
+    /** Compiling a test's body, where the functions that make what a test needs ask no permission. */
+    private bool $inTest = false;
     /** @var list<array{text: string, plural: ?string, context: string, line: int}> what the calls of WORDS mark for translation */
     private array $words = [];
     /** The debug build (design 71): every statement gives the debugger its variables. */
@@ -90,6 +93,7 @@ final class Compiler
         $this->tempCount = 0;
         $this->topFunctions = [];
         $this->needs = [];
+        $this->inTest = false;
         $this->words = [];
         $className = 'Script_' . preg_replace('/[^A-Za-z0-9_]/', '_', $classSuffix);
 
@@ -181,8 +185,20 @@ final class Compiler
             'props' => $props,
             'functions' => $functions,
             'nested' => array_map($this->declaration(...), $declaration->nested),
-            'handler' => $declaration->handler === null ? null : $this->method(null, $declaration->handler, $head),
+            'handler' => $declaration->handler === null ? null : $this->handler($declaration, $head),
         ];
+    }
+
+    /** A declaration's handler; a test's is compiled knowing it is one. */
+    private function handler(Declaration $declaration, string $head): string
+    {
+        \assert($declaration->handler !== null);
+        $this->inTest = $declaration->kind === 'test';
+        try {
+            return $this->method(null, $declaration->handler, $head);
+        } finally {
+            $this->inTest = false;
+        }
     }
 
     /**
@@ -573,7 +589,8 @@ final class Compiler
                 ? \sprintf('"%s" takes %d argument%s, not %d', $name, $function->leastArguments, $function->leastArguments === 1 ? '' : 's', $count)
                 : \sprintf('"%s" takes %d to %s arguments, not %d', $name, $function->leastArguments, $function->mostArguments ?? 'any number of', $count));
         }
-        if ($function->needs !== null && !\in_array($function->needs, $this->needs, true)) {
+        // In a test's own body, what makes the test's customers, products and orders asks nothing: it is undone.
+        if ($function->needs !== null && !\in_array($function->needs, $this->needs, true) && !($this->inTest && $function->madeInTests !== null)) {
             $this->finding($expr, \sprintf('"%s" needs the permission "%s": declare it in the extension\'s needs', $name, $function->needs));
         }
         if (isset(self::WORDS[$name])) {

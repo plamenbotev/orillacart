@@ -117,13 +117,14 @@ final readonly class ScriptReference
 
     /** What an extension may ask for under `needs`, and what each grants. */
     public const array PERMISSIONS = [
-        'orders: read' => 'shop.orders.find, is_marked; the order map in handlers',
+        'orders: read' => 'shop.orders.find, is_marked, quote; the order map in handlers',
         'orders: write' => 'shop.orders.mark and unmark',
         'orders: create' => 'shop.orders.create: places real orders, takes stock, emails the customer; its own permission, granted on purpose',
         'products: read' => 'shop.products.find, search, is_marked; shop.attributes.sets, shop.categories.list',
         'products: write' => 'shop.products.mark and unmark; create, change, add_variation and change_variation (drafts until published); shop.attributes.save_set, shop.categories.ensure',
         'products: publish' => 'shop.products.publish, unpublish and trash: what shoppers see; its own permission, granted on purpose',
-        'customers: read' => 'shop.customers.find',
+        'customers: read' => 'shop.customers.find, search',
+        'customers: create' => 'shop.customers.create: real customer accounts, made as the shop makes one by hand (no email sent); its own permission, granted on purpose',
         'email: send' => 'shop.email.send: email in the shop\'s layout, from its address, five a run',
         'http: ["host.example", …]' => 'http.* calls to those hosts over HTTPS; the manager grants each host',
         'templates: override' => 'a file under templates/storefront/ or templates/emails/ in the package replaces the shop\'s template of that name',
@@ -159,7 +160,7 @@ final readonly class ScriptReference
     public function __construct(private HostCatalog $catalog, private ?ScriptGuide $guide = null) {}
 
     /**
-     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string}>, filters: list<string>, tests: list<string>, keywords: list<string>, events: array<string, string>, slots: array<string, string>, handlers: array<string, string>, permissions: array<string, string>, kinds: array<string, string>, limits: array<string, int>, template_sandbox: array<string, list<string>>, templates: array<string, string>}
+     * @return array{language: string, declarations: array<string, string>, functions: list<array{name: string, summary: string, arguments: array{int, ?int}, needs: ?string, made_in_tests: bool}>, filters: list<string>, tests: list<string>, keywords: list<string>, events: array<string, string>, slots: array<string, string>, handlers: array<string, string>, permissions: array<string, string>, kinds: array<string, string>, limits: array<string, int>, template_sandbox: array<string, list<string>>, templates: array<string, string>}
      */
     public function reference(): array
     {
@@ -171,6 +172,8 @@ final readonly class ScriptReference
                 'summary' => $function->summary,
                 'arguments' => [$function->leastArguments, $function->mostArguments],
                 'needs' => $function->needs,
+                // Called in a test's body, it needs no permission: it makes what the test needs, undone with it.
+                'made_in_tests' => $function->madeInTests !== null,
             ], $this->catalog->all())),
             ...Scripts::vocabulary(),
             'keywords' => Parser::KEYWORDS,

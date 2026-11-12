@@ -38,6 +38,9 @@ final class Context
 
     private ?Recorder $recorder = null;
 
+    /** @var array<string, array<int, true>> the records this run made, by kind: what a test may go on to change */
+    private array $made = [];
+
     public function __construct(
         private readonly HostCatalog $catalog,
         private readonly Budget $budget = new Budget(),
@@ -246,6 +249,17 @@ final class Context
         if ($function->counts === HostFunction::QUERY && ++$this->queries > $this->budget->queries) {
             throw new BudgetExceeded(\sprintf('The script made more than %d queries', $this->budget->queries));
         }
+    }
+
+    /** Notes a record this run made (a test's product), which a function may let it change where others it may not. */
+    public function made(string $kind, int $id): void
+    {
+        $this->made[$kind][$id] = true;
+    }
+
+    public function didMake(string $kind, int $id): bool
+    {
+        return isset($this->made[$kind][$id]);
     }
 
     /** @return array{steps: int, calls: int, http_calls: int, queries: int, emails: int, bytes: int, seconds: float} */

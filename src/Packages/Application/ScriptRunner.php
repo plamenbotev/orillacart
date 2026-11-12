@@ -175,7 +175,8 @@ final readonly class ScriptRunner
         foreach ($catalog->all() as $function) {
             if (self::writes($function) && !\in_array($function->name, $keep, true)) {
                 $name = $function->name;
-                $refusing[] = new HostFunction($name, static fn(): never => throw new ScriptFailure(ScriptFailure::REFUSED, \sprintf('%s changes the shop or reaches outside it, and this request may only read (a read-only key).', $name)), $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, writes: true);
+                $refuse = static fn(): never => throw new ScriptFailure(ScriptFailure::REFUSED, \sprintf('%s changes the shop or reaches outside it, and this request may only read (a read-only key).', $name));
+                $refusing[] = new HostFunction($name, $refuse, $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, writes: true, madeInTests: $function->madeInTests === null ? null : $refuse);
             }
         }
 

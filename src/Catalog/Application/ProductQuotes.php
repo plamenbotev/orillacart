@@ -170,8 +170,14 @@ final readonly class ProductQuotes
                 $optionName === $option->name() ? null : $option->name(),
             ), $configuration->options),
             $available,
-            $forSale && $this->content->isPublished($product->id()) && $details->purchasable && $available !== 0
-                && !$details->priceVisibility->isHidden($this->settings->current()->hidePrices),
+            ($notForSale = match (true) {
+                !$this->content->isPublished($product->id()) => ItemQuote::UNPUBLISHED,
+                !$details->purchasable => ItemQuote::NOT_PURCHASABLE,
+                !$forSale => ItemQuote::BUNDLE_ITEM,
+                $available === 0 => ItemQuote::NONE_LEFT,
+                $details->priceVisibility->isHidden($this->settings->current()->hidePrices) => ItemQuote::PRICE_HIDDEN,
+                default => null,
+            }) === null,
             $measures['length'],
             $measures['width'],
             $measures['height'],
@@ -189,6 +195,7 @@ final readonly class ProductQuotes
             $details->taxCode,
             $coupons,
             $shopName === $name ? null : $shopName,
+            $notForSale,
         );
     }
 

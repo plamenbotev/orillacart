@@ -16,4 +16,12 @@ interface CreatesOrders
      *                                   address the shop cannot take, a way to ship or pay it does not offer
      */
     public function create(NewOrderRequest $request): OrderSummary;
+
+    /**
+     * What the order would cost, and the ways it could ship and be paid to its addresses (API 27): nothing placed.
+     * The request's email, shipping option, payment and fields count where given; paid, note and test do not.
+     *
+     * @throws \InvalidArgumentException for a customer that does not exist, or items not sold or out of stock
+     */
+    public function quote(NewOrderRequest $request): OrderQuote;
 }

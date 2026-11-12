@@ -314,6 +314,17 @@ final readonly class OrderPricing
             } catch (NotFound|RuleViolation) {
                 throw new CheckoutRuleViolation('An item is no longer sold. Review the items and try again.', 'orillacart_cart_changed');
             }
+            // Not for sale says why: a draft or a product taken off sale is not a matter of quantity.
+            $why = match ($quote->forSale ? null : $quote->notForSale) {
+                ItemQuote::UNPUBLISHED => '%s is not published: it is a draft or waits for review, and only a published product is ordered.',
+                ItemQuote::NOT_PURCHASABLE => '%s is not sold on its own: the shop marked it not purchasable.',
+                ItemQuote::PRICE_HIDDEN => '%s is not sold while its price is hidden.',
+                ItemQuote::BUNDLE_ITEM => '%s holds an item that is not for sale now. Review the items and try again.',
+                default => null,
+            };
+            if ($why !== null) {
+                throw new CheckoutRuleViolation($why, 'orillacart_cart_changed', values: [$quote->name]);
+            }
             if (!$quote->forSale || ($quote->available !== null && $quote->available < $line['quantity'])) {
                 throw new CheckoutRuleViolation('%s is not available in that quantity. Review the items and try again.', 'orillacart_cart_changed', values: [$quote->name]);
             }

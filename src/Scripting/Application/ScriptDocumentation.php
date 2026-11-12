@@ -65,10 +65,12 @@ final readonly class ScriptDocumentation
             ## Permissions
 
             An extension declares in `needs` what it must reach: `orders: read`, `orders: write`, `products: read`,
-            `products: write`, `customers: read`, `http: ["host", …]` (the only hosts `http.*` may call, over https),
-            `templates: override` (it may replace the shop's own templates). A manager grants them when enabling it;
-            a function that needs one the extension was not granted is refused by the static check before, and by the
-            runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordPress.
+            `products: write`, `customers: read`, `customers: create`, `http: ["host", …]` (the only hosts `http.*` may
+            call, over https), `templates: override` (it may replace the shop's own templates). A manager grants them
+            when enabling it; a function that needs one the extension was not granted is refused by the static check
+            before, and by the runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordPress.
+            In a test's own body, the functions marked `in tests: none` need no permission: they make the
+            customers, products and orders the test needs, inside its rolled-back transaction.
 
             ## Budgets and failures
 
@@ -96,7 +98,7 @@ final readonly class ScriptDocumentation
                 $namespace = $group;
                 $out .= "\n### " . ($group === 'builtin' ? 'Without a namespace' : $group) . "\n\n";
             }
-            $out .= '- ' . $function['summary'] . ($function['needs'] === null ? '' : ' [needs ' . $function['needs'] . ']') . "\n";
+            $out .= '- ' . $function['summary'] . ($function['needs'] === null ? '' : ' [needs ' . $function['needs'] . ($function['made_in_tests'] ? '; in tests: none' : '') . ']') . "\n";
         }
         $out .= "\n## Filters\n\n`" . implode('`, `', $reference['filters']) . "`\n\n## Tests\n\n`" . implode('`, `', $reference['tests']) . "`\n";
 

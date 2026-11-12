@@ -47,6 +47,20 @@ final class RouteToolsTest extends TestCase
         self::assertSame([], $missing, 'These routes are neither tools nor left out with #[Tool(leftOut: …)].');
     }
 
+    public function testTestingAndDebuggingAnExtensionTakeTheFilesTheySayTheyTake(): void
+    {
+        $tools = self::catalogue()->all();
+        foreach (['test_package' => ['files', 'debug'], 'debug_package' => ['files', 'test', 'recording']] as $name => $arguments) {
+            $found = array_values(array_filter($tools, static fn(RouteTool $tool): bool => $tool->name === $name))[0] ?? null;
+            self::assertNotNull($found, $name);
+            $properties = \is_array($found->inputSchema['properties'] ?? null) ? $found->inputSchema['properties'] : [];
+            foreach ($arguments as $argument) {
+                self::assertArrayHasKey($argument, $properties, "{$name} says it takes {$argument}");
+            }
+            self::assertStringContainsString('null removes one', $found->description, "{$name} says the files sent lie over the saved ones");
+        }
+    }
+
     #[DataProvider('tools')]
     public function testTheToolSaysWhatItDoes(RouteTool $tool): void
     {

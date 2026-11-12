@@ -25,8 +25,9 @@ use OrillaCart\Shared\Security\ReadOnlyRequest;
  * files declare beyond that reaches only the stand-ins, which reach no one. A test reads only the settings it
  * gives itself, never the stored ones, so no stored secret can be read or carried out by a test. Its records and field values are rolled back after each test, its HTTP calls answered
  * from the test's map, its jobs recorded, its mail held and its orders placed as test orders (never sent, never
- * invoiced), so files sent with the request reach no one. Files sent with the request stand in for the saved ones, so an editor
- * tests what is on screen. On a request that may only read (a read-only key), files cannot be sent, and every
+ * invoiced), so files sent with the request reach no one. Files sent with the request lie over the saved ones (a path sent
+ * replaces its file or is added, null removes one), so an editor tests what is on screen and an assistant sends only
+ * the file it changed. On a request that may only read (a read-only key), files cannot be sent, and every
  * function that writes refuses in the tests too, as in the extension's runs: the HTTP answers and the jobs, which
  * only record, aside.
  */
@@ -45,7 +46,8 @@ final readonly class PackageTests
     ) {}
 
     /**
-     * @param array<string, string>|null $files path → content, instead of the saved files
+     * @param array<string, string|null>|null $files path → content laid over the saved files: a path sent stands in
+     *                                         for the saved one or is added, null removes one, the others stay
      *
      * @param string|null                $debug the test to record for the debugger (design 71), by name
      *
@@ -59,15 +61,18 @@ final readonly class PackageTests
             throw new HttpException(403, 'orillacart_read_only_key', 'This API key only reads: it tests the saved files, not files sent with the request.');
         }
         $scripts = [];
-        if ($files === null) {
-            foreach ($package->scripts() as $file) {
-                $scripts[$file->path()] = $file->content();
+        foreach ($package->scripts() as $file) {
+            $scripts[$file->path()] = $file->content();
+        }
+        // What was sent lies over the saved files: a path stands in for its file or is added, null removes it.
+        foreach ($files ?? [] as $path => $content) {
+            if (!str_ends_with((string) $path, '.ocs')) {
+                continue;
             }
-        } else {
-            foreach ($files as $path => $content) {
-                if (str_ends_with($path, '.ocs')) {
-                    $scripts[$path] = $content;
-                }
+            if ($content === null) {
+                unset($scripts[(string) $path]);
+            } else {
+                $scripts[(string) $path] = $content;
             }
         }
         $source = implode("\n", $scripts);

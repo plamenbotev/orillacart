@@ -37,7 +37,9 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   booked but not collected (`Tracking::BOOKED`); 14 since settings the shop manager can test (`TestsSettings`); 19 since the customer's email in a `PaymentSession`;
   20 since figures and "Needs you" lines on the Home screen (`Home\HomeContributor`); 23 since gateways whose
   notifications the shop confirms with them (`ConfirmsNotifications`), `payBy` on `StartPayment` and
-  `PaymentSession`, the settings a secret goes with (`Setting::$goesWith`) and `AssistantTool::CHANGES`.
+  `PaymentSession`, the settings a secret goes with (`Setting::$goesWith`) and `AssistantTool::CHANGES`; 26 since making
+  products (`productWriting()`); 27 since making and finding customers (`Customers::create`, `search`) and quoting
+  orders (`CreatesOrders::quote`).
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.
@@ -433,6 +435,34 @@ name or a category, drafts too, newest first. `$registry->attributeSets()` reads
 $name, $attributes, $active)`, a null id making one) attribute sets, keeping ids the same way, and
 `$registry->categories()` lists the categories by path (`all()`) and answers one's id, made where missing
 (`ensure('Kitchen > Mugs')`).
+
+## Making customers and quoting orders
+
+From API 27 an add-on makes the shop's customers as the shop makes one by hand, and finds them:
+
+```php
+use OrillaCart\Extension\Customer\NewCustomer;
+use OrillaCart\Extension\Order\OrderAddress;
+
+$customers = $registry->customers();
+$address = new OrderAddress('Ada', 'Lovelace', '1 Navy Way', 'Arlington', '22201', 'US', 'VA', '555');
+$ada = $customers->create(new NewCustomer('ada@example.com', 'Ada', 'Lovelace', billing: $address));
+$found = $customers->search(email: 'ADA@example.com'); // [$ada]
+$named = $customers->search(null, words: 'Lovelace', limit: 10);
+```
+
+`create()` sends no sign-up email and tells nobody; the password is one nobody knows until the customer sets theirs
+with the lost-password link (the shop's welcome email says how). The addresses given go in the account's address
+book as where checkout starts, the billing one for shipping too when only it is given; without them the account
+keeps none. `test: true` makes a test customer (design 62). An email with an account already, an address the shop
+cannot take or, on a network of sites, a customer who is not a test one (the shop invites those) is an
+`\InvalidArgumentException` saying why. `search()` answers the customer of a whole email, any case, or those with
+the words in their email or name, newest first, at most 100; never staff, never another site's users.
+
+`$registry->orderCreation()->quote($request)` prices a `NewOrderRequest` as `create()` would and places nothing: an
+`OrderQuote` with whether it ships, the `ShippingChoice`s the shop offers for its address (`id`, `carrier`, `name`,
+`price`, `tax`, `total`, `toPickupPoint`), the chosen or first one, the payment methods for its billing country, and
+its subtotal, shipping, tax and total. An order whose items ship nothing takes no shipping option.
 
 ## Export columns
 

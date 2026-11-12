@@ -40,6 +40,8 @@ final class Version
      * (Storefront\Templates). 25: the shop's own templates' names and sources (Templates::names, Templates::original).
      * 26: making and changing products, variations, attribute sets and categories (Registry::productWriting,
      * attributeSets, categories), finding products (Products::search), and ProductSummary's published and attributes.
+     * 27: making and finding customers (Customers::create, Customers::search, Customer\NewCustomer), and what an order
+     * would cost and how it could ship before it is placed (CreatesOrders::quote, Order\OrderQuote, Order\ShippingChoice).
      */
-    public const int CURRENT = 26;
+    public const int CURRENT = 27;
 }

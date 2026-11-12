@@ -55,8 +55,10 @@ final readonly class ShopFunctions implements HostNamespace
             }, 2, 2, 'shop.products.unmark(product_id, filter_id): takes the product out of the filter', 'products:write', writes: true),
             new HostFunction('shop.products.find', fn(Context $c, mixed $productId): ?array => ($product = $this->registry()->products()->find((int) Values::text($productId))) === null ? null : Values::product($product), 1, 1, 'shop.products.find(product_id): the product as shoppers see it now ({ id, name, type, sku, price, regular_price, for_sale, available, on_backorder, variations[{ id, label, sku, price, regular_price, for_sale, available }] }), or null', 'products:read', HostFunction::QUERY, writes: false),
             new HostFunction('shop.customers.find', fn(Context $c, mixed $customerId): ?array => ($customer = $this->registry()->customers()->find((int) Values::text($customerId))) === null ? null : Values::customer($customer), 1, 1, 'shop.customers.find(customer_id): the customer ({ id, email, first_name, last_name, registered_at, billing, shipping_address, group_ids, orders, addresses_from_order }), or null; where the account keeps no address, billing and shipping_address are their latest order\'s and addresses_from_order its number (else null)', 'customers:read', HostFunction::QUERY, writes: false),
+            ...$this->customers(),
             new HostFunction('shop.email.send', fn(Context $c, mixed $to, mixed $subject, mixed $body, mixed $replyTo = null): bool => $this->emails($c, fn(): bool => $this->registry()->emails()->send(Values::text($to), Values::text($subject), Values::text($body), Values::optionalText($replyTo))), 3, 4, 'shop.email.send(to, subject, html, reply_to?): an email in the shop\'s layout, from its address; true when the mail system took it', 'email:send', HostFunction::EMAIL, static fn(Context $c, mixed $to, mixed $subject, mixed $body, mixed $replyTo = null): bool => true, writes: true),
-            new HostFunction('shop.orders.create', fn(Context $c, mixed $order): array => Values::order($this->placed(fn() => $this->registry()->orderCreation()->create($this->request($c, \is_array($order) ? $order : [])))), 1, 1, 'shop.orders.create({ email, customer_id, billing, shipping_address, items: [{ product_id, quantity, option_ids, unit_price }], shipping_option, payment, paid, note, fields }): places the order as the shop does by hand, and answers the order map', 'orders:create', HostFunction::QUERY, fn(Context $c, mixed $order): array => Values::order($this->placed(fn() => $this->registry()->orderCreation()->create(Values::orderRequest(['test' => true, 'email_customer' => false] + (\is_array($order) ? $order : []))))), writes: true),
+            new HostFunction('shop.orders.create', fn(Context $c, mixed $order): array => Values::order($this->placed(fn() => $this->registry()->orderCreation()->create($this->request($c, \is_array($order) ? $order : [])))), 1, 1, 'shop.orders.create({ email, customer_id, billing, shipping_address, items: [{ product_id, quantity, option_ids, unit_price }], shipping_option, payment, paid, note, fields }): places the order as the shop does by hand, and answers the order map; an order whose items all download or are services takes no shipping_option. In a test it is a test order, never emailed, and needs no permission in the test\'s body', 'orders:create', HostFunction::QUERY, $testOrder = fn(Context $c, mixed $order): array => Values::order($this->placed(fn() => $this->registry()->orderCreation()->create(Values::orderRequest(['test' => true, 'email_customer' => false] + (\is_array($order) ? $order : []))))), writes: true, madeInTests: $testOrder),
+            new HostFunction('shop.orders.quote', fn(Context $c, mixed $order): array => Values::orderQuote($this->placed(fn() => $this->registry()->orderCreation()->quote(Values::orderRequest(self::map($order, 'shop.orders.quote'))))), 1, 1, 'shop.orders.quote({ …as shop.orders.create }): what the order would cost and how it could ship and be paid, nothing placed: { needs_shipping, shipping_options: [{ id, carrier, name, price, tax, total, to_pickup_point }], shipping_option, payments, subtotal, shipping, tax, total, currency }', 'orders:read', HostFunction::QUERY, writes: false),
             ...$this->catalog(),
             new HostFunction('shop.products.is_marked', fn(Context $c, mixed $productId, mixed $mark): bool => $this->mark(fn() => $this->registry()->products()->isMarked((int) Values::text($productId), Values::text($mark))), 2, 2, 'shop.products.is_marked(product_id, filter_id): whether the product is under the filter', 'products:read', writes: false),
         ];
@@ -72,16 +74,31 @@ final readonly class ShopFunctions implements HostNamespace
     private function catalog(): array
     {
         $writing = fn() => $this->registry()->productWriting();
+        $create = fn(Context $c, mixed $product): array => Values::product($writing()->create(Values::productDraft(self::map($product, 'shop.products.create'))));
+        // In a test, what it made is the test's: it may go on to add variations to it and publish it, permission or not.
+        $testCreate = static function (Context $c, mixed $product) use ($create): array {
+            $made = $create($c, $product);
+            $c->made('product', \is_int($made['id'] ?? null) ? $made['id'] : 0);
+
+            return $made;
+        };
+        $own = static fn(\Closure $work, string $name): \Closure => static function (Context $c, mixed $id, mixed ...$rest) use ($work, $name): mixed {
+            if (!$c->didMake('product', self::id($id))) {
+                throw new ScriptError(\sprintf('In a test, %s without its permission declared works on a product the test made (shop.products.create), not on product %s.', $name, Values::text($id)));
+            }
+
+            return $work($c, $id, ...$rest);
+        };
         $functions = [
-            ['shop.products.create', fn(Context $c, mixed $product): array => Values::product($writing()->create(Values::productDraft(self::map($product, 'shop.products.create')))), 1, 1, 'shop.products.create({ name, price, type, sku, sale_price, description, short_description, categories: ["A > B"], tags, stock, stockrooms: { id: level }, stock_mode, weight, featured, attributes: [{ name, options, required }], attribute_set_ids }): makes a draft product, as an import row would, and answers the product map; shop.products.publish puts it on sale', 'products:write'],
+            ['shop.products.create', $create, 1, 1, 'shop.products.create({ name, price, type, sku, sale_price, description, short_description, categories: ["A > B"], tags, stock, stockrooms: { id: level }, stock_mode: tracked|always_available|unavailable, weight, featured, attributes: [{ name, options, required }], attribute_set_ids }): makes a draft product, as an import row would, and answers the product map; shop.products.publish puts it on sale. In a test\'s body it needs no permission', 'products:write', $testCreate, true],
             ['shop.products.change', fn(Context $c, mixed $id, mixed $product): array => Values::product($writing()->change(self::id($id), Values::productDraft(self::map($product, 'shop.products.change')))), 2, 2, 'shop.products.change(product_id, { …as create }): changes what the map gives; attributes replace the product\'s own, keeping the ids of those named alike', 'products:write'],
-            ['shop.products.add_variation', fn(Context $c, mixed $id, mixed $variation): array => Values::variation($writing()->addVariation(self::id($id), Values::variationDraft(self::map($variation, 'shop.products.add_variation')))), 2, 2, 'shop.products.add_variation(product_id, { options: { Colour: "Red" }, price, sku, sale_price, stock }): a variation of the options the product offers; price is the product\'s when left out', 'products:write'],
+            ['shop.products.add_variation', fn(Context $c, mixed $id, mixed $variation): array => Values::variation($writing()->addVariation(self::id($id), Values::variationDraft(self::map($variation, 'shop.products.add_variation')))), 2, 2, 'shop.products.add_variation(product_id, { options: { Colour: "Red" }, price, sku, sale_price, stock }): a variation of the options the product offers; price is the product\'s when left out. In a test\'s body it needs no permission for a product the test made', 'products:write', null, 'own'],
             ['shop.products.change_variation', fn(Context $c, mixed $id, mixed $variationId, mixed $variation): array => Values::variation($writing()->changeVariation(self::id($id), self::id($variationId), Values::variationDraft(self::map($variation, 'shop.products.change_variation')))), 3, 3, 'shop.products.change_variation(product_id, variation_id, { price, sku, sale_price, stock })', 'products:write'],
             ['shop.products.publish', function (Context $c, mixed $id) use ($writing): null {
                 $writing()->publish(self::id($id));
 
                 return null;
-            }, 1, 1, 'shop.products.publish(product_id): puts the product on sale; shoppers see it', 'products:publish'],
+            }, 1, 1, 'shop.products.publish(product_id): puts the product on sale; shoppers see it. In a test\'s body it needs no permission for a product the test made', 'products:publish', null, 'own'],
             ['shop.products.unpublish', function (Context $c, mixed $id) use ($writing): null {
                 $writing()->unpublish(self::id($id));
 
@@ -101,9 +118,18 @@ final readonly class ShopFunctions implements HostNamespace
             ['shop.categories.ensure', fn(Context $c, mixed $path): int => $this->registry()->categories()->ensure(Values::text($path)), 1, 1, 'shop.categories.ensure("Lighting > Desk lamps"): the category\'s id, made with its parents where missing', 'products:write'],
         ];
         $made = [];
-        foreach ($functions as [$name, $callable, $least, $most, $summary, $needs]) {
+        foreach ($functions as $function) {
+            [$name, $callable, $least, $most, $summary, $needs] = $function;
+            $inTests = $function[6] ?? null;
+            $madeInTests = $function[7] ?? null;
             $refusing = fn(Context $c, mixed ...$arguments): mixed => $this->refusing(static fn(): mixed => $callable($c, ...$arguments));
-            $made[] = new HostFunction($name, $refusing, $least, $most, $summary, $needs, HostFunction::QUERY, $refusing, writes: true);
+            $testing = $inTests === null ? $refusing : fn(Context $c, mixed ...$arguments): mixed => $this->refusing(static fn(): mixed => $inTests($c, ...$arguments));
+            $withoutPermission = match ($madeInTests) {
+                true => $testing,
+                'own' => $own($testing, $name),
+                default => null,
+            };
+            $made[] = new HostFunction($name, $refusing, $least, $most, $summary, $needs, HostFunction::QUERY, $testing, writes: true, madeInTests: $withoutPermission);
         }
         $made[] = new HostFunction('shop.products.search', function (Context $c, mixed $query = null): array {
             $query = $query === null ? [] : self::map($query, 'shop.products.search');
@@ -119,6 +145,44 @@ final readonly class ShopFunctions implements HostNamespace
         $made[] = new HostFunction('shop.categories.list', fn(Context $c): array => array_map(Values::category(...), $this->registry()->categories()->all()), 0, 0, 'shop.categories.list(): every product category { id, name, parent_id, path, products }, by path', 'products:read', HostFunction::QUERY, writes: false);
 
         return $made;
+    }
+
+    /**
+     * Customers made (API 27) and found. One made in a test is a test customer (design 62), never emailed, inside
+     * the test's rolled-back transaction, and needs no permission in the test's body; outside tests it is made
+     * with `customers: create`, as the shop makes one by hand: no sign-up email, nobody told.
+     *
+     * @return list<HostFunction>
+     */
+    private function customers(): array
+    {
+        $create = fn(Context $c, mixed $customer): array => Values::customer($this->placedCustomer(fn() => $this->registry()->customers()->create(Values::newCustomer(self::map($customer, 'shop.customers.create')))));
+        $testCreate = fn(Context $c, mixed $customer): array => $create($c, ['test' => true] + self::map($customer, 'shop.customers.create'));
+
+        return [
+            new HostFunction('shop.customers.create', $create, 1, 1, 'shop.customers.create({ email, first_name, last_name, billing, shipping_address, test }): makes the customer\'s account as the shop does by hand, no email sent, and answers the customer map; billing and shipping_address are optional addresses ({ first_name, last_name, street, city, postcode, country, state, phone }), saved as the ones checkout starts from. In a test it is a test customer and needs no permission in the test\'s body', 'customers:create', HostFunction::QUERY, $testCreate, writes: true, madeInTests: $testCreate),
+            new HostFunction('shop.customers.search', function (Context $c, mixed $query = null): array {
+                $query = $query === null ? [] : self::map($query, 'shop.customers.search');
+
+                return array_map(Values::customer(...), $this->registry()->customers()->search(
+                    Values::optionalText($query['email'] ?? null),
+                    Values::optionalText($query['words'] ?? null),
+                    isset($query['limit']) ? (int) Values::text($query['limit']) : 20,
+                ));
+            }, 0, 1, 'shop.customers.search({ email, words, limit }): the shop\'s customers with that email (the whole address, any case), or with the words in their email or name, newest first; up to limit (20, at most 100)', 'customers:read', HostFunction::QUERY, writes: false),
+        ];
+    }
+
+    /**
+     * @param \Closure(): \OrillaCart\Extension\Customer\CustomerSummary $work
+     */
+    private function placedCustomer(\Closure $work): \OrillaCart\Extension\Customer\CustomerSummary
+    {
+        try {
+            return $work();
+        } catch (\InvalidArgumentException $e) {
+            throw new ScriptFailure(ScriptFailure::REFUSED, $e->getMessage());
+        }
     }
 
     /** @return array<mixed> */
@@ -188,9 +252,13 @@ final readonly class ShopFunctions implements HostNamespace
     }
 
     /**
-     * @param \Closure(): \OrillaCart\Extension\Order\OrderSummary $work
+     * @template T of \OrillaCart\Extension\Order\OrderSummary|\OrillaCart\Extension\Order\OrderQuote
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
      */
-    private function placed(\Closure $work): \OrillaCart\Extension\Order\OrderSummary
+    private function placed(\Closure $work): object
     {
         try {
             return $work();

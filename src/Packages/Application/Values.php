@@ -16,11 +16,14 @@ use OrillaCart\Extension\Catalog\ProductVariationSummary;
 use OrillaCart\Extension\Catalog\VariationDraft;
 use OrillaCart\Extension\Checkout\FeeQuery;
 use OrillaCart\Extension\Customer\CustomerSummary;
+use OrillaCart\Extension\Customer\NewCustomer;
 use OrillaCart\Extension\Order\NewOrderItem;
 use OrillaCart\Extension\Order\NewOrderRequest;
 use OrillaCart\Extension\Order\OrderAddress;
 use OrillaCart\Extension\Order\OrderLine;
+use OrillaCart\Extension\Order\OrderQuote;
 use OrillaCart\Extension\Order\OrderSummary;
+use OrillaCart\Extension\Order\ShippingChoice;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Payment\PaymentReturn;
 use OrillaCart\Extension\Payment\PaymentSession;
@@ -397,6 +400,48 @@ final class Values
             'group_ids' => $customer->groupIds,
             'orders' => $customer->orders,
             'addresses_from_order' => $customer->addressesFromOrder,
+        ];
+    }
+
+    /** What a customer map may give, for shop.customers.create. */
+    public const array CUSTOMER_KEYS = ['email', 'first_name', 'last_name', 'billing', 'shipping_address', 'test'];
+
+    /**
+     * `shop.customers.create({ email, first_name, last_name, billing, shipping_address, test })` as a new customer;
+     * the addresses are optional, each { first_name, last_name, street, city, postcode, country, state, phone }.
+     *
+     * @param array<mixed> $map
+     *
+     * @throws ScriptError for a key the map may not have, or an address that is not a map
+     */
+    public static function newCustomer(array $map): NewCustomer
+    {
+        self::only($map, self::CUSTOMER_KEYS, 'A customer');
+        $address = static function (string $key) use ($map): ?OrderAddress {
+            $value = $map[$key] ?? null;
+            if ($value === null) {
+                return null;
+            }
+
+            return \is_array($value) ? self::orderAddress($value) : throw new ScriptError(\sprintf('%s is an address: { first_name, last_name, street, city, postcode, country, state, phone }.', $key));
+        };
+
+        return new NewCustomer(self::text($map['email'] ?? ''), self::text($map['first_name'] ?? ''), self::text($map['last_name'] ?? ''), $address('billing'), $address('shipping_address'), Ops::truthy($map['test'] ?? false));
+    }
+
+    /** @return array<string, mixed> */
+    public static function orderQuote(OrderQuote $quote): array
+    {
+        return [
+            'needs_shipping' => $quote->needsShipping,
+            'shipping_options' => array_map(static fn(ShippingChoice $choice): array => ['id' => $choice->id, 'carrier' => $choice->carrier, 'name' => $choice->name, 'price' => Money::of($choice->price), 'tax' => Money::of($choice->tax), 'total' => Money::of($choice->total), 'to_pickup_point' => $choice->toPickupPoint], $quote->shippingOptions),
+            'shipping_option' => $quote->shippingOption,
+            'payments' => $quote->payments,
+            'subtotal' => Money::of($quote->subtotal),
+            'shipping' => Money::of($quote->shipping),
+            'tax' => Money::of($quote->tax),
+            'total' => Money::of($quote->total),
+            'currency' => $quote->currency,
         ];
     }
 

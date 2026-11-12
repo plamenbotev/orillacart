@@ -107,6 +107,11 @@ final class OrderMailQuotaTest extends TestCase
 
                 throw new \InvalidArgumentException('Not placed here.');
             }
+
+            public function quote(NewOrderRequest $request): \OrillaCart\Extension\Order\OrderQuote
+            {
+                throw new \InvalidArgumentException('Not quoted here.');
+            }
         };
         $registry = self::createStub(Registry::class);
         $registry->method('orderCreation')->willReturn($orders);

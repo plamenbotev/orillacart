@@ -6,9 +6,11 @@ namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Exchange\Application\AddOnProductWriting;
 use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\Dto\ChooseColumns;
 use OrillaCart\Exchange\Application\ProductsExport;
+use OrillaCart\Extension\Catalog\ProductDraft;
 use OrillaCart\Extension\Catalog\ProductItem;
 use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Packages\Application\Adapters\ScriptedFieldColumn;
@@ -126,8 +128,18 @@ final class ScriptedObjectsTest extends RestTestCase
     public function testFieldsOnAProductAreKeptPerExtension(): void
     {
         // A product's id: the fields are kept apart from the product, under the extension's name.
-        self::assertSame([3, ['lead_time' => 3]], $this->call('lead', [999, 3]));
-        self::assertSame([5, ['lead_time' => 5]], $this->call('lead', [999, 5]), 'set again: one value');
+        $writing = self::kernel()->container()->get(AddOnProductWriting::class);
+        self::assertInstanceOf(AddOnProductWriting::class, $writing);
+        $product = $writing->create(new ProductDraft(name: 'Lead time lamp', price: '4.00'))->id;
+        try {
+            self::assertSame([3, ['lead_time' => 3]], $this->call('lead', [$product, 3]));
+            self::assertSame([5, ['lead_time' => 5]], $this->call('lead', [$product, 5]), 'set again: one value');
+            // Only on a product the shop has.
+            $refused = $this->data($this->request('POST', '/extensions/tickets/run', ['function' => 'lead', 'arguments' => [999999, 1]], nonce: true));
+            self::assertStringContainsString('There is no product 999999 in this shop', self::text($this->assoc($refused['failure'])['message']));
+        } finally {
+            wp_delete_post($product, true);
+        }
     }
 
     public function testHandlersRunInTheBackgroundAfterAnEventWhenPushedAndOnSchedule(): void

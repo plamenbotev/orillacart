@@ -348,7 +348,7 @@ final class CustomerAccountsTest extends TestCase
     public function testAnExtensionReadsTheLatestOrdersAddressesWhereTheAccountKeepsNone(): void
     {
         $id = $this->shop->accounts->add('ada@example.com');
-        $summaries = new \OrillaCart\Customers\Application\CustomerSummaries($this->shop->customers);
+        $summaries = new \OrillaCart\Customers\Application\CustomerSummaries($this->shop->customers, new \OrillaCart\Shared\Validation\CommandChecks(\Symfony\Component\Validator\Validation::createValidatorBuilder()->enableAttributeMapping()->getValidator()), $this->shop->accounts);
         self::assertNull($summaries->find($id)?->billing, 'no account address, no order');
 
         $order = $this->place(new CartOwner(null, $id), rememberAddresses: false);
@@ -478,7 +478,7 @@ final class CustomerAccountsTest extends TestCase
     {
         $staff = $this->shop->accounts->add('boss@example.com', 'Grace', 'Hopper');
         $this->shop->accounts->staff[] = $staff;
-        $summaries = new \OrillaCart\Customers\Application\CustomerSummaries($this->shop->customers);
+        $summaries = new \OrillaCart\Customers\Application\CustomerSummaries($this->shop->customers, new \OrillaCart\Shared\Validation\CommandChecks(\Symfony\Component\Validator\Validation::createValidatorBuilder()->enableAttributeMapping()->getValidator()), $this->shop->accounts);
 
         self::assertNull($summaries->find($staff), 'a script asking by number learns nothing');
         foreach ([

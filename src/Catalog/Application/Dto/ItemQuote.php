@@ -56,7 +56,18 @@ final readonly class ItemQuote
         public bool $coupons = true,
         /** The name in the shop's own language, where the shopper's differs (design 51): what the shop reads in the order. */
         public ?string $shopName = null,
+        /**
+         * Why it is not for sale, where it is not: self::UNPUBLISHED, NOT_PURCHASABLE, NONE_LEFT, PRICE_HIDDEN, or
+         * BUNDLE_ITEM (an item of the bundle is not); null when it is.
+         */
+        public ?string $notForSale = null,
     ) {}
+
+    public const string UNPUBLISHED = 'unpublished';
+    public const string NOT_PURCHASABLE = 'not_purchasable';
+    public const string NONE_LEFT = 'none_left';
+    public const string PRICE_HIDDEN = 'price_hidden';
+    public const string BUNDLE_ITEM = 'bundle_item';
 
     /** How many of this quantity the customer is told are on backorder: none unless the product says so. */
     public function shownBackorder(int $quantity): int

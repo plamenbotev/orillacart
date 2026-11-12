@@ -10,7 +10,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 final readonly class DebugExtension
 {
     /**
-     * @param array<string, string>|null $files the files to test instead of the saved ones, path → content
+     * @param array<string, string|null>|null $files path → content laid over the saved files: a path sent stands in
+     *                                               for the saved one or is added, null removes one, the others stay
      */
     public function __construct(
         /** The test to run with a recording, by its name. */

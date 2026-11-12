@@ -377,7 +377,7 @@ final class McpServerTest extends TestCase
         self::assertIsArray($decoded['handlers']);
         self::assertIsString($decoded['handlers']['order_adjuster.adjust(query)']);
         self::assertStringContainsString('fields', $decoded['handlers']['order_adjuster.adjust(query)']);
-        self::assertSame(['orders: read', 'orders: write', 'orders: create', 'products: read', 'products: write', 'products: publish', 'customers: read', 'email: send', 'http: ["host.example", …]', 'templates: override', 'assets: serve'], array_keys((array) $decoded['permissions']));
+        self::assertSame(['orders: read', 'orders: write', 'orders: create', 'products: read', 'products: write', 'products: publish', 'customers: read', 'customers: create', 'email: send', 'http: ["host.example", …]', 'templates: override', 'assets: serve'], array_keys((array) $decoded['permissions']));
         self::assertSame(100000, (array) $decoded['limits'] === [] ? null : ((array) $decoded['limits'])['steps']);
         self::assertSame(['functions' => ['api_url']], array_intersect_key((array) $decoded['template_sandbox'], ['functions' => 1]));
     }

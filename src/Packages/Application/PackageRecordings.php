@@ -71,7 +71,7 @@ final readonly class PackageRecordings
     /**
      * A test debugged, or a recording opened, summed up for an AI agent.
      *
-     * @param array<string, string>|null $files the files to test instead of the saved ones
+     * @param array<string, string|null>|null $files laid over the saved files (null removes one), see PackageTests::run
      *
      * @return array<string, mixed>
      */

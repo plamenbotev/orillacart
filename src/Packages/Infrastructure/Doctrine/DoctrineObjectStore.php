@@ -165,13 +165,24 @@ final readonly class DoctrineObjectStore implements ObjectStore
      */
     private function referencesExist(array $data): void
     {
-        $prefix = substr($this->entityManager->getClassMetadata(ExtensionObject::class)->getTableName(), 0, -\strlen('extension_objects'));
-        foreach (['product' => 'products', 'order' => 'orders'] as $kind => $table) {
+        foreach (['product', 'order'] as $kind) {
             $id = ExtensionObject::reference($data, $kind);
-            if ($id !== null && $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM ' . $prefix . $table . ' WHERE id = ?', [$id]) === false) {
+            if ($id !== null && !$this->exists($kind, $id)) {
                 throw new ScriptError(\sprintf('There is no %s %d in this shop: a record\'s "%s" is one of the shop\'s %ss.', $kind, $id, $kind, $kind));
             }
         }
+    }
+
+    public function exists(string $kind, int $id): bool
+    {
+        $table = match ($kind) {
+            'product' => 'products',
+            'order' => 'orders',
+            default => throw new \InvalidArgumentException(\sprintf('No table keeps the shop\'s %ss.', $kind)),
+        };
+        $prefix = substr($this->entityManager->getClassMetadata(ExtensionObject::class)->getTableName(), 0, -\strlen('extension_objects'));
+
+        return $this->entityManager->getConnection()->fetchOne('SELECT 1 FROM ' . $prefix . $table . ' WHERE id = ?', [$id]) !== false;
     }
 
     public function forgetExtension(string $extension): void

@@ -22,7 +22,8 @@ use Psr\Clock\ClockInterface;
  * records instead of queuing. A function that reaches outside the shop runs as it says it does in tests (mail
  * held, an order placed as a test order) and is listed in the result's `effects`; one that says nothing, and
  * counts as email, refuses. The stand-ins answer for what the script declares (`$declared`) though the grant may
- * not hold it, since they reach no one; everything else is the shop's host, held to the grant. The package layer
+ * not hold it, since they reach no one; a function that makes what a test needs (a customer, a product, an order)
+ * answers without its permission declared, as it says it does then (HostFunction::$madeInTests); everything else is the shop's host, held to the grant. The package layer
  * runs each test inside a transaction it rolls back, so records and field values leave no trace. For a request that may only read, the
  * package layer narrows the host so that every function that writes refuses, the recording stand-ins aside.
  */
@@ -72,7 +73,7 @@ final readonly class ScriptTests
         $http = [];
         $jobs = [];
         $effects = [];
-        $fakes = self::doubles($this->scripts->catalog()->all(), $effects);
+        $fakes = self::doubles($this->scripts->catalog()->all(), $effects, $declared);
         $answers = [];
         foreach (\is_array($props['http'] ?? null) ? $props['http'] : [] as $key => $value) {
             $answers[(string) $key] = $value;
@@ -115,7 +116,7 @@ final readonly class ScriptTests
         }
         $testGrant = new Grant($grant->extension, $grant->permissions, $grant->hosts, $settings);
         $fakes = array_map(static fn(HostFunction $f): HostFunction => $f->needs !== null && \in_array($f->needs, $declared, true)
-            ? new HostFunction($f->name, $f->callable, $f->leastArguments, $f->mostArguments, $f->summary, null, $f->counts, $f->inTests, $f->writes)
+            ? new HostFunction($f->name, $f->callable, $f->leastArguments, $f->mostArguments, $f->summary, null, $f->counts, $f->inTests, $f->writes, $f->madeInTests)
             : $f, $fakes);
         $host = $this->scripts->catalog()->with($fakes);
         $script = $this->scripts->load($source, $scope, new Budget(), $testGrant, $narrow === null ? $host : $narrow($host), $recorder);
@@ -147,16 +148,25 @@ final readonly class ScriptTests
     /**
      * The stand-ins for the functions that reach outside the shop, recording each call into $effects.
      *
+     * A function that makes what a test needs stands in as it says it does without its permission, asking none,
+     * when the script does not declare it.
+     *
      * @param array<string, HostFunction>                             $functions
      * @param list<array{function: string, arguments: list<mixed>}> $effects
+     * @param list<string>                                          $declared
      *
      * @return list<HostFunction>
      */
-    private static function doubles(array $functions, array &$effects): array
+    private static function doubles(array $functions, array &$effects, array $declared = []): array
     {
         $doubles = [];
         foreach ($functions as $function) {
             $inTests = $function->inTests;
+            $needs = $function->needs;
+            if ($function->madeInTests !== null && $needs !== null && !\in_array($needs, $declared, true)) {
+                $inTests = $function->madeInTests;
+                $needs = null;
+            }
             if ($inTests === null && $function->counts !== HostFunction::EMAIL) {
                 continue;
             }
@@ -168,7 +178,7 @@ final readonly class ScriptTests
                 $effects[] = ['function' => $name, 'arguments' => array_map(Ops::plain(...), array_values($arguments))];
 
                 return $inTests($c, ...$arguments);
-            }, $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, $inTests, $function->writes);
+            }, $function->leastArguments, $function->mostArguments, $function->summary, $needs, $function->counts, $inTests, $function->writes, $function->madeInTests);
         }
 
         return $doubles;

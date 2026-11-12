@@ -1096,7 +1096,7 @@ The records an extension keeps (its objects), as JSON to keep before uninstallin
 
 ### `POST /extensions/{id}/debug`
 
-Debugs an extension: runs one of its tests (`test`, by name, over the saved files or `files` sent) with a recording, or opens a recording (`recording`, by id, from a debugged run or a live capture), and answers where it ended and how it got there: the outcome and message, the place and the stack, the variables at the last line, the last steps by file and line, and the calls to the shop with their answers. Changes nothing: a test's writes are rolled back.
+Debugs an extension: runs one of its tests (`test`, by name, over the saved files or with `files` sent laid over them: a path sent stands in for the saved one or is added, null removes one) with a recording, or opens a recording (`recording`, by id, from a debugged run or a live capture), and answers where it ended and how it got there: the outcome and message, the place and the stack, the variables at the last line, the last steps by file and line, and the calls to the shop with their answers. Changes nothing: a test's writes are rolled back.
 
 - Who: shop managers; needs a nonce (not with an API key)
 - Body (JSON):
@@ -1200,9 +1200,12 @@ Saves the values of the settings an extension declares: those sent change, those
 
 ### `POST /extensions/{id}/test`
 
-Runs an extension's own tests, over its saved files or over `files` sent in the request; answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back, and with a read-only key every function that writes refuses. With `debug`, a test's name, that test is recorded for the debugger (design 71) and its result has the recording.
+Runs an extension's own tests, over its saved files or with `files` sent in the request laid over them (a path sent stands in for the saved one or is added, null removes one, the others stay); answers each test's outcome, message and place, the requests it made and the jobs it pushed. Changes nothing: what a test writes is rolled back, and with a read-only key every function that writes refuses. With `debug`, a test's name, that test is recorded for the debugger (design 71) and its result has the recording.
 
 - Who: shop managers; needs a nonce (not with an API key)
+- Body (JSON):
+  - `files` (array|null)
+  - `debug` (string|null): 1 to 200 characters
 
 ### `GET /extensions/{id}/translations`
 

@@ -15,7 +15,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /**
- * Debugs an extension: runs one of its tests (`test`, by name, over the saved files or `files` sent) with a recording,
+ * Debugs an extension: runs one of its tests (`test`, by name, over the saved files or with `files` sent laid over them: a path sent stands in for the saved one or is added, null removes one) with a recording,
  * or opens a recording (`recording`, by id, from a debugged run or a live capture), and answers where it ended and
  * how it got there: the outcome and message, the place and the stack, the variables at the last line, the last
  * steps by file and line, and the calls to the shop with their answers. Changes nothing: a test's writes are rolled back.

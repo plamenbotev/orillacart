@@ -161,4 +161,55 @@ final class ScriptTestsTest extends TestCase
 
         self::assertSame([], new ScriptTests($scripts)->run("fn f() { return 1 }\n", 'no_tests', new Grant()));
     }
+    public function testWhatMakesATestsRecordsNeedsNoPermissionInATestsBodyAndOnlyThere(): void
+    {
+        $made = [];
+        $catalog = HostCatalog::of([
+            ...new Builtins()->functions(),
+            new HostFunction('shop.things.create', static fn(Context $c, mixed $name): string => throw new \LogicException('the live function never runs in a test'), 1, 1, '', 'things:create', HostFunction::QUERY, static fn(Context $c, string $name): string => 'declared ' . $name, writes: true, madeInTests: static function (Context $c, string $name) use (&$made): string {
+                $made[] = $name;
+
+                return 'made ' . $name;
+            }),
+        ]);
+        $scripts = new Scripts(new Compiler($catalog), $catalog, new InMemoryScriptStore());
+
+        $inATest = <<<'OCS'
+            extension "maker" { name: "Maker" }
+
+            test "makes" fn() {
+              let check = fn(name) { return shop.things.create(name) }
+              assert shop.things.create("mug") == "made mug"
+              assert check("lamp") == "made lamp", "a function written in the test's body is the test's too"
+            }
+            OCS;
+        self::assertSame([], $scripts->compile($inATest, 'maker')->findings, 'no permission asked in a test\'s body');
+        $results = new ScriptTests($scripts)->run($inATest . "\n", 'maker_tests', new Grant('maker'));
+        self::assertTrue($results[0]->ok, (string) $results[0]->message);
+        self::assertSame(['mug', 'lamp'], $made, 'the stand-in for an undeclared permission');
+        self::assertSame(['shop.things.create', 'shop.things.create'], array_column($results[0]->effects, 'function'), 'listed in the effects');
+
+        $declared = <<<'OCS'
+            extension "maker" { name: "Maker", needs: { things: create } }
+
+            test "makes" fn() {
+              assert shop.things.create("mug") == "declared mug"
+            }
+            OCS;
+        $results = new ScriptTests($scripts)->run($declared . "\n", 'maker_declared', new Grant('maker'), declared: ['things:create']);
+        self::assertTrue($results[0]->ok, (string) $results[0]->message);
+
+        $outside = <<<'OCS'
+            extension "maker" { name: "Maker" }
+
+            fn make(name) { return shop.things.create(name) }
+
+            test "makes" fn() {
+              assert make("mug") == "made mug"
+            }
+            OCS;
+        $findings = $scripts->compile($outside, 'maker_outside')->findings;
+        self::assertCount(1, $findings, 'outside a test\'s body it takes its permission');
+        self::assertStringContainsString('"shop.things.create" needs the permission "things:create"', $findings[0]->message);
+    }
 }

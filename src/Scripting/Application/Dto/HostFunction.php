@@ -26,6 +26,11 @@ final readonly class HostFunction
      * @param bool|null                         $writes   whether it changes something or reaches outside the shop
      *                                                    (a request that may only read refuses it); null, not
      *                                                    declared, counts as writing
+     * @param \Closure|null                     $madeInTests takes what $callable takes, and stands in for it in a
+     *                                                    test whose extension does not declare $needs: a function
+     *                                                    that makes what the test needs (a customer, a product, an
+     *                                                    order), undone with the test. Called in a test's body it
+     *                                                    needs no permission; anywhere else it does.
      */
     public function __construct(
         public string $name,
@@ -37,6 +42,7 @@ final readonly class HostFunction
         public string $counts = self::CALL,
         public ?\Closure $inTests = null,
         public ?bool $writes = null,
+        public ?\Closure $madeInTests = null,
     ) {}
 
     /**
@@ -48,6 +54,6 @@ final readonly class HostFunction
      */
     public static function reading(array $functions): array
     {
-        return array_map(static fn(self $f): self => $f->writes !== null ? $f : new self($f->name, $f->callable, $f->leastArguments, $f->mostArguments, $f->summary, $f->needs, $f->counts, $f->inTests, false), $functions);
+        return array_map(static fn(self $f): self => $f->writes !== null ? $f : new self($f->name, $f->callable, $f->leastArguments, $f->mostArguments, $f->summary, $f->needs, $f->counts, $f->inTests, false, $f->madeInTests), $functions);
     }
 }

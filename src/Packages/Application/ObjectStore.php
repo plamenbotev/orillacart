@@ -57,6 +57,9 @@ interface ObjectStore
 
     public function setField(string $extension, string $kind, int $ownerId, string $field, mixed $value): void;
 
+    /** Whether the shop has the product or order (kind "product" or "order") of the id. */
+    public function exists(string $kind, int $id): bool;
+
     /**
      * Runs the work inside a transaction that is rolled back afterwards, whatever it did: a test's records and
      * field values leave no trace.

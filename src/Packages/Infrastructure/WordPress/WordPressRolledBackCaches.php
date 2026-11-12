@@ -14,8 +14,8 @@ use OrillaCart\Packages\Application\RolledBackCaches;
  */
 final readonly class WordPressRolledBackCaches implements RolledBackCaches
 {
-    /** What a test's products, terms, options and the shop's own lists keep. */
-    public const array GROUPS = ['posts', 'post_meta', 'post-queries', 'terms', 'term_meta', 'term_relationships', 'term-queries', 'options', 'transient', 'counts', 'orillacart_listing', 'orillacart_search', 'orillacart_request'];
+    /** What a test's products, customers, terms, options and the shop's own lists keep. */
+    public const array GROUPS = ['posts', 'post_meta', 'post-queries', 'terms', 'term_meta', 'term_relationships', 'term-queries', 'options', 'transient', 'counts', 'users', 'user_meta', 'userlogins', 'useremail', 'userslugs', 'user-queries', 'orillacart_listing', 'orillacart_search', 'orillacart_request'];
 
     public function around(callable $work): mixed
     {

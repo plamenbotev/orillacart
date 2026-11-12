@@ -307,10 +307,11 @@ final readonly class ProductRows
         $now = $item === null ? [] : ($this->stock->levelsOf([$item])["{$item->kind}:{$item->id}"] ?? []);
         $changes = [];
         foreach ($row as $column => $value) {
-            if (!str_starts_with($column, ProductColumns::STOCK)) {
+            // A stockroom's column is stock_<id>; stock_mode and the like are columns of their own.
+            if (preg_match('/^' . ProductColumns::STOCK . '(\d+)$/', $column, $match) !== 1) {
                 continue;
             }
-            $room = (int) substr($column, \strlen(ProductColumns::STOCK));
+            $room = (int) $match[1];
             $wanted = self::number($value, $column, \PHP_INT_MIN);
             $was = $now[$room] ?? null;
             if ($wanted === $was) {
