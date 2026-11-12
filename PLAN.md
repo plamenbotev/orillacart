@@ -909,19 +909,19 @@ categories made and changed by extensions, as the import makes them; tests that 
 
 ## Extension tests on any shop (2026-11-12)
 
-The trade extension's 30 tests named one shop's customer, products and orders; the probes behind it found what kept a test from making its own. Commit hashes follow in the next commit.
+The trade extension's 30 tests named one shop's customer, products and orders; the probes behind it found what kept a test from making its own.
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 631 | P1 | `shop.customers.create` (`customers: create`; API 27 `Customers::create`, `NewCustomer`): an account as the shop makes one by hand, no email, addresses optional; in a test a test customer, rolled back, in `effects` | |
-| ✅ | 632 | P1 | `shop.customers.search({ email, words, limit })` under `customers: read` (`Customers::search`) | |
-| ✅ | 633 | P1 | What makes a test's records needs no permission in a test's body (`HostFunction::$madeInTests`, the compiler knows a test's body): customers, products and orders made; a product the test made published and given variations; elsewhere the permission as ever | |
-| ✅ | 634 | P2 | `shop.orders.quote(order)` (`orders: read`; `CreatesOrders::quote`, `OrderQuote`, `ShippingChoice`): the shipping options valid for an address, nothing placed; virtual orders need none | |
-| ✅ | 635 | P1 | Imports and `shop.products.create` take every stock mode they list: `stock_mode` was read as a stockroom's column (`stock_<id>`) and refused as not a whole number, so any products file with the Stock column filled was refused | |
-| ✅ | 636 | P2 | An item not for sale says why (`ItemQuote::$notForSale`): a draft is "not published", not "not available in that quantity" | |
-| ✅ | 637 | P2 | Files sent to `/extensions/{id}/test` and `/debug` lie over the saved ones (null removes one); `test_package` takes `files` and `debug` in its schema | |
-| ✅ | 638 | P2 | A record's or a field's customer must be one of the shop's (`fields.set` on a missing product or order too): WordPress's users cannot be a foreign key | |
-| ✅ | 639 | P3 | Guide (Tests: making what a test needs; §11, §14), extensions.md (API 27), generated reference (`in tests: none`, `made_in_tests`), tests on an emptied shop | |
+| ✅ | 631 | P1 | `shop.customers.create` (`customers: create`; API 27 `Customers::create`, `NewCustomer`): an account as the shop makes one by hand, no email, addresses optional; in a test a test customer, rolled back, in `effects` | 64eb29b4 |
+| ✅ | 632 | P1 | `shop.customers.search({ email, words, limit })` under `customers: read` (`Customers::search`) | 64eb29b4 |
+| ✅ | 633 | P1 | What makes a test's records needs no permission in a test's body (`HostFunction::$madeInTests`, the compiler knows a test's body): customers, products and orders made; a product the test made published and given variations; elsewhere the permission as ever | 64eb29b4 |
+| ✅ | 634 | P2 | `shop.orders.quote(order)` (`orders: read`; `CreatesOrders::quote`, `OrderQuote`, `ShippingChoice`): the shipping options valid for an address, nothing placed; virtual orders need none | 64eb29b4 |
+| ✅ | 635 | P1 | Imports and `shop.products.create` take every stock mode they list: `stock_mode` was read as a stockroom's column (`stock_<id>`) and refused as not a whole number, so any products file with the Stock column filled was refused | 64eb29b4 |
+| ✅ | 636 | P2 | An item not for sale says why (`ItemQuote::$notForSale`): a draft is "not published", not "not available in that quantity" | 64eb29b4 |
+| ✅ | 637 | P2 | Files sent to `/extensions/{id}/test` and `/debug` lie over the saved ones (null removes one); `test_package` takes `files` and `debug` in its schema | 64eb29b4 |
+| ✅ | 638 | P2 | A record's or a field's customer must be one of the shop's (`fields.set` on a missing product or order too): WordPress's users cannot be a foreign key | 64eb29b4 |
+| ✅ | 639 | P3 | Guide (Tests: making what a test needs; §11, §14), extensions.md (API 27), generated reference (`in tests: none`, `made_in_tests`), tests on an emptied shop | 64eb29b4 |
 | ⬜ | 640 | P3 | Mocked shop reads in tests: a `shop` map on a test answering named read functions (as `http` does), for logic tests and states hard to build; writes stay real | |
 
 ## Deliberately not carried over
