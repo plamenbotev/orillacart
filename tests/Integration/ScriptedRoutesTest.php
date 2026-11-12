@@ -21,7 +21,7 @@ final class ScriptedRoutesTest extends RestTestCase
     private const string SCRIPT = <<<'OCS'
         extension "pages" {
           name: "Pages"
-          needs: { templates: override, assets: serve }
+          needs: { templates: override, assets: [serve, scripts] }
         }
         route GET "/hello/{name}" { who: public } fn(request) {
           return { hello: request.params.name, q: request.query.x ?? null, path: request.path }
@@ -67,7 +67,7 @@ final class ScriptedRoutesTest extends RestTestCase
             'templates/bad.html.twig' => "{{ constant('PHP_VERSION') }}",
             'templates/storefront/_free_shipping.html.twig' => '<b>overridden</b>',
         ]], nonce: true);
-        $enabled = $this->request('POST', '/extensions/pages/enable', ['grant' => ['templates', 'assets']], nonce: true);
+        $enabled = $this->request('POST', '/extensions/pages/enable', ['grant' => ['templates', 'assets', 'assets:scripts']], nonce: true);
         self::assertSame(200, $enabled->get_status(), (string) wp_json_encode($enabled->get_data()));
         // The REST routes register once per server: a new server reads the extension's routes.
         $GLOBALS['wp_rest_server'] = null;
@@ -181,10 +181,16 @@ final class ScriptedRoutesTest extends RestTestCase
         do_action('shop_page_orillacart-x-pages-tickets');
         $printed = (string) ob_get_clean();
         unset($_GET['state']);
-        // The screen, from the template with the handler's data. Its script is printed once in the process, which
-        // another test of the run may have rendered first; a second registration of the menu renders it again.
-        self::assertStringStartsWith('<div class="wrap orillacart-extension-page" data-extension="pages"><h1>Tickets</h1><p class="tickets">3 open, open, manager yes</p>', $printed);
-        self::assertLessThanOrEqual(1, preg_match_all('#<script src="[^"]+/orillacart/extensions/pages/admin-[0-9a-f]{12}\.js" defer></script>#', $printed), 'printed once at most');
+        // The screen, from the template with the handler's data, in a frame of its own (design 73). Its script is
+        // printed once in the process, which another test of the run may have rendered first.
+        self::assertStringStartsWith('<div class="wrap orillacart-extension-page" data-extension="pages"><h1>Tickets</h1><iframe class="orillacart-extension-frame" data-orillacart-frame data-extension="pages" sandbox="allow-scripts" ', $printed);
+        self::assertSame(1, preg_match('#srcdoc="([^"]*)"#', $printed, $match));
+        $document = html_entity_decode($match[1], \ENT_QUOTES | \ENT_HTML5);
+        self::assertStringContainsString('<body class="wp-core-ui"><p class="tickets">3 open, open, manager yes</p>', $document);
+        self::assertMatchesRegularExpression('#<meta http-equiv="Content-Security-Policy" content="default-src &\\#039;none&\\#039;; script-src [^ ]+/build/admin/extension-bridge\\.js [^ ]+/orillacart/extensions/pages/; #', $document, 'only the bridge and the extension\'s files run');
+        self::assertStringContainsString('connect-src &#039;none&#039;', $document);
+        self::assertLessThanOrEqual(1, preg_match_all('#<script src="[^"]+/orillacart/extensions/pages/admin-[0-9a-f]{12}\.js" defer></script>#', $document), 'printed once at most');
+        self::assertStringNotContainsString('sandbox="allow-scripts allow-same-origin', $printed);
 
         ob_start();
         do_action('shop_page_orillacart-x-pages-broken');

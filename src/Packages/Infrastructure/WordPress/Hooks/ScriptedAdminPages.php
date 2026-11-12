@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Packages\Application\Dto\LoadedPackage;
+use OrillaCart\Packages\Application\ExtensionFrames;
 use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Packages\Application\PackageTemplates;
 use OrillaCart\Packages\Application\ScriptRunner;
@@ -19,8 +20,9 @@ use Psr\Log\LoggerInterface;
  * `admin_page "/loyalty" { title: "Loyalty", template: "admin.html.twig" } fn(request)` (design 60): a screen
  * of the extension's own in the Shop menu, for the shop manager. Each enabled extension's pages are entries of
  * the menu, after the shop's own groups and before System, titled as declared; the screen is the extension's
- * template, rendered in the sandbox with what the handler answers, inside the admin's frame. The page's scripts
- * (`asset()`) call the extension's manager routes with `wp.apiFetch`, which carries the REST nonce.
+ * template, rendered in the sandbox with what the handler answers, in a frame of its own (design 73,
+ * ExtensionFrames): its scripts (`asset()`) run there, and call the extension's manager routes through the bridge,
+ * `window.orillacart.api()`, which the admin's side answers with the nonce the frame never sees.
  */
 #[AsHook('admin_menu', method: 'register', priority: 20)]
 #[AsHook('admin_enqueue_scripts', method: 'enqueue')]
@@ -40,6 +42,7 @@ final class ScriptedAdminPages
         private readonly PackageService $packages,
         private readonly ScriptRunner $runner,
         private readonly TemplateRenderer $templates,
+        private readonly ExtensionFrames $frame,
         private readonly LoggerInterface $logger,
     ) {}
 
@@ -58,11 +61,11 @@ final class ScriptedAdminPages
         }
     }
 
-    /** The extension's screen may call its routes with wp.apiFetch, nonce and all. */
+    /** The admin's side of the screen's frame, which answers its bridge. */
     public function enqueue(string $hookSuffix): void
     {
         if (isset($this->screens[$hookSuffix])) {
-            wp_enqueue_script('wp-api-fetch');
+            $this->frame->enqueue();
         }
     }
 
@@ -114,9 +117,10 @@ final class ScriptedAdminPages
             }
         }
         try {
-            // Trusted as the extension's own screen: the template is sandboxed and escapes as any template does.
+            // The template is sandboxed and cleaned as printed; the frame keeps its scripts from the admin's page.
             $template = $declaration['props']['template'];
-            echo $this->templates->render(PackageTemplates::PREFIX . $loaded->package->slug() . '/' . ltrim(\is_string($template) ? $template : '', '/'), $data + ['page' => $path]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            $html = $this->templates->render(PackageTemplates::PREFIX . $loaded->package->slug() . '/' . ltrim(\is_string($template) ? $template : '', '/'), $data + ['page' => $path]);
+            echo $this->frame->render($loaded->package->slug(), $html, $title); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the frame's document is escaped into srcdoc
         } catch (\Throwable $e) {
             $this->logger->warning('The extension "{extension}" could not render its admin page {page}: {message}', ['extension' => $loaded->package->slug(), 'page' => $path, 'message' => $e->getMessage()]);
             printf('<div class="notice notice-error inline"><p>%s</p></div>', esc_html__('The extension could not show this page; the Extensions screen says why.', 'orillacart'));

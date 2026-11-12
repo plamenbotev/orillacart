@@ -41,8 +41,8 @@ final readonly class PackageManifest
     }
 
     /**
-     * `needs: { orders: read, customers: [read, write], http: ["api.example"], assets: serve }` → orders:read,
-     * customers:read, customers:write, http, assets.
+     * `needs: { orders: read, customers: [read, write], http: ["api.example"], assets: [serve, scripts] }` →
+     * orders:read, customers:read, customers:write, http, assets, assets:scripts.
      *
      * @return list<string>
      */
@@ -56,6 +56,10 @@ final readonly class PackageManifest
             }
             if ($area === 'http' || $area === 'templates' || $area === 'assets') {
                 $needs[] = $area;
+                // assets: scripts (design 73): the package's .js served too, a permission of its own.
+                if ($area === 'assets' && \in_array('scripts', self::words($levels), true)) {
+                    $needs[] = 'assets:scripts';
+                }
                 continue;
             }
             foreach (\is_array($levels) && !isset($levels['$spec']) ? $levels : [$levels] as $level) {
@@ -67,6 +71,24 @@ final readonly class PackageManifest
         }
 
         return array_values(array_unique($needs));
+    }
+
+    /**
+     * The words a need lists: `serve`, or `[serve, scripts]`.
+     *
+     * @return list<string>
+     */
+    private static function words(mixed $levels): array
+    {
+        $words = [];
+        foreach (\is_array($levels) && !isset($levels['$spec']) ? $levels : [$levels] as $level) {
+            $word = \is_array($level) ? ($level['$spec'] ?? null) : $level;
+            if (\is_string($word)) {
+                $words[] = $word;
+            }
+        }
+
+        return $words;
     }
 
     /**

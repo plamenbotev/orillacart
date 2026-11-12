@@ -72,6 +72,8 @@ final readonly class TwigFactory
             $twig->addExtension(new SandboxExtension($policy, false, new SandboxedSources($this->packages)));
             // And on a budget: capped ranges and formats, and loop turns counted per render.
             $twig->addExtension(new TemplateBudgetExtension());
+            // And what they print cleaned of what would run in the browser (design 73).
+            $twig->addExtension(new ScriptFreeOutputExtension());
             if ($this->words !== null) {
                 // Their __() calls read the extension's words first (design 57).
                 $twig->addExtension(new ExtensionWordsExtension($this->words));

@@ -716,6 +716,10 @@ final readonly class PackageService
                 $findings[] = ['file' => $path, 'line' => $problem['line'], 'column' => 1, 'message' => $problem['message']];
                 continue;
             }
+            // What the template's text would run in the browser (design 73): taken out as printed, so said here.
+            foreach ($this->templateWords?->code($path, $content) ?? [] as $code) {
+                $findings[] = ['file' => $path, 'line' => $code['line'], 'column' => 1, 'message' => $code['message']];
+            }
             // asset("portal.js") names a file of the package (design 59): one it does not have prints nothing.
             foreach ($this->templateWords?->assets($path, $content) ?? [] as $asset) {
                 if (!isset($files[ExtensionAssets::FOLDER . ltrim($asset['name'], '/')])) {

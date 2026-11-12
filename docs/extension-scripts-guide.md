@@ -643,11 +643,32 @@ admin_page "/tickets" { title: "Tickets", template: "tickets-admin.html.twig" } 
 The entry is titled as declared, placed after the shop's own groups and before System, and opens
 `admin.php?page=orillacart-x-<extension>-tickets`. The handler gets the request as a route's, with the screen's
 query string, as the manager; its map is the template's data, and `fail refused("…")` shows the message instead
-of the screen. The template renders inside the admin's frame, with WordPress's own classes at hand (`notice`,
-`card`, `button`, `wp-list-table`). A screen that changes things does so through the extension's manager routes:
-its script, printed with `asset()`, calls them with `wp.apiFetch({ path: '/orillacart/v1/x/<extension>/tickets/3/close', method: 'POST', data: {} })`,
-which carries the REST nonce, and the page reloads or redraws. No permission is needed beyond the manager's own:
-the screen is theirs.
+of the screen. No permission is needed beyond the manager's own: the screen is theirs.
+
+The screen runs in a **frame of its own**: a sandboxed iframe under the screen's title, with WordPress's admin
+styles (`notice`, `card`, `button`, `wp-list-table`, `form-table`) and as tall as what it shows. Its scripts
+(`asset()`, with `assets: scripts`) may be anything the package ships: a framework, a bundle, a library. They have
+an origin of their own, so no cookies, no nonce and nothing of the admin's page in reach, and they connect nowhere
+(`fetch` is refused). `window.orillacart` is their way out, each call a message the admin checks:
+
+| Call                                        | Answers                                                                       |
+| ------------------------------------------- | ----------------------------------------------------------------------------- |
+| `orillacart.api(method, path, body)`        | one of the extension's own routes, `/x/<extension>/…` (any other is a 403), as the storefront's client answers: `{ ok, status, data }` or `{ ok, status, code, message, violations }` |
+| `orillacart.notice(text, tone)`             | a notice above the screen; tone `success`, `error`, `warning` or `info`         |
+| `orillacart.navigate(url)`                  | opens a screen of the admin; any other address is refused                       |
+| `orillacart.media({ type, multiple })`      | the media library's picker: `[{ id, url, alt, title, mime, width, height }]`, none when closed |
+
+A link in the screen opens in the admin when it points into it, and nowhere otherwise. A form is not sent from
+the frame: a screen that changes things does so through its routes, as above. Images, styles and fonts load from
+the site and its uploads.
+
+```js
+// assets/tickets.js
+document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', async () => {
+  const result = await window.orillacart.api('POST', `/x/support/tickets/${button.dataset.close}/close`);
+  window.orillacart.notice(result.ok ? 'Closed.' : result.message, result.ok ? 'success' : 'error');
+}));
+```
 
 ## 10. Templates and slots
 
@@ -688,21 +709,34 @@ template_data "storefront/product.html.twig" fn(context) {
 - **Calling your routes from a template.** `api_url('x/<extension>/<path>')` is the full URL of one of the
   extension's routes (§9), and the page's script offers `window.orillacart.api(method, path, body)`, the shop's
   own client: it sends the REST nonce, asks for a fresh one when the page's has expired, and answers
-  `{ ok, status, data }` or `{ ok, status, code, message, violations }`. A customer's account page (the
+  `{ ok, status, data }` or `{ ok, status, code, message, violations }`. The script is a file of the package
+  (below), and what it needs from the page goes in as `json_data(value)`. A customer's account page (the
   `account_after` slot) is not cached, so a `who: account` route works from it:
 
   ```twig
   <button type="button" data-use-points>{{ __('Use my points') }}</button>
-  <script>
-  document.querySelector('[data-use-points]').addEventListener('click', async () => {
-    const result = await window.orillacart.api('POST', '/x/loyalty/points/use', { points: 100 });
-    alert(result.ok ? result.data.message : result.message);
-  });
-  </script>
+  {{ json_data({ points: 100 }) }}
+  {{ asset('points.js') }}
   ```
 
-  `api_nonce()` is the nonce itself, for a call made another way (null for a visitor, whose page may be
-  cached: let the client ask for one).
+  ```js
+  // assets/points.js
+  const { points } = JSON.parse(document.querySelector('script[type="application/json"]').textContent);
+  document.querySelector('[data-use-points]').addEventListener('click', async () => {
+    const result = await window.orillacart.api('POST', '/x/loyalty/points/use', { points });
+    alert(result.ok ? result.data.message : result.message);
+  });
+  ```
+
+- **No code in a template.** What an extension's template prints is cleaned as it prints it, whatever put it
+  together (its text, `raw`, a handler's HTML, a tag built of pieces): a `<script>` stays only as data
+  (`application/json`, `application/ld+json`) or as one `asset()` printed; `on…` attributes, `javascript:`,
+  `vbscript:` and `data:` addresses (an image's `data:image/…` aside), `srcdoc`, `<base>`'s address,
+  `<meta http-equiv>` and `<object>`/`<embed>` sources are taken out. A piece that ends inside a tag or a
+  comment, a `<` inside a script, a style, a textarea or a title, and `<noscript>` escape the whole piece, as text.
+  The static check refuses an inline script, an `on…` attribute and a `javascript:` link in the template's text,
+  so this is said before it is shown. `json_data(value)` prints `<script type="application/json">` with the
+  value as JSON, which cannot close the tag; the theme's templates are not touched.
 - `template_data "<template>" fn(context)`: adds to the context of one of the shop's own templates, under
   `ext.<extension>`; in the template, `{{ ext.greeter.badge }}`.
 - With the permission `templates: override`, a file at `templates/storefront/product.html.twig` in the package
@@ -723,8 +757,11 @@ template_data "storefront/product.html.twig" fn(context) {
   where a template of the extension rendered, so a portal's script does not load on the catalogue. The file is
   written under the site's uploads with a name that carries a hash of its content: browsers cache it for long
   and a change is a new URL. The name is written as a string, so the check can see the file is in the package;
-  `asset()` needs `assets: serve` under `needs`, which the manager grants with the rest. The script may use
-  `window.orillacart.api()` to call the extension's routes. Plain JavaScript and CSS: no bundling, no build.
+  `asset()` needs `assets: serve` under `needs` for stylesheets and SVG, and `assets: [serve, scripts]` for
+  scripts too: a script runs in the browser of whoever opens a page it is on, the manager included, so it is a
+  permission of its own, and the manager reads that, granting it. The script may use `window.orillacart.api()` to
+  call the extension's routes. Plain JavaScript and CSS, as the package has them: a bundle built elsewhere is a
+  file like any other.
 
 ## 11. Objects and fields
 

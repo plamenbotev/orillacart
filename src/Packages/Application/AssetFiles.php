@@ -18,6 +18,9 @@ interface AssetFiles
      */
     public function publish(string $extension, string $name, string $content): string;
 
+    /** The URL the extension's files are served under, ending in a slash: what a frame's policy lets load (design 73). */
+    public function folderUrl(string $extension): string;
+
     /** Removes everything published for the extension. */
     public function forget(string $extension): void;
 }

@@ -11,7 +11,6 @@ use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Settings\Domain\CurrencyPosition;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
-use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Tax\Application\TaxCalculator;
 use OrillaCart\Tax\Domain\TaxNumber;
 use OrillaCart\Tax\Domain\TaxSettings;
@@ -66,12 +65,12 @@ final class ShopExtension extends AbstractExtension
             // The currency switcher: {% for code in shop_currencies() %}, and the one the shopper is in.
             new TwigFunction('shop_currencies', fn(): array => $this->currencies?->codes() ?? [$this->settings->current()->currency]),
             new TwigFunction('shopper_currency', fn(): string => $this->currencies?->current() ?? $this->settings->current()->currency),
-            // For an extension's template that calls one of its routes: {{ api_url('x/loyalty/points/use') }}
-            // is the full URL under the shop's REST API, and api_nonce() the nonce a logged-in customer's call
-            // sends as X-WP-Nonce (null for a visitor, whose page may be cached: window.orillacart.api asks for one,
-            // and sends it as X-OrillaCart-Nonce).
+            // For an extension's template that calls one of its routes: {{ api_url('x/loyalty/points/use') }} is the
+            // full URL under the shop's REST API; the call itself is window.orillacart.api's, which holds the nonce.
             new TwigFunction('api_url', static fn(string $path = ''): string => (\function_exists('rest_url') ? rtrim(rest_url('orillacart/v1'), '/') : '/wp-json/orillacart/v1') . ($path === '' ? '' : '/' . ltrim($path, '/'))),
-            new TwigFunction('api_nonce', static fn(): ?string => \function_exists('is_user_logged_in') && is_user_logged_in() ? wp_create_nonce(Route::REST_NONCE) : null),
+            // {{ json_data(points) }}: data for a script, as a <script type="application/json"> no browser runs; the
+            // JSON cannot close the tag (design 73).
+            new TwigFunction('json_data', static fn(mixed $value): string => '<script type="application/json">' . (string) json_encode($value, \JSON_HEX_TAG | \JSON_HEX_AMP | \JSON_INVALID_UTF8_SUBSTITUTE | \JSON_PRESERVE_ZERO_FRACTION) . '</script>', ['is_safe' => ['html']]),
         ];
     }
 

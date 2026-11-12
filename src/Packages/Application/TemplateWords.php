@@ -31,4 +31,12 @@ interface TemplateWords
      * @return list<array{name: string, line: int}>
      */
     public function assets(string $path, string $source): array;
+
+    /**
+     * What the template's own text would run in the browser (design 73): an inline script, an `on…` attribute, a
+     * `javascript:` address, with the line of each. What it prints is cleaned of these anyway; this says so first.
+     *
+     * @return list<array{line: int, message: string}>
+     */
+    public function code(string $path, string $source): array;
 }

@@ -924,6 +924,24 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 | ✅ | 639 | P3 | Guide (Tests: making what a test needs; §11, §14), extensions.md (API 27), generated reference (`in tests: none`, `made_in_tests`), tests on an emptied shop | 64eb29b4 |
 | ✅ | 640 | P3 | Mocked reads in tests: a `shop` map on a test answers the shop's reads, the extension's records' and add-on namespaces' (any call, or a call of JSON arguments; `money()` in declarations); unanswered calls fail saying which key to add; the result's `mocked`; writes stay real | 5cd3ec4f |
 
+## Extensions' code in the browser, and richer blocks (2026-11-13)
+
+[Design 73](docs/designs/73-extension-scripts-in-the-browser.md): what an extension sends to the browser held to what it was granted, as its script is; full JavaScript in a frame of its own in the admin; blocks for complex layouts.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ⬜ | 641 | P1 | What an extension's template prints is cleaned as printed (`ExtensionOutputVisitor`, `ScriptFreeHtml`, WordPress's HTML API): no script but JSON data, no `on…` attributes, no `javascript:`/`vbscript:`/`data:` URLs, no `srcdoc`, `<base>`, `<meta http-equiv>`, `<object>`/`<embed>`; its overrides of the shop's included | |
+| ⬜ | 642 | P1 | The static check refuses an inline script or an `on…` attribute in a template's text, naming `assets/`; `json_data(value)`; `api_nonce()` removed | |
+| ⬜ | 643 | P1 | `assets: scripts`, a permission of its own for `.js` (`assets: serve` keeps stylesheets and SVG); a script `asset()` printed is the one the cleaning lets run | |
+| ⬜ | 644 | P1 | An extension's admin screen in a sandboxed iframe with a CSP, and the bridge (`api`, `notice`, `navigate`, `media`, links, height, admin styles) | |
+| ⬜ | 645 | P2 | A block's `assets`, loaded on the pages it is placed on | |
+| ⬜ | 646 | P2 | Settings `image`, `link`, `color`, `product`, `category`, `rich_text`, `list` (items of settings) for blocks | |
+| ⬜ | 647 | P2 | `site_block` `inner: true`: blocks inside it, `render(settings, content)` | |
+| ⬜ | 648 | P2 | A block's own editing screen (`editor: "file.js"`): the frame and bridge in its sidebar, `block.get()`/`block.set()` | |
+| ⬜ | 649 | P3 | `render`'s `context: { post_id, preview }` | |
+| ⬜ | 650 | P3 | A package's `patterns/*.html` are the editor's block patterns | |
+| ⬜ | 651 | P3 | Guide, extensions.md, generated reference, design 73; tests (unit, integration, end to end) | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

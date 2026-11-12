@@ -11,6 +11,7 @@ use Twig\Error\Error;
 use Twig\Node\Expression\ConstantExpression;
 use Twig\Node\Expression\FunctionExpression;
 use Twig\Node\Node;
+use Twig\Node\TextNode;
 use Twig\Source;
 
 /** Reads an extension's templates with the storefront's Twig: their words, and what stops them compiling. */
@@ -54,6 +55,45 @@ final readonly class TwigTemplateWords implements TemplateWords
         self::walkAssets($tree, $assets);
 
         return $assets;
+    }
+
+    public function code(string $path, string $source): array
+    {
+        try {
+            $tree = $this->twig->parse($this->twig->tokenize(new Source($source, $path)));
+        } catch (Error) {
+            return [];
+        }
+        $found = [];
+        self::walkText($tree, $found);
+
+        return $found;
+    }
+
+    /**
+     * @param list<array{line: int, message: string}> $found
+     */
+    private static function walkText(Node $node, array &$found): void
+    {
+        if ($node instanceof TextNode) {
+            $data = $node->getAttribute('data');
+            $text = \is_string($data) ? $data : '';
+            $rules = [
+                '/<script\b(?![^>]*\btype\s*=\s*["\']?application\/(?:ld\+)?json\b)/i' => 'An inline script does not run in an extension\'s template: put it in a file under assets/ and print it with asset() (assets: scripts), with what it needs as json_data(…).',
+                '/<[a-z][^>]*?\s(on[a-z]+)\s*=/i' => 'An "%s" attribute does not run in an extension\'s template: listen for the event in a script under assets/ (addEventListener).',
+                '/\s(?:href|src|action|formaction)\s*=\s*["\']?\s*javascript:/i' => 'A javascript: address does not run in an extension\'s template: listen for the click in a script under assets/.',
+            ];
+            foreach ($rules as $pattern => $message) {
+                if (preg_match_all($pattern, $text, $matches, \PREG_OFFSET_CAPTURE) > 0) {
+                    foreach ($matches[0] as $index => [$match, $offset]) {
+                        $found[] = ['line' => $node->getTemplateLine() + substr_count($text, "\n", 0, $offset), 'message' => \sprintf($message, $matches[1][$index][0] ?? '')];
+                    }
+                }
+            }
+        }
+        foreach ($node as $child) {
+            self::walkText($child, $found);
+        }
     }
 
     /**

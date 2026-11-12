@@ -12,13 +12,16 @@ use Psr\Log\LoggerInterface;
 /**
  * `{{ asset('portal.js') }}` in an extension's template (design 59): the file under assets/ in the package, served
  * by the web server, printed as a script tag (deferred), a stylesheet link, or the URL of an SVG. Printed once per
- * page however many templates ask for it. Only an enabled extension granted `assets` gets its files served; one
- * that is not, or names a file it does not have, prints nothing and the log says why.
+ * page however many templates ask for it. Only an enabled extension granted `assets` gets its files served, and
+ * its scripts only with `assets: scripts` too (design 73); one that is not, or names a file it does not have,
+ * prints nothing and the log says why.
  */
 final class ExtensionAssets
 {
     public const string FOLDER = 'assets/';
     public const string PERMISSION = 'assets';
+    /** A script runs in the browser of whoever opens the page, the manager included: asked for by name (design 73). */
+    public const string SCRIPTS = 'assets:scripts';
 
     /** @var array<string, true> what this request printed already, by extension and file */
     private array $printed = [];
@@ -61,6 +64,11 @@ final class ExtensionAssets
 
             return null;
         }
+        if (str_ends_with($name, '.js') && !\in_array(self::SCRIPTS, $package->granted(), true)) {
+            $this->logger->warning('The extension "{extension}" was not granted "assets: scripts": its script {name} is not served.', ['extension' => $extension, 'name' => $name]);
+
+            return null;
+        }
         if (preg_match(Package::ASSET, ltrim($name, '/')) !== 1) {
             $this->logger->warning('The extension "{extension}" asked for {name}: an asset is a script, a stylesheet or an SVG with no other dot in its name; nothing is served for it.', ['extension' => $extension, 'name' => $name]);
 
@@ -74,6 +82,12 @@ final class ExtensionAssets
         }
 
         return $this->files->publish($extension, ltrim($name, '/'), $content);
+    }
+
+    /** The URL the extension's files are served under, ending in a slash. */
+    public function folderUrl(string $extension): string
+    {
+        return $this->files->folderUrl($extension);
     }
 
     /** Forgets the extension's published files: it was uninstalled. */

@@ -76,6 +76,11 @@ final readonly class UploadedAssetFiles implements AssetFiles
         return $uploads['baseurl'] . '/' . $relative;
     }
 
+    public function folderUrl(string $extension): string
+    {
+        return wp_upload_dir(null, false)['baseurl'] . '/' . self::FOLDER . '/' . $extension . '/';
+    }
+
     /** Writes the folder's `.htaccess` when it is missing or not the shop's as it is now. */
     public static function guard(string $folder): void
     {

@@ -72,6 +72,11 @@ final class ExtensionAssetsTest extends TestCase
                 return "https://shop.example/uploads/orillacart/extensions/{$extension}/" . preg_replace('/(\.[a-z]+)$/', '-' . substr(md5($content), 0, 6) . '$1', $name);
             }
 
+            public function folderUrl(string $extension): string
+            {
+                return "https://shop.example/uploads/orillacart/extensions/{$extension}/";
+            }
+
             public function forget(string $extension): void
             {
                 ($this->drop)($extension);
@@ -92,7 +97,7 @@ final class ExtensionAssetsTest extends TestCase
 
     public function testAnEnabledExtensionsFilesArePrintedAsTagsOnceAndServed(): void
     {
-        $this->package->enable(['assets'], ['assets'], new \DateTimeImmutable('2026-11-09'));
+        $this->package->enable(['assets', 'assets:scripts'], ['assets', 'assets:scripts'], new \DateTimeImmutable('2026-11-09'));
 
         $script = $this->assets->tag('loyalty', 'portal.js');
         self::assertMatchesRegularExpression('#^<script src="https://shop.example/uploads/orillacart/extensions/loyalty/portal-[0-9a-f]{6}\.js" defer></script>$#', $script);
@@ -111,6 +116,16 @@ final class ExtensionAssetsTest extends TestCase
 
         $this->assets->forget('loyalty');
         self::assertSame(['loyalty'], $this->forgotten);
+    }
+
+    /** Design 73: a script runs in the browser of whoever opens the page, so it is asked for by name. */
+    public function testScriptsAreServedOnlyWithAssetsScripts(): void
+    {
+        $this->package->enable(['assets'], ['assets'], new \DateTimeImmutable('2026-11-09'));
+
+        self::assertSame('', $this->assets->tag('loyalty', 'portal.js'));
+        self::assertStringStartsWith('<link rel="stylesheet"', $this->assets->tag('loyalty', 'portal.css'), 'stylesheets and SVG come with assets: serve');
+        self::assertSame(['The extension "loyalty" was not granted "assets: scripts": its script portal.js is not served.'], $this->warnings);
     }
 
     public function testNothingIsServedWithoutTheGrantOrBeforeEnabling(): void
