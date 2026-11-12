@@ -65,6 +65,9 @@ final class Compiler
     /** @var list<string> the permissions the package declares */
     private array $needs = [];
 
+    /** How a declaration keeps an amount written money("9.00"): a map of this one key, the amount as text. */
+    public const string MONEY = '$money';
+
     /** Compiling a test's body, where the functions that make what a test needs ask no permission. */
     private bool $inTest = false;
     /** @var list<array{text: string, plural: ?string, context: string, line: int}> what the calls of WORDS mark for translation */
@@ -253,6 +256,17 @@ final class Compiler
         }
         if ($expr instanceof Unary && $expr->op === '-' && $expr->operand instanceof Literal && is_numeric($expr->operand->value)) {
             return -$expr->operand->value;
+        }
+        // An amount, as a test's mocked answers give one: money("9.00") is a value, not code.
+        if ($expr instanceof Call && $expr->callee instanceof Name && $expr->callee->name === 'money' && \count($expr->args) === 1) {
+            $amount = $expr->args[0];
+            $text = $amount instanceof Str ? $amount->value : ($amount instanceof Literal && is_numeric($amount->value) ? (string) $amount->value : null);
+            if ($text !== null && preg_match('/^-?\d+(\.\d+)?$/', $text) === 1) {
+                return [self::MONEY => $text];
+            }
+            $this->finding($expr, 'money() in a declaration takes an amount written out: money("9.00")');
+
+            return null;
         }
         $this->finding($expr, 'Declarations take values, not code');
 

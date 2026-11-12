@@ -26,5 +26,7 @@ final readonly class TestResult
         public array $stack = [],
         /** The test's recording, when it was the one debugged */
         public ?\OrillaCart\Scripting\Application\Recorder $recorder = null,
+        /** @var list<array{function: string, arguments: list<mixed>}> the shop's reads the test's `shop` map answered */
+        public array $mocked = [],
     ) {}
 }

@@ -212,4 +212,64 @@ final class ScriptTestsTest extends TestCase
         self::assertCount(1, $findings, 'outside a test\'s body it takes its permission');
         self::assertStringContainsString('"shop.things.create" needs the permission "things:create"', $findings[0]->message);
     }
+    public function testTheShopsReadsAnswerFromTheTestsMapAndWritesStayReal(): void
+    {
+        $real = [];
+        $catalog = HostCatalog::of([
+            ...new Builtins()->functions(),
+            new HostFunction('shop.customers.find', static function (Context $c, mixed $id) use (&$real): ?array {
+                $real[] = $id;
+
+                return null;
+            }, 1, 1, '', 'customers:read', HostFunction::QUERY, writes: false),
+            new HostFunction('shop.products.search', static fn(Context $c, mixed $query = null): array => [], 0, 1, '', 'products:read', HostFunction::QUERY, writes: false),
+            new HostFunction('shop.orders.find', static fn(Context $c, mixed $number): array => ['number' => $number, 'real' => true], 1, 1, '', 'orders:read', HostFunction::QUERY, writes: false),
+            new HostFunction('shop.orders.mark', static fn(Context $c, mixed $number, mixed $mark): bool => true, 2, 2, '', 'orders:write', HostFunction::QUERY, writes: true),
+            new HostFunction('objects.*.find', static fn(Context $c, string $type, mixed $id): ?array => null, 1, 1, '', null, HostFunction::QUERY, writes: false),
+        ]);
+        $scripts = new Scripts(new Compiler($catalog), $catalog, new InMemoryScriptStore());
+        $source = <<<'OCS'
+            extension "trade" { name: "Trade", needs: { customers: read, products: read, orders: [read, write] } }
+
+            test "answered from the map" {
+              shop: {
+                'shop.customers.find(2)': { id: 2, email: "buyer@example.com", group_ids: [7], orders: 40 },
+                "shop.customers.find": null,
+                'shop.products.search({"sku": "MUG-1"})': [{ id: 81, price: money("12.50") }],
+                'objects.ticket.find(9)': { id: 9, subject: "Late" },
+              }
+            } fn() {
+              assert shop.customers.find(2).orders == 40
+              assert shop.customers.find(3) == null, "any other call"
+              let found = shop.products.search({ sku: "MUG-1" })
+              assert found[0].price == money("12.50"), "an amount is money"
+              assert shop.orders.find(5).real, "what the map does not name is the shop's"
+              assert objects.ticket.find(9).subject == "Late", "the extension's own records too"
+              assert objects.note.find(9) == null, "another kind is the real store's"
+            }
+
+            test "a call the map does not answer" {
+              shop: { 'shop.products.search({"sku": "MUG-1"})': [] }
+            } fn() {
+              shop.products.search({ sku: "LAMP" })
+            }
+
+            test "only reads are mocked" {
+              shop: { "shop.orders.mark": true }
+            } fn() {
+              assert true
+            }
+            OCS;
+        self::assertSame([], $scripts->compile($source, 'trade')->findings);
+
+        $results = new ScriptTests($scripts)->run($source . "\n", 'trade_tests', new Grant('trade', ['customers:read', 'products:read', 'orders:read', 'orders:write']), declared: ['customers:read', 'products:read', 'orders:read', 'orders:write']);
+
+        self::assertTrue($results[0]->ok, (string) $results[0]->message);
+        self::assertSame([], $real, 'the mocked function never reached the shop');
+        self::assertSame([['function' => 'shop.customers.find', 'arguments' => [2]], ['function' => 'shop.customers.find', 'arguments' => [3]], ['function' => 'shop.products.search', 'arguments' => [['sku' => 'MUG-1']]], ['function' => 'objects.ticket.find', 'arguments' => [9]]], $results[0]->mocked);
+        self::assertFalse($results[1]->ok);
+        self::assertStringContainsString('no answer for shop.products.search({"sku":"LAMP"})', (string) $results[1]->message);
+        self::assertFalse($results[2]->ok);
+        self::assertStringContainsString('shop.orders.mark, which is not a read the map can answer', (string) $results[2]->message);
+    }
 }

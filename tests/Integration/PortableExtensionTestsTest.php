@@ -79,6 +79,19 @@ final class PortableExtensionTestsTest extends RestTestCase
           assert "a product the test made" in m, m
         }
 
+        test "a trade customer with forty orders" {
+          shop: {
+            'shop.customers.find(424242)': { id: 424242, email: "big@example.com", orders: 40, group_ids: [], billing: null },
+            'shop.orders.quote({"items": []})': { needs_shipping: true, total: money("12.50") },
+          }
+        } fn() {
+          assert shop.customers.find(424242).orders == 40
+          let failed = "it did not fail"
+          try { objects.note.create({ customer: 424242, text: "x" }) } catch e { failed = e.message }
+          assert "no customer 424242" in failed, "a write stays real: " ~ failed
+          assert shop.orders.quote({ items: [] }).total == money("12.50")
+        }
+
         test "the stock modes it lists" fn() {
           let tracked = shop.products.create({ name: "Probe tracked", price: "1.00", stock_mode: "tracked" })
           let always = shop.products.create({ name: "Probe always", price: "1.00", stock_mode: "always_available" })
@@ -125,7 +138,7 @@ final class PortableExtensionTestsTest extends RestTestCase
         $this->install(['main.ocs' => $this->probe()]);
 
         $tests = $this->tests();
-        self::assertCount(3, $tests);
+        self::assertCount(4, $tests);
         foreach ($tests as $test) {
             self::assertTrue($test['ok'], (string) wp_json_encode($test));
         }
@@ -139,6 +152,7 @@ final class PortableExtensionTestsTest extends RestTestCase
         self::assertNull($lookup->withSku('PROBE-GUIDE'), 'and the product');
         self::assertSame($before, $orders(), 'and the orders');
         self::assertSame('draft', get_post_status((int) $this->other), 'the shop\'s own product was not published');
+        self::assertSame(['shop.customers.find', 'shop.orders.quote'], array_column($tests[2]['mocked'] ?? [], 'function'), 'the mocked reads are listed');
     }
 
     public function testTheProbePassesOnAShopWithNoProductsCustomersOrdersOrStockrooms(): void
@@ -187,8 +201,8 @@ final class PortableExtensionTestsTest extends RestTestCase
 
         // One file more: the manifest and its needs are still the saved main.ocs's.
         $tests = $this->tests(['extra.ocs' => "test \"sent\" fn() { assert len(shop.customers.search({ limit: 1 })) <= 1 }\n"]);
-        self::assertSame(['makes what it needs on any shop', 'what is not the shop\'s is refused', 'the stock modes it lists', 'saved too', 'sent'], array_column($tests, 'name'));
-        self::assertSame([true, true, true, true, true], array_column($tests, 'ok'), (string) wp_json_encode($tests));
+        self::assertSame(['makes what it needs on any shop', 'what is not the shop\'s is refused', 'a trade customer with forty orders', 'the stock modes it lists', 'saved too', 'sent'], array_column($tests, 'name'));
+        self::assertSame([true, true, true, true, true, true], array_column($tests, 'ok'), (string) wp_json_encode($tests));
 
         // Null removes a saved file; a path sent replaces its file.
         $tests = $this->tests(['more.ocs' => null, 'main.ocs' => "extension \"probe\" { name: \"Probe\" }\ntest \"replaced\" fn() { assert true }\n"]);
@@ -231,7 +245,7 @@ final class PortableExtensionTestsTest extends RestTestCase
     /**
      * @param array<string, string|null>|null $files
      *
-     * @return list<array{name: string, ok: bool, effects: list<array{function: string}>}>
+     * @return list<array{name: string, ok: bool, effects: list<array{function: string}>, mocked?: list<array{function: string}>}>
      */
     private function tests(?array $files = null): array
     {
@@ -242,7 +256,7 @@ final class PortableExtensionTestsTest extends RestTestCase
         $tests = \is_array($data['data'] ?? null) ? ($data['data']['tests'] ?? []) : ($data['tests'] ?? []);
         self::assertIsArray($tests);
 
-        /** @var list<array{name: string, ok: bool, effects: list<array{function: string}>}> $tests */
+        /** @var list<array{name: string, ok: bool, effects: list<array{function: string}>, mocked?: list<array{function: string}>}> $tests */
         return $tests;
     }
 }

@@ -1159,6 +1159,47 @@ test "a trade customer orders" fn() {
 - An order of `virtual` products needs no `shipping_option`; to test shipping, pick one the shop offers with
   `shop.orders.quote` (§14), which needs `orders: read`.
 
+#### Mocking reads
+
+Where making the records is too much (a customer with forty orders, a product another extension keeps) or the
+test checks the extension's own logic, a test answers reads itself with a `shop` map, as `http` answers requests:
+
+```
+extension "tiers" { name: "Tiers", needs: { customers: read, products: read } }
+
+fn tier(customer_id) {
+  let customer = shop.customers.find(customer_id)
+  return customer.orders >= 20 ? "gold" : "standard"
+}
+
+test "a customer of forty orders is gold" {
+  shop: {
+    'shop.customers.find(2)': { id: 2, email: "big@example.com", orders: 40, group_ids: [] },
+    "shop.customers.find": null,
+    'shop.products.search({"sku": "MUG-1"})': [{ id: 81, name: "Mug", price: money("12.50") }],
+  }
+} fn() {
+  assert tier(2) == "gold"
+  assert shop.customers.find(3) == null
+  assert shop.products.search({ sku: "MUG-1" })[0].price == money("12.50")
+}
+```
+
+- A key is a function's name, answering any call of it, or its name with the arguments written as JSON
+  (`'shop.customers.find(2)'`, `'shop.products.search({"sku": "MUG-1"})'`; single quotes spare escaping), which is
+  tried first. Arguments match as JSON values: `2` is not `"2"`.
+- A mocked function asked what the map does not answer fails the test, saying which key to add; one the map does
+  not name is the real shop's. The result's `mocked` lists each call the map answered.
+- What the map can answer: every function that reads the shop or the extension's records (`shop.*` reads,
+  `objects.<type>.find`, `query`, `count`, `fields.get`, `fields.of`), and those of namespaces add-ons give.
+  What writes is never mocked and stays real inside the test's rollback, so a record naming a mocked customer is
+  refused as one naming any customer the shop does not have. `http`, `now` and `settings` have maps of their own.
+- An answer is written as the real one would be: amounts as `money("12.50")`, so they compare as the shop's do;
+  `null` for "none such". Write only the keys the extension reads: a mocked map is not checked against the real
+  one's shape, which a test that makes its records (above) is.
+- The permission is still declared: a mocked read is checked by the static check as the real one, so the tests
+  cannot hide a permission the extension needs live.
+
 ### Debugging
 
 A run on the shop is never paused: it is recorded, and you step through the recording afterwards, backwards as

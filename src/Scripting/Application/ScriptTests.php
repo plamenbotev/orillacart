@@ -13,6 +13,7 @@ use OrillaCart\Scripting\Domain\BudgetExceeded;
 use OrillaCart\Scripting\Domain\Ops;
 use OrillaCart\Scripting\Domain\ScriptError;
 use OrillaCart\Scripting\Domain\ScriptFailure;
+use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -86,6 +87,12 @@ final readonly class ScriptTests
                 return $answer;
             }, 1, 2, '', 'http', HostFunction::HTTP, writes: true);
         }
+        $mocked = [];
+        try {
+            array_push($fakes, ...$this->mocks(\is_array($props['shop'] ?? null) ? $props['shop'] : [], $mocked));
+        } catch (ScriptError $e) {
+            return new TestResult($name, false, $e->getMessage(), null, [], [], []);
+        }
         $fakes[] = new HostFunction('jobs.push', static function (Context $c, mixed $name, mixed $payload = null, mixed $at = null) use (&$jobs): null {
             $jobs[] = ['name' => Ops::text($name), 'payload' => Ops::plain($payload), 'at' => $at === null ? null : Ops::text($at)];
 
@@ -142,7 +149,106 @@ final readonly class ScriptTests
             $recorder->failed((string) $outcome[1], $line ?? 0, \count($stack));
         }
 
-        return new TestResult($name, $outcome[0], $outcome[1], $line, $http, $jobs, $context instanceof Context ? $context->used() : [], $effects, $stack, $recorder);
+        return new TestResult($name, $outcome[0], $outcome[1], $line, $http, $jobs, $context instanceof Context ? $context->used() : [], $effects, $stack, $recorder, $mocked);
+    }
+
+    /**
+     * The reads the test answers itself, from its `shop` map (the shop's, the extension's records, any namespace's): `"shop.customers.find": { … }` for any call,
+     * `'shop.customers.find(2)': { … }` for a call of those arguments (written as JSON), the latter first. A mocked
+     * function asked what the map does not answer fails the test, saying what key to add; functions the map does
+     * not name are the real shop's. Only reads are mocked: what writes stays real, inside the test's rollback.
+     *
+     * @param array<array-key, mixed>                              $map
+     * @param list<array{function: string, arguments: list<mixed>}> $mocked
+     *
+     * @return list<HostFunction>
+     *
+     * @throws ScriptError for a key that is not one of the shop's reads, or arguments not written as JSON
+     */
+    private function mocks(array $map, array &$mocked): array
+    {
+        /** @var array<string, array{any: bool, answer: mixed, calls: array<string, mixed>, function: HostFunction}> $answers */
+        $answers = [];
+        foreach ($map as $key => $answer) {
+            $key = trim((string) $key);
+            if (preg_match('/^([a-z_][a-z0-9_.]*)(?:\((.*)\))?$/s', $key, $match) !== 1) {
+                throw new ScriptError(\sprintf('The test\'s shop map has "%s": a key is a function, or a function and its arguments written as JSON: \'shop.customers.find(2)\'.', $key));
+            }
+            $function = $this->scripts->catalog()->resolve($match[1])[0] ?? null;
+            if ($function === null || !self::mockable($function)) {
+                throw new ScriptError(\sprintf('The test\'s shop map names %s, which is not a read the map can answer: it answers functions that read the shop or the extension\'s records (shop.*, objects.<type>.find, fields.get, …); what writes stays real, and http, now and settings have maps of their own.', $match[1]));
+            }
+            $named = $match[1];
+            $answers[$named] ??= ['any' => false, 'answer' => null, 'calls' => [], 'function' => $function];
+            if (!isset($match[2])) {
+                $answers[$named]['any'] = true;
+                $answers[$named]['answer'] = $answer;
+                continue;
+            }
+            $arguments = json_decode('[' . $match[2] . ']', true);
+            if (!\is_array($arguments)) {
+                throw new ScriptError(\sprintf('The test\'s shop map has "%s": its arguments are written as JSON, as in \'shop.products.search({"sku": "MUG-1"})\'.', $key));
+            }
+            $answers[$named]['calls'][self::arguments($arguments)] = $answer;
+        }
+        $mocks = [];
+        foreach ($answers as $name => $known) {
+            $function = $known['function'];
+            $mocks[] = new HostFunction($name, static function (Context $c, mixed ...$arguments) use ($name, $known, &$mocked): mixed {
+                $plain = array_map(Ops::plain(...), array_values($arguments));
+                $mocked[] = ['function' => $name, 'arguments' => $plain];
+                $written = self::arguments($plain);
+                if (\array_key_exists($written, $known['calls'])) {
+                    return self::revived($known['calls'][$written]);
+                }
+                if ($known['any']) {
+                    return self::revived($known['answer']);
+                }
+                $call = $name . '(' . substr($written, 1, -1) . ')';
+
+                throw new ScriptError(\sprintf('The test\'s shop map has no answer for %s: add \'%s\': … to it, or "%s": … for any call', $call, $call, $name));
+            }, $function->leastArguments, $function->mostArguments, $function->summary, $function->needs, $function->counts, writes: false);
+        }
+
+        return $mocks;
+    }
+
+    /**
+     * A function a test's map may answer: one that reads, past the script itself (the shop, the extension's records,
+     * a namespace an add-on gives); not the language's own helpers, nor what a test answers otherwise (http, time,
+     * settings, jobs).
+     */
+    private static function mockable(HostFunction $function): bool
+    {
+        if ($function->writes !== false || \in_array($function->name, self::RECORDED, true)) {
+            return false;
+        }
+        foreach (['http.', 'time.', 'settings.', 'jobs.'] as $own) {
+            if (str_starts_with($function->name, $own)) {
+                return false;
+            }
+        }
+
+        return $function->needs !== null || $function->counts === HostFunction::QUERY;
+    }
+
+    /** @param array<mixed> $arguments */
+    private static function arguments(array $arguments): string
+    {
+        return (string) json_encode(array_values($arguments), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
+    }
+
+    /** A declared answer as the script gets the shop's: money("9.00") written in the declaration is money. */
+    private static function revived(mixed $value): mixed
+    {
+        if (!\is_array($value)) {
+            return $value;
+        }
+        if (\count($value) === 1 && \is_string($value[Compiler::MONEY] ?? null)) {
+            return Money::of($value[Compiler::MONEY]);
+        }
+
+        return array_map(self::revived(...), $value);
     }
 
     /**

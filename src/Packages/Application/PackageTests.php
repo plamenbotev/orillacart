@@ -51,7 +51,7 @@ final readonly class PackageTests
      *
      * @param string|null                $debug the test to record for the debugger (design 71), by name
      *
-     * @return list<array{name: string, ok: bool, message: ?string, file: ?string, line: ?int, http: list<array{method: string, url: string, status: int}>, jobs: list<array{name: string, payload: mixed, at: ?string}>, used: array<string, int|float>, effects: list<array{function: string, arguments: list<mixed>}>, stack: list<array{fn: string, file: string, line: int}>, recording: array<string, mixed>|null}>
+     * @return list<array{name: string, ok: bool, message: ?string, file: ?string, line: ?int, http: list<array{method: string, url: string, status: int}>, jobs: list<array{name: string, payload: mixed, at: ?string}>, used: array<string, int|float>, effects: list<array{function: string, arguments: list<mixed>}>, mocked: list<array{function: string, arguments: list<mixed>}>, stack: list<array{fn: string, file: string, line: int}>, recording: array<string, mixed>|null}>
      */
     public function run(string $slug, ?array $files = null, ?string $debug = null): array
     {
@@ -133,6 +133,7 @@ final readonly class PackageTests
                 'jobs' => $result->jobs,
                 'used' => $result->used,
                 'effects' => $result->effects,
+                'mocked' => $result->mocked,
                 'stack' => Debugging::stack($scripts, $result->stack),
                 'recording' => $recording,
             ];

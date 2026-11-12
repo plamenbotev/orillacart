@@ -543,6 +543,17 @@ final class Parser
         if (!$declarative) {
             return new Name($token->value, $token->line, $token->column);
         }
+        // An amount in a declaration (a test's mocked answer): money("9.00") is a value there too.
+        if ($token->value === 'money' && $this->peek()->is(TokenKind::Punctuation, '(')) {
+            $this->next();
+            $amount = $this->expression(true);
+            $close = $this->next();
+            if (!$close->is(TokenKind::Punctuation, ')')) {
+                throw new SyntaxError(\sprintf('Expected ")", not %s', $close->describe()), $close->line, $close->column);
+            }
+
+            return new Call(new Name('money', $token->line, $token->column), [$amount], $token->line, $token->column);
+        }
         $props = [];
         if ($this->peek()->is(TokenKind::Punctuation, '{')) {
             [$props, $functions, $nested] = $this->declarationBlock();
