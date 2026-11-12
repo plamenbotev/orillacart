@@ -922,7 +922,7 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 | ✅ | 637 | P2 | Files sent to `/extensions/{id}/test` and `/debug` lie over the saved ones (null removes one); `test_package` takes `files` and `debug` in its schema | 64eb29b4 |
 | ✅ | 638 | P2 | A record's or a field's customer must be one of the shop's (`fields.set` on a missing product or order too): WordPress's users cannot be a foreign key | 64eb29b4 |
 | ✅ | 639 | P3 | Guide (Tests: making what a test needs; §11, §14), extensions.md (API 27), generated reference (`in tests: none`, `made_in_tests`), tests on an emptied shop | 64eb29b4 |
-| ✅ | 640 | P3 | Mocked reads in tests: a `shop` map on a test answers the shop's reads, the extension's records' and add-on namespaces' (any call, or a call of JSON arguments; `money()` in declarations); unanswered calls fail saying which key to add; the result's `mocked`; writes stay real | |
+| ✅ | 640 | P3 | Mocked reads in tests: a `shop` map on a test answers the shop's reads, the extension's records' and add-on namespaces' (any call, or a call of JSON arguments; `money()` in declarations); unanswered calls fail saying which key to add; the result's `mocked`; writes stay real | 5cd3ec4f |
 
 ## Deliberately not carried over
 
