@@ -930,10 +930,10 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ⬜ | 641 | P1 | What an extension's template prints is cleaned as printed (`ExtensionOutputVisitor`, `ScriptFreeHtml`, WordPress's HTML API): no script but JSON data, no `on…` attributes, no `javascript:`/`vbscript:`/`data:` URLs, no `srcdoc`, `<base>`, `<meta http-equiv>`, `<object>`/`<embed>`; its overrides of the shop's included | |
-| ⬜ | 642 | P1 | The static check refuses an inline script or an `on…` attribute in a template's text, naming `assets/`; `json_data(value)`; `api_nonce()` removed | |
-| ⬜ | 643 | P1 | `assets: scripts`, a permission of its own for `.js` (`assets: serve` keeps stylesheets and SVG); a script `asset()` printed is the one the cleaning lets run | |
-| ⬜ | 644 | P1 | An extension's admin screen in a sandboxed iframe with a CSP, and the bridge (`api`, `notice`, `navigate`, `media`, links, height, admin styles) | |
+| ✅ | 641 | P1 | What an extension's template prints is cleaned as printed (`ExtensionOutputVisitor`, `ScriptFreeHtml`, WordPress's HTML API): no script but JSON data, no `on…` attributes, no `javascript:`/`vbscript:`/`data:` URLs, no `srcdoc`, `<base>`, `<meta http-equiv>`, `<object>`/`<embed>`; its overrides of the shop's included | 092c17df |
+| ✅ | 642 | P1 | The static check refuses an inline script or an `on…` attribute in a template's text, naming `assets/`; `json_data(value)`; `api_nonce()` removed | 092c17df |
+| ✅ | 643 | P1 | `assets: scripts`, a permission of its own for `.js` (`assets: serve` keeps stylesheets and SVG); a script `asset()` printed is the one the cleaning lets run | 092c17df |
+| ✅ | 644 | P1 | An extension's admin screen in a sandboxed iframe with a CSP, and the bridge (`api`, `notice`, `navigate`, `media`, links, height, admin styles) | 092c17df |
 | ⬜ | 645 | P2 | A block's `assets`, loaded on the pages it is placed on | |
 | ⬜ | 646 | P2 | Settings `image`, `link`, `color`, `product`, `category`, `rich_text`, `list` (items of settings) for blocks | |
 | ⬜ | 647 | P2 | `site_block` `inner: true`: blocks inside it, `render(settings, content)` | |
