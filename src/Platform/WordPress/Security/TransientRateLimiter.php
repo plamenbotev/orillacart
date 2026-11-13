@@ -74,8 +74,14 @@ final readonly class TransientRateLimiter implements RateLimiter
         'email_confirmed' => [20, 3600],
         // Each asks a payment provider or courier, with the shop's keys.
         'settings_tests' => [20, 600],
-        // An extension's routes, all of them together, per caller.
-        'extensions' => [120, 600],
+        // Extensions' public routes, all of them together, per address and cart: the ceiling of one visitor.
+        'extensions' => [600, 600],
+        // Each extension's routes, by whom they are for (ScriptedRouteAction): a visitor per address (or account
+        // when signed in), a customer and a manager per account. A manager's screen in the admin loads, opens and
+        // saves as it is used; 1800 is three a second for ten minutes, and work beyond that belongs in a job.
+        'extension_public' => [240, 600],
+        'extension_account' => [600, 600],
+        'extension_manager' => [1800, 600],
         // What one extension's scripts send out, all their runs together.
         'extension_emails' => [50, 3600],
         'extension_http' => [500, 3600],

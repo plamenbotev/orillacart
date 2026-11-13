@@ -21,8 +21,18 @@ use OrillaCart\Shared\Security\Capability;
 final class ScriptedRoutes implements DynamicRoutes
 {
     public const string PREFIX = '/x/';
-    /** The guard every extension route shares: 120 calls per caller in 10 minutes (TransientRateLimiter). */
+    /**
+     * The guard of the public routes, all extensions' together, per address and cart: a ceiling one visitor
+     * meets before any extension runs, with the site's human check (TransientRateLimiter has the limits).
+     */
     public const string GUARD = 'extensions';
+    /**
+     * And each extension's own count, by who its route is for (ScriptedRouteAction): a visitor by address, a
+     * signed-in customer or manager by account. One extension's busy screen leaves the others theirs.
+     */
+    public const string GUARD_PUBLIC = 'extension_public';
+    public const string GUARD_ACCOUNT = 'extension_account';
+    public const string GUARD_MANAGER = 'extension_manager';
     /** The action behind every scripted route, named as a string: it is in the Http layer, which this one does not use. */
     public const string ACTION = 'OrillaCart\\Packages\\Http\\ScriptedRouteAction';
 
@@ -54,7 +64,8 @@ final class ScriptedRoutes implements DynamicRoutes
                     'wp_rest',
                     self::requirements($path),
                     false,
-                    self::GUARD,
+                    // Signed-in callers are counted by account in the action, not by the address they share.
+                    $who === 'public' ? self::GUARD : null,
                     $method !== 'GET',
                 );
             } catch (\InvalidArgumentException $e) {

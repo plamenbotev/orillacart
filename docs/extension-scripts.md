@@ -74,16 +74,20 @@ a problem the shop logs. Ten failures in a row stop the extension; a manager ena
 the problem on the Extensions screen. Over all its runs, an extension sends at most 50 emails and makes 500
 HTTP calls an hour.
 
-Requests to extensions' routes are counted per caller: 120 in each 10 minutes, for all the routes of all
-extensions together, whatever their `who`, managers included. A caller is its IP address (an IPv6 /64)
-and, where it has one, its cart cookie; either reaching 120 is enough. The windows are fixed, so a burst
-across the end of one may reach 240 in a moment. A request over the limit is answered 429
-`orillacart_too_many_requests` with `retry_after`, the seconds until the window ends, and the handler
-does not run. An admin screen's `window.orillacart.api()` calls count too, and so do staff behind one
-office address together. A site changes the limit with the filter `orillacart_rate_limits` (the guard
-`extensions`), raising or lowering it but never switching it off. The assistant's tools that are
-routes are not counted here: they are not requests to the route. A guarded request's body also passes the
-site's human check (a captcha add-on may refuse it) and loses the field `orillacart_website`.
+Requests to an extension's routes are counted for that extension alone, in fixed windows of 10 minutes,
+before its handler runs, by whom the route is for: a `public` route 240 per visitor, a visitor being its
+IP address (an IPv6 /64), or its account when signed in; an `account` route 600 per customer; a
+`manager` route 1 800 per manager, which is three a second, an admin screen's `window.orillacart.api()`
+calls and an app's key or token counted as the manager they act for. Staff behind one office address
+have each their own. Public routes are also counted for all extensions together, 600 per address and
+per cart, a ceiling one visitor meets before any extension runs, and their bodies pass the site's human
+check (a captcha add-on may refuse them) and lose the field `orillacart_website`. A request over a limit
+is answered 429 `orillacart_too_many_requests`, with `retry_after` and the `Retry-After` header saying
+the seconds until the window ends, and the handler does not run; an admin screen turned away also shows
+the manager a notice. A site changes the limits with the filter `orillacart_rate_limits` (the guards
+`extension_public`, `extension_account`, `extension_manager` and `extensions`), raising or lowering
+them but never switching them off. The assistant's tools that are routes are not counted here: they
+are not requests to the route. Work bigger than the limits allow belongs in a job (`jobs.push`).
 
 ## Declarations
 - `extension "id" { name, version, needs: { orders: read, customers: [read, create], products: [read, write], email: send, http: ["host"], templates: override, assets: [serve, scripts] } }`: what the extension is and what it asks for

@@ -125,6 +125,65 @@ final class ScriptedRoutesTest extends RestTestCase
         self::assertSame(get_current_user_id(), $this->data($mine)['id']);
     }
 
+    public function testEachExtensionsRoutesAreCountedApartAndAManagerByAccount(): void
+    {
+        $limits = static fn(array $limits): array => ['extension_manager' => [2, 600], 'extension_public' => [2, 600]] + $limits;
+        add_filter('orillacart_rate_limits', $limits);
+        $address = $_SERVER['REMOTE_ADDR'] ?? null;
+        $users = [];
+        try {
+            $this->request('POST', '/extensions', ['id' => 'second', 'name' => 'Second', 'files' => [
+                'main.ocs' => "extension \"second\" { name: \"Second\" }\nroute POST \"/echo\" { who: manager } fn(request) { return { ok: true } }\n",
+            ]], nonce: true);
+            self::assertSame(200, $this->request('POST', '/extensions/second/enable', ['grant' => []], nonce: true)->get_status());
+            $GLOBALS['wp_rest_server'] = null;
+
+            // A manager of their own, so the count starts at nothing whenever the test runs.
+            foreach (['one', 'two'] as $which) {
+                $id = wp_insert_user(['user_login' => 'orillacart_limits_' . $which . '_' . wp_generate_password(8, false), 'user_pass' => wp_generate_password(), 'role' => 'administrator']);
+                self::assertIsInt($id);
+                $users[] = $id;
+            }
+            wp_set_current_user($users[0]);
+            foreach ([1, 2] as $n) {
+                self::assertSame(201, $this->request('POST', '/x/pages/echo', ['n' => $n], nonce: true)->get_status());
+            }
+            $away = $this->request('POST', '/x/pages/echo', ['n' => 3], nonce: true);
+            self::assertSame(429, $away->get_status(), (string) wp_json_encode($away->get_data()));
+            $data = $this->data($away);
+            self::assertSame('orillacart_too_many_requests', $data['code'] ?? null);
+            $details = $data['data'] ?? null;
+            self::assertIsArray($details);
+            $wait = $details['retry_after'] ?? null;
+            self::assertIsInt($wait);
+            self::assertGreaterThan(0, $wait);
+            self::assertSame((string) $wait, self::text($away->get_headers()['Retry-After'] ?? null), 'the header says it too');
+
+            self::assertSame(200, $this->request('POST', '/x/second/echo', [], nonce: true)->get_status(), 'another extension counts its own');
+            wp_set_current_user($users[1]);
+            self::assertSame(201, $this->request('POST', '/x/pages/echo', ['n' => 1], nonce: true)->get_status(), 'another manager at the same address has their own');
+
+            // A visitor is counted by address.
+            wp_set_current_user(0);
+            $_SERVER['REMOTE_ADDR'] = '2001:db8:' . dechex(random_int(1, 0xFFFF)) . ':' . dechex(random_int(1, 0xFFFF)) . '::7';
+            foreach (['v1', 'v2'] as $name) {
+                self::assertSame(200, $this->request('GET', '/x/pages/hello/' . $name)->get_status());
+            }
+            self::assertSame(429, $this->request('GET', '/x/pages/hello/v3')->get_status());
+            $_SERVER['REMOTE_ADDR'] = '2001:db8:' . dechex(random_int(1, 0xFFFF)) . ':' . dechex(random_int(1, 0xFFFF)) . '::7';
+            self::assertSame(200, $this->request('GET', '/x/pages/hello/v4')->get_status(), 'another address has its own');
+        } finally {
+            remove_filter('orillacart_rate_limits', $limits);
+            $_SERVER['REMOTE_ADDR'] = $address;
+            $this->actAs('administrator');
+            $this->request('DELETE', '/extensions/second', nonce: true);
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            foreach ($users as $id) {
+                wp_delete_user($id);
+            }
+        }
+    }
+
     public function testAStoppedExtensionsRoutesSaySo(): void
     {
         wp_set_current_user(0);

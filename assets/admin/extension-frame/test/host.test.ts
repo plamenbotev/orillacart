@@ -1,7 +1,10 @@
 /**
  * Design 73: what the admin lets an extension's frame do.
  */
-import { isAdminUrl, isOwnRoute } from '../host';
+import apiFetch from '@wordpress/api-fetch';
+
+import { attach, isAdminUrl, isOwnRoute } from '../host';
+import { FROM_FRAME } from '../protocol';
 
 jest.mock( '@wordpress/api-fetch', () => jest.fn() );
 
@@ -36,5 +39,55 @@ describe( 'a frame', () => {
 			false
 		);
 		expect( isAdminUrl( 'javascript:alert(1)', admin ) ).toBe( false );
+	} );
+
+	it( 'tells the manager when its extension was asked too much', async () => {
+		( apiFetch as unknown as jest.Mock ).mockRejectedValueOnce( {
+			status: 429,
+			json: async () => ( {
+				code: 'orillacart_too_many_requests',
+				message: 'This extension was asked a lot at once.',
+				data: { retry_after: 42 },
+			} ),
+		} );
+		const holder = document.createElement( 'div' );
+		const element = document.createElement( 'iframe' );
+		holder.appendChild( element );
+		document.body.appendChild( holder );
+		const post = jest.fn();
+		Object.defineProperty( element.contentWindow, 'postMessage', {
+			value: post,
+		} );
+		const detach = attach( { element, extension: 'loyalty' } );
+
+		window.dispatchEvent(
+			new MessageEvent( 'message', {
+				source: element.contentWindow,
+				data: {
+					source: FROM_FRAME,
+					id: 1,
+					kind: 'api',
+					payload: { method: 'GET', path: '/x/loyalty/points' },
+				},
+			} )
+		);
+		await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+
+		expect( holder.querySelector( '.notice-warning' )?.textContent ).toBe(
+			'This extension was asked a lot at once.'
+		);
+		expect( post ).toHaveBeenLastCalledWith(
+			expect.objectContaining( {
+				id: 1,
+				ok: true,
+				value: expect.objectContaining( {
+					ok: false,
+					status: 429,
+					retryAfter: 42,
+				} ),
+			} ),
+			'*'
+		);
+		detach();
 	} );
 } );

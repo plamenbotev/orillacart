@@ -85,6 +85,7 @@ async function call(
 			code: 'orillacart_frame_refused',
 			message: `A screen calls only its extension's routes (/x/${ extension }/…).`,
 			violations: [],
+			retryAfter: null,
 		};
 	}
 	const response = ( await apiFetch( {
@@ -104,7 +105,7 @@ async function call(
 	const error = ( data ?? {} ) as {
 		code?: unknown;
 		message?: unknown;
-		data?: { violations?: unknown };
+		data?: { violations?: unknown; retry_after?: unknown };
 	};
 	return {
 		ok: false,
@@ -114,6 +115,10 @@ async function call(
 		violations: Array.isArray( error.data?.violations )
 			? ( error.data?.violations as Violation[] )
 			: [],
+		retryAfter:
+			typeof error.data?.retry_after === 'number'
+				? error.data.retry_after
+				: null,
 	};
 }
 
@@ -199,8 +204,14 @@ async function answer(
 	message: FrameMessage
 ): Promise< unknown > {
 	switch ( message.kind ) {
-		case 'api':
-			return call( frame.extension, message.payload );
+		case 'api': {
+			const result = await call( frame.extension, message.payload );
+			// Turned away for asking too much: the manager is told here, whatever the screen does with it.
+			if ( ! result.ok && result.status === 429 ) {
+				notice( frame, result.message, 'warning' );
+			}
+			return result;
+		}
 		case 'notice':
 			notice(
 				frame,

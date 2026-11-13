@@ -7,10 +7,15 @@ namespace OrillaCart\Packages\Http;
 use OrillaCart\Packages\Application\Dto\ScriptResponse;
 use OrillaCart\Packages\Application\ScriptedRouteHandler;
 use OrillaCart\Packages\Application\ScriptedRoutes;
+use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Output\RedirectResponder;
+use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Http\Security\Authorization;
+use OrillaCart\Shared\Http\Security\CallerKeys;
+use OrillaCart\Shared\Http\Security\ClientAddress;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use OrillaCart\Shared\Security\Capability;
 use OrillaCart\Shared\View\TemplateRenderer;
 use Psr\Http\Message\ResponseInterface;
@@ -19,7 +24,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * The one action behind every scripted route: the request as a map to the handler, what `respond` made as the
- * response. Not a #[Route]: ScriptedRoutes declares the routes at run time and names this action for each.
+ * response. Not a #[Route]: ScriptedRoutes declares the routes at run time and names this action for each. Each
+ * extension's routes are counted apart, before its handler runs: a visitor by address, anyone signed in by
+ * account (the staff of one office share an address, not a limit), with the limit of whom the route is for.
  */
 final readonly class ScriptedRouteAction implements RequestHandlerInterface
 {
@@ -32,11 +39,13 @@ final readonly class ScriptedRouteAction implements RequestHandlerInterface
         private JsonResponder $json,
         private RedirectResponder $redirect,
         private TemplateRenderer $templates,
+        private RateLimiter $limits,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $route = RouteDefinition::fromRequest($request);
+        $this->count($request, $route);
         $answer = $this->handler->handle($request->getMethod(), $route->path, $this->requestMap($request, $route));
 
         return match ($answer->kind) {
@@ -46,6 +55,22 @@ final readonly class ScriptedRouteAction implements RequestHandlerInterface
             // REST answers JSON: a rendered template travels in it, for the caller to put where it wants.
             default => $this->json->ok(['html' => $this->templates->render((string) $answer->template, $answer->data ?? [])], $answer->status),
         };
+    }
+
+    private function count(ServerRequestInterface $request, RouteDefinition $route): void
+    {
+        $extension = explode('/', substr($route->path, \strlen(ScriptedRoutes::PREFIX)), 2)[0];
+        $userId = $this->authorization->userId();
+        $caller = $userId !== null ? 'user:' . $userId : CallerKeys::network('ip:' . ClientAddress::of($request->getServerParams()));
+        $guard = match ($route->capability) {
+            Route::PUBLIC => ScriptedRoutes::GUARD_PUBLIC,
+            Capability::ACCOUNT => ScriptedRoutes::GUARD_ACCOUNT,
+            default => ScriptedRoutes::GUARD_MANAGER,
+        };
+        $wait = $this->limits->hit($guard, 'ext:' . $extension . '|' . $caller);
+        if ($wait !== null) {
+            throw new HttpException(429, 'orillacart_too_many_requests', 'This extension was asked a lot at once. Wait a little, then try again.', ['retry_after' => $wait]);
+        }
     }
 
     /** @return array<string, mixed> */

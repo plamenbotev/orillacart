@@ -643,9 +643,9 @@ page "/support" { template: "support.html.twig" } fn(request) {
 ```
 
 A route lives at `/wp-json/orillacart/v1/x/<extension>/<path>` and runs through the shop's own REST pipeline:
-authorization, the REST nonce for browsers, API keys and OAuth for agents, a rate limit of 120 requests per caller in
-10 minutes for all extensions' routes together ("Budgets and failures" in `docs/extension-scripts.md`), and the
-change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). A manager route is also one of the
+authorization, the REST nonce for browsers, API keys and OAuth for agents, rate limits of each extension's own (in 10
+minutes, 240 per visitor on a public route, 600 per customer, 1 800 per manager: "Budgets and failures" in
+`docs/extension-scripts.md`), and the change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). A manager route is also one of the
 assistant's tools, `x_<extension>_<method>_<path>` (`x_payfast_post_refunds`), unless it says `tool: false`; `tool:
 "name"` names it, `title`, `description`, `input` (a JSON schema of the body) and `risk` describe it, and without
 `input` the tool takes `params`, `query` and `body` maps. The handler gets the request map a REST call would give
@@ -701,7 +701,7 @@ an origin of their own, so no cookies, no nonce and nothing of the admin's page 
 
 | Call                                        | Answers                                                                       |
 | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| `orillacart.api(method, path, body)`        | one of the extension's own routes, `/x/<extension>/…` (any other is a 403), as the storefront's client answers: `{ ok, status, data }` or `{ ok, status, code, message, violations }` |
+| `orillacart.api(method, path, body)`        | one of the extension's own routes, `/x/<extension>/…` (any other is a 403), as the storefront's client answers: `{ ok, status, data }` or `{ ok, status, code, message, violations, retryAfter }`; a 429 (the extension's limit, 1 800 a manager in 10 minutes) also shows the manager a notice, and `retryAfter` is the seconds to wait |
 | `orillacart.notice(text, tone)`             | a notice above the screen; tone `success`, `error`, `warning` or `info`         |
 | `orillacart.navigate(url)`                  | opens a screen of the admin; any other address is refused                       |
 | `orillacart.media({ type, multiple })`      | the media library's picker: `[{ id, url, alt, title, mime, width, height }]`, none when closed |

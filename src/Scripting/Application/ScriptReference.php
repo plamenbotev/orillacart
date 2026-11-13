@@ -154,8 +154,12 @@ final readonly class ScriptReference
         'http_calls_per_hour' => 500,
         'query_records' => 200,
         'errors_in_a_row_before_stopped' => 10,
-        // Per caller (IP or cart), for every extension's routes together, in a fixed window of 10 minutes.
-        'route_requests_per_10_minutes' => 120,
+        // Each extension's routes, in a fixed window of 10 minutes: per visitor (address, or account when signed
+        // in), customer and manager; and public routes of all extensions together per address and cart.
+        'route_requests_per_10_minutes_public' => 240,
+        'route_requests_per_10_minutes_account' => 600,
+        'route_requests_per_10_minutes_manager' => 1800,
+        'route_requests_per_10_minutes_public_all_extensions' => 600,
         'template_loop_turns' => 100000,
         'template_range' => 10000,
     ];

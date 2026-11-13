@@ -41,7 +41,10 @@ final readonly class ErrorMiddleware implements MiddlewareInterface
                 $details['violations'] = $this->violations($violations);
             }
 
-            return $this->responder->error($e->status, $e->errorCode, $this->translations->text($e->text), $details);
+            $response = $this->responder->error($e->status, $e->errorCode, $this->translations->text($e->text), $details);
+
+            // How long a caller turned away waits, as HTTP says it, for clients that read the header only.
+            return \is_int($details['retry_after'] ?? null) ? $response->withHeader('Retry-After', (string) $details['retry_after']) : $response;
         } catch (NotFound $e) {
             return $this->responder->error(404, $e->errorCode, $this->translations->text($e->text));
         } catch (InvalidFields $e) {

@@ -17,6 +17,8 @@ export type ApiResult =
 			code: string;
 			message: string;
 			violations: Violation[];
+			/** Seconds until a caller turned away (429) may call again; null otherwise. */
+			retryAfter: number | null;
 	  };
 
 export type MediaItem = {
