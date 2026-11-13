@@ -941,7 +941,7 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 | ✅ | 649 | P3 | `render(settings, context)`: `{ post_id, preview, content }`; a `render(settings)` called as written | 50093429 |
 | ✅ | 650 | P3 | `pattern` declarations of a package's `patterns/*.html`: the editor's block patterns, cleaned, refused with HTML in attributes | 50093429 |
 | ✅ | 651 | P3 | API 28 for PHP add-ons (`PlacedSiteBlock`, `BlockPlace`, `BlockEditor`, `BlockPattern`); guide, extensions.md, generated reference, design 73; tests (unit, integration, end to end) | 50093429 |
-| ✅ | 652 | P2 | Extension routes' rate limits: each extension counted apart, signed-in callers by account (public 240 per visitor, account 600, manager 1800 in 10 minutes; public ceiling of all extensions 600 per address); `Retry-After` on every 429; admin frame shows a notice on 429 | |
+| ✅ | 652 | P2 | Extension routes' rate limits: each extension counted apart, signed-in callers by account (public 240 per visitor, account 600, manager 1800 in 10 minutes; public ceiling of all extensions 600 per address); `Retry-After` on every 429; admin frame shows a notice on 429 | 4d97c48e |
 
 ## Deliberately not carried over
 
