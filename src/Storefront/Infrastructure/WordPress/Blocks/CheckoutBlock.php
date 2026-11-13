@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Blocks;
 
 use OrillaCart\Checkout\Application\AddressChecks;
+use OrillaCart\Checkout\Application\CheckoutPrefills;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\EmailConfirmations;
@@ -18,6 +19,7 @@ use OrillaCart\Invoicing\Application\Invoices;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Notifications\Application\EmailSettingsService;
 use OrillaCart\Notifications\Domain\EmailKind;
+use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Ordering\Application\ReceiptLinkExpired;
@@ -73,6 +75,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         private ExemptionCertificates $certificates,
         private GeographyService $geography,
         private LegalSettingsService $legal,
+        private ?CheckoutPrefills $prefills = null,
     ) {}
 
     public static function name(): string
@@ -104,7 +107,19 @@ final readonly class CheckoutBlock implements BlockDefinition
         }
         $customer = $this->customer();
         $shop = $this->settings->current();
-        $billing = $customer->billing ?? null;
+        // A guest a shopper's agent handed the cart to starts with what the agent gave (design 75).
+        $token = $customer === null ? $this->shopper->cart()->token : null;
+        $given = $token === null ? null : $this->prefills?->forCart($token);
+        $billing = $customer->billing ?? ($given === null ? null : new AddressData(
+            $given['billing']['first_name'] ?? '',
+            $given['billing']['last_name'] ?? '',
+            $given['billing']['street'] ?? '',
+            $given['billing']['city'] ?? '',
+            $given['billing']['postcode'] ?? '',
+            $given['billing']['country'] ?? $shop->shopCountry ?? '',
+            $given['billing']['phone'] ?? '',
+            $given['billing']['state'] ?? null,
+        ));
         $shipping = $customer->shippingAddress ?? $billing;
         // Without a saved address, the form starts in the shop's country.
         $billingCountry = $billing !== null ? $billing->country : $shop->shopCountry;
@@ -132,7 +147,7 @@ final readonly class CheckoutBlock implements BlockDefinition
         return $this->templates->render('storefront/checkout.html.twig', [
             'summary' => $summary,
             'problem' => $problem,
-            'email' => $customer->email ?? '',
+            'email' => $customer->email ?? $given['email'] ?? '',
             'billing' => $billing ?? ['country' => $billingCountry, 'state' => $billingState],
             'shipping' => $shipping ?? ['country' => $billingCountry, 'state' => $billingState],
             'address_known' => $details->billingCountry !== null,

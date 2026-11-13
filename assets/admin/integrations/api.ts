@@ -220,3 +220,31 @@ export function endAssistantAllowance(
 		method: 'DELETE',
 	} );
 }
+
+/** Whether shoppers' AI agents buy here (UCP, design 75), and where they find the shop. */
+export interface AgentCommerce {
+	on: boolean;
+	version: string;
+	profile: string;
+	rest: string;
+	mcp: string;
+}
+
+export function fetchAgentCommerce(): Promise< AgentCommerce > {
+	return apiFetch< AgentCommerce >( {
+		path: '/orillacart/v1/agent-commerce',
+	} );
+}
+
+/**
+ * Switches selling through shoppers' agents on or off.
+ *
+ * @param on Whether agents may buy.
+ */
+export function saveAgentCommerce( on: boolean ): Promise< AgentCommerce > {
+	return apiFetch< AgentCommerce >( {
+		path: '/orillacart/v1/agent-commerce',
+		method: 'PUT',
+		data: { on },
+	} );
+}

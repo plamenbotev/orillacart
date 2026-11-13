@@ -5,6 +5,19 @@ declare(strict_types=1);
 use Doctrine\Migrations\DependencyFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use OrillaCart\Agents\Application\AgentCatalog;
+use OrillaCart\Agents\Application\AgentCommerceSwitch;
+use OrillaCart\Agents\Application\AgentEndpoints;
+use OrillaCart\Agents\Application\IdempotentAnswers;
+use OrillaCart\Agents\Application\PlatformProfiles;
+use OrillaCart\Agents\Domain\AgentCheckoutRepository;
+use OrillaCart\Agents\Infrastructure\Doctrine\DoctrineAgentCheckoutRepository;
+use OrillaCart\Agents\Infrastructure\WordPress\AgentCheckoutPrefills;
+use OrillaCart\Agents\Infrastructure\WordPress\HttpPlatformProfiles;
+use OrillaCart\Agents\Infrastructure\WordPress\OptionAgentCommerceSwitch;
+use OrillaCart\Agents\Infrastructure\WordPress\ShopAgentCatalog;
+use OrillaCart\Agents\Infrastructure\WordPress\TransientIdempotentAnswers;
+use OrillaCart\Agents\Infrastructure\WordPress\WordPressAgentEndpoints;
 use OrillaCart\Assistant\Application\AssistantContext;
 use OrillaCart\Assistant\Application\AssistantRequests;
 use OrillaCart\Assistant\Application\CallDescriptions;
@@ -40,6 +53,7 @@ use OrillaCart\Catalog\Infrastructure\Doctrine\DoctrineProductRepository;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductContent;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductPosts;
 use OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductSearch;
+use OrillaCart\Checkout\Application\CheckoutPrefills;
 use OrillaCart\Coupons\Domain\CouponRepository;
 use OrillaCart\Coupons\Domain\RedemptionRepository;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineCouponRepository;
@@ -414,7 +428,7 @@ return static function (ContainerConfigurator $container): void {
 
     // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
     $services->load('OrillaCart\\', '../src/*/Application/')
-        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/', '../src/Payment/Application/PayPal/PayPalWebhookSignature.php'])
+        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/', '../src/Payment/Application/PayPal/PayPalWebhookSignature.php', '../src/Agents/Application/{Ucp,UcpError}.php'])
         ->public();
     // The host functions scripts may call: every tagged namespace, gathered once.
     $services->set(HostCatalog::class)->args(['$namespaces' => tagged_iterator(HostNamespace::TAG)])->public();
@@ -483,6 +497,13 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(ExtensionFrames::class, WordPressExtensionFrames::class);
     $services->alias(RouteAnswers::class, WordPressRouteAnswers::class);
     $services->alias(AnonymousCaller::class, WordPressAnonymousCaller::class);
+    $services->alias(AgentCheckoutRepository::class, DoctrineAgentCheckoutRepository::class);
+    $services->alias(AgentCommerceSwitch::class, OptionAgentCommerceSwitch::class);
+    $services->alias(AgentEndpoints::class, WordPressAgentEndpoints::class);
+    $services->alias(PlatformProfiles::class, HttpPlatformProfiles::class);
+    $services->alias(IdempotentAnswers::class, TransientIdempotentAnswers::class);
+    $services->alias(AgentCatalog::class, ShopAgentCatalog::class);
+    $services->alias(CheckoutPrefills::class, AgentCheckoutPrefills::class);
     $services->alias(RedirectTargets::class, WordPressRedirectTargets::class);
     $services->alias(PackageArchives::class, ZipPackageArchives::class);
     $services->alias(ObjectStore::class, DoctrineObjectStore::class)->public();

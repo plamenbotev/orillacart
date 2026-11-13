@@ -166,3 +166,16 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
 
 // The classic edit screen, as the Classic Editor plugin gives it, while a test's browser has this cookie.
 add_filter('use_block_editor_for_post_type', static fn(bool $use, string $type): bool => ($_COOKIE['orillacart_e2e_classic'] ?? '') === '1' ? false : $use, 100, 2);
+
+// A shopper's agent's UCP profile (design 75), at an address the site cannot reach: the tests' agent names it.
+add_filter('pre_http_request', static function (mixed $pre, array $args, string $url): mixed {
+    if ($url !== 'https://agent.e2e.test/profile.json') {
+        return $pre;
+    }
+    $capabilities = [];
+    foreach (['dev.ucp.shopping.catalog.search', 'dev.ucp.shopping.catalog.lookup', 'dev.ucp.shopping.checkout', 'dev.ucp.shopping.fulfillment'] as $name) {
+        $capabilities[$name] = [['version' => '2026-08-25']];
+    }
+
+    return ['headers' => [], 'body' => (string) wp_json_encode(['ucp' => ['version' => '2026-08-25', 'capabilities' => $capabilities]]), 'response' => ['code' => 200, 'message' => 'OK'], 'cookies' => [], 'filename' => null];
+}, 10, 3);

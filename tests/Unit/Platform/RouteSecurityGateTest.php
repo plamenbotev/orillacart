@@ -35,6 +35,15 @@ final class RouteSecurityGateTest extends TestCase
         'POST /oauth/register',
         'POST /oauth/token',
         'POST /payments/{gateway}/webhook',
+        // Shoppers' agents (UCP, design 75), server to server: they act for no one (a session is its own cart,
+        // never the caller's cookies' or account's), every change names an idempotency key and is counted.
+        'POST /ucp/catalog/lookup',
+        'POST /ucp/catalog/search',
+        'POST /ucp/checkout-sessions',
+        'PUT /ucp/checkout-sessions/{id}',
+        'POST /ucp/checkout-sessions/{id}/cancel',
+        'POST /ucp/checkout-sessions/{id}/complete',
+        'POST /ucp/mcp',
     ];
 
     /**
@@ -42,6 +51,16 @@ final class RouteSecurityGateTest extends TestCase
      * added here, on purpose, after checking what it reveals or changes for a visitor.
      */
     private const array PUBLIC = [
+        // Shoppers' agents (UCP, design 75): what shoppers find, and checkout sessions of their own carts, each by
+        // an id only its agent was given; nothing of a customer's, nothing while the owner has not switched it on.
+        'GET /ucp/checkout-sessions/{id}',
+        'POST /ucp/catalog/lookup',
+        'POST /ucp/catalog/search',
+        'POST /ucp/checkout-sessions',
+        'PUT /ucp/checkout-sessions/{id}',
+        'POST /ucp/checkout-sessions/{id}/cancel',
+        'POST /ucp/checkout-sessions/{id}/complete',
+        'POST /ucp/mcp',
         'GET /cart',
         // The caller's own cart's distance from free shipping, by its cookie: nothing of anyone else's.
         'GET /cart/free-shipping',

@@ -182,6 +182,20 @@ The visitor followed the emailed link and chose a password: the account is made 
   - `token` (string): required; matches `/^[a-f0-9]{64}$/`
   - `password` (string): required; not empty; at most 200 characters
 
+## /agent-commerce
+
+### `GET /agent-commerce`
+
+Shop › Integrations: whether shoppers' agents buy here (design 75), and where they find the shop.
+
+- Who: shop managers
+
+### `PUT /agent-commerce`
+
+Shop › Integrations: whether shoppers' agents buy here (design 75), and where they find the shop.
+
+- Who: shop managers; needs a nonce (not with an API key)
+
 ## /api-keys
 
 ### `GET /api-keys`
@@ -3038,6 +3052,56 @@ The translations of some of a type's objects, by object id, field and locale; no
 - Query:
   - `type` (string): not empty
   - `ids` (string): matches `/^\d+(,\d+)*$/`
+
+## /ucp
+
+### `POST /ucp/catalog/lookup`
+
+UCP's REST binding (design 75): the catalogue's search and lookup, and checkout sessions. Agents call it server to server, as payment providers call their webhooks, so it carries no nonce (signed: the action checks what it needs), and it acts for no one: a session is its own cart, never the caller's cookies' or account's. Every change names an Idempotency-Key and is counted per caller; reads are not counted.
+
+- Who: the payment provider, signed
+
+### `POST /ucp/catalog/search`
+
+UCP's REST binding (design 75): the catalogue's search and lookup, and checkout sessions. Agents call it server to server, as payment providers call their webhooks, so it carries no nonce (signed: the action checks what it needs), and it acts for no one: a session is its own cart, never the caller's cookies' or account's. Every change names an Idempotency-Key and is counted per caller; reads are not counted.
+
+- Who: the payment provider, signed
+
+### `POST /ucp/checkout-sessions`
+
+UCP's REST binding (design 75): the catalogue's search and lookup, and checkout sessions. Agents call it server to server, as payment providers call their webhooks, so it carries no nonce (signed: the action checks what it needs), and it acts for no one: a session is its own cart, never the caller's cookies' or account's. Every change names an Idempotency-Key and is counted per caller; reads are not counted.
+
+- Who: the payment provider, signed
+
+### `GET /ucp/checkout-sessions/{id}`
+
+UCP's REST binding (design 75): the catalogue's search and lookup, and checkout sessions. Agents call it server to server, as payment providers call their webhooks, so it carries no nonce (signed: the action checks what it needs), and it acts for no one: a session is its own cart, never the caller's cookies' or account's. Every change names an Idempotency-Key and is counted per caller; reads are not counted.
+
+- Who: the payment provider, signed
+
+### `PUT /ucp/checkout-sessions/{id}`
+
+UCP's REST binding (design 75): the catalogue's search and lookup, and checkout sessions. Agents call it server to server, as payment providers call their webhooks, so it carries no nonce (signed: the action checks what it needs), and it acts for no one: a session is its own cart, never the caller's cookies' or account's. Every change names an Idempotency-Key and is counted per caller; reads are not counted.
+
+- Who: the payment provider, signed
+
+### `POST /ucp/checkout-sessions/{id}/cancel`
+
+UCP's REST binding (design 75): the catalogue's search and lookup, and checkout sessions. Agents call it server to server, as payment providers call their webhooks, so it carries no nonce (signed: the action checks what it needs), and it acts for no one: a session is its own cart, never the caller's cookies' or account's. Every change names an Idempotency-Key and is counted per caller; reads are not counted.
+
+- Who: the payment provider, signed
+
+### `POST /ucp/checkout-sessions/{id}/complete`
+
+UCP's REST binding (design 75): the catalogue's search and lookup, and checkout sessions. Agents call it server to server, as payment providers call their webhooks, so it carries no nonce (signed: the action checks what it needs), and it acts for no one: a session is its own cart, never the caller's cookies' or account's. Every change names an Idempotency-Key and is counted per caller; reads are not counted.
+
+- Who: the payment provider, signed
+
+### `POST /ucp/mcp`
+
+UCP's MCP binding (design 75): the same operations as tools (search_catalog, lookup_catalog, create_checkout, get_checkout, update_checkout, complete_checkout, cancel_checkout), the agent's profile and idempotency key in each call's `meta`. Stateless, as MCP allows: `initialize` is answered for clients that start with it, every other request stands alone. A business outcome is a result; a protocol failure is error -32000 (-32001 for the agent's profile), with UCP's code and words in its data.
+
+- Who: the payment provider, signed
 
 ## /webhooks
 

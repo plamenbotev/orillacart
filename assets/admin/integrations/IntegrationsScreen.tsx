@@ -2,6 +2,7 @@ import { useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 import { errorMessage } from '../shared/api';
+import { AgentsCard } from './AgentsCard';
 import { ApiKeysCard } from './ApiKeysCard';
 import { AssistantCard } from './AssistantCard';
 import { type AssistantCatalogue, fetchAssistantCatalogue } from './api';
@@ -9,8 +10,8 @@ import { WebhooksCard } from './WebhooksCard';
 import { Page } from '../shared/ui';
 
 /**
- * Shop → Integrations: how other software works with the shop: an AI assistant and API keys to call it, webhooks
- * it calls.
+ * Shop → Integrations: how other software works with the shop: an AI assistant and API keys to call it, shoppers'
+ * agents that buy, webhooks it calls.
  */
 export function IntegrationsScreen() {
 	const [ catalogue, setCatalogue ] = useState< AssistantCatalogue | null >(
@@ -28,6 +29,7 @@ export function IntegrationsScreen() {
 		<Page title={ __( 'Integrations', 'orillacart' ) }>
 			<AssistantCard catalogue={ catalogue } error={ error } />
 			<ApiKeysCard catalogue={ catalogue } />
+			<AgentsCard />
 			<WebhooksCard />
 		</Page>
 	);

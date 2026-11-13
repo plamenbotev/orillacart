@@ -24,6 +24,7 @@ use OrillaCart\Cart\Domain\Event\CartChanged;
 use OrillaCart\Cart\Domain\Event\CartItemAdded;
 use OrillaCart\Cart\Domain\Event\CartItemChanged;
 use OrillaCart\Cart\Domain\Event\CartItemRemoved;
+use OrillaCart\Cart\Domain\Event\CartOrdered;
 use OrillaCart\Cart\Domain\Event\LeftCartOrdered;
 use OrillaCart\Cart\Domain\GivenItem;
 use OrillaCart\Cart\Domain\GivenLine;
@@ -476,6 +477,7 @@ final readonly class CartService
         if ($cart !== null) {
             $cart->placing($orderId, $this->clock->now());
             $this->carts->save($cart);
+            $this->events->dispatch(new CartOrdered($cartId, $orderId));
         }
     }
 

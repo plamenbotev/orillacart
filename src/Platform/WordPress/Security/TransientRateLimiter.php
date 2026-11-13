@@ -79,6 +79,9 @@ final readonly class TransientRateLimiter implements RateLimiter
         // visitor. Its reads and signed-in callers are not counted, as the shop's own are not. 1200 is two a
         // second for ten minutes, as many as a payment provider's webhooks may send: services post to routes too.
         'extension_public' => [1200, 600],
+        // Shoppers' agents' changes to checkout sessions (design 75), per caller: two a second for ten minutes. An
+        // agent's platform calls from few addresses for many shoppers; reads are not counted.
+        'ucp' => [1200, 600],
         // An anonymous caller's failures of an extension counted towards stopping it: one an hour each.
         'extension_failures' => [1, 3600],
         // What one extension's scripts send out, all their runs together.

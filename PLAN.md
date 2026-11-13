@@ -955,6 +955,52 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 | ✅ | 656 | P2 | `shop.catalog.list` and `Registry::catalog()` (API 29): the shop's listing, filters, counts and cards, for shoppers, no permission | 990c0383 |
 | ✅ | 657 | P3 | Static check of `limit` and `cache`; guide's landing page section, reference, extensions.md, design 74; tests | 990c0383 |
 
+## Shoppers' agents: the Universal Commerce Protocol (2026-11-13)
+
+[Design 75](docs/designs/75-shoppers-agents.md): agents that shop for people find the shop's products and prepare a checkout over UCP 2026-08-25 (REST and MCP); the buyer pays at the shop's own checkout through the session's link. The whole path from here, phase by phase, is [the implementation plan](docs/plans/shoppers-agents.md).
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 658 | P2 | `/.well-known/ucp` profile (REST and MCP services, catalog search/lookup, checkout, fulfillment); the owner's switch in Shop › Integrations | |
+| ✅ | 659 | P2 | Agents' profiles fetched safely (https, no private addresses, 128 KiB, an hour) and capabilities intersected; 424/422 as the spec says | |
+| ✅ | 660 | P2 | `search_catalog` / `lookup_catalog` on the shop's listing and cards, amounts in minor units, variants as checkout items | |
+| ✅ | 661 | P2 | Checkout sessions as the shop's carts (`agent_checkouts`): create, get, update (whole), complete, cancel; lines, buyer, fulfilment options and totals from the shop's checkout; UCP messages | |
+| ✅ | 662 | P2 | Payment handed to the buyer: `requires_escalation` + signed `continue_url` that gives the cart to the browser and prefills the shop's checkout; the order placed completes the session (`CartOrdered`) | |
+| ✅ | 663 | P2 | Idempotency keys (a day; 409 on another body), `Request-Id`, the `ucp` rate limit on changes, signed public routes acting for no one | |
+| ✅ | 664 | P3 | The same operations as MCP tools at `/ucp/mcp` | |
+| ✅ | 665 | P3 | Sessions forgotten a day after they end; docs/shoppers-agents.md, design 75; tests (integration, end to end) | |
+| ⬜ | 666 | P1 | A signed-in buyer opening continue_url loses the session ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 667 | P2 | The handover keeps the browser's own cart ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 668 | P2 | The agent's context is honoured ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 669 | P2 | Orders carry where they came from ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 670 | P3 | Checkout questions the agent cannot answer ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 671 | P3 | Agents' sessions in the personal data export and eraser ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 672 | P2 | The shop's signing key ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 673 | P2 | Verifying agents' signatures (RFC 9421) ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 674 | P3 | Which agents may buy ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 675 | P3 | Versions and schema conformance ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 676 | P2 | The cart capability ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 677 | P3 | The catalogue's filters and options ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 678 | P3 | Bundles and personalised products ([plan](docs/plans/shoppers-agents.md)) | |
+| 📝 | 679 | P2 | Identity linking: design ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 680 | P2 | Identity linking: the capability ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 681 | P2 | Identity linking: a linked session is the customer's ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 682 | P3 | Identity linking: the customer's account lists their agents ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 683 | P2 | The order capability ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 684 | P2 | Webhooks to the agent ([plan](docs/plans/shoppers-agents.md)) | |
+| 📝 | 685 | P1 | Agents that pay: design ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 686 | P1 | Payment handlers in the profile ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 687 | P1 | Placing the order from the session ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 688 | P2 | Google Pay ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 689 | P2 | AP2 mandates ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 690 | P3 | More payment handlers ([plan](docs/plans/shoppers-agents.md)) | |
+| ➖ | 691 | P3 | ACP: the product feed ([plan](docs/plans/shoppers-agents.md)) | |
+| ➖ | 692 | P3 | ACP's checkout endpoints ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 693 | P3 | Extensions see agents' orders ([plan](docs/plans/shoppers-agents.md)) | |
+| 📝 | 694 | P3 | Extensions add capabilities ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 695 | P3 | Shop › Integrations shows the agents' work ([plan](docs/plans/shoppers-agents.md)) | |
+| ⬜ | 696 | P3 | Reports ([plan](docs/plans/shoppers-agents.md)) | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
