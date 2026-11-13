@@ -27,7 +27,7 @@ class Package
      * letters, digits, `-` and `_`, then only `.min` or numbers (`app.min.js`, `lib-3.7.1.min.js`) before its kind,
      * so no part of it is one a web server set up with `AddHandler` would run (`x.php.js`).
      */
-    public const string PATH = '#^(?:(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\\.(ocs|html\\.twig|md)|assets/(?:[a-z0-9_-]+/)*[a-z0-9_-]+(?:\\.(?:min|[0-9]+))*\\.(js|css|svg))$#D';
+    public const string PATH = '#^(?:(?:[a-z0-9_-]+/)*[a-z0-9_.-]+\\.(ocs|html\\.twig|md)|assets/(?:[a-z0-9_-]+/)*[a-z0-9_-]+(?:\\.(?:min|[0-9]+))*\\.(js|css|svg)|patterns/[a-z0-9_-]+\\.html)$#D';
     /** What an asset under assets/ may be named, without the folder. */
     public const string ASSET = '#^(?:[a-z0-9_-]+/)*[a-z0-9_-]+(?:\\.(?:min|[0-9]+))*\\.(js|css|svg)$#D';
     /** Failures in a row after which the shop stops the extension. */
@@ -321,7 +321,7 @@ class Package
         $paths = [];
         foreach ($this->files() as $file) {
             $path = strtolower($file->path());
-            if (str_starts_with($path, 'templates/') || str_contains($path, '.twig') || str_starts_with($path, 'assets/')) {
+            if (str_starts_with($path, 'templates/') || str_contains($path, '.twig') || str_starts_with($path, 'assets/') || str_starts_with($path, 'patterns/')) {
                 $paths[] = $file->path();
             }
         }
@@ -450,7 +450,7 @@ class Package
     public static function checkPath(string $path): void
     {
         if (preg_match(self::PATH, $path) !== 1 || str_contains($path, '..') || \strlen($path) > PackageFile::MAX_PATH_LENGTH) {
-            throw new PackageRuleViolation('A file is named like "main.ocs", "templates/support.html.twig" or "assets/portal.js": lowercase letters, digits, dashes, underscores and dots, in folders, ending in .ocs, .html.twig or .md; a script, a stylesheet or an SVG (.js, .css, .svg) under assets/, with no other dot in its name.', 'orillacart_invalid_extension_file');
+            throw new PackageRuleViolation('A file is named like "main.ocs", "templates/support.html.twig" or "assets/portal.js": lowercase letters, digits, dashes, underscores and dots, in folders, ending in .ocs, .html.twig or .md; a script, a stylesheet or an SVG (.js, .css, .svg) under assets/, with no other dot in its name; a block pattern (.html) under patterns/.', 'orillacart_invalid_extension_file');
         }
     }
 }

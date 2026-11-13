@@ -42,6 +42,9 @@ final class Version
      * attributeSets, categories), finding products (Products::search), and ProductSummary's published and attributes.
      * 27: making and finding customers (Customers::create, Customers::search, Customer\NewCustomer), and what an order
      * would cost and how it could ship before it is placed (CreatesOrders::quote, Order\OrderQuote, Order\ShippingChoice).
+     * 28: site blocks that hold other blocks, know where they are and have an editing screen of their own
+     * (Storefront\PlacedSiteBlock, BlockPlace), blocks' image, link, color, product, category, rich_text and list
+     * settings (Setting::BLOCK_TYPES, Setting::$fields), and block patterns (Storefront\BlockPattern).
      */
-    public const int CURRENT = 27;
+    public const int CURRENT = 28;
 }

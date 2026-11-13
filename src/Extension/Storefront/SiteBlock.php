@@ -35,7 +35,9 @@ interface SiteBlock
     /**
      * The block's HTML, escaped by the add-on; an empty string shows nothing.
      *
-     * @param array<string, string|int|float|bool> $settings what the owner set, by key; one never set is missing
+     * @param array<string, mixed> $settings what the owner set, by key; one never set is missing: a string, a number or
+     *                                     a boolean, and for a block's own kinds (API 28) an image's map, an id, or a
+     *                                     list of maps
      */
     public function render(array $settings): string;
 }

@@ -29,6 +29,23 @@ function post( message: FrameMessage ): void {
 	window.parent.postMessage( message, '*' );
 }
 
+// Calls wait until the admin answers: its side may start listening after the frame's script has run.
+let ready = false;
+const queued: FrameMessage[] = [];
+
+function send( message: FrameMessage ): void {
+	if ( ready ) {
+		post( message );
+	} else {
+		queued.push( message );
+	}
+}
+
+const hello = window.setInterval( () => {
+	post( { source: FROM_FRAME, id: 0, kind: 'hello', payload: null } );
+}, 100 );
+post( { source: FROM_FRAME, id: 0, kind: 'hello', payload: null } );
+
 function ask< T >( request: Request ): Promise< T > {
 	const id = next++;
 	return new Promise< T >( ( resolve, reject ) => {
@@ -36,7 +53,7 @@ function ask< T >( request: Request ): Promise< T > {
 			resolve: resolve as ( value: unknown ) => void,
 			reject,
 		} );
-		post( { ...request, source: FROM_FRAME, id } as FrameMessage );
+		send( { ...request, source: FROM_FRAME, id } as FrameMessage );
 	} );
 }
 
@@ -53,6 +70,11 @@ window.addEventListener( 'message', ( event: MessageEvent ) => {
 		return;
 	}
 	if ( message.id === -1 ) {
+		if ( ! ready ) {
+			ready = true;
+			window.clearInterval( hello );
+			queued.splice( 0 ).forEach( post );
+		}
 		height();
 		return;
 	}

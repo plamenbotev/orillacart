@@ -144,6 +144,15 @@ final readonly class ScriptRunner
     }
 
     /**
+     * How many arguments a function of the script takes: what an adapter that came to pass more (a site block's
+     * `render(settings, context)`, design 73) gives one written to take fewer.
+     */
+    public static function takes(LoadedPackage $loaded, string $method): int
+    {
+        return class_exists($loaded->className, false) && method_exists($loaded->className, $method) ? new \ReflectionMethod($loaded->className, $method)->getNumberOfParameters() : 0;
+    }
+
+    /**
      * Whether a declaration has the function; adapters answer for what is not declared.
      *
      * @param array{functions: array<string, string>, ...} $declaration

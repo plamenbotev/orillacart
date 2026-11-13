@@ -225,6 +225,9 @@ async function answer(
 		}
 		case 'media':
 			return media( message.payload ?? {} );
+		case 'hello':
+		case 'height':
+			return null;
 		case 'block.get':
 			if ( ! frame.block ) {
 				throw new Error( "This frame is not a block's." );
@@ -251,6 +254,13 @@ function receive( event: MessageEvent ): void {
 	);
 	const message = event.data as FrameMessage | null;
 	if ( ! frame || ! message || message.source !== FROM_FRAME ) {
+		return;
+	}
+	if ( message.kind === 'hello' ) {
+		frame.element.contentWindow?.postMessage(
+			{ source: FROM_HOST, id: -1, ok: true },
+			'*'
+		);
 		return;
 	}
 	if ( message.kind === 'height' ) {

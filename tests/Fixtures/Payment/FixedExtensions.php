@@ -190,6 +190,11 @@ final class FixedExtensions implements InstalledExtensions
         return [];
     }
 
+    public function blockPatterns(): array
+    {
+        return [];
+    }
+
     public function untrustedTemplateFolders(): array
     {
         return [];

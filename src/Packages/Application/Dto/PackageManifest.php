@@ -116,7 +116,8 @@ final readonly class PackageManifest
             $settings = [...$settings, ...self::settingsOf($block['props'])];
         }
 
-        return $settings;
+        // A block's kinds of setting are a block's: the extension's and its providers' screens have none of them.
+        return array_values(array_filter($settings, static fn(Setting $setting): bool => !\in_array($setting->type, Setting::BLOCK_TYPES, true)));
     }
 
     /**
@@ -134,7 +135,12 @@ final readonly class PackageManifest
                 continue;
             }
             $type = $spec['$spec'];
-            if (!\in_array($type, [Setting::TEXT, Setting::SECRET, Setting::BOOLEAN, Setting::NUMBER, Setting::CHOICE], true)) {
+            if (!\in_array($type, [Setting::TEXT, Setting::SECRET, Setting::BOOLEAN, Setting::NUMBER, Setting::CHOICE, ...Setting::BLOCK_TYPES], true)) {
+                continue;
+            }
+            // A list's items (API 28): `slides: list { fields: { title: text, picture: image } }`; none a list.
+            $fields = $type === Setting::LIST && \is_array($spec['fields'] ?? null) ? array_values(array_filter(self::settingsOf($spec['fields']), static fn(Setting $field): bool => $field->type !== Setting::LIST && $field->type !== Setting::SECRET)) : [];
+            if ($type === Setting::LIST && $fields === []) {
                 continue;
             }
             $choices = [];
@@ -154,6 +160,7 @@ final readonly class PackageManifest
                 \is_string($spec['help'] ?? null) ? $spec['help'] : '',
                 $choices,
                 $goesWith,
+                $fields,
             );
         }
 

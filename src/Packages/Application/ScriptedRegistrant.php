@@ -6,6 +6,7 @@ namespace OrillaCart\Packages\Application;
 
 use OrillaCart\Extension\Registry;
 use OrillaCart\Packages\Application\Adapters\ScriptedAssistantTool;
+use OrillaCart\Packages\Application\Adapters\ScriptedBlockPattern;
 use OrillaCart\Packages\Application\Adapters\ScriptedCartRule;
 use OrillaCart\Packages\Application\Adapters\ScriptedColumn;
 use OrillaCart\Packages\Application\Adapters\ScriptedCourier;
@@ -32,13 +33,13 @@ use Psr\Log\LoggerInterface;
  * Registers what the enabled extensions declare on the add-on registry, as a PHP add-on would, through adapters
  * that run the scripts: payment gateways, shipping methods, cart rules, order fees, price and order adjusters,
  * checkout fields, order actions, columns, filters and searches, Home contributors, assistant tools, product
- * blocks and mailing lists; and the fields it declares on products and orders as columns of the exports. One
+ * blocks, site blocks, block patterns and mailing lists; and the fields it declares on products and orders as columns of the exports. One
  * extension that cannot be read does not keep the others out.
  */
 final readonly class ScriptedRegistrant implements Registrant
 {
     /** The declaration kinds and what they are registered as. */
-    public const array KINDS = ['payment_gateway', 'shipping_method', 'cart_rule', 'order_fee', 'price_adjuster', 'order_adjuster', 'checkout_field', 'order_action', 'order_column', 'product_column', 'order_filter', 'product_filter', 'home', 'assistant_tool', 'product_block', 'site_block', 'mailing_list'];
+    public const array KINDS = ['payment_gateway', 'shipping_method', 'cart_rule', 'order_fee', 'price_adjuster', 'order_adjuster', 'checkout_field', 'order_action', 'order_column', 'product_column', 'order_filter', 'product_filter', 'home', 'assistant_tool', 'product_block', 'site_block', 'mailing_list', 'pattern'];
 
     public function __construct(
         private PackageService $packages,
@@ -47,6 +48,8 @@ final readonly class ScriptedRegistrant implements Registrant
         private LoggerInterface $logger,
         private ?ExtensionFields $fields = null,
         private ?ObjectStore $store = null,
+        private ?ExtensionAssets $assets = null,
+        private ?ExtensionFrames $frames = null,
     ) {}
 
     public function register(Registry $registry): void
@@ -89,8 +92,9 @@ final readonly class ScriptedRegistrant implements Registrant
                 'order_filter', 'product_filter' => new ScriptedFilter($loaded, $declaration, $this->runner),
                 'home' => new ScriptedHomeContributor($loaded, $declaration, $this->runner),
                 'assistant_tool' => new ScriptedAssistantTool($loaded, $declaration, $this->runner),
-                'product_block' => new ScriptedProductBlock($loaded, $declaration, $this->runner, $this->cleaner),
-                'site_block' => new ScriptedSiteBlock($loaded, $declaration, $this->runner, $this->cleaner),
+                'product_block' => new ScriptedProductBlock($loaded, $declaration, $this->runner, $this->cleaner, $this->assets),
+                'site_block' => new ScriptedSiteBlock($loaded, $declaration, $this->runner, $this->cleaner, $this->assets, $this->frames),
+                'pattern' => new ScriptedBlockPattern($loaded, $declaration, $this->runner),
                 'mailing_list' => new ScriptedMailingList($loaded, $declaration, $this->runner),
                 default => null,
             };
@@ -148,6 +152,7 @@ final readonly class ScriptedRegistrant implements Registrant
             $provider instanceof ScriptedAssistantTool => $registry->assistantTool($provider),
             $provider instanceof ScriptedProductBlock => $registry->productBlock($provider),
             $provider instanceof ScriptedSiteBlock => $registry->siteBlock($provider),
+            $provider instanceof ScriptedBlockPattern => $registry->blockPattern($provider),
             $provider instanceof ScriptedMailingList => $registry->mailingList($provider),
             default => null,
         };

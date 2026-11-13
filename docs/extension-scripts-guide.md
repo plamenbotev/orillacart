@@ -571,6 +571,53 @@ mailing_list "newsletter" {
   fills in the block's sidebar, as the extension's own settings are declared (text, number, boolean, choice);
   `render(settings)` gets what was set (a setting never set is missing) and answers HTML, cleaned as a product
   block's.
+
+#### Blocks for layouts
+
+A block may be a whole layout: tabs, a carousel, a features grid, a section that holds other blocks.
+
+```
+site_block "tabs" {
+  title: "Tabs", inner: true
+  assets: ["tabs.js", "tabs.css"]
+  editor: "tabs-editor.js"
+  settings: {
+    accent: color { label: "Accent" },
+    tabs: list { label: "Tabs", fields: { title: text { label: "Title" }, icon: image { label: "Icon" } } }
+  }
+  fn render(settings, context) {
+    let heads = ""
+    for tab in settings.tabs ?? [] {
+      heads = heads ~ "<button type='button'>" ~ html.escape(tab.title ?? "") ~ "</button>"
+    }
+    return "<div class='tabs' style='--accent:" ~ (settings.accent ?? "#000") ~ "'><nav>" ~ heads ~ "</nav>" ~ context.content ~ "</div>"
+  }
+}
+pattern "hero" { title: "Hero with a button", categories: ["banner"], file: "patterns/hero.html" }
+```
+
+- **A block's own kinds of settings**, beside text, number, boolean and choice: `image` (the media library's: the
+  block gets `{ id, url, alt, width, height }`), `link` (an address: http(s), `mailto:`, `tel:`, a path or `#…`),
+  `color` (`"#1e40af"`), `product` (a published product's id), `category` (a product category's id), `rich_text`
+  (HTML as a post holds it, cleaned so) and `list` (items, each a map of its `fields`: up to 50, none a list). Each
+  is checked as `render` gets it; one that does not hold is missing.
+- **`context`**, `render`'s second argument: `post_id` (the post or page it is on, null in a template), `preview`
+  (the editor is showing it) and `content`. A `render(settings)` written without it is called so.
+- **`inner: true`**: the owner places blocks inside it, and `context.content` marks where they go; left out, they
+  go after the block's own HTML. They are printed as they are: they are the owner's.
+- **`assets`**: the block's scripts and stylesheets (files under `assets/`), printed after it on the pages it is
+  placed on, once each however often it is (a script needs `assets: scripts`). In the editor the canvas shows the
+  block as the server renders it, without its scripts.
+- **`editor`**: a script of the block's own that edits its settings, in a sandboxed frame of the block's sidebar
+  (as an admin screen's, §9: no cookies, no nonce, no network). `window.orillacart.block.get()` answers the
+  settings, `block.set({ tabs: [...] })` sets them (only the declared ones), and `orillacart.api()`,
+  `orillacart.media()` work as on a screen. The page holds `<div id="editor"></div>` for it; the sidebar's own
+  controls stay below.
+- **A `pattern`** is a layout the editor offers to insert: the file under `patterns/` (block markup, as the code
+  editor shows it) with a `title`, `description` and `categories` (WordPress's: `banner`, `buttons`, `columns`,
+  `featured`, `footer`, `gallery`, `header`, `text`; `shop` when none). Inserting it writes it into the post, so it
+  is cleaned as a template prints (no script, no handlers), and one whose blocks' attributes hold HTML is left out.
+- A `product_block` takes `assets` too.
 - A `mailing_list` is a list the newsletter sign-up can subscribe to. `subscriber` has `email` and `name`.
 
 ## 9. Routes and pages

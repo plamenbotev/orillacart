@@ -34,6 +34,18 @@ final readonly class WordPressExtensionFrames implements ExtensionFrames
 
     public function render(string $extension, string $html, string $title): string
     {
+        $document = $this->document($extension, $html);
+
+        return \sprintf(
+            '<iframe class="orillacart-extension-frame" data-orillacart-frame data-extension="%s" sandbox="allow-scripts" referrerpolicy="no-referrer" title="%s" style="display:block;width:100%%;border:0;min-height:120px" srcdoc="%s"></iframe>',
+            esc_attr($extension),
+            esc_attr($title),
+            htmlspecialchars($document, \ENT_QUOTES | \ENT_SUBSTITUTE | \ENT_HTML5, 'UTF-8'),
+        );
+    }
+
+    public function document(string $extension, string $html): string
+    {
         $folder = $this->assets->folderUrl($extension);
         $bridge = plugins_url('build/admin/extension-bridge.js', $this->context->pluginFile) . '?ver=' . rawurlencode($this->meta('build/admin/extension-bridge')['version']);
         $site = self::origin(home_url('/'));
@@ -59,19 +71,12 @@ final readonly class WordPressExtensionFrames implements ExtensionFrames
                 $styles .= \sprintf('<link rel="stylesheet" href="%s">', esc_url($url));
             }
         }
-        $document = '<!doctype html><html lang="' . esc_attr(get_bloginfo('language')) . '"><head><meta charset="utf-8">'
+        return '<!doctype html><html lang="' . esc_attr(get_bloginfo('language')) . '"><head><meta charset="utf-8">'
             . '<meta http-equiv="Content-Security-Policy" content="' . esc_attr($policy) . '">'
             . $styles
             . '<style>html,body{margin:0;padding:0;background:transparent;overflow:hidden}body{padding:1px 0}</style>'
             . '<script src="' . esc_url($bridge) . '"></script>'
             . '</head><body class="wp-core-ui">' . $html . '</body></html>';
-
-        return \sprintf(
-            '<iframe class="orillacart-extension-frame" data-orillacart-frame data-extension="%s" sandbox="allow-scripts" referrerpolicy="no-referrer" title="%s" style="display:block;width:100%%;border:0;min-height:120px" srcdoc="%s"></iframe>',
-            esc_attr($extension),
-            esc_attr($title),
-            htmlspecialchars($document, \ENT_QUOTES | \ENT_SUBSTITUTE | \ENT_HTML5, 'UTF-8'),
-        );
     }
 
     /** A URL as a policy names one file: no query string, which a policy never matches against. */

@@ -44,6 +44,7 @@ use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Registry;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Storefront\BlockPattern;
 use OrillaCart\Extension\Storefront\ProductBlock;
 use OrillaCart\Extension\Storefront\SiteBlock;
 use OrillaCart\Extension\Storefront\TemplateFilter;
@@ -121,6 +122,9 @@ final class WordPressExtensions implements Registry, InstalledExtensions
     private array $homeContributors = [];
     /** @var array<string, SiteBlock> */
     private array $siteBlocks = [];
+
+    /** @var array<string, BlockPattern> */
+    private array $blockPatterns = [];
     /** @var list<UntrustedTemplateFolders> */
     private array $untrustedFolders = [];
     /** @var array<string, TemplateFilter> */
@@ -373,6 +377,20 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         $this->collect();
 
         return array_values($this->siteBlocks);
+    }
+
+    public function blockPattern(BlockPattern $pattern): void
+    {
+        if ($this->accepts('block pattern', $pattern->id(), $this->blockPatterns[$pattern->id()] ?? null, $pattern)) {
+            $this->blockPatterns[$pattern->id()] = $pattern;
+        }
+    }
+
+    public function blockPatterns(): array
+    {
+        $this->collect();
+
+        return array_values($this->blockPatterns);
     }
 
     public function untrustedTemplates(UntrustedTemplateFolders $folders): void

@@ -39,7 +39,9 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   notifications the shop confirms with them (`ConfirmsNotifications`), `payBy` on `StartPayment` and
   `PaymentSession`, the settings a secret goes with (`Setting::$goesWith`) and `AssistantTool::CHANGES`; 26 since making
   products (`productWriting()`); 27 since making and finding customers (`Customers::create`, `search`) and quoting
-  orders (`CreatesOrders::quote`).
+  orders (`CreatesOrders::quote`); 28 since site blocks that hold blocks, know where they are and have an editing
+  screen (`PlacedSiteBlock`), a block's own kinds of settings (`Setting::BLOCK_TYPES`) and block patterns
+  (`blockPattern()`).
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.
@@ -742,6 +744,55 @@ if ($registry->version() >= 24) {
   them; `render()` gets what the owner set, checked against them: text up to 2000 characters, a number, on or off,
   one of the choices. One never set, or set to what it does not take, is missing.
 - **Escape what you return.** An empty string shows nothing; anything thrown is logged and shows nothing.
+
+### Blocks for layouts (version 28)
+
+A site block that implements `PlacedSiteBlock` holds the blocks the owner places in it (tabs, an accordion, a
+section), is told where it is, and may have an editing screen of its own:
+
+```php
+if ($registry->version() >= 28) {
+    $registry->siteBlock(new class implements OrillaCart\Extension\Storefront\PlacedSiteBlock {
+        public function id(): string { return 'acme_tabs'; }
+        public function title(): string { return __('Tabs', 'my-addon'); }
+        public function description(): string { return ''; }
+        public function settings(): array
+        {
+            return [
+                new OrillaCart\Extension\Setting('accent', __('Accent', 'my-addon'), OrillaCart\Extension\Setting::COLOR),
+                new OrillaCart\Extension\Setting('tabs', __('Tabs', 'my-addon'), OrillaCart\Extension\Setting::LIST, fields: [
+                    new OrillaCart\Extension\Setting('title', __('Title', 'my-addon')),
+                    new OrillaCart\Extension\Setting('icon', __('Icon', 'my-addon'), OrillaCart\Extension\Setting::IMAGE),
+                ]),
+            ];
+        }
+        public function inner(): bool { return true; }
+        public function render(array $settings): string { return $this->renderIn($settings, new OrillaCart\Extension\Storefront\BlockPlace()); }
+        public function renderIn(array $settings, OrillaCart\Extension\Storefront\BlockPlace $place): string
+        {
+            return '<div class="acme-tabs" style="--accent:' . esc_attr($settings['accent'] ?? '#000') . '">' . $place->content . '</div>';
+        }
+        public function editor(): ?OrillaCart\Extension\Storefront\BlockEditor { return null; }
+    });
+}
+```
+
+- **A block's own kinds of settings**: `IMAGE` (the media library's; `render()` gets `{ id, url, alt, width,
+  height }`), `LINK` (http(s), `mailto:`, `tel:`, a path or `#…`), `COLOR` (`#rrggbb`), `PRODUCT` (a published
+  product's id), `CATEGORY` (a product category's id), `RICH_TEXT` (HTML as a post holds it) and `LIST` (items, each
+  a map of its `fields`, none a list or a secret; up to 50). Each is checked as `render()` gets it; one that does not
+  hold is missing. They are a block's only: other settings screens leave them out.
+- **`BlockPlace`**: `postId` (the post or page it is on), `preview` (the editor is showing it) and `content`, the
+  blocks inside it, rendered: print it as it is.
+- **`editor()`**: a `BlockEditor` whose `document` is the HTML of an editing screen of its own, shown in a sandboxed
+  frame of the block's sidebar (no cookies, no nonce, no network): its script reads the block's settings with
+  `window.orillacart.block.get()` and sets them with `block.set({ … })` (only the declared ones are kept), and calls
+  the routes of the scripted extension `extension` names. `null` keeps the sidebar's controls alone.
+
+`$registry->blockPattern()` gives the editor a layout to insert, a `BlockPattern`: `id`, `title`, `description`,
+`categories` (WordPress's, or `shop`, the default) and `content`, block markup. It is registered as
+`orillacart-addon/{id}`. Inserting it writes it into the post, so it is cleaned as an extension's template prints
+(no script, no handlers), and one whose blocks' attributes hold HTML is left out and logged.
 
 ## Templates others write
 

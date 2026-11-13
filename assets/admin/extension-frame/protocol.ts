@@ -39,7 +39,8 @@ export type Request =
 	| { kind: 'media'; payload: { type?: string; multiple?: boolean } }
 	| { kind: 'block.get'; payload: null }
 	| { kind: 'block.set'; payload: Record< string, unknown > }
-	| { kind: 'height'; payload: number };
+	| { kind: 'height'; payload: number }
+	| { kind: 'hello'; payload: null };
 
 export type FrameMessage = Request & { source: typeof FROM_FRAME; id: number };
 

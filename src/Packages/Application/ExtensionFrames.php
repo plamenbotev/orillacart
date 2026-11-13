@@ -20,4 +20,7 @@ interface ExtensionFrames
      * @param string $title what the frame is called for a screen reader
      */
     public function render(string $extension, string $html, string $title): string;
+
+    /** The document a frame holds: the HTML with the admin's styles, the bridge, and the policy that holds it. */
+    public function document(string $extension, string $html): string;
 }

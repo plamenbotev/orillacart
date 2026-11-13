@@ -34,6 +34,7 @@ use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Storefront\BlockPattern;
 use OrillaCart\Extension\Storefront\ProductBlock;
 use OrillaCart\Extension\Storefront\SiteBlock;
 use OrillaCart\Extension\Storefront\TemplateFilter;
@@ -153,6 +154,9 @@ interface Registry
 
     /** A block for anywhere on the site, with settings the owner fills. Since version 24. */
     public function siteBlock(SiteBlock $block): void;
+
+    /** A layout of blocks the editor offers to insert. Since version 28. */
+    public function blockPattern(BlockPattern $pattern): void;
 
     /** Folders of storefront templates rendered in the sandbox, ahead of the theme's. Since version 24. */
     public function untrustedTemplates(UntrustedTemplateFolders $folders): void;

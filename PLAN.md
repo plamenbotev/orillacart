@@ -934,13 +934,13 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 | ✅ | 642 | P1 | The static check refuses an inline script or an `on…` attribute in a template's text, naming `assets/`; `json_data(value)`; `api_nonce()` removed | 092c17df |
 | ✅ | 643 | P1 | `assets: scripts`, a permission of its own for `.js` (`assets: serve` keeps stylesheets and SVG); a script `asset()` printed is the one the cleaning lets run | 092c17df |
 | ✅ | 644 | P1 | An extension's admin screen in a sandboxed iframe with a CSP, and the bridge (`api`, `notice`, `navigate`, `media`, links, height, admin styles) | 092c17df |
-| ⬜ | 645 | P2 | A block's `assets`, loaded on the pages it is placed on | |
-| ⬜ | 646 | P2 | Settings `image`, `link`, `color`, `product`, `category`, `rich_text`, `list` (items of settings) for blocks | |
-| ⬜ | 647 | P2 | `site_block` `inner: true`: blocks inside it, `render(settings, content)` | |
-| ⬜ | 648 | P2 | A block's own editing screen (`editor: "file.js"`): the frame and bridge in its sidebar, `block.get()`/`block.set()` | |
-| ⬜ | 649 | P3 | `render`'s `context: { post_id, preview }` | |
-| ⬜ | 650 | P3 | A package's `patterns/*.html` are the editor's block patterns | |
-| ⬜ | 651 | P3 | Guide, extensions.md, generated reference, design 73; tests (unit, integration, end to end) | |
+| ⬜ | 645 | P2 | A block's `assets` (`product_block`, `site_block`), printed after it on the pages it is placed on | |
+| ⬜ | 646 | P2 | A site block's settings `image`, `link`, `color`, `product`, `category`, `rich_text`, `list` (items of fields), checked as `render` gets them; other screens leave them out (`Setting::BLOCK_TYPES`, `$fields`) | |
+| ⬜ | 647 | P2 | `site_block` `inner: true`: blocks inside it, where `context.content` marks | |
+| ⬜ | 648 | P2 | A block's own editing screen (`editor: "file.js"`): the frame and bridge in its sidebar, `block.get()`/`block.set()` (declared settings only) | |
+| ⬜ | 649 | P3 | `render(settings, context)`: `{ post_id, preview, content }`; a `render(settings)` called as written | |
+| ⬜ | 650 | P3 | `pattern` declarations of a package's `patterns/*.html`: the editor's block patterns, cleaned, refused with HTML in attributes | |
+| ⬜ | 651 | P3 | API 28 for PHP add-ons (`PlacedSiteBlock`, `BlockPlace`, `BlockEditor`, `BlockPattern`); guide, extensions.md, generated reference, design 73; tests (unit, integration, end to end) | |
 
 ## Deliberately not carried over
 

@@ -24,6 +24,7 @@ use OrillaCart\Extension\Payment\PaymentGateway;
 use OrillaCart\Extension\Pricing\OrderAdjuster;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Shipping\ShippingMethod;
+use OrillaCart\Extension\Storefront\BlockPattern;
 use OrillaCart\Extension\Storefront\ProductBlock;
 use OrillaCart\Extension\Storefront\SiteBlock;
 use OrillaCart\Extension\Storefront\TemplateFilter;
@@ -159,6 +160,13 @@ interface InstalledExtensions
      * @return list<SiteBlock>
      */
     public function siteBlocks(): array;
+
+    /**
+     * Add-ons' block patterns, by id (extension API 28).
+     *
+     * @return list<BlockPattern>
+     */
+    public function blockPatterns(): array;
 
     /**
      * Add-ons' untrusted template folders (extension API 24).

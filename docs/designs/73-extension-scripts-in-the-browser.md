@@ -1,6 +1,6 @@
 # 73 · Extensions' code in the browser, and richer blocks
 
-Status: in progress (2026-11-13). PLAN items 641–651.
+Status: built (2026-11-13). Extension API 28. PLAN items 641–651.
 
 An extension's server-side script runs in the sandbox, held to the permissions the manager granted. What it sends
 to the browser was not. A template could hold `<script>` and `onclick=` and print the REST nonce (`api_nonce()`),
@@ -52,8 +52,10 @@ their HTML given to `render` as `content`). Settings gain `image` (the media lib
 `product`, `category`, `rich_text` (cleaned as a post) and `list` (items, each of settings of its own: slides,
 cards, tabs). A block's settings may be edited by the extension's own screen (`editor: "file.js"`): the same
 frame and bridge in the block's sidebar, with `block.get()` and `block.set(settings)`; the canvas still shows
-the block as the server renders it. `render` learns where it is (`context: { post_id, preview }`). A package's
-`patterns/*.html` are block patterns: layouts of blocks the editor offers, nothing that runs.
+the block as the server renders it. `render` learns where it is (`context: { post_id, preview, content }`). A
+`pattern` declaration names a package's `patterns/*.html`: a layout of blocks the editor offers, cleaned as a
+template prints, refused when its blocks' attributes hold HTML (a block may print one as it is). PHP add-ons have
+the same (API 28): `PlacedSiteBlock`, `BlockPlace`, `BlockEditor`, the block kinds of `Setting`, `BlockPattern`.
 
 ## Not done
 
