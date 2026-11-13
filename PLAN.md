@@ -961,14 +961,14 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 658 | P2 | `/.well-known/ucp` profile (REST and MCP services, catalog search/lookup, checkout, fulfillment); the owner's switch in Shop › Integrations | |
-| ✅ | 659 | P2 | Agents' profiles fetched safely (https, no private addresses, 128 KiB, an hour) and capabilities intersected; 424/422 as the spec says | |
-| ✅ | 660 | P2 | `search_catalog` / `lookup_catalog` on the shop's listing and cards, amounts in minor units, variants as checkout items | |
-| ✅ | 661 | P2 | Checkout sessions as the shop's carts (`agent_checkouts`): create, get, update (whole), complete, cancel; lines, buyer, fulfilment options and totals from the shop's checkout; UCP messages | |
-| ✅ | 662 | P2 | Payment handed to the buyer: `requires_escalation` + signed `continue_url` that gives the cart to the browser and prefills the shop's checkout; the order placed completes the session (`CartOrdered`) | |
-| ✅ | 663 | P2 | Idempotency keys (a day; 409 on another body), `Request-Id`, the `ucp` rate limit on changes, signed public routes acting for no one | |
-| ✅ | 664 | P3 | The same operations as MCP tools at `/ucp/mcp` | |
-| ✅ | 665 | P3 | Sessions forgotten a day after they end; docs/shoppers-agents.md, design 75; tests (integration, end to end) | |
+| ✅ | 658 | P2 | `/.well-known/ucp` profile (REST and MCP services, catalog search/lookup, checkout, fulfillment); the owner's switch in Shop › Integrations | 6a2f56d1 |
+| ✅ | 659 | P2 | Agents' profiles fetched safely (https, no private addresses, 128 KiB, an hour) and capabilities intersected; 424/422 as the spec says | 6a2f56d1 |
+| ✅ | 660 | P2 | `search_catalog` / `lookup_catalog` on the shop's listing and cards, amounts in minor units, variants as checkout items | 6a2f56d1 |
+| ✅ | 661 | P2 | Checkout sessions as the shop's carts (`agent_checkouts`): create, get, update (whole), complete, cancel; lines, buyer, fulfilment options and totals from the shop's checkout; UCP messages | 6a2f56d1 |
+| ✅ | 662 | P2 | Payment handed to the buyer: `requires_escalation` + signed `continue_url` that gives the cart to the browser and prefills the shop's checkout; the order placed completes the session (`CartOrdered`) | 6a2f56d1 |
+| ✅ | 663 | P2 | Idempotency keys (a day; 409 on another body), `Request-Id`, the `ucp` rate limit on changes, signed public routes acting for no one | 6a2f56d1 |
+| ✅ | 664 | P3 | The same operations as MCP tools at `/ucp/mcp` | 6a2f56d1 |
+| ✅ | 665 | P3 | Sessions forgotten a day after they end; docs/shoppers-agents.md, design 75; tests (integration, end to end) | 6a2f56d1 |
 | ⬜ | 666 | P1 | A signed-in buyer opening continue_url loses the session ([plan](docs/plans/shoppers-agents.md)) | |
 | ⬜ | 667 | P2 | The handover keeps the browser's own cart ([plan](docs/plans/shoppers-agents.md)) | |
 | ⬜ | 668 | P2 | The agent's context is honoured ([plan](docs/plans/shoppers-agents.md)) | |
