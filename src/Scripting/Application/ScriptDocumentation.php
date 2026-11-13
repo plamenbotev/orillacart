@@ -88,20 +88,31 @@ final readonly class ScriptDocumentation
             the problem on the Extensions screen. Over all its runs, an extension sends at most 50 emails and makes 500
             HTTP calls an hour.
 
-            Requests to an extension's routes are counted for that extension alone, in fixed windows of 10 minutes,
-            before its handler runs, by whom the route is for: a `public` route 240 per visitor, a visitor being its
-            IP address (an IPv6 /64), or its account when signed in; an `account` route 600 per customer; a
-            `manager` route 1 800 per manager, which is three a second, an admin screen's `window.orillacart.api()`
-            calls and an app's key or token counted as the manager they act for. Staff behind one office address
-            have each their own. Public routes are also counted for all extensions together, 600 per address and
-            per cart, a ceiling one visitor meets before any extension runs, and their bodies pass the site's human
-            check (a captcha add-on may refuse them) and lose the field `orillacart_website`. A request over a limit
-            is answered 429 `orillacart_too_many_requests`, with `retry_after` and the `Retry-After` header saying
-            the seconds until the window ends, and the handler does not run; an admin screen turned away also shows
-            the manager a notice. A site changes the limits with the filter `orillacart_rate_limits` (the guards
-            `extension_public`, `extension_account`, `extension_manager` and `extensions`), raising or lowering
-            them but never switching them off. The assistant's tools that are routes are not counted here: they
-            are not requests to the route. Work bigger than the limits allow belongs in a job (`jobs.push`).
+            Routes are counted as the shop's own are (design 74). Reads and signed-in callers are not counted: a
+            customer, a manager, an admin screen's `window.orillacart.api()` and an app with a key or token call as
+            often as they need. Stopping a flood is the site's firewall's or CDN's work, before PHP starts; what a
+            route runs is bounded by the run's budget above. A `public` route that changes something (POST, PUT,
+            PATCH, DELETE) is counted per caller, as the shop's own forms are, against what a firewall cannot tell
+            from use: codes tried one after another, the extension's hourly email and HTTP allowance spent by one
+            visitor. All of an extension's such routes together take 1 200 per caller in 10 minutes, two a second,
+            as many as a payment provider's webhooks may send, so services posting to a route are not turned away.
+            A route sets its own with `limit: 20` (in 10 minutes, counted for it alone; for a route that checks a
+            code) or `limit: none`. A caller is its account when signed in, else its IP address (an IPv6 /64). One
+            over is answered 429 `orillacart_too_many_requests`, with `retry_after` and the `Retry-After` header
+            saying the seconds until the window ends, and the handler does not run. A public route's body also
+            passes the site's human check (a captcha add-on may refuse it) and loses the field
+            `orillacart_website`. A site changes the limits with the filter `orillacart_rate_limits` (the guards
+            `extension_public`, and `extension_route` for every route's own), raising or lowering them but never
+            switching them off.
+
+            A public GET route that declares `cache: 300` (seconds, up to 3 600) answers a visitor from what an
+            earlier visitor got: kept by its path, parameters and query (in any order), the language and currency
+            shown, the extension's build and settings, and the shop's search index, so a product whose price, stock
+            or text changes is answered anew. Only answers that went well (200) are kept, and a signed-in caller's
+            are never, as they may be theirs alone; the header `X-OrillaCart-Cache` says `hit` or `miss`. A landing
+            page's filters then cost the shop once per choice, not once per visitor. A visitor's or customer's
+            failures count towards stopping the extension once an hour each, so nobody switches an extension off by
+            sending the input it breaks on ten times; a failure real traffic meets still stops it.
 
             ## Declarations
 

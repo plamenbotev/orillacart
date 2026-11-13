@@ -41,7 +41,7 @@ add_action('orillacart_extensions', static function (OrillaCart\Extension\Regist
   products (`productWriting()`); 27 since making and finding customers (`Customers::create`, `search`) and quoting
   orders (`CreatesOrders::quote`); 28 since site blocks that hold blocks, know where they are and have an editing
   screen (`PlacedSiteBlock`), a block's own kinds of settings (`Setting::BLOCK_TYPES`) and block patterns
-  (`blockPattern()`).
+  (`blockPattern()`); 29 since the shop's listing as shoppers find it (`catalog()`).
 - `$registry->log()` writes to the shop's log: debug.log, and its warnings and errors appear to the shop manager
   under Shop → Status → Problems and in Site Health, the same message once with how often it happened. Say what
   to do in them. Never log secrets or card data.
@@ -437,6 +437,25 @@ name or a category, drafts too, newest first. `$registry->attributeSets()` reads
 $name, $attributes, $active)`, a null id making one) attribute sets, keeping ids the same way, and
 `$registry->categories()` lists the categories by path (`all()`) and answers one's id, made where missing
 (`ensure('Kitchen > Mugs')`).
+
+## Listing products for shoppers
+
+From API 29 `$registry->catalog()` lists the shop's products as the shop page does, for a landing page or a way to
+browse of the add-on's own: the same search index, filters and counts, sorts and pages, and the shop's cards. It
+gives only what is on sale and not behind a password, in the shopper's language and currency, priced as the shop
+shows prices to them.
+
+```php
+use OrillaCart\Extension\Catalog\CatalogQuery;
+
+if ($registry->version() >= 29) {
+    $page = $registry->catalog()->list(new CatalogQuery(categoryId: 12, filters: ['colour' => ['red']], sort: 'price_asc', page: 2, perPage: 12, facets: true));
+    foreach ($page->products as $product) {
+        // $product->url, ->image, ->price (as shown, with tax or not: ->withTax), ->regularPrice while a sale runs
+    }
+    // $page->total, ->pages; $page->facets: each CatalogFacet's values with their counts; ->cards with cards: true
+}
+```
 
 ## Making customers and quoting orders
 

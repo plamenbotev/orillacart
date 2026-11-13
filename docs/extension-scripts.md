@@ -74,20 +74,31 @@ a problem the shop logs. Ten failures in a row stop the extension; a manager ena
 the problem on the Extensions screen. Over all its runs, an extension sends at most 50 emails and makes 500
 HTTP calls an hour.
 
-Requests to an extension's routes are counted for that extension alone, in fixed windows of 10 minutes,
-before its handler runs, by whom the route is for: a `public` route 240 per visitor, a visitor being its
-IP address (an IPv6 /64), or its account when signed in; an `account` route 600 per customer; a
-`manager` route 1 800 per manager, which is three a second, an admin screen's `window.orillacart.api()`
-calls and an app's key or token counted as the manager they act for. Staff behind one office address
-have each their own. Public routes are also counted for all extensions together, 600 per address and
-per cart, a ceiling one visitor meets before any extension runs, and their bodies pass the site's human
-check (a captcha add-on may refuse them) and lose the field `orillacart_website`. A request over a limit
-is answered 429 `orillacart_too_many_requests`, with `retry_after` and the `Retry-After` header saying
-the seconds until the window ends, and the handler does not run; an admin screen turned away also shows
-the manager a notice. A site changes the limits with the filter `orillacart_rate_limits` (the guards
-`extension_public`, `extension_account`, `extension_manager` and `extensions`), raising or lowering
-them but never switching them off. The assistant's tools that are routes are not counted here: they
-are not requests to the route. Work bigger than the limits allow belongs in a job (`jobs.push`).
+Routes are counted as the shop's own are (design 74). Reads and signed-in callers are not counted: a
+customer, a manager, an admin screen's `window.orillacart.api()` and an app with a key or token call as
+often as they need. Stopping a flood is the site's firewall's or CDN's work, before PHP starts; what a
+route runs is bounded by the run's budget above. A `public` route that changes something (POST, PUT,
+PATCH, DELETE) is counted per caller, as the shop's own forms are, against what a firewall cannot tell
+from use: codes tried one after another, the extension's hourly email and HTTP allowance spent by one
+visitor. All of an extension's such routes together take 1 200 per caller in 10 minutes, two a second,
+as many as a payment provider's webhooks may send, so services posting to a route are not turned away.
+A route sets its own with `limit: 20` (in 10 minutes, counted for it alone; for a route that checks a
+code) or `limit: none`. A caller is its account when signed in, else its IP address (an IPv6 /64). One
+over is answered 429 `orillacart_too_many_requests`, with `retry_after` and the `Retry-After` header
+saying the seconds until the window ends, and the handler does not run. A public route's body also
+passes the site's human check (a captcha add-on may refuse it) and loses the field
+`orillacart_website`. A site changes the limits with the filter `orillacart_rate_limits` (the guards
+`extension_public`, and `extension_route` for every route's own), raising or lowering them but never
+switching them off.
+
+A public GET route that declares `cache: 300` (seconds, up to 3 600) answers a visitor from what an
+earlier visitor got: kept by its path, parameters and query (in any order), the language and currency
+shown, the extension's build and settings, and the shop's search index, so a product whose price, stock
+or text changes is answered anew. Only answers that went well (200) are kept, and a signed-in caller's
+are never, as they may be theirs alone; the header `X-OrillaCart-Cache` says `hit` or `miss`. A landing
+page's filters then cost the shop once per choice, not once per visitor. A visitor's or customer's
+failures count towards stopping the extension once an hour each, so nobody switches an extension off by
+sending the input it breaks on ten times; a failure real traffic meets still stops it.
 
 ## Declarations
 - `extension "id" { name, version, needs: { orders: read, customers: [read, create], products: [read, write], email: send, http: ["host"], templates: override, assets: [serve, scripts] } }`: what the extension is and what it asks for
@@ -108,7 +119,7 @@ are not requests to the route. Work bigger than the limits allow belongs in a jo
 - `site_block "id" { title, description, settings: { key: text|number|boolean|choice|image|link|color|product|category|rich_text|list { label, help, of, fields } }, assets: ["file.js"], inner: true, editor: "file.js"; fn render(settings, context) }`: a block for anywhere on the site (the editor and the Site Editor), its settings filled by the owner in the block's sidebar, its HTML cleaned (design 73): image { id, url, alt, width, height }, link an address, color "#rrggbb", product and category ids, rich_text cleaned as a post, list a list of maps of its fields; context { post_id, preview, content }: with inner: true, context.content marks where the blocks the owner places inside go; assets printed after it; editor a script of its own editing the settings in a sandboxed frame of the sidebar (window.orillacart.block.get() / set({ … }))
 - `pattern "id" { title, description, categories, file: "patterns/x.html" }`: a layout of blocks the editor offers to insert (design 73), the package's file its block markup, cleaned of anything that runs; one whose blocks' attributes hold HTML is left out
 - `mailing_list "id" { name; fn subscribe(subscriber); fn unsubscribe(email); fn forget(email) }`: a list the newsletter signs up to
-- `route METHOD "/path/{param}" { who: public|account|manager, tool: true|false|"name", title, description, input, risk } fn(request)`: a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html(); a browser sends the REST nonce on anything but GET, an app its key or token
+- `route METHOD "/path/{param}" { who: public|account|manager, tool: true|false|"name", title, description, input, risk, limit: n|none, cache: seconds } fn(request)`: a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html(); a browser sends the REST nonce on anything but GET, an app its key or token; a public route that changes something counts each caller (1200 in 10 minutes for all the extension's, or its own limit: n, or limit: none), reads and signed-in callers are not counted; a public GET with cache: seconds (up to 3600) answers a visitor from what an earlier one got, kept by path, query, language and currency, anew when a product changes
 - `page "/path" { template } fn(request)`: a storefront page of the extension's own, with a URL of the site's, rendered by the shop's Extension page block: place the block on a WordPress page (the editor, or the assistant's create_landing_page then publish_page with the content <!-- wp:orillacart/extension-page {"extension":"<id>","path":"/path"} /-->); the handler's map is the template's data
 - `admin_page "/path" { title, template } fn(request)`: a screen of the extension's own in the Shop menu of wp-admin (design 60), for the shop manager: the entry is titled as declared and placed after the shop's groups, before System; the handler's map is the template's data; the screen runs in a sandboxed frame of its own (design 73): its scripts (asset(), assets: scripts) have no cookies, no nonce and no network, and reach out through window.orillacart: api(method, "/x/<extension>/…", body) for the extension's own routes only, notice(text, tone), navigate(admin url), media({ type, multiple })
 - `slot "product_after_details" { template } fn(context)`: a template printed in a storefront slot
@@ -242,6 +253,7 @@ Every call out of a script is one of these; `[needs …]` is the permission it t
 
 - shop.attributes.save_set({ id, name, attributes: [{ name, options, required }], active }): makes an attribute set (no id) or replaces one's attributes, keeping the ids of those named alike [needs products:write]
 - shop.attributes.sets(): the attribute sets, each { id, name, active, attributes: [{ id, name, required, options: [{ id, name }] }] } [needs products:read]
+- shop.catalog.list({ words, category_id, tag_id, brand_ids, filters: { key: [values] }, price_min, price_max, in_stock, featured, on_sale, sort, page, per_page, facets, cards }): a page of the products shoppers find, as the shop's own listing finds them, only what is on sale, in the shopper's language and currency, priced as shown to them: { products: [{ id, name, type, url, image { url, alt, width, height }, price, regular_price, highest_price, with_tax, for_sale, in_stock, on_backorder, featured }], total, page, pages, per_page, facets: [{ key, label, values: [{ value, label, count, chosen }] }] (with facets: true), price_range { low, high }, cards (the shop's cards as HTML, with cards: true), sorts }; per_page up to 24, sort relevance (with words), order, newest, name, price_asc or price_desc
 - shop.categories.ensure("Lighting > Desk lamps"): the category's id, made with its parents where missing [needs products:write]
 - shop.categories.list(): every product category { id, name, parent_id, path, products }, by path [needs products:read]
 - shop.customers.create({ email, first_name, last_name, billing, shipping_address, test }): makes the customer's account as the shop does by hand, no email sent, and answers the customer map; billing and shipping_address are optional addresses ({ first_name, last_name, street, city, postcode, country, state, phone }), saved as the ones checkout starts from. In a test it is a test customer and needs no permission in the test's body [needs customers:create; in tests: none]

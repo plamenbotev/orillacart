@@ -16,6 +16,7 @@ use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\AttributeSets;
+use OrillaCart\Extension\Catalog\Catalog;
 use OrillaCart\Extension\Catalog\Categories;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -57,6 +58,7 @@ use OrillaCart\Packages\Application\ExtensionEmails;
 use OrillaCart\Platform\Twig\AddOnTemplates;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shared\Extension\Registrant;
+use OrillaCart\Storefront\Infrastructure\WordPress\AddOnCatalog;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
@@ -147,6 +149,7 @@ final class WordPressExtensions implements Registry, InstalledExtensions
      * @param \Closure(): WritesProducts $productWriting a closure, as orders (design 69)
      * @param \Closure(): AttributeSets  $attributeSets  a closure, as orders
      * @param \Closure(): Categories     $categories     a closure, as orders
+     * @param \Closure(): Catalog        $catalog        a closure, as orders (design 74)
      */
     public function __construct(
         #[AutowireIterator(self::GATEWAY_TAG)]
@@ -174,6 +177,8 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         private readonly \Closure $attributeSets,
         #[AutowireServiceClosure(AddOnCategories::class)]
         private readonly \Closure $categories,
+        #[AutowireServiceClosure(AddOnCatalog::class)]
+        private readonly \Closure $catalog,
         /** @var iterable<Registrant> */
         #[AutowireIterator(Registrant::TAG)]
         private readonly iterable $registrants = [],
@@ -492,6 +497,14 @@ final class WordPressExtensions implements Registry, InstalledExtensions
         \assert($sets instanceof AttributeSets);
 
         return $sets;
+    }
+
+    public function catalog(): Catalog
+    {
+        $catalog = ($this->catalog)();
+        \assert($catalog instanceof Catalog);
+
+        return $catalog;
     }
 
     public function categories(): Categories

@@ -77,7 +77,7 @@ final class GuardMiddlewareTest extends TestCase
             /** @param array<string, int> $hits */
             public function __construct(private array &$hits, private int $limit) {}
 
-            public function hit(string $guard, string $caller): ?int
+            public function hit(string $guard, string $caller, ?array $limit = null): ?int
             {
                 $key = "{$guard}|{$caller}";
                 $this->hits[$key] = ($this->hits[$key] ?? 0) + 1;

@@ -8,6 +8,7 @@ use OrillaCart\Extension\Assistant\AssistantTool;
 use OrillaCart\Extension\Cart\CartLineType;
 use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Catalog\AttributeSets;
+use OrillaCart\Extension\Catalog\Catalog;
 use OrillaCart\Extension\Catalog\Categories;
 use OrillaCart\Extension\Catalog\FindsProducts;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -136,6 +137,9 @@ interface Registry
 
     /** The shop's product categories, read and made by path (API 26). */
     public function categories(): Categories;
+
+    /** The shop's products as shoppers find them: its listing, filters and counts (API 29). */
+    public function catalog(): Catalog;
 
     /** Which post is the product where Polylang or WPML translates products. Since version 17. */
     public function productLanguages(): ProductLanguages;

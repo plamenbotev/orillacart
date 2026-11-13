@@ -16,11 +16,13 @@ final class CountingRateLimiter implements RateLimiter
     /** @var array<string, int> how many each guard allows */
     public array $limits = [];
 
-    public function hit(string $guard, string $caller): ?int
+    public function hit(string $guard, string $caller, ?array $limit = null): ?int
     {
         $key = "{$guard}|{$caller}";
         $this->hits[$key] = ($this->hits[$key] ?? 0) + 1;
 
-        return isset($this->limits[$guard]) && $this->hits[$key] > $this->limits[$guard] ? 60 : null;
+        $most = $this->limits[$guard] ?? $limit[0] ?? null;
+
+        return $most !== null && $this->hits[$key] > $most ? 60 : null;
     }
 }

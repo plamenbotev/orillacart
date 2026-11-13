@@ -9,6 +9,10 @@ use OrillaCart\Extension\Cart\CheckedLine;
 use OrillaCart\Extension\Catalog\AttributeDraft;
 use OrillaCart\Extension\Catalog\AttributeSetSummary;
 use OrillaCart\Extension\Catalog\AttributeSummary;
+use OrillaCart\Extension\Catalog\CatalogFacet;
+use OrillaCart\Extension\Catalog\CatalogPage;
+use OrillaCart\Extension\Catalog\CatalogProduct;
+use OrillaCart\Extension\Catalog\CatalogQuery;
 use OrillaCart\Extension\Catalog\CategorySummary;
 use OrillaCart\Extension\Catalog\ProductDraft;
 use OrillaCart\Extension\Catalog\ProductSummary;
@@ -251,6 +255,62 @@ final class Values
     public static function category(CategorySummary $category): array
     {
         return ['id' => $category->id, 'name' => $category->name, 'parent_id' => $category->parentId, 'path' => $category->path, 'products' => $category->products];
+    }
+
+    /** What a catalogue query map may give, for shop.catalog.list (design 74). */
+    public const array CATALOG_KEYS = ['words', 'category_id', 'tag_id', 'brand_ids', 'filters', 'price_min', 'price_max', 'in_stock', 'featured', 'on_sale', 'sort', 'page', 'per_page', 'facets', 'cards'];
+
+    /**
+     * A script's catalogue query: ids as numbers or digits, amounts as decimal text or money.
+     *
+     * @param array<mixed> $map
+     */
+    public static function catalogQuery(array $map): CatalogQuery
+    {
+        $unknown = array_diff(array_map(strval(...), array_keys($map)), self::CATALOG_KEYS);
+        if ($unknown !== []) {
+            throw new \InvalidArgumentException(\sprintf('shop.catalog.list takes %s; not %s.', implode(', ', self::CATALOG_KEYS), implode(', ', $unknown)));
+        }
+        $id = static fn(mixed $value): ?int => \is_int($value) || (\is_string($value) && ctype_digit($value)) || (\is_float($value) && floor($value) === $value) ? (int) $value : null;
+        $amount = static fn(mixed $value): ?string => $value === null ? null : self::text($value);
+        $filters = [];
+        foreach (\is_array($map['filters'] ?? null) ? $map['filters'] : [] as $key => $values) {
+            $filters[(string) $key] = array_values(array_map(self::text(...), \is_array($values) ? $values : [$values]));
+        }
+
+        return new CatalogQuery(
+            words: isset($map['words']) ? self::text($map['words']) : null,
+            categoryId: $id($map['category_id'] ?? null),
+            tagId: $id($map['tag_id'] ?? null),
+            brandIds: array_values(array_filter(array_map($id, \is_array($map['brand_ids'] ?? null) ? $map['brand_ids'] : []), static fn(?int $brand): bool => $brand !== null)),
+            filters: $filters,
+            priceMin: $amount($map['price_min'] ?? null),
+            priceMax: $amount($map['price_max'] ?? null),
+            inStock: ($map['in_stock'] ?? false) === true,
+            featured: ($map['featured'] ?? false) === true,
+            onSale: ($map['on_sale'] ?? false) === true,
+            sort: isset($map['sort']) ? self::text($map['sort']) : '',
+            page: $id($map['page'] ?? null) ?? 1,
+            perPage: $id($map['per_page'] ?? null) ?? 12,
+            facets: ($map['facets'] ?? false) === true,
+            cards: ($map['cards'] ?? false) === true,
+        );
+    }
+
+    /** @return array<string, mixed> */
+    public static function catalogPage(CatalogPage $page): array
+    {
+        return [
+            'products' => array_map(static fn(CatalogProduct $p): array => ['id' => $p->id, 'name' => $p->name, 'type' => $p->type, 'url' => $p->url, 'image' => $p->image, 'price' => $p->price, 'regular_price' => $p->regularPrice, 'highest_price' => $p->highestPrice, 'with_tax' => $p->withTax, 'for_sale' => $p->forSale, 'in_stock' => $p->inStock, 'on_backorder' => $p->onBackorder, 'featured' => $p->featured], $page->products),
+            'total' => $page->total,
+            'page' => $page->page,
+            'pages' => $page->pages,
+            'per_page' => $page->perPage,
+            'facets' => array_map(static fn(CatalogFacet $f): array => ['key' => $f->key, 'label' => $f->label, 'values' => $f->values], $page->facets),
+            'price_range' => $page->priceRange === null ? null : ['low' => $page->priceRange[0], 'high' => $page->priceRange[1]],
+            'cards' => $page->cards,
+            'sorts' => $page->sorts,
+        ];
     }
 
     /** What a product map may give, for shop.products.create and change (design 69). */

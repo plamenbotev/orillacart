@@ -40,6 +40,7 @@ use OrillaCart\Scripting\Domain\Ops;
 use OrillaCart\Scripting\Domain\Parser;
 use OrillaCart\Scripting\Domain\SyntaxError;
 use OrillaCart\Shared\Extension\SettingValues;
+use OrillaCart\Shared\Http\Security\RateLimiter;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 
@@ -64,7 +65,12 @@ final readonly class PackageService
         private ?PackageArchives $archives = null,
         private ?ExtensionAssets $assets = null,
         private ?Recordings $recordings = null,
+        private ?AnonymousCaller $callers = null,
+        private ?RateLimiter $limits = null,
     ) {}
+
+    /** The guard that lets one anonymous caller's failures count once an hour (TransientRateLimiter). */
+    public const string FAILURES_GUARD = 'extension_failures';
 
     /** @return list<PackageView> */
     public function all(): array
@@ -418,11 +424,20 @@ final readonly class PackageService
         return $loaded;
     }
 
-    /** A run of the extension failed in the shop: logged, counted, and after enough in a row the extension stops. */
+    /**
+     * A run of the extension failed in the shop: logged, counted, and after enough in a row the extension stops. A
+     * visitor's or customer's failures count once an hour each (AnonymousCaller).
+     */
     public function failed(string $slug, string $problem): void
     {
         $package = $this->packages->find($slug);
         if ($package === null) {
+            return;
+        }
+        $caller = $this->callers?->who();
+        if ($caller !== null && $this->limits?->hit(self::FAILURES_GUARD, 'ext:' . $slug . '|' . $caller) !== null) {
+            $this->logger->warning('The extension "{extension}" failed again for the same caller, not counted towards stopping it: {problem}', ['extension' => $slug, 'problem' => $problem]);
+
             return;
         }
         $stopped = $package->failed($problem, $this->clock->now());
@@ -750,7 +765,7 @@ final readonly class PackageService
 
         return array_map(
             static fn(array $finding): string => \sprintf('%s%s (line %d, column %d)', $finding['file'] === '' ? '' : $finding['file'] . ': ', $finding['message'], $finding['line'], $finding['column']),
-            [...self::locate($scripts, $compiled->findings), ...$this->templateFindings($templates, $package->slug()), ...($compiled->ok() ? self::secretFindings($scripts, $this->manifest($package)->settings()) : [])],
+            [...self::locate($scripts, $compiled->findings), ...$this->templateFindings($templates, $package->slug()), ...($compiled->ok() ? self::secretFindings($scripts, $this->manifest($package)->settings()) : []), ...($compiled->ok() ? self::routeFindings($scripts, $this->manifest($package)->ofKind('route')) : [])],
         );
     }
 
@@ -784,6 +799,49 @@ final readonly class PackageService
                 }
             }
             $findings[] = ['file' => $file, 'line' => $line, 'column' => 1, 'message' => \sprintf('The secret "%s" names no goes_with, so it goes with every other setting: saving any of them forgets it until it is typed again. Name the settings that say where it goes or whose it is (goes_with: ["mode"]), or goes_with: [] for one sent only to the hosts the needs name', $setting->key)];
+        }
+
+        return $findings;
+    }
+
+    /**
+     * A route's `cache` and `limit` where they do something (design 74): a cache keeps a visitor's answer from a
+     * public GET; a limit counts a public route that changes something. Said where the route is declared.
+     *
+     * @param array<string, string>      $scripts path → content
+     * @param list<array<string, mixed>> $routes
+     *
+     * @return list<array{file: string, line: int, column: int, message: string}>
+     */
+    private static function routeFindings(array $scripts, array $routes): array
+    {
+        $findings = [];
+        foreach ($routes as $route) {
+            /** @var array{kind: string, words: list<string>, name: ?string, props: array<string, mixed>, functions: array<string, string>, nested: list<array<string, mixed>>, handler: ?string} $route */
+            $method = strtoupper($route['words'][0] ?? 'GET');
+            $public = ScriptedRoutes::who($route) === 'public';
+            $problems = [];
+            if (\array_key_exists('cache', $route['props']) && ($method !== 'GET' || !$public || ScriptedRoutes::cacheOf($route) === 0)) {
+                $problems[] = \sprintf('cache: seconds (1 to %d) keeps a visitor\'s answer from a public GET route; %s %s is not one, or the seconds are not', ScriptedRoutes::LONGEST_CACHE, $method, $route['name'] ?? '');
+            }
+            if (\array_key_exists('limit', $route['props']) && ($method === 'GET' || !$public || ScriptedRoutes::limitOf($route) === null)) {
+                $problems[] = \sprintf('limit: n (1 to %d in 10 minutes) or limit: none counts each caller of a public route that changes something; %s %s is not one, or the limit is not', ScriptedRoutes::MOST_LIMIT, $method, $route['name'] ?? '');
+            }
+            if ($problems === []) {
+                continue;
+            }
+            $file = '';
+            $line = 1;
+            foreach ($scripts as $path => $content) {
+                if (preg_match('/\broute\s+' . preg_quote($method, '/') . '\s+"' . preg_quote((string) ($route['name'] ?? ''), '/') . '"/i', $content, $match, \PREG_OFFSET_CAPTURE) === 1) {
+                    $file = $path;
+                    $line = substr_count(substr($content, 0, $match[0][1]), "\n") + 1;
+                    break;
+                }
+            }
+            foreach ($problems as $problem) {
+                $findings[] = ['file' => $file, 'line' => $line, 'column' => 1, 'message' => $problem];
+            }
         }
 
         return $findings;

@@ -120,7 +120,7 @@ final class OrderMailQuotaTest extends TestCase
         }) implements RateLimiter {
             public function __construct(private readonly \Closure $record) {}
 
-            public function hit(string $guard, string $caller): ?int
+            public function hit(string $guard, string $caller, ?array $limit = null): ?int
             {
                 ($this->record)($guard);
 

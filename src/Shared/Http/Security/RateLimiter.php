@@ -13,9 +13,11 @@ interface RateLimiter
      * Counts one more and says whether it is within the limit.
      *
      * @param string $guard  the form: accounts, coupons, checkout…
-     * @param string $caller who sends it: "ip:203.0.113.7", "cart:…"
+     * @param string               $caller who sends it: "ip:203.0.113.7", "cart:…"
+     * @param array{int, int}|null $limit  how many in how many seconds, for a guard the shop has no limit of (an
+     *                                     extension route's own); a site's filter of the guard still wins
      *
      * @return int|null null when allowed; otherwise the seconds until it is again
      */
-    public function hit(string $guard, string $caller): ?int;
+    public function hit(string $guard, string $caller, ?array $limit = null): ?int;
 }

@@ -74,14 +74,13 @@ final readonly class TransientRateLimiter implements RateLimiter
         'email_confirmed' => [20, 3600],
         // Each asks a payment provider or courier, with the shop's keys.
         'settings_tests' => [20, 600],
-        // Extensions' public routes, all of them together, per address and cart: the ceiling of one visitor.
-        'extensions' => [600, 600],
-        // Each extension's routes, by whom they are for (ScriptedRouteAction): a visitor per address (or account
-        // when signed in), a customer and a manager per account. A manager's screen in the admin loads, opens and
-        // saves as it is used; 1800 is three a second for ten minutes, and work beyond that belongs in a job.
-        'extension_public' => [240, 600],
-        'extension_account' => [600, 600],
-        'extension_manager' => [1800, 600],
+        // Each extension's public routes that change something, per caller (design 74): what a firewall cannot
+        // tell from use, codes tried one after another, the extension's email and HTTP allowance spent by one
+        // visitor. Its reads and signed-in callers are not counted, as the shop's own are not. 1200 is two a
+        // second for ten minutes, as many as a payment provider's webhooks may send: services post to routes too.
+        'extension_public' => [1200, 600],
+        // An anonymous caller's failures of an extension counted towards stopping it: one an hour each.
+        'extension_failures' => [1, 3600],
         // What one extension's scripts send out, all their runs together.
         'extension_emails' => [50, 3600],
         'extension_http' => [500, 3600],
@@ -120,9 +119,10 @@ final readonly class TransientRateLimiter implements RateLimiter
         private \Closure $entityManager,
     ) {}
 
-    public function hit(string $guard, string $caller): ?int
+    public function hit(string $guard, string $caller, ?array $limit = null): ?int
     {
-        $limit = self::limitOf(apply_filters('orillacart_rate_limits', self::LIMITS), $guard);
+        $default = isset(self::LIMITS[$guard]) ? null : $limit;
+        $limit = self::limitOf(apply_filters('orillacart_rate_limits', $default === null ? self::LIMITS : self::LIMITS + [$guard => $default]), $guard, $default);
         if ($limit === null) {
             return null;
         }
@@ -138,18 +138,21 @@ final readonly class TransientRateLimiter implements RateLimiter
     }
 
     /**
-     * The limit of a guard from what the filter gave: its own when it is one, else the shop's for that guard.
+     * The limit of a guard from what the filter gave: its own when it is one, else the shop's for that guard, else
+     * the caller's default (an extension route's own limit).
+     *
+     * @param array{int, int}|null $default
      *
      * @return array{int, int}|null how many, in how many seconds; null for a guard with no limit
      */
-    public static function limitOf(mixed $limits, string $guard): ?array
+    public static function limitOf(mixed $limits, string $guard, ?array $default = null): ?array
     {
         $limit = \is_array($limits) ? ($limits[$guard] ?? null) : null;
         if (\is_array($limit) && \is_int($limit[0] ?? null) && \is_int($limit[1] ?? null) && $limit[0] >= 0 && $limit[1] >= 1) {
             return [$limit[0], $limit[1]];
         }
 
-        return self::LIMITS[$guard] ?? null;
+        return self::LIMITS[$guard] ?? $default;
     }
 
     /** A caller as the limits count it: CallerKeys::network(). */

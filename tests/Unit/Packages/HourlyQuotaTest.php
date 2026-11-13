@@ -25,7 +25,7 @@ final class HourlyQuotaTest extends TestCase
             /** @var array<string, int> */
             public array $hits = [];
 
-            public function hit(string $guard, string $caller): ?int
+            public function hit(string $guard, string $caller, ?array $limit = null): ?int
             {
                 $this->hits[$guard . '|' . $caller] = ($this->hits[$guard . '|' . $caller] ?? 0) + 1;
 

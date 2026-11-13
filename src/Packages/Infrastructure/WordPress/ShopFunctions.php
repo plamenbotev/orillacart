@@ -142,9 +142,20 @@ final readonly class ShopFunctions implements HostNamespace
             ));
         }, 0, 1, 'shop.products.search({ sku, words, category_id, limit }): products by SKU, name or category, drafts too, newest first; up to limit (20, at most 100)', 'products:read', HostFunction::QUERY, writes: false);
         $made[] = new HostFunction('shop.attributes.sets', fn(Context $c): array => array_map(Values::attributeSet(...), $this->registry()->attributeSets()->all()), 0, 0, 'shop.attributes.sets(): the attribute sets, each { id, name, active, attributes: [{ id, name, required, options: [{ id, name }] }] }', 'products:read', HostFunction::QUERY, writes: false);
+        // What a shopper sees, as the shop lists it (design 74): no permission, as it gives a visitor nothing new.
+        $made[] = new HostFunction('shop.catalog.list', fn(Context $c, mixed $query = null): array => Values::catalogPage($this->registry()->catalog()->list($this->catalogQuery($query))), 0, 1, 'shop.catalog.list({ words, category_id, tag_id, brand_ids, filters: { key: [values] }, price_min, price_max, in_stock, featured, on_sale, sort, page, per_page, facets, cards }): a page of the products shoppers find, as the shop\'s own listing finds them, only what is on sale, in the shopper\'s language and currency, priced as shown to them: { products: [{ id, name, type, url, image { url, alt, width, height }, price, regular_price, highest_price, with_tax, for_sale, in_stock, on_backorder, featured }], total, page, pages, per_page, facets: [{ key, label, values: [{ value, label, count, chosen }] }] (with facets: true), price_range { low, high }, cards (the shop\'s cards as HTML, with cards: true), sorts }; per_page up to 24, sort relevance (with words), order, newest, name, price_asc or price_desc', null, HostFunction::QUERY, writes: false);
         $made[] = new HostFunction('shop.categories.list', fn(Context $c): array => array_map(Values::category(...), $this->registry()->categories()->all()), 0, 0, 'shop.categories.list(): every product category { id, name, parent_id, path, products }, by path', 'products:read', HostFunction::QUERY, writes: false);
 
         return $made;
+    }
+
+    private function catalogQuery(mixed $query): \OrillaCart\Extension\Catalog\CatalogQuery
+    {
+        try {
+            return Values::catalogQuery($query === null ? [] : self::map($query, 'shop.catalog.list'));
+        } catch (\InvalidArgumentException $e) {
+            throw new ScriptError($e->getMessage());
+        }
     }
 
     /**

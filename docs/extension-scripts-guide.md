@@ -643,9 +643,10 @@ page "/support" { template: "support.html.twig" } fn(request) {
 ```
 
 A route lives at `/wp-json/orillacart/v1/x/<extension>/<path>` and runs through the shop's own REST pipeline:
-authorization, the REST nonce for browsers, API keys and OAuth for agents, rate limits of each extension's own (in 10
-minutes, 240 per visitor on a public route, 600 per customer, 1 800 per manager: "Budgets and failures" in
-`docs/extension-scripts.md`), and the change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). A manager route is also one of the
+authorization, the REST nonce for browsers, API keys and OAuth for agents, the rate limit of a visitor's forms (a public
+route that changes something: 1 200 per caller in 10 minutes for all the extension's, or the route's own `limit: n`
+or `limit: none`; reads and signed-in callers are not counted: "Budgets and failures" in `docs/extension-scripts.md`),
+and the change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). A manager route is also one of the
 assistant's tools, `x_<extension>_<method>_<path>` (`x_payfast_post_refunds`), unless it says `tool: false`; `tool:
 "name"` names it, `title`, `description`, `input` (a JSON schema of the body) and `risk` describe it, and without
 `input` the tool takes `params`, `query` and `body` maps. The handler gets the request map a REST call would give
@@ -701,7 +702,7 @@ an origin of their own, so no cookies, no nonce and nothing of the admin's page 
 
 | Call                                        | Answers                                                                       |
 | ------------------------------------------- | ----------------------------------------------------------------------------- |
-| `orillacart.api(method, path, body)`        | one of the extension's own routes, `/x/<extension>/…` (any other is a 403), as the storefront's client answers: `{ ok, status, data }` or `{ ok, status, code, message, violations, retryAfter }`; a 429 (the extension's limit, 1 800 a manager in 10 minutes) also shows the manager a notice, and `retryAfter` is the seconds to wait |
+| `orillacart.api(method, path, body)`        | one of the extension's own routes, `/x/<extension>/…` (any other is a 403), as the storefront's client answers: `{ ok, status, data }` or `{ ok, status, code, message, violations, retryAfter }`; a 429 (a site's own limit, as a manager's calls are not counted) also shows the manager a notice, and `retryAfter` is the seconds to wait |
 | `orillacart.notice(text, tone)`             | a notice above the screen; tone `success`, `error`, `warning` or `info`         |
 | `orillacart.navigate(url)`                  | opens a screen of the admin; any other address is refused                       |
 | `orillacart.media({ type, multiple })`      | the media library's picker: `[{ id, url, alt, title, mime, width, height }]`, none when closed |
@@ -717,6 +718,40 @@ document.querySelectorAll('[data-close]').forEach((button) => button.addEventLis
   window.orillacart.notice(result.ok ? 'Closed.' : result.message, result.ok ? 'success' : 'error');
 }));
 ```
+
+### A landing page that lists products
+
+`shop.catalog.list(query)` is the shop's own listing: the search index the shop page uses, its filters with how
+many products each value would leave, its sorts and pages, and its product cards. It finds only what a shopper may
+find (on sale, not behind a password), in the shopper's language and currency, priced as the shop shows prices to
+them, and so it needs no permission. A query takes `words`, `category_id`, `tag_id`, `brand_ids`, `filters` (the
+shop's filters by key, the values chosen: `{ colour: ["red", "blue"] }`), `price_min`, `price_max`, `in_stock`,
+`featured`, `on_sale`, `sort`, `page` and `per_page` (up to 24); `facets: true` adds the filters' counts and the
+price range, `cards: true` the shop's cards as HTML.
+
+Two ways to page and filter, and both hold traffic:
+
+- **A page**, rendered on the server: the choices are the address's query (`?page=2&colour=red`), the handler reads
+  them from `request.query`, and the template prints the products and the filters as links. A page is no REST
+  request, is not counted, and the site's page cache keeps it like any other.
+- **A route the page's script calls** as the shopper ticks filters. Declare `cache` on it: visitors who choose the
+  same filters are answered from what the first one got, without running the extension, until a product changes.
+
+```
+route GET "/products" { who: public, cache: 300 } fn(request) {
+  let q = request.query
+  return shop.catalog.list({
+    words: q.q ?? null, category_id: q.category ?? null,
+    filters: { colour: q.colour is defined ? (q.colour is list ? q.colour : [q.colour]) : [] },
+    sort: q.sort ?? "", page: q.page ?? 1, per_page: 12, facets: true, cards: true
+  })
+}
+```
+
+The answer is `{ products, total, page, pages, per_page, facets, price_range, cards, sorts }`: print `cards` where the
+products go, or build your own from `products` (`url`, `image`, `price` as shown, `regular_price` while a sale runs),
+and each facet's values as the shopper's choices with their `count`. Reads are never rate limited, and a cached one
+costs the shop once per choice.
 
 ## 10. Templates and slots
 
@@ -979,6 +1014,7 @@ timezone and write moments as ISO 8601 text.
 | `shop.products.find(id)`                                  | `products: read`           | the product map, or null        |
 | `shop.products.mark(id, filter)`, `unmark`, `is_marked`   | `products: write` / `read` | the extension's product filters |
 | `shop.products.search({ sku, words, category_id, limit })` | `products: read`          | product maps, drafts too        |
+| `shop.catalog.list(query)`                                | none                       | a page of what shoppers find (§9) |
 | `shop.products.create(product)`, `change(id, product)`    | `products: write`          | the product map                 |
 | `shop.products.add_variation(id, v)`, `change_variation(id, variation_id, v)` | `products: write` | the variation map |
 | `shop.products.publish(id)`, `unpublish`, `trash`          | `products: publish`        | null                            |

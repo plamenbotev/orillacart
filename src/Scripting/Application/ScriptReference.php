@@ -33,7 +33,7 @@ final readonly class ScriptReference
         'site_block "id" { title, description, settings: { key: text|number|boolean|choice|image|link|color|product|category|rich_text|list { label, help, of, fields } }, assets: ["file.js"], inner: true, editor: "file.js"; fn render(settings, context) }' => 'a block for anywhere on the site (the editor and the Site Editor), its settings filled by the owner in the block\'s sidebar, its HTML cleaned (design 73): image { id, url, alt, width, height }, link an address, color "#rrggbb", product and category ids, rich_text cleaned as a post, list a list of maps of its fields; context { post_id, preview, content }: with inner: true, context.content marks where the blocks the owner places inside go; assets printed after it; editor a script of its own editing the settings in a sandboxed frame of the sidebar (window.orillacart.block.get() / set({ … }))',
         'pattern "id" { title, description, categories, file: "patterns/x.html" }' => 'a layout of blocks the editor offers to insert (design 73), the package\'s file its block markup, cleaned of anything that runs; one whose blocks\' attributes hold HTML is left out',
         'mailing_list "id" { name; fn subscribe(subscriber); fn unsubscribe(email); fn forget(email) }' => 'a list the newsletter signs up to',
-        'route METHOD "/path/{param}" { who: public|account|manager, tool: true|false|"name", title, description, input, risk } fn(request)' => 'a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html(); a browser sends the REST nonce on anything but GET, an app its key or token',
+        'route METHOD "/path/{param}" { who: public|account|manager, tool: true|false|"name", title, description, input, risk, limit: n|none, cache: seconds } fn(request)' => 'a REST route under /orillacart/v1/x/<extension>/, answering a map or respond.json(), respond.redirect(), respond.error(), respond.html(); a browser sends the REST nonce on anything but GET, an app its key or token; a public route that changes something counts each caller (1200 in 10 minutes for all the extension\'s, or its own limit: n, or limit: none), reads and signed-in callers are not counted; a public GET with cache: seconds (up to 3600) answers a visitor from what an earlier one got, kept by path, query, language and currency, anew when a product changes',
         'page "/path" { template } fn(request)' => 'a storefront page of the extension\'s own, with a URL of the site\'s, rendered by the shop\'s Extension page block: place the block on a WordPress page (the editor, or the assistant\'s create_landing_page then publish_page with the content <!-- wp:orillacart/extension-page {"extension":"<id>","path":"/path"} /-->); the handler\'s map is the template\'s data',
         'admin_page "/path" { title, template } fn(request)' => 'a screen of the extension\'s own in the Shop menu of wp-admin (design 60), for the shop manager: the entry is titled as declared and placed after the shop\'s groups, before System; the handler\'s map is the template\'s data; the screen runs in a sandboxed frame of its own (design 73): its scripts (asset(), assets: scripts) have no cookies, no nonce and no network, and reach out through window.orillacart: api(method, "/x/<extension>/…", body) for the extension\'s own routes only, notice(text, tone), navigate(admin url), media({ type, multiple })',
         'slot "product_after_details" { template } fn(context)' => 'a template printed in a storefront slot',
@@ -154,12 +154,10 @@ final readonly class ScriptReference
         'http_calls_per_hour' => 500,
         'query_records' => 200,
         'errors_in_a_row_before_stopped' => 10,
-        // Each extension's routes, in a fixed window of 10 minutes: per visitor (address, or account when signed
-        // in), customer and manager; and public routes of all extensions together per address and cart.
-        'route_requests_per_10_minutes_public' => 240,
-        'route_requests_per_10_minutes_account' => 600,
-        'route_requests_per_10_minutes_manager' => 1800,
-        'route_requests_per_10_minutes_public_all_extensions' => 600,
+        // Each extension's public routes that change something, per caller in 10 minutes, unless a route declares
+        // its own limit; reads and signed-in callers are not counted (design 74).
+        'public_route_writes_per_10_minutes' => 1200,
+        'route_cache_longest_seconds' => 3600,
         'template_loop_turns' => 100000,
         'template_range' => 10000,
     ];

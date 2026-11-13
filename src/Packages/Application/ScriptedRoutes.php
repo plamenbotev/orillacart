@@ -22,17 +22,20 @@ final class ScriptedRoutes implements DynamicRoutes
 {
     public const string PREFIX = '/x/';
     /**
-     * The guard of the public routes, all extensions' together, per address and cart: a ceiling one visitor
-     * meets before any extension runs, with the site's human check (TransientRateLimiter has the limits).
+     * The guard of the public routes that change something (design 74): the site's human check, which a captcha
+     * add-on answers, and no count of its own (TransientRateLimiter knows no such guard unless a site gives it a
+     * limit). The count is each extension's, in ScriptedRouteHandler.
      */
-    public const string GUARD = 'extensions';
-    /**
-     * And each extension's own count, by who its route is for (ScriptedRouteAction): a visitor by address, a
-     * signed-in customer or manager by account. One extension's busy screen leaves the others theirs.
-     */
+    public const string GUARD = 'extension_forms';
+    /** Each extension's public routes that change something, per caller (TransientRateLimiter has the limit). */
     public const string GUARD_PUBLIC = 'extension_public';
-    public const string GUARD_ACCOUNT = 'extension_account';
-    public const string GUARD_MANAGER = 'extension_manager';
+    /** A route that declares its own `limit`, counted alone. */
+    public const string GUARD_ROUTE = 'extension_route';
+    /** The window a route's own `limit` counts in. */
+    public const int LIMIT_SECONDS = 600;
+    /** The most a route's own `limit` may be, and the longest its `cache` is kept. */
+    public const int MOST_LIMIT = 100000;
+    public const int LONGEST_CACHE = 3600;
     /** The action behind every scripted route, named as a string: it is in the Http layer, which this one does not use. */
     public const string ACTION = 'OrillaCart\\Packages\\Http\\ScriptedRouteAction';
 
@@ -48,9 +51,7 @@ final class ScriptedRoutes implements DynamicRoutes
         $routes = [];
         foreach ($this->handlers() as $key => [$loaded, $declaration]) {
             [$method, $path] = explode(' ', $key, 2);
-            $props = $declaration['props'];
-            $who = $props['who'] ?? null;
-            $who = \is_array($who) ? ($who['$spec'] ?? 'manager') : ($who ?? 'manager');
+            $who = self::who($declaration);
             try {
                 $routes[] = new RouteDefinition(
                     self::ACTION,
@@ -64,8 +65,8 @@ final class ScriptedRoutes implements DynamicRoutes
                     'wp_rest',
                     self::requirements($path),
                     false,
-                    // Signed-in callers are counted by account in the action, not by the address they share.
-                    $who === 'public' ? self::GUARD : null,
+                    // A visitor's form passes the site's human check; reads and signed-in callers do not.
+                    $who === 'public' && $method !== 'GET' ? self::GUARD : null,
                     $method !== 'GET',
                 );
             } catch (\InvalidArgumentException $e) {
@@ -100,9 +101,7 @@ final class ScriptedRoutes implements DynamicRoutes
             if ($loaded->package->state() !== PackageState::Enabled) {
                 continue;
             }
-            $who = $declaration['props']['who'] ?? null;
-            $who = \is_array($who) ? ($who['$spec'] ?? 'manager') : ($who ?? 'manager');
-            if ($who !== 'manager') {
+            if (self::who($declaration) !== 'manager') {
                 continue;
             }
             [$method, $full] = explode(' ', $key, 2);
@@ -111,6 +110,59 @@ final class ScriptedRoutes implements DynamicRoutes
         }
 
         return $routes;
+    }
+
+    /**
+     * Whom a route is for: public, account or manager.
+     *
+     * @param Declaration $declaration
+     */
+    public static function who(array $declaration): string
+    {
+        $who = $declaration['props']['who'] ?? null;
+        $who = \is_array($who) ? ($who['$spec'] ?? 'manager') : ($who ?? 'manager');
+
+        return \in_array($who, ['public', 'account'], true) ? $who : 'manager';
+    }
+
+    /**
+     * A public route's own limit (`limit: 20` in 10 minutes, or `limit: none`): null for the shop's, false for none.
+     *
+     * @param Declaration $declaration
+     */
+    public static function limitOf(array $declaration): int|false|null
+    {
+        $limit = self::word($declaration['props']['limit'] ?? null);
+        if ($limit === 'none') {
+            return false;
+        }
+
+        return \is_int($limit) && $limit >= 1 && $limit <= self::MOST_LIMIT ? $limit : null;
+    }
+
+    /**
+     * How long a public GET route's answer to a visitor is kept (`cache: 300`, seconds); 0 when it is not.
+     *
+     * @param Declaration $declaration
+     */
+    public static function cacheOf(array $declaration): int
+    {
+        $seconds = self::word($declaration['props']['cache'] ?? null);
+
+        return \is_int($seconds) && $seconds >= 1 && $seconds <= self::LONGEST_CACHE ? $seconds : 0;
+    }
+
+    /** A property as written: a bare word as its text, a number as it is. */
+    private static function word(mixed $value): mixed
+    {
+        if (\is_array($value)) {
+            $value = $value['$spec'] ?? null;
+        }
+        if (\is_float($value) && floor($value) === $value) {
+            return (int) $value;
+        }
+
+        return $value;
     }
 
     /**

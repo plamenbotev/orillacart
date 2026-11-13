@@ -19,15 +19,26 @@ final readonly class RenderedProductCards implements ProductCardsHtml
     public function render(array $productIds): array
     {
         $cards = $this->cards->cards($productIds);
+
+        return [
+            'html' => $this->html($cards),
+            'ids' => array_values(array_map(static fn(array $card): int => $card['offer'] instanceof ProductOffer ? $card['offer']->id : 0, $cards)),
+        ];
+    }
+
+    /**
+     * Cards ProductCards made, as the shop's lists print them.
+     *
+     * @param list<array<string, mixed>> $cards
+     */
+    public function html(array $cards): string
+    {
         $cart = $this->links->pages()['cart'];
         $html = '';
         foreach ($cards as $card) {
             $html .= $this->templates->render('storefront/_product_card.html.twig', ['product' => $card, 'cart_url' => $cart, 'heading' => 'h3']);
         }
 
-        return [
-            'html' => $html,
-            'ids' => array_values(array_map(static fn(array $card): int => $card['offer'] instanceof ProductOffer ? $card['offer']->id : 0, $cards)),
-        ];
+        return $html;
     }
 }

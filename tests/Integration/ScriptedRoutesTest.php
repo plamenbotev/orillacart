@@ -32,6 +32,10 @@ final class ScriptedRoutesTest extends RestTestCase
         route GET "/away" { who: public } fn(request) { return respond.redirect("/thanks?from=away", 307) }
         route GET "/nope" { who: public } fn(request) { return respond.error(418, "No tea.") }
         route GET "/mine" { who: account } fn(request) { return { id: request.user.id } }
+        route POST "/vote" { who: public } fn(request) { return { voted: true } }
+        route POST "/code" { who: public, limit: 2 } fn(request) { return { tried: request.body.code ?? "" } }
+        route POST "/hook" { who: public, limit: none } fn(request) { return { got: true } }
+        route GET "/listed" { who: public, cache: 60 } fn(request) { return { colour: request.query.colour ?? [], at: time.now(), who: request.user.id } }
         route GET "/page" { who: public } fn(request) { return respond.html("hello.html.twig", { who: "Ada", total: money("12.5"), lines: [{ price: money("3") }] }) }
         route GET "/boom" { who: public } fn(request) { fail refused("Not today.") }
         route GET "/broken" { who: public } fn(request) { let x = 1 / 0 }
@@ -125,30 +129,33 @@ final class ScriptedRoutesTest extends RestTestCase
         self::assertSame(get_current_user_id(), $this->data($mine)['id']);
     }
 
-    public function testEachExtensionsRoutesAreCountedApartAndAManagerByAccount(): void
+    public function testOnlyAVisitorsFormsAreCountedEachExtensionsApartAndARoutesOwnAlone(): void
     {
-        $limits = static fn(array $limits): array => ['extension_manager' => [2, 600], 'extension_public' => [2, 600]] + $limits;
+        $limits = static fn(array $limits): array => ['extension_public' => [2, 600]] + $limits;
         add_filter('orillacart_rate_limits', $limits);
         $address = $_SERVER['REMOTE_ADDR'] ?? null;
-        $users = [];
         try {
             $this->request('POST', '/extensions', ['id' => 'second', 'name' => 'Second', 'files' => [
-                'main.ocs' => "extension \"second\" { name: \"Second\" }\nroute POST \"/echo\" { who: manager } fn(request) { return { ok: true } }\n",
+                'main.ocs' => "extension \"second\" { name: \"Second\" }\nroute POST \"/vote\" { who: public } fn(request) { return { ok: true } }\n",
             ]], nonce: true);
             self::assertSame(200, $this->request('POST', '/extensions/second/enable', ['grant' => []], nonce: true)->get_status());
             $GLOBALS['wp_rest_server'] = null;
 
-            // A manager of their own, so the count starts at nothing whenever the test runs.
-            foreach (['one', 'two'] as $which) {
-                $id = wp_insert_user(['user_login' => 'orillacart_limits_' . $which . '_' . wp_generate_password(8, false), 'user_pass' => wp_generate_password(), 'role' => 'administrator']);
-                self::assertIsInt($id);
-                $users[] = $id;
+            // A manager calls as often as the work needs: signed-in callers are not counted.
+            for ($i = 0; $i < 5; ++$i) {
+                self::assertSame(201, $this->request('POST', '/x/pages/echo', ['n' => $i], nonce: true)->get_status());
             }
-            wp_set_current_user($users[0]);
+
+            // A visitor's forms are, by address, and each extension's apart; reads are not.
+            wp_set_current_user(0);
+            $_SERVER['REMOTE_ADDR'] = self::someAddress();
+            for ($i = 0; $i < 5; ++$i) {
+                self::assertSame(200, $this->request('GET', '/x/pages/hello/v' . $i)->get_status(), 'a read is never counted');
+            }
             foreach ([1, 2] as $n) {
-                self::assertSame(201, $this->request('POST', '/x/pages/echo', ['n' => $n], nonce: true)->get_status());
+                self::assertSame(200, $this->request('POST', '/x/pages/vote', ['n' => $n], nonce: true)->get_status());
             }
-            $away = $this->request('POST', '/x/pages/echo', ['n' => 3], nonce: true);
+            $away = $this->request('POST', '/x/pages/vote', ['n' => 3], nonce: true);
             self::assertSame(429, $away->get_status(), (string) wp_json_encode($away->get_data()));
             $data = $this->data($away);
             self::assertSame('orillacart_too_many_requests', $data['code'] ?? null);
@@ -158,30 +165,47 @@ final class ScriptedRoutesTest extends RestTestCase
             self::assertIsInt($wait);
             self::assertGreaterThan(0, $wait);
             self::assertSame((string) $wait, self::text($away->get_headers()['Retry-After'] ?? null), 'the header says it too');
+            self::assertSame(200, $this->request('POST', '/x/second/vote', nonce: true)->get_status(), 'another extension counts its own');
+            self::assertSame(200, $this->request('POST', '/x/pages/hook', nonce: true)->get_status(), 'limit: none');
 
-            self::assertSame(200, $this->request('POST', '/x/second/echo', [], nonce: true)->get_status(), 'another extension counts its own');
-            wp_set_current_user($users[1]);
-            self::assertSame(201, $this->request('POST', '/x/pages/echo', ['n' => 1], nonce: true)->get_status(), 'another manager at the same address has their own');
-
-            // A visitor is counted by address.
-            wp_set_current_user(0);
-            $_SERVER['REMOTE_ADDR'] = '2001:db8:' . dechex(random_int(1, 0xFFFF)) . ':' . dechex(random_int(1, 0xFFFF)) . '::7';
-            foreach (['v1', 'v2'] as $name) {
-                self::assertSame(200, $this->request('GET', '/x/pages/hello/' . $name)->get_status());
+            // A route's own limit counts it alone, whatever the extension's.
+            $_SERVER['REMOTE_ADDR'] = self::someAddress();
+            foreach (['a', 'b'] as $code) {
+                self::assertSame(200, $this->request('POST', '/x/pages/code', ['code' => $code], nonce: true)->get_status());
             }
-            self::assertSame(429, $this->request('GET', '/x/pages/hello/v3')->get_status());
-            $_SERVER['REMOTE_ADDR'] = '2001:db8:' . dechex(random_int(1, 0xFFFF)) . ':' . dechex(random_int(1, 0xFFFF)) . '::7';
-            self::assertSame(200, $this->request('GET', '/x/pages/hello/v4')->get_status(), 'another address has its own');
+            self::assertSame(429, $this->request('POST', '/x/pages/code', ['code' => 'c'], nonce: true)->get_status());
+            self::assertSame(200, $this->request('POST', '/x/pages/vote', nonce: true)->get_status(), 'the route\'s own count is not the extension\'s');
         } finally {
             remove_filter('orillacart_rate_limits', $limits);
             $_SERVER['REMOTE_ADDR'] = $address;
             $this->actAs('administrator');
             $this->request('DELETE', '/extensions/second', nonce: true);
-            require_once ABSPATH . 'wp-admin/includes/user.php';
-            foreach ($users as $id) {
-                wp_delete_user($id);
-            }
         }
+    }
+
+    public function testAVisitorsReadIsAnsweredFromTheRoutesCache(): void
+    {
+        wp_set_current_user(0);
+        $colour = 'c' . wp_generate_password(8, false);
+        $first = $this->request('GET', '/x/pages/listed?colour[]=' . $colour . '&colour[]=red');
+        self::assertSame(200, $first->get_status(), (string) wp_json_encode($first->get_data()));
+        self::assertSame('miss', $first->get_headers()['X-OrillaCart-Cache'] ?? null);
+        $again = $this->request('GET', '/x/pages/listed?colour[]=red&colour[]=' . $colour);
+        self::assertSame('hit', $again->get_headers()['X-OrillaCart-Cache'] ?? null, 'the same choices in another order');
+        self::assertSame($this->data($first), $this->data($again));
+
+        $other = $this->request('GET', '/x/pages/listed?colour[]=blue&colour[]=' . $colour);
+        self::assertSame('miss', $other->get_headers()['X-OrillaCart-Cache'] ?? null, 'other choices are another answer');
+
+        $this->actAs('administrator');
+        $signedIn = $this->request('GET', '/x/pages/listed?colour[]=' . $colour . '&colour[]=red');
+        self::assertArrayNotHasKey('X-OrillaCart-Cache', $signedIn->get_headers(), 'a signed-in caller\'s answer may be theirs alone');
+        self::assertSame(get_current_user_id(), $this->data($signedIn)['who'] ?? null);
+    }
+
+    private static function someAddress(): string
+    {
+        return '2001:db8:' . dechex(random_int(1, 0xFFFF)) . ':' . dechex(random_int(1, 0xFFFF)) . '::7';
     }
 
     public function testAStoppedExtensionsRoutesSaySo(): void

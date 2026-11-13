@@ -45,6 +45,8 @@ final class Version
      * 28: site blocks that hold other blocks, know where they are and have an editing screen of their own
      * (Storefront\PlacedSiteBlock, BlockPlace), blocks' image, link, color, product, category, rich_text and list
      * settings (Setting::BLOCK_TYPES, Setting::$fields), and block patterns (Storefront\BlockPattern).
+     * 29: the shop's products as shoppers find them, with its filters and their counts (Registry::catalog,
+     * Catalog\CatalogQuery, CatalogPage, CatalogProduct, CatalogFacet).
      */
-    public const int CURRENT = 28;
+    public const int CURRENT = 29;
 }
