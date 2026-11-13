@@ -14,7 +14,6 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity]
 #[ORM\Table(name: 'agent_checkouts')]
 #[ORM\Index(name: 'agent_checkout_cart', columns: ['cart_id'])]
-#[ORM\Index(name: 'agent_checkout_token', columns: ['token_hash'])]
 #[ORM\Index(name: 'agent_checkout_expires', columns: ['expires_at'])]
 class AgentCheckout
 {
@@ -51,8 +50,20 @@ class AgentCheckout
     #[ORM\Column]
     private \DateTimeImmutable $expiresAt;
 
-    #[ORM\Column(length: 64)]
-    private string $tokenHash;
+    /**
+     * Whether a customer logged in with its cart: the cart is then their account's, which may hold what they put
+     * in it themselves, and no longer the agent's to read or change.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $claimed = false;
+
+    /**
+     * The session as the agent last saw it (its lines, totals and fulfilment): what it is answered once claimed.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: 'sealed_json', nullable: true)]
+    private ?array $shown = null;
 
     public function __construct(
         #[ORM\Id]
@@ -72,7 +83,6 @@ class AgentCheckout
         if (preg_match('/^' . self::ID_PATTERN . '$/', $id) !== 1) {
             throw new \InvalidArgumentException('A checkout session id is chk_ and 32 hex digits.');
         }
-        $this->tokenHash = self::hash($cartToken);
         $this->updatedAt = $createdAt;
         $this->expiresAt = $createdAt->add(new \DateInterval(self::LASTS));
     }
@@ -80,12 +90,6 @@ class AgentCheckout
     public static function newId(): string
     {
         return 'chk_' . bin2hex(random_bytes(16));
-    }
-
-    /** How a cart's token is found without keeping it readable: the browser's cart at checkout. */
-    public static function hash(#[\SensitiveParameter] string $cartToken): string
-    {
-        return hash('sha256', $cartToken);
     }
 
     public function id(): string
@@ -101,6 +105,41 @@ class AgentCheckout
     public function cartToken(): string
     {
         return $this->cartToken;
+    }
+
+    public function isClaimed(): bool
+    {
+        return $this->claimed;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function shown(): ?array
+    {
+        return $this->shown;
+    }
+
+    /**
+     * What the agent was shown, kept for when the cart is no longer its to read.
+     *
+     * @param array<string, mixed> $shown
+     */
+    public function show(array $shown): void
+    {
+        if (!$this->claimed) {
+            $this->shown = $shown;
+        }
+    }
+
+    /**
+     * A customer logged in with its cart (CartClaimed): the session follows the cart it became, whose order
+     * completes it, and keeps no token to it, as the token it had reaches nothing.
+     */
+    public function claim(int $cartId, \DateTimeImmutable $now): void
+    {
+        $this->cartId = $cartId;
+        $this->claimed = true;
+        $this->cartToken = '';
+        $this->updatedAt = $now;
     }
 
     public function agent(): string

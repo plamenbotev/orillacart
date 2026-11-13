@@ -107,9 +107,9 @@ final readonly class CheckoutBlock implements BlockDefinition
         }
         $customer = $this->customer();
         $shop = $this->settings->current();
-        // A guest a shopper's agent handed the cart to starts with what the agent gave (design 75).
-        $token = $customer === null ? $this->shopper->cart()->token : null;
-        $given = $token === null ? null : $this->prefills?->forCart($token);
+        // A buyer a shopper's agent handed the cart to starts with what the agent gave (design 75), unless their
+        // account has an address; a logged-in buyer's email is their account's.
+        $given = $customer?->billing !== null ? null : $this->prefills?->forCart($this->shopper->cart());
         $billing = $customer->billing ?? ($given === null ? null : new AddressData(
             $given['billing']['first_name'] ?? '',
             $given['billing']['last_name'] ?? '',

@@ -57,6 +57,9 @@ The card shows where agents find the shop: `https://your-site/.well-known/ucp`.
 - The endpoints act for no one: a session is its own cart, never the caller's cookies' or account's, so they take
   no nonce (agents call server to server) and need no account.
 - Opening the `continue_url` gives that cart to the browser, in place of the cart it held.
+- A buyer logged in (or who logs in at checkout) makes it their account's cart, joined with what the account's cart
+  held. The session follows it and completes with its order; the agent goes on reading the session as it last saw
+  it, without what the account held, and can no longer change it (`checkout_closed`).
 
 ## Not yet
 

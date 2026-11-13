@@ -36,11 +36,6 @@ final readonly class DoctrineAgentCheckoutRepository implements AgentCheckoutRep
         return $this->entityManager->getRepository(AgentCheckout::class)->findOneBy(['cartId' => $cartId], ['createdAt' => 'DESC']);
     }
 
-    public function forCartToken(#[\SensitiveParameter] string $cartToken): ?AgentCheckout
-    {
-        return $this->entityManager->getRepository(AgentCheckout::class)->findOneBy(['tokenHash' => AgentCheckout::hash($cartToken)], ['createdAt' => 'DESC']);
-    }
-
     public function save(AgentCheckout $checkout): void
     {
         $this->entityManager->persist($checkout);

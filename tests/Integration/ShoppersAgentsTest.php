@@ -136,11 +136,11 @@ final class ShoppersAgentsTest extends RestTestCase
         \assert($checkouts instanceof AgentCheckouts);
         $token = $checkouts->handover($id);
         self::assertIsString($token);
-        self::assertSame(['email' => 'shopper@example.com', 'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace']], $checkouts->given($token));
         $carts = self::kernel()->container()->get(CartService::class);
         \assert($carts instanceof CartService);
         $cartId = $carts->contents(new CartOwner($token))?->cartId;
         self::assertIsInt($cartId);
+        self::assertSame(['email' => 'shopper@example.com', 'billing' => ['first_name' => 'Ada', 'last_name' => 'Lovelace']], $checkouts->given($cartId));
 
         // Completing is the buyer's: the agent is told where.
         $complete = $this->body($this->ucpRequest('POST', '/ucp/checkout-sessions/' . $id . '/complete', [], 'key-' . uniqid()));
@@ -152,6 +152,61 @@ final class ShoppersAgentsTest extends RestTestCase
         self::assertSame('completed', $done['status'] ?? null);
         self::assertSame('4242', self::at($done, 'order', 'id'));
         self::assertArrayNotHasKey('continue_url', $done);
+    }
+
+    public function testABuyerWhoLogsInWithTheCartTakesTheSessionAlong(): void
+    {
+        $this->actAs('administrator');
+        $own = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => 'Own lamp ' . uniqid(), 'post_status' => 'publish']);
+        self::assertIsInt($own);
+        $this->posts[] = $own;
+        self::assertSame(200, $this->request('PUT', "/products/{$own}", ['price' => '30', 'type' => 'virtual', 'stock_mode' => 'always_available'], nonce: true)->get_status());
+        wp_set_current_user(0);
+        $user = wp_insert_user(['user_login' => 'agent-buyer-' . uniqid(), 'user_email' => uniqid() . '@buyer.example', 'user_pass' => wp_generate_password(), 'role' => 'subscriber']);
+        self::assertIsInt($user);
+        try {
+            $carts = self::kernel()->container()->get(CartService::class);
+            \assert($carts instanceof CartService);
+            // What the buyer's account cart held before.
+            $carts->add(new CartOwner(null, $user), new \OrillaCart\Cart\Application\Dto\AddToCart($own, [], 1));
+
+            $body = ['line_items' => [['item' => ['id' => 'prod_' . $this->product], 'quantity' => 2]], 'buyer' => ['email' => 'shopper@example.com']];
+            $made = $this->body($this->ucpRequest('POST', '/ucp/checkout-sessions', $body, 'key-' . uniqid()));
+            $id = $made['id'] ?? null;
+            self::assertIsString($id);
+            self::assertSame('requires_escalation', $made['status'] ?? null);
+            $checkouts = self::kernel()->container()->get(AgentCheckouts::class);
+            \assert($checkouts instanceof AgentCheckouts);
+            $token = $checkouts->handover($id);
+            self::assertIsString($token);
+
+            // The buyer opens the link logged in: the agent's cart joins their account's.
+            $merged = $carts->contents(new CartOwner($token, $user));
+            self::assertNotNull($merged);
+            self::assertCount(2, $merged->lines);
+            self::assertNull($checkouts->handover($id), 'the cart has a new token, which the link does not hand out');
+            self::assertTrue($checkouts->isWithBuyer($id), 'the link opens their checkout');
+            self::assertSame('shopper@example.com', $checkouts->given($merged->cartId)['email'] ?? null, 'their checkout starts with what the agent gave');
+
+            $seen = $this->body($this->ucpRequest('GET', '/ucp/checkout-sessions/' . $id));
+            self::assertSame('requires_escalation', $seen['status'] ?? null, 'the session is not lost: it waits for the buyer');
+            self::assertSame(['prod_' . $this->product], array_map(static fn(mixed $l): mixed => self::at($l, 'item', 'id'), self::list($seen['line_items'] ?? null)), 'the agent sees what it put in, not what the account held');
+            self::assertSame(self::list($made['totals'] ?? null), self::list($seen['totals'] ?? null));
+            self::assertIsString($seen['continue_url'] ?? null);
+
+            $changed = $this->body($this->ucpRequest('PUT', '/ucp/checkout-sessions/' . $id, ['line_items' => [['item' => ['id' => 'prod_' . $this->product], 'quantity' => 1]]], 'key-' . uniqid()));
+            self::assertContains('checkout_closed', array_column(self::list($changed['messages'] ?? null), 'code'), 'the account\'s cart is not the agent\'s to change');
+            self::assertCount(2, $carts->contents(new CartOwner(null, $user))->lines ?? []);
+
+            // The order placed from the account's cart completes it.
+            $carts->placing($merged->cartId, 4343);
+            $done = $this->body($this->ucpRequest('GET', '/ucp/checkout-sessions/' . $id));
+            self::assertSame('completed', $done['status'] ?? null);
+            self::assertSame('4343', self::at($done, 'order', 'id'));
+        } finally {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+            wp_delete_user($user);
+        }
     }
 
     public function testAnAgentCancelsAndTheCapabilitiesAreItsProfilesAndOff(): void

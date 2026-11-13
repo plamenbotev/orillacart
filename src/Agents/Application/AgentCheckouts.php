@@ -39,6 +39,8 @@ final readonly class AgentCheckouts
     /** A simple product's id, or a variation's with its product's. */
     public const string ITEM = '/^prod_([1-9][0-9]{0,9})(?:_var_([1-9][0-9]{0,9}))?$/';
     /** The fields of an address UCP writes, and what the shop's checkout calls them. */
+    /** What a session keeps of what the agent was shown, for once its cart is no longer the agent's to read. */
+    private const array SHOWN = ['currency' => true, 'line_items' => true, 'totals' => true, 'fulfillment' => true];
     public const array ADDRESS = ['first_name' => 'first_name', 'last_name' => 'last_name', 'street_address' => 'street', 'extended_address' => 'street2', 'address_locality' => 'city', 'address_region' => 'state', 'postal_code' => 'postcode', 'address_country' => 'country', 'phone_number' => 'phone'];
 
     public function __construct(
@@ -95,6 +97,9 @@ final readonly class AgentCheckouts
         if ($session->isFinal() || $session->status($this->clock->now()) === AgentCheckout::CANCELED) {
             return $this->answer($session, [self::message('error', 'checkout_closed', 'The checkout session is ' . $session->status($this->clock->now()) . '.', 'unrecoverable')]);
         }
+        if ($session->isClaimed()) {
+            return $this->answer($session, [self::message('error', 'checkout_closed', 'The buyer has this checkout in their account at the shop: it changes there.', 'requires_buyer_input')]);
+        }
         $messages = [];
         if (\array_key_exists('line_items', $checkout)) {
             $this->carts->clear($session->cartId());
@@ -124,7 +129,10 @@ final readonly class AgentCheckouts
         $session = $this->find($id);
         if (!$session->isFinal() && $session->status($this->clock->now()) !== AgentCheckout::CANCELED) {
             $session->cancel($this->clock->now());
-            $this->carts->clear($session->cartId());
+            if (!$session->isClaimed()) {
+                // A claimed cart is the buyer's account's: the session ends, what they hold stays theirs.
+                $this->carts->clear($session->cartId());
+            }
             $this->sessions->save($session);
         }
 
@@ -132,13 +140,22 @@ final readonly class AgentCheckouts
     }
 
     /**
-     * The cart an open session hands the buyer's browser (its continue_url): null for one that is over or none.
+     * The cart an open session hands the buyer's browser (its continue_url): null for one that is over or none,
+     * and for one a customer claimed, whose cart is their account's (isWithBuyer): their checkout has it.
      */
     public function handover(string $id): ?string
     {
         $session = $this->sessions->find($id);
 
-        return $session === null || $this->over($session) ? null : $session->cartToken();
+        return $session === null || $this->over($session) || $session->isClaimed() ? null : $session->cartToken();
+    }
+
+    /** An open session a customer logged in with: its link opens the checkout, the cart is their account's. */
+    public function isWithBuyer(string $id): bool
+    {
+        $session = $this->sessions->find($id);
+
+        return $session !== null && !$this->over($session) && $session->isClaimed();
     }
 
     /**
@@ -146,9 +163,9 @@ final readonly class AgentCheckouts
      *
      * @return array{email: string, billing: array<string, string>}|null the address as the checkout form names its fields
      */
-    public function given(#[\SensitiveParameter] string $cartToken): ?array
+    public function given(int $cartId): ?array
     {
-        $session = $this->sessions->forCartToken($cartToken);
+        $session = $this->sessions->forCart($cartId);
         if ($session === null || $this->over($session)) {
             return null;
         }
@@ -181,6 +198,19 @@ final readonly class AgentCheckouts
     public function forgetOld(): int
     {
         return $this->sessions->forgetOlderThan($this->clock->now()->sub(new \DateInterval('P1D')));
+    }
+
+    /**
+     * A customer logged in with a session's cart (CartClaimed): it follows the cart it became. What else that cart
+     * holds is the customer's, so the agent goes on seeing the session as it last saw it, until the order.
+     */
+    public function claimed(int $fromCartId, int $intoCartId): void
+    {
+        $session = $this->sessions->forCart($fromCartId);
+        if ($session !== null && !$session->isFinal() && !$session->isClaimed()) {
+            $session->claim($intoCartId, $this->clock->now());
+            $this->sessions->save($session);
+        }
     }
 
     /** The order the buyer placed from a session's cart (CartOrdered). */
@@ -341,6 +371,9 @@ final readonly class AgentCheckouts
     private function answer(AgentCheckout $session, array $messages = []): array
     {
         $now = $this->clock->now();
+        if ($session->isClaimed()) {
+            return $this->claimedAnswer($session, $messages);
+        }
         $owner = new CartOwner($session->cartToken());
         $address = $session->address();
         $view = null;
@@ -379,7 +412,6 @@ final readonly class AgentCheckouts
         if ($status !== AgentCheckout::COMPLETED && $status !== AgentCheckout::CANCELED) {
             $status = $this->status($session, $view, $lines, $messages);
             $session->become($status, $now);
-            $this->sessions->save($session);
         }
 
         $answer = [
@@ -397,6 +429,37 @@ final readonly class AgentCheckouts
         }
         if ($view !== null && $view->needsShipping) {
             $answer['fulfillment'] = $this->fulfillment($session, $view, $lines, $currency);
+        }
+        $session->show(array_intersect_key($answer, self::SHOWN));
+        $this->sessions->save($session);
+        if ($status === AgentCheckout::COMPLETED && $session->orderId() !== null) {
+            $answer['order'] = ['id' => (string) $session->orderId(), 'permalink_url' => $this->links->receiptUrl($session->orderId())];
+        } elseif ($status !== AgentCheckout::CANCELED) {
+            $answer['continue_url'] = $this->endpoints->continueUrl($session->id());
+        }
+
+        return $answer;
+    }
+
+    /**
+     * A session whose cart a customer claimed, as the agent last saw it: the cart is their account's now, and what
+     * else it holds is not the agent's to read. It waits for the buyer, who orders at the shop's checkout.
+     *
+     * @param list<array<string, string>> $messages
+     *
+     * @return Answer
+     */
+    private function claimedAnswer(AgentCheckout $session, array $messages): array
+    {
+        $status = $session->status($this->clock->now());
+        $answer = ['id' => $session->id(), 'status' => $status] + ($session->shown() ?? ['currency' => $this->currencies->current(), 'line_items' => [], 'totals' => []]);
+        if (!\in_array($status, [AgentCheckout::COMPLETED, AgentCheckout::CANCELED], true)) {
+            $answer['status'] = AgentCheckout::REQUIRES_ESCALATION;
+            $messages[] = self::message('error', 'payment_required', 'The buyer has this checkout in their account at the shop, where they review and pay.', 'requires_buyer_input');
+        }
+        $answer += ['messages' => $messages, 'links' => [], 'expires_at' => $session->expiresAt()->format(\DATE_ATOM)];
+        if ($session->buyer() !== []) {
+            $answer['buyer'] = $session->buyer();
         }
         if ($status === AgentCheckout::COMPLETED && $session->orderId() !== null) {
             $answer['order'] = ['id' => (string) $session->orderId(), 'permalink_url' => $this->links->receiptUrl($session->orderId())];

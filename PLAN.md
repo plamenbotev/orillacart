@@ -969,7 +969,7 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 | ✅ | 663 | P2 | Idempotency keys (a day; 409 on another body), `Request-Id`, the `ucp` rate limit on changes, signed public routes acting for no one | 6a2f56d1 |
 | ✅ | 664 | P3 | The same operations as MCP tools at `/ucp/mcp` | 6a2f56d1 |
 | ✅ | 665 | P3 | Sessions forgotten a day after they end; docs/shoppers-agents.md, design 75; tests (integration, end to end) | 6a2f56d1 |
-| ⬜ | 666 | P1 | A signed-in buyer opening continue_url loses the session ([plan](docs/plans/shoppers-agents.md)) | |
+| ✅ | 666 | P1 | A signed-in buyer opening continue_url lost the session: it follows the claimed cart ([plan](docs/plans/shoppers-agents.md)) | |
 | ⬜ | 667 | P2 | The handover keeps the browser's own cart ([plan](docs/plans/shoppers-agents.md)) | |
 | ⬜ | 668 | P2 | The agent's context is honoured ([plan](docs/plans/shoppers-agents.md)) | |
 | ⬜ | 669 | P2 | Orders carry where they came from ([plan](docs/plans/shoppers-agents.md)) | |

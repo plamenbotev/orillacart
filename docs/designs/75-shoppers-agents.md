@@ -47,6 +47,13 @@ terms, its payment methods, 3-D Secure, its confirmation email. The order is the
 `completed` with `order { id, permalink_url }` when that cart is ordered. `complete_checkout` answers the
 escalation again rather than placing anything: an agent never pays for a person here.
 
+**A buyer who logs in takes the session along.** Logged in when they open the link (or logging in at checkout), the
+buyer's cart becomes their account's, as every visitor's does: joined into the cart their account held, under a new
+token (`CartClaimed`). The session follows that cart, and its order completes it. The account's cart may hold what
+the buyer put in it themselves, so from then on the agent sees the session as it last saw it, waiting for the
+buyer, and changes to it are refused (`checkout_closed`); cancelling ends the session and leaves the cart theirs.
+The link then opens their checkout, which starts with the agent's address when the account has none.
+
 **Retries are safe.** `Idempotency-Key` (REST) or `meta["idempotency-key"]` (MCP) is required on what changes a
 session; the shop keeps each answer a day, gives it back for the same key and body, and answers 409 for the same
 key with another body. `Request-Id` is echoed.

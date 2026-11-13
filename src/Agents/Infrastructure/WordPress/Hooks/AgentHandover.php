@@ -16,8 +16,9 @@ use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
  * A session's continue_url (design 75): gives its cart to this browser and opens the shop's checkout, filled with
  * the buyer and address the agent gave (AgentCheckoutPrefills), for the buyer to review and pay. It works while the
  * session is open and as often as it is opened: the agent goes on changing the same cart, and a link preview that
- * opens it takes nothing from the buyer. A link that is not the session's, or a session that is over, opens the
- * shop.
+ * opens it takes nothing from the buyer. Once the buyer logged in with the cart, it is their account's: the link
+ * opens their checkout and gives the browser nothing. A link that is not the session's, or a session that is over,
+ * opens the shop.
  */
 #[AsHook('template_redirect', priority: 0)]
 final readonly class AgentHandover
@@ -37,7 +38,13 @@ final readonly class AgentHandover
         }
         nocache_headers();
         header('Referrer-Policy: no-referrer');
-        $token = $this->endpoints->verify($id, $signature) ? $this->checkouts->handover($id) : null;
+        $verified = $this->endpoints->verify($id, $signature);
+        $token = $verified ? $this->checkouts->handover($id) : null;
+        if ($token === null && $verified && $this->checkouts->isWithBuyer($id)) {
+            // The buyer logged in with the cart: it is their account's, which their checkout opens with.
+            wp_safe_redirect($this->links->pages()['checkout'] ?? home_url('/'), 303);
+            exit;
+        }
         if ($token === null) {
             wp_safe_redirect(home_url('/'), 303);
             exit;

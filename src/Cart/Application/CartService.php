@@ -21,6 +21,7 @@ use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Domain\CartRuleViolation;
 use OrillaCart\Cart\Domain\ChargeLine;
 use OrillaCart\Cart\Domain\Event\CartChanged;
+use OrillaCart\Cart\Domain\Event\CartClaimed;
 use OrillaCart\Cart\Domain\Event\CartItemAdded;
 use OrillaCart\Cart\Domain\Event\CartItemChanged;
 use OrillaCart\Cart\Domain\Event\CartItemRemoved;
@@ -513,6 +514,7 @@ final readonly class CartService
     private function loggedIn(Cart $visitors, int $customerId): array
     {
         $now = $this->clock->now();
+        $from = $visitors->id();
         $cart = $this->carts->findByCustomer($customerId);
         if ($cart !== null && $cart->id() !== $visitors->id()) {
             // Within the files a cart holds: a line whose files would pass the limit stays out, as adding it would.
@@ -529,6 +531,7 @@ final readonly class CartService
         // The files it names last as long as the cart does from now.
         $this->uploads->holdNamed($cart->fileHashes());
         $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
+        $this->events->dispatch(new CartClaimed($from, $cart->id(), $customerId));
 
         return [$cart, $token];
     }
