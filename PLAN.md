@@ -949,11 +949,11 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 
 | Status | # | Priority | Item | Commit |
 | --- | --- | --- | --- | --- |
-| ✅ | 653 | P2 | Only public writes counted, per extension and caller (1200 in 10 minutes); a route's own `limit: n` or `none` counted alone; reads and signed-in callers not; human check on public writes only | |
-| ✅ | 654 | P2 | `cache: seconds` on public GET routes: a visitor's answer kept by path, query, language, currency, build, settings and index generation; `X-OrillaCart-Cache` | |
-| ✅ | 655 | P2 | An anonymous caller's failures count once an hour each towards stopping an extension (`AnonymousCaller`) | |
-| ✅ | 656 | P2 | `shop.catalog.list` and `Registry::catalog()` (API 29): the shop's listing, filters, counts and cards, for shoppers, no permission | |
-| ✅ | 657 | P3 | Static check of `limit` and `cache`; guide's landing page section, reference, extensions.md, design 74; tests | |
+| ✅ | 653 | P2 | Only public writes counted, per extension and caller (1200 in 10 minutes); a route's own `limit: n` or `none` counted alone; reads and signed-in callers not; human check on public writes only | 990c0383 |
+| ✅ | 654 | P2 | `cache: seconds` on public GET routes: a visitor's answer kept by path, query, language, currency, build, settings and index generation; `X-OrillaCart-Cache` | 990c0383 |
+| ✅ | 655 | P2 | An anonymous caller's failures count once an hour each towards stopping an extension (`AnonymousCaller`) | 990c0383 |
+| ✅ | 656 | P2 | `shop.catalog.list` and `Registry::catalog()` (API 29): the shop's listing, filters, counts and cards, for shoppers, no permission | 990c0383 |
+| ✅ | 657 | P3 | Static check of `limit` and `cache`; guide's landing page section, reference, extensions.md, design 74; tests | 990c0383 |
 
 ## Deliberately not carried over
 
