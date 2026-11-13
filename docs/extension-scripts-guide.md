@@ -643,8 +643,9 @@ page "/support" { template: "support.html.twig" } fn(request) {
 ```
 
 A route lives at `/wp-json/orillacart/v1/x/<extension>/<path>` and runs through the shop's own REST pipeline:
-authorization, the REST nonce for browsers, API keys and OAuth for agents, a rate limit of 120 requests a minute,
-and the change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). A manager route is also one of the
+authorization, the REST nonce for browsers, API keys and OAuth for agents, a rate limit of 120 requests per caller in
+10 minutes for all extensions' routes together ("Budgets and failures" in `docs/extension-scripts.md`), and the
+change log. `who` is `public`, `account` (a logged-in customer) or `manager` (the default). A manager route is also one of the
 assistant's tools, `x_<extension>_<method>_<path>` (`x_payfast_post_refunds`), unless it says `tool: false`; `tool:
 "name"` names it, `title`, `description`, `input` (a JSON schema of the body) and `risk` describe it, and without
 `input` the tool takes `params`, `query` and `body` maps. The handler gets the request map a REST call would give

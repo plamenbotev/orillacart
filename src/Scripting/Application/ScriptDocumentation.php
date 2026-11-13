@@ -64,13 +64,20 @@ final readonly class ScriptDocumentation
 
             ## Permissions
 
-            An extension declares in `needs` what it must reach: `orders: read`, `orders: write`, `products: read`,
-            `products: write`, `customers: read`, `customers: create`, `http: ["host", …]` (the only hosts `http.*` may
-            call, over https), `templates: override` (it may replace the shop's own templates). A manager grants them
-            when enabling it; a function that needs one the extension was not granted is refused by the static check
-            before, and by the runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordPress.
-            In a test's own body, the functions marked `in tests: none` need no permission: they make the
-            customers, products and orders the test needs, inside its rolled-back transaction.
+            An extension declares in `needs` what it must reach, and a manager grants it when enabling it. Each is
+            listed with what it opens:
+
+
+            MD;
+        foreach ($reference['permissions'] as $permission => $what) {
+            $out .= '- `' . $permission . '`: ' . $what . "\n";
+        }
+        $out .= <<<'MD'
+
+            A function that needs one the extension was not granted is refused by the static check before, and by the
+            runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordPress. In a test's own
+            body, the functions marked `in tests: none` need no permission: they make the customers, products and
+            orders the test needs, inside its rolled-back transaction.
 
             ## Budgets and failures
 
@@ -78,7 +85,19 @@ final readonly class ScriptDocumentation
             exceeds them is stopped; the script cannot catch that. `fail unavailable("…")` says a provider cannot be
             reached (the shop tries later), `fail refused("…")` is an answer to show whoever asked, any other failure is
             a problem the shop logs. Ten failures in a row stop the extension; a manager enables it again after reading
-            the problem on the Extensions screen.
+            the problem on the Extensions screen. Over all its runs, an extension sends at most 50 emails and makes 500
+            HTTP calls an hour.
+
+            Requests to extensions' routes are counted per caller: 120 in each 10 minutes, for all the routes of all
+            extensions together, whatever their `who`, managers included. A caller is its IP address (an IPv6 /64)
+            and, where it has one, its cart cookie; either reaching 120 is enough. The windows are fixed, so a burst
+            across the end of one may reach 240 in a moment. A request over the limit is answered 429
+            `orillacart_too_many_requests` with `retry_after`, the seconds until the window ends, and the handler
+            does not run. An admin screen's `window.orillacart.api()` calls count too, and so do staff behind one
+            office address together. A site changes the limit with the filter `orillacart_rate_limits` (the guard
+            `extensions`), raising or lowering it but never switching it off. The assistant's tools that are
+            routes are not counted here: they are not requests to the route. A guarded request's body also passes the
+            site's human check (a captcha add-on may refuse it) and loses the field `orillacart_website`.
 
             ## Declarations
 

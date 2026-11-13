@@ -15,7 +15,7 @@ use OrillaCart\Scripting\Domain\Parser;
 final readonly class ScriptReference
 {
     public const array DECLARATIONS = [
-        'extension "id" { name, version, needs: { orders: read, customers: [read, write], products: read, http: ["host"], templates: override } }' => 'what the extension is and what it asks for',
+        'extension "id" { name, version, needs: { orders: read, customers: [read, create], products: [read, write], email: send, http: ["host"], templates: override, assets: [serve, scripts] } }' => 'what the extension is and what it asks for',
         'settings { key: text|secret|boolean|number|choice { label, required, help, of } }' => 'the settings a manager fills in; read with settings.get(key)',
         'payment_gateway "id" { name; settings {…}; fn start(session, settings); fn not_ready(settings, currency, decimals); fn reference(back); fn returned(reference, back, settings); fn notified(notification, settings); fn check(reference, transaction_id, settings); fn refund(request, settings) }' => 'a payment provider',
         'shipping_method "id" { name; settings {…}; fn quote(shipment, settings); fn is_ready(settings); fn pickup_points(query, settings); fn create_shipment(request, settings); fn label(number, settings); fn cancel_shipment(number, settings); fn track(number, settings) }' => 'a shipping provider',
@@ -154,7 +154,8 @@ final readonly class ScriptReference
         'http_calls_per_hour' => 500,
         'query_records' => 200,
         'errors_in_a_row_before_stopped' => 10,
-        'route_requests_per_minute' => 120,
+        // Per caller (IP or cart), for every extension's routes together, in a fixed window of 10 minutes.
+        'route_requests_per_10_minutes' => 120,
         'template_loop_turns' => 100000,
         'template_range' => 10000,
     ];

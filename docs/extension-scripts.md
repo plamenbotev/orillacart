@@ -43,13 +43,27 @@ payment_gateway "payfast" {
 
 ## Permissions
 
-An extension declares in `needs` what it must reach: `orders: read`, `orders: write`, `products: read`,
-`products: write`, `customers: read`, `customers: create`, `http: ["host", …]` (the only hosts `http.*` may
-call, over https), `templates: override` (it may replace the shop's own templates). A manager grants them
-when enabling it; a function that needs one the extension was not granted is refused by the static check
-before, and by the runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordPress.
-In a test's own body, the functions marked `in tests: none` need no permission: they make the
-customers, products and orders the test needs, inside its rolled-back transaction.
+An extension declares in `needs` what it must reach, and a manager grants it when enabling it. Each is
+listed with what it opens:
+
+- `orders: read`: shop.orders.find, is_marked, quote; the order map in handlers
+- `orders: write`: shop.orders.mark and unmark
+- `orders: create`: shop.orders.create: places real orders, takes stock, emails the customer; its own permission, granted on purpose
+- `products: read`: shop.products.find, search, is_marked; shop.attributes.sets, shop.categories.list
+- `products: write`: shop.products.mark and unmark; create, change, add_variation and change_variation (drafts until published); shop.attributes.save_set, shop.categories.ensure
+- `products: publish`: shop.products.publish, unpublish and trash: what shoppers see; its own permission, granted on purpose
+- `customers: read`: shop.customers.find, search
+- `customers: create`: shop.customers.create: real customer accounts, made as the shop makes one by hand (no email sent); its own permission, granted on purpose
+- `email: send`: shop.email.send: email in the shop's layout, from its address, five a run
+- `http: ["host.example", …]`: http.* calls to those hosts over HTTPS; the manager grants each host
+- `templates: override`: a file under templates/storefront/ or templates/emails/ in the package replaces the shop's template of that name
+- `assets: serve`: the package's stylesheets and SVG under assets/ served to browsers, printed by asset() in its templates
+- `assets: scripts`: the package's .js under assets/ served too (with serve: assets: [serve, scripts]): code that runs in the browser of whoever opens a page it is on, the manager included; in the admin, in a frame of its own
+
+A function that needs one the extension was not granted is refused by the static check before, and by the
+runtime after. Nothing else is reachable: no PHP, no files, no queries, no WordPress. In a test's own
+body, the functions marked `in tests: none` need no permission: they make the customers, products and
+orders the test needs, inside its rolled-back transaction.
 
 ## Budgets and failures
 
@@ -57,10 +71,22 @@ A run has 100 000 steps, 2 seconds, 16 MB of values, 5 000 calls (every builtin,
 exceeds them is stopped; the script cannot catch that. `fail unavailable("…")` says a provider cannot be
 reached (the shop tries later), `fail refused("…")` is an answer to show whoever asked, any other failure is
 a problem the shop logs. Ten failures in a row stop the extension; a manager enables it again after reading
-the problem on the Extensions screen.
+the problem on the Extensions screen. Over all its runs, an extension sends at most 50 emails and makes 500
+HTTP calls an hour.
+
+Requests to extensions' routes are counted per caller: 120 in each 10 minutes, for all the routes of all
+extensions together, whatever their `who`, managers included. A caller is its IP address (an IPv6 /64)
+and, where it has one, its cart cookie; either reaching 120 is enough. The windows are fixed, so a burst
+across the end of one may reach 240 in a moment. A request over the limit is answered 429
+`orillacart_too_many_requests` with `retry_after`, the seconds until the window ends, and the handler
+does not run. An admin screen's `window.orillacart.api()` calls count too, and so do staff behind one
+office address together. A site changes the limit with the filter `orillacart_rate_limits` (the guard
+`extensions`), raising or lowering it but never switching it off. The assistant's tools that are
+routes are not counted here: they are not requests to the route. A guarded request's body also passes the
+site's human check (a captcha add-on may refuse it) and loses the field `orillacart_website`.
 
 ## Declarations
-- `extension "id" { name, version, needs: { orders: read, customers: [read, write], products: read, http: ["host"], templates: override } }`: what the extension is and what it asks for
+- `extension "id" { name, version, needs: { orders: read, customers: [read, create], products: [read, write], email: send, http: ["host"], templates: override, assets: [serve, scripts] } }`: what the extension is and what it asks for
 - `settings { key: text|secret|boolean|number|choice { label, required, help, of } }`: the settings a manager fills in; read with settings.get(key)
 - `payment_gateway "id" { name; settings {…}; fn start(session, settings); fn not_ready(settings, currency, decimals); fn reference(back); fn returned(reference, back, settings); fn notified(notification, settings); fn check(reference, transaction_id, settings); fn refund(request, settings) }`: a payment provider
 - `shipping_method "id" { name; settings {…}; fn quote(shipment, settings); fn is_ready(settings); fn pickup_points(query, settings); fn create_shipment(request, settings); fn label(number, settings); fn cancel_shipment(number, settings); fn track(number, settings) }`: a shipping provider
