@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Http;
 
 use OrillaCart\Cart\Http\CartCookie;
-use OrillaCart\Checkout\Application\CheckoutService;
+use OrillaCart\Checkout\Application\CheckoutCodes;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
@@ -17,13 +17,13 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class RemoveCouponAction implements RequestHandlerInterface
 {
     public function __construct(
-        private CheckoutService $checkout,
+        private CheckoutCodes $codes,
         private CartCookie $cookie,
         private JsonResponder $responder,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->checkout->removeCoupon($this->cookie->owner($request), PathParameter::string($request, 'code')));
+        return $this->responder->ok($this->codes->removeCoupon($this->cookie->owner($request), PathParameter::string($request, 'code')));
     }
 }

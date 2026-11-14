@@ -22,6 +22,7 @@ use OrillaCart\Returns\Application\Dto\RefundReturn;
 use OrillaCart\Returns\Application\Dto\RequestReturn;
 use OrillaCart\Returns\Application\Dto\ReturnedItemView;
 use OrillaCart\Returns\Application\Dto\ReturnItem;
+use OrillaCart\Returns\Application\ReturnAmounts;
 use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Returns\Domain\ReturnRuleViolation;
 use OrillaCart\Returns\Domain\WithdrawalOrderNotFound;
@@ -234,7 +235,7 @@ final class ReturnsTest extends TestCase
         // The second request read the return as received; the first one refunds it while the second waits for the
         // order's lock, and the second reads the return again under it.
         $racing = new RacingReturnRepository($this->shop->returnRecords, fn() => $this->shop->returns->refund($return->id, new RefundReturn(outside: true), 7));
-        $second = new Returns($racing, $this->shop->orders, $this->shop->orderRefunds, $this->shop->refunds, $this->shop->settingsService, $this->shop->clock, new GettextTranslations(), $this->shop->jobs->jobs, new EarnedItems($this->shop->couponRecords, $this->shop->content, new \OrillaCart\GiftCards\Application\GiftCardProducts($this->shop->giftCardSettings)));
+        $second = new Returns($racing, $this->shop->orders, $this->shop->orderRefunds, $this->shop->refunds, $this->shop->settingsService, $this->shop->clock, new GettextTranslations(), $this->shop->jobs->jobs, new ReturnAmounts($racing, $this->shop->refunds, $this->shop->settingsService, new EarnedItems($this->shop->couponRecords, $this->shop->content, new \OrillaCart\GiftCards\Application\GiftCardProducts($this->shop->giftCardSettings))));
 
         try {
             $second->refund($return->id, new RefundReturn(outside: true), 7);

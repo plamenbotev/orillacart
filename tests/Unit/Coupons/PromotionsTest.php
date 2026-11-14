@@ -174,7 +174,7 @@ final class PromotionsTest extends TestCase
         $first = new CartOwner($this->cart([10, 1])->token, $ada);
         self::assertCount(1, $this->shop->promotionProgress->of($first));
 
-        $this->shop->checkout->applyCoupon($first, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($first, new CouponCode('ONCE'));
         $this->placeOrder($first);
         self::assertSame([], $this->shop->promotionProgress->of(new CartOwner($this->cart([10, 1])->token, $ada)));
     }

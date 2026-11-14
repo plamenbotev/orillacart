@@ -77,7 +77,7 @@ final class GiftCardProductsAtCheckoutTest extends TestCase
         $owner = $this->cart([10, 1], [20, 1]);
 
         $this->expectExceptionMessage('This code needs an order of at least 50 EUR.');
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
     }
 
     public function testGiftCardsAndStoreCreditDoNotPayForAGiftCard(): void
@@ -85,7 +85,7 @@ final class GiftCardProductsAtCheckoutTest extends TestCase
         $issued = $this->shop->giftCards->issue(new IssueGiftCard('30'), 1);
         $owner = $this->cart([20, 1]);
 
-        $summary = $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
+        $summary = $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
         self::assertSame(['0', 'Gift cards are bought with money only: not with gift cards or store credit.'], [$summary->giftCardTotal, (string) $summary->giftCards[0]->refused]);
         try {
             $this->shop->checkout->placeOrder($owner, $this->order());
@@ -97,7 +97,7 @@ final class GiftCardProductsAtCheckoutTest extends TestCase
         $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
         $this->shop->giftCards->adjustStoreCredit($ada, new AdjustBalance('20', 'Sorry'), 1);
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $ada), new AddToCart(20))->newToken, $ada);
-        $summary = $this->shop->checkout->useStoreCredit($owner, true);
+        $summary = $this->shop->checkoutCodes->useStoreCredit($owner, true);
         self::assertSame(['0', '0', false], [$summary->storeCredit, $summary->giftCardTotal, $summary->usingStoreCredit]);
     }
 
@@ -107,7 +107,7 @@ final class GiftCardProductsAtCheckoutTest extends TestCase
         $issued = $this->shop->giftCards->issue(new IssueGiftCard('30'), 1);
         $owner = $this->cart([20, 1]);
 
-        $summary = $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
+        $summary = $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
 
         self::assertSame(['25', null], [$summary->giftCardTotal, $summary->giftCards[0]->refused]);
     }

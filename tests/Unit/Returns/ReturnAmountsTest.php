@@ -75,7 +75,7 @@ final class ReturnAmountsTest extends TestCase
     {
         $this->shop->coupons->create(new SaveCoupon('BIG', 'order_amount', '30', minSubtotal: '100'));
         $owner = $this->cart([30, 1], [40, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
         $receipt = $this->shipped($owner);
 
         $shade = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));
@@ -90,7 +90,7 @@ final class ReturnAmountsTest extends TestCase
     {
         $this->shop->coupons->create(new SaveCoupon('BIG', 'order_amount', '30', minSubtotal: '101'));
         $owner = $this->cart([10, 1], [20, 3]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
         $receipt = $this->shipped($owner);
 
         $keychain = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(1, 1)], 'no_longer_needed')));
@@ -110,7 +110,7 @@ final class ReturnAmountsTest extends TestCase
         $owner = $this->cart([50, 3]);
         $this->shop->products->save(50, new SaveProduct('20', weight: '1', stockMode: 'always_available'));
         $this->shop->coupons->create(new SaveCoupon('THIRD', 'order_amount', '40'));
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('THIRD'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('THIRD'));
         $receipt = $this->shipped($owner);
 
         $amounts = [];
@@ -161,7 +161,7 @@ final class ReturnAmountsTest extends TestCase
     {
         $this->shop->coupons->create(new SaveCoupon('BIG', 'order_amount', '30', minSubtotal: '100'));
         $owner = $this->cart([30, 2]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
         $receipt = $this->shipped($owner);
 
         $first = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));
@@ -176,7 +176,7 @@ final class ReturnAmountsTest extends TestCase
         $this->shop->carriers->create(new SaveCarrier('Courier', rates: [new SaveShippingRate('Anywhere', '20')]));
         $this->shop->coupons->create(new SaveCoupon('BIG', 'order_amount', '30', minSubtotal: '100'));
         $owner = $this->cart([40, 3]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
         $receipt = $this->shipped($owner);
 
         $amounts = [];
@@ -232,7 +232,7 @@ final class ReturnAmountsTest extends TestCase
         $this->shop->coupons->create(new SaveCoupon('', 'free_gift', '0', 'Keychain with a lamp or shade', productIds: [10, 30], combines: true, automatic: true, getQuantity: 1, giftProductId: 20));
         $this->shop->coupons->create(new SaveCoupon('HALF', 'percent', '50', productIds: [30], combines: true));
         $owner = $this->cart([10, 1], [30, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('HALF'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('HALF'));
         $receipt = $this->shipped($owner);
         $shade = array_key_first(array_filter($this->shop->orders->order($this->number)->lines, static fn($line): bool => $line->productId === 30));
         self::assertNotNull($shade);
@@ -249,7 +249,7 @@ final class ReturnAmountsTest extends TestCase
         $this->shop->giftCardSettings->save(new GiftCardSettings([60]));
         $this->shop->coupons->create(new SaveCoupon('BIG', 'order_amount', '30', minSubtotal: '100'));
         $owner = $this->cart([30, 1], [40, 1], [60, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
         $receipt = $this->shipped($owner);
 
         $shade = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));
@@ -263,7 +263,7 @@ final class ReturnAmountsTest extends TestCase
         $this->shop->chosenCurrency->currency = 'PLN';
         $this->shop->coupons->create(new SaveCoupon('BIG', 'order_amount', '30', minSubtotal: '100'));
         $owner = $this->cart([30, 1], [40, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
         $receipt = $this->shipped($owner);
 
         $shade = $this->refunded($this->shop->returns->request($receipt, new RequestReturn([new ReturnItem(0, 1)], 'no_longer_needed')));

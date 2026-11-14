@@ -107,7 +107,7 @@ final class PriceRulesTest extends TestCase
 
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
         $this->shop->carts->add($owner, new AddToCart(20));
-        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'));
         self::assertSame(['0', '0.5'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'the lamp at its trade price keeps the code out; the bulb takes it');
 
         $this->shop->coupons->create(new SaveCoupon('', 'order_amount', '5', '5 off', automatic: true, combines: true));
@@ -117,11 +117,11 @@ final class PriceRulesTest extends TestCase
         // A code the shop made to apply even there (a staff code) comes off it.
         $only = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
         $this->shop->coupons->create(new SaveCoupon('STAFF', 'percent', '20', 'Staff', overridesPriceRules: true));
-        self::assertSame('6', $this->shop->checkout->applyCoupon($only, new CouponCode('STAFF'))->lines[0]->discount, '20 % of the trade price');
-        $this->shop->checkout->removeCoupon($only, 'STAFF');
+        self::assertSame('6', $this->shop->checkoutCodes->applyCoupon($only, new CouponCode('STAFF'))->lines[0]->discount, '20 % of the trade price');
+        $this->shop->checkoutCodes->removeCoupon($only, 'STAFF');
 
         $this->expectExceptionMessage('This code does not apply to the items in your cart.');
-        $this->shop->checkout->applyCoupon($only, new CouponCode('TEN'));
+        $this->shop->checkoutCodes->applyCoupon($only, new CouponCode('TEN'));
     }
 
     public function testCodesComeOffWhenACombiningRuleThatKeepsThemOutDoesNotLowerThePrice(): void
@@ -131,7 +131,7 @@ final class PriceRulesTest extends TestCase
         $this->rule('Members from 3', [new PriceTierData(3, 'percent', '5')], combines: true, withCoupons: false);
 
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken);
-        self::assertSame('3.6', $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'))->lines[0]->discount, 'one lamp: the members\' rule does not price it');
+        self::assertSame('3.6', $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'))->lines[0]->discount, 'one lamp: the members\' rule does not price it');
         $this->shop->carts->add($owner, new AddToCart(10, quantity: 2));
         self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails())->lines[0]->discount, 'three: it does');
     }

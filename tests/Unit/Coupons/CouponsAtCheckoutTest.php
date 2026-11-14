@@ -63,7 +63,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('SPRING', 'percent', '10', description: 'Spring sale');
         $owner = $this->cart([10, 1], [20, 1]);
 
-        $this->shop->checkout->applyCoupon($owner, new CouponCode(' spring '));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode(' spring '));
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
 
         self::assertSame(['50', '5', '9', '5', '1', '60'], [$summary->subtotal, $summary->discount, $summary->itemsTax, $summary->shipping, $summary->shippingTax, $summary->total], 'tax is on 45');
@@ -84,7 +84,7 @@ final class CouponsAtCheckoutTest extends TestCase
 
         foreach (['NOPE' => 'This code is not valid.', 'BIG' => 'This code needs an order of at least 100 EUR.', 'OLD' => 'This code has expired.'] as $code => $reason) {
             try {
-                $this->shop->checkout->applyCoupon($owner, new CouponCode($code));
+                $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode($code));
                 self::fail($code);
             } catch (CheckoutRuleViolation $e) {
                 self::assertSame([$reason, 'orillacart_coupon_refused'], [$e->getMessage(), $e->errorCode]);
@@ -98,7 +98,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('LAMPS', 'item_amount', '50', categoryIds: [1]);
         $owner = $this->cart([10, 2], [20, 1]);
 
-        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('LAMPS'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('LAMPS'));
 
         self::assertSame(['80', '0'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'at most what the lamps cost; the parent category counts');
     }
@@ -110,20 +110,20 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('ALONE', 'order_amount', '5');
         $owner = $this->cart([10, 1]);
 
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('SHIP'));
-        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('SHIP'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'));
         self::assertSame(['4', '0'], [$summary->discount, $summary->shipping]);
         $this->expectExceptionMessage('This code cannot be used together with your other codes.');
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('ALONE'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('ALONE'));
     }
 
     public function testAUsedUpCodeIsRefusedAndACancelledOrderGivesItsUseBack(): void
     {
         $this->coupon('ONCE', 'percent', '10', usageLimit: 1);
         $first = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($first, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($first, new CouponCode('ONCE'));
         $second = $this->cart([20, 1]);
-        $this->shop->checkout->applyCoupon($second, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($second, new CouponCode('ONCE'));
 
         $placed = $this->shop->checkout->placeOrder($first, $this->order());
         try {
@@ -165,7 +165,7 @@ final class CouponsAtCheckoutTest extends TestCase
     {
         $this->coupon('WELCOME', 'percent', '10', firstOrderOnly: true);
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('WELCOME'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('WELCOME'));
         // Priced as a first order before the other was placed, counted after it.
         $priced = new AppliedCoupon('WELCOME', '', '4', false, [0 => '4']);
         $this->shop->checkout->placeOrder($owner, $this->order());
@@ -197,7 +197,7 @@ final class CouponsAtCheckoutTest extends TestCase
 
         foreach (['WELCOME' => 'This code is for a first order only.', 'MINE' => null] as $code => $reason) {
             $owner = $this->cart([10, 1]);
-            $this->shop->checkout->applyCoupon($owner, new CouponCode($code));
+            $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode($code));
             try {
                 $this->shop->checkout->placeOrder($owner, $this->order());
                 self::assertNull($reason, $code);
@@ -206,7 +206,7 @@ final class CouponsAtCheckoutTest extends TestCase
             }
         }
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('MINE'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('MINE'));
         $this->expectExceptionMessage('You have already used this code.');
         $this->shop->checkout->placeOrder($owner, $this->order());
     }
@@ -215,7 +215,7 @@ final class CouponsAtCheckoutTest extends TestCase
     {
         $this->coupon('TEN', 'percent', '10');
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'));
         $placed = $this->shop->checkout->placeOrder($owner, $this->order());
 
         $edited = $this->shop->editing->edit($placed->number, new EditOrderItems([new EditedItem(10, 2)], "rate:{$this->rate}"), 1);
@@ -228,7 +228,7 @@ final class CouponsAtCheckoutTest extends TestCase
     {
         $this->coupon('WELCOME', 'percent', '10', firstOrderOnly: true);
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('WELCOME'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('WELCOME'));
         $placed = $this->shop->checkout->placeOrder($owner, $this->order());
 
         $edited = $this->shop->editing->edit($placed->number, new EditOrderItems([new EditedItem(10, 2)], "rate:{$this->rate}"), 1);
@@ -248,14 +248,14 @@ final class CouponsAtCheckoutTest extends TestCase
         $summary = $this->shop->checkout->summary($large, new CheckoutDetails());
         self::assertSame([['10 % off orders over 60', '8', true]], array_map(static fn($coupon): array => [$coupon->description, $coupon->amount, $coupon->automatic], $summary->coupons));
         try {
-            $this->shop->checkout->applyCoupon($large, new CouponCode($discount->code));
+            $this->shop->checkoutCodes->applyCoupon($large, new CouponCode($discount->code));
             self::fail('its code is not for entering');
         } catch (CheckoutRuleViolation $e) {
             self::assertSame('This code is not valid.', $e->getMessage());
         }
 
         $this->coupon('TEN', 'order_amount', '10', combines: true);
-        $this->shop->checkout->applyCoupon($large, new CouponCode('TEN'));
+        $this->shop->checkoutCodes->applyCoupon($large, new CouponCode('TEN'));
         $placed = $this->shop->checkout->placeOrder($large, $this->order());
         $order = $this->shop->orders->order($placed->number);
         self::assertSame([[true, '8'], [false, '10']], array_map(static fn($used): array => [$used->automatic, $used->amount], $order->discounts), 'the code takes off what the automatic discount left');
@@ -269,12 +269,12 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('ALONE', 'order_amount', '5');
         $cart = $this->cart([10, 2]);
 
-        $this->shop->checkout->applyCoupon($cart, new CouponCode('TEN'));
+        $this->shop->checkoutCodes->applyCoupon($cart, new CouponCode('TEN'));
         self::assertSame(['8', '10'], array_map(static fn($coupon): string => $coupon->amount, $this->shop->checkout->summary($cart, new CheckoutDetails())->coupons), 'an automatic discount that does not combine still goes with a code');
 
-        $this->shop->checkout->removeCoupon($cart, 'TEN');
+        $this->shop->checkoutCodes->removeCoupon($cart, 'TEN');
         try {
-            $this->shop->checkout->applyCoupon($cart, new CouponCode('ALONE'));
+            $this->shop->checkoutCodes->applyCoupon($cart, new CouponCode('ALONE'));
             self::fail('a code that stands alone');
         } catch (CheckoutRuleViolation $e) {
             self::assertSame('This code cannot be combined with 10 % off orders over 60.', $e->getMessage());
@@ -287,7 +287,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('BIG', 'order_amount', '5', minSubtotal: '75', combines: true);
         $cart = $this->cart([10, 2]);
 
-        $this->shop->checkout->applyCoupon($cart, new CouponCode('BIG'));
+        $this->shop->checkoutCodes->applyCoupon($cart, new CouponCode('BIG'));
 
         self::assertSame(['8', '5'], array_map(static fn($coupon): string => $coupon->amount, $this->shop->checkout->summary($cart, new CheckoutDetails())->coupons), '80 of items, though 72 is left after the first discount');
     }
@@ -298,12 +298,12 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('ONCE', 'order_amount', '5', perCustomerLimit: 1);
         $first = $this->cart([10, 1]);
         $first = new CartOwner($first->token, $ada);
-        $this->shop->checkout->applyCoupon($first, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($first, new CouponCode('ONCE'));
         $this->shop->checkout->placeOrder($first, $this->order());
 
         $again = new CartOwner($this->cart([10, 1])->token, $ada);
         $this->expectExceptionMessage('You have already used this code.');
-        $this->shop->checkout->applyCoupon($again, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($again, new CouponCode('ONCE'));
     }
 
     public function testBuyTwoGetOneFreeGivesTheCheapestItems(): void
@@ -311,21 +311,21 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->coupons->create(new SaveCoupon('THREE', 'buy_get', '100', buyQuantity: 2, getQuantity: 1));
 
         $owner = $this->cart([10, 2], [20, 1]);
-        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('THREE'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('THREE'));
         self::assertSame(['0', '10'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'two lamps bought, the shade given');
 
         $owner = $this->cart([10, 3], [20, 3]);
-        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('THREE'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('THREE'));
         self::assertSame(['0', '20'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'two rounds: two lamps and a shade, then a lamp, a shade and a shade');
 
-        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'));
         self::assertCount(2, $summary->lines, 'two lamps: the shop adds the third, the one given');
         self::assertSame([true, 1, '40', '40'], [$summary->lines[1]->gift, $summary->lines[1]->quantity, $summary->lines[1]->total, $summary->lines[1]->discount]);
         self::assertSame('40', $summary->discount);
 
-        self::assertCount(1, $this->shop->checkout->applyCoupon($this->cart([10, 3]), new CouponCode('THREE'))->lines, 'the third is the one given already');
-        self::assertCount(2, $this->shop->checkout->applyCoupon($this->cart([10, 5]), new CouponCode('THREE'))->lines, 'five: a sixth given');
-        self::assertCount(1, $this->shop->checkout->applyCoupon($this->cart([10, 4]), new CouponCode('THREE'))->lines, 'four: one round, a lamp short of the next');
+        self::assertCount(1, $this->shop->checkoutCodes->applyCoupon($this->cart([10, 3]), new CouponCode('THREE'))->lines, 'the third is the one given already');
+        self::assertCount(2, $this->shop->checkoutCodes->applyCoupon($this->cart([10, 5]), new CouponCode('THREE'))->lines, 'five: a sixth given');
+        self::assertCount(1, $this->shop->checkoutCodes->applyCoupon($this->cart([10, 4]), new CouponCode('THREE'))->lines, 'four: one round, a lamp short of the next');
     }
 
     public function testBuyGetAtAPriceLeavesTheItemsToTheShopper(): void
@@ -333,16 +333,16 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->coupons->create(new SaveCoupon('HALF', 'buy_get', '50', buyQuantity: 2, getQuantity: 1));
 
         $this->expectExceptionMessage('This code needs 3 of the items it applies to: 2 to buy and 1 it gives.');
-        $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('HALF'));
+        $this->shop->checkoutCodes->applyCoupon($this->cart([10, 2]), new CouponCode('HALF'));
     }
 
     public function testBuyingSomeGivesTheOneProductItNamesFree(): void
     {
         $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '100', productIds: [10], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
 
-        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('SHADE'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($this->cart([10, 2]), new CouponCode('SHADE'));
         self::assertSame([true, 2, '20'], [$summary->lines[1]->gift, $summary->lines[1]->quantity, $summary->discount], 'a shade for each lamp');
-        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2], [20, 1]), new CouponCode('SHADE'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($this->cart([10, 2], [20, 1]), new CouponCode('SHADE'));
         self::assertSame([3, 1, '20'], [\count($summary->lines), $summary->lines[2]->quantity, $summary->discount], 'one shade the shopper chose, one added');
     }
 
@@ -351,7 +351,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->content->terms[20] = ['categories' => [7], 'brands' => []];
         $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '100', productIds: [10], excludedCategoryIds: [7], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
 
-        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 1]), new CouponCode('SHADE'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($this->cart([10, 1]), new CouponCode('SHADE'));
         self::assertSame([1, '0'], [\count($summary->lines), $summary->discount], 'the shade is left out of the code: not the shopper\'s to pay for');
     }
 
@@ -361,18 +361,18 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->stock->setLevels(StockItemRef::product(10), new SetStockLevels([new SetStockLevel($room, 2)]));
         $this->shop->coupons->create(new SaveCoupon('THREE', 'buy_get', '100', buyQuantity: 2, getQuantity: 1));
 
-        self::assertCount(1, $this->shop->checkout->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'))->lines, 'two in stock, both in the cart');
+        self::assertCount(1, $this->shop->checkoutCodes->applyCoupon($this->cart([10, 2]), new CouponCode('THREE'))->lines, 'two in stock, both in the cart');
     }
 
     public function testBuyingSomeItemsGivesOthersAPercentageOff(): void
     {
         $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '50', productIds: [10], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
 
-        $summary = $this->shop->checkout->applyCoupon($this->cart([10, 2], [20, 3]), new CouponCode('SHADE'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($this->cart([10, 2], [20, 3]), new CouponCode('SHADE'));
         self::assertSame(['0', '10'], [$summary->lines[0]->discount, $summary->lines[1]->discount], 'a shade at half price for each lamp');
 
         $this->expectExceptionMessage('Add the items this code gives off to your cart.');
-        $this->shop->checkout->applyCoupon($this->cart([10, 1]), new CouponCode('SHADE'));
+        $this->shop->checkoutCodes->applyCoupon($this->cart([10, 1]), new CouponCode('SHADE'));
     }
 
     public function testTheItemsBuyGetGivesAreLeftOutAsAnyCouponLeavesThemOut(): void
@@ -381,7 +381,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->coupons->create(new SaveCoupon('SHADE', 'buy_get', '50', productIds: [10], excludedCategoryIds: [7], buyQuantity: 1, getQuantity: 1, getProductIds: [20]));
 
         $this->expectExceptionMessage('Add the items this code gives off to your cart.');
-        $this->shop->checkout->applyCoupon($this->cart([10, 2], [20, 3]), new CouponCode('SHADE'));
+        $this->shop->checkoutCodes->applyCoupon($this->cart([10, 2], [20, 3]), new CouponCode('SHADE'));
     }
 
     public function testFreeShippingIsTheCheapestWayToShipUnlessTheCodeGivesEvery(): void
@@ -389,14 +389,14 @@ final class CouponsAtCheckoutTest extends TestCase
         $express = $this->shop->carriers->create(new SaveCarrier('Express', rates: [new SaveShippingRate('Bulgaria', '15', regions: ['BG'])]))->rates[0]->id;
         $this->coupon('SHIP', 'free_shipping', '0');
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('SHIP'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('SHIP'));
 
         self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"))->shipping, 'the cheapest is free');
         self::assertSame('15', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$express}"))->shipping, 'express still costs what it costs');
 
         $this->shop->coupons->create(new SaveCoupon('ALLSHIP', 'free_shipping', '0', freeShippingEveryRate: true));
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('ALLSHIP'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('ALLSHIP'));
         self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$express}"))->shipping, 'unless the code gives every way');
     }
 
@@ -405,7 +405,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->shop->carriers->create(new SaveCarrier('Pickup', pickupLocations: [new SavePickupLocation('shop', 'The shop', 'Main St')]));
         $this->coupon('SHIP', 'free_shipping', '0');
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('SHIP'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('SHIP'));
 
         self::assertSame('0', $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"))->shipping, 'delivery is free, though collecting costs nothing too');
     }
@@ -469,12 +469,12 @@ final class CouponsAtCheckoutTest extends TestCase
         $owner = $this->cart([10, 1]);
         for ($i = 1; $i <= Discounts::MAX_CODES; ++$i) {
             $this->coupon("C{$i}", 'order_amount', '1', combines: true);
-            $this->shop->checkout->applyCoupon($owner, new CouponCode("C{$i}"));
+            $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode("C{$i}"));
         }
         $this->coupon('C11', 'order_amount', '1', combines: true);
 
         $this->expectExceptionMessage('An order takes up to 10 codes.');
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('C11'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('C11'));
     }
 
     public function testAFirstOrderDiscountWaitsForTheEmailSoAReturningGuestOrdersWhatTheySaw(): void
@@ -498,12 +498,12 @@ final class CouponsAtCheckoutTest extends TestCase
         $this->coupon('WELCOME', 'percent', '10', firstOrderOnly: true);
         $this->coupon('ONCE', 'percent', '5', perCustomerLimit: 1);
         $first = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($first, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($first, new CouponCode('ONCE'));
         $this->shop->checkout->placeOrder($first, $this->order());
 
         foreach (['WELCOME' => 'This code is for a first order only.', 'ONCE' => 'You have already used this code.'] as $code => $reason) {
             $owner = $this->cart([10, 1]);
-            $this->shop->checkout->applyCoupon($owner, new CouponCode($code));
+            $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode($code));
             try {
                 $this->shop->checkout->placeOrder($owner, new PlaceOrder('Ada+again@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'));
                 self::fail("{$code} again");
@@ -517,12 +517,12 @@ final class CouponsAtCheckoutTest extends TestCase
     {
         $this->coupon('ONCE', 'percent', '10', usageLimit: 1);
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('ONCE'));
         $placed = $this->shop->checkout->placeOrder($owner, $this->order());
         $this->shop->orderPayments->fail($placed->number, 'The payment failed.');
         self::assertSame(0, $this->shop->coupons->coupon(1)->uses);
         $other = $this->cart([20, 1]);
-        $this->shop->checkout->applyCoupon($other, new CouponCode('ONCE'));
+        $this->shop->checkoutCodes->applyCoupon($other, new CouponCode('ONCE'));
         $this->shop->checkout->placeOrder($other, new PlaceOrder('grace@example.com', new AddressData('Grace', 'Hopper', '2 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0001'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'));
         self::assertSame(1, $this->shop->coupons->coupon(1)->uses);
 

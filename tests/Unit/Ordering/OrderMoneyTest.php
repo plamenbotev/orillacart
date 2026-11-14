@@ -193,7 +193,7 @@ final class OrderMoneyTest extends TestCase
     private function place(?int $customerId = null): int
     {
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $customerId), new AddToCart(10, quantity: 2))->newToken, $customerId);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('SPRING'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('SPRING'));
         $address = new AddressData('Ada', 'Lovelace', '1 Main St', 'Los Angeles', '90012', 'US', '+1 213 000 0000', 'CA');
 
         return $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', $address, shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'))->number;

@@ -59,7 +59,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertMatchesRegularExpression('/^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/', $issued->code);
         $owner = $this->cart([10, 1]);
 
-        $summary = $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput(strtolower(str_replace('-', ' ', $issued->code))));
+        $summary = $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput(strtolower(str_replace('-', ' ', $issued->code))));
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
         self::assertSame(['54', '30', '24', true], [$summary->total, $summary->giftCardTotal, $summary->amountDue, $summary->needsPayment]);
         self::assertSame([['Gift card ····' . substr($issued->code, -4), '30', null]], array_map(static fn($card): array => [(string) $card->label, $card->amount, $card->refused], $summary->giftCards));
@@ -133,7 +133,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $issued = $this->shop->giftCards->issue(new IssueGiftCard('100'), 1);
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
+        $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
 
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
         self::assertSame(['54', '0', false, []], [$summary->giftCardTotal, $summary->amountDue, $summary->needsPayment, $summary->paymentMethods]);
@@ -149,7 +149,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $owner = $this->cart([10, 1]);
         foreach (['NOT A CODE', 'AAAA-BBBB-CCCC-DDDD'] as $code) {
             try {
-                $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($code));
+                $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($code));
                 self::fail($code);
             } catch (CheckoutRuleViolation $e) {
                 self::assertSame('This gift card is not valid.', $e->getMessage());
@@ -157,7 +157,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         }
 
         $issued = $this->shop->giftCards->issue(new IssueGiftCard('10', expiresAt: '2026-11-01T00:00:00+00:00'), 1);
-        $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
+        $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
         $this->shop->clock->modify('+1 month');
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG'));
         self::assertSame([[$issued->code, 'This gift card has expired.']], array_map(static fn($card): array => [$card->code, (string) $card->refused], $summary->giftCards));
@@ -170,7 +170,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $issued = $this->shop->giftCards->issue(new IssueGiftCard('30'), 1);
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
+        $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
         $plan = $this->shop->giftCardPayments->plan([$issued->code], null, false, \OrillaCart\Shared\Domain\Money::of('54'), 'EUR');
         $this->shop->giftCards->adjust(self::id($issued->card), new AdjustBalance('-10', 'Spent in the shop downstairs'), 1);
 
@@ -187,7 +187,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
 
         $summary = $this->shop->checkout->summary($owner, new CheckoutDetails('BG', shippingOption: "rate:{$this->rate}"));
         self::assertSame(['20', false, '0'], [$summary->storeCredit, $summary->usingStoreCredit, $summary->giftCardTotal], 'offered, not used until asked');
-        $summary = $this->shop->checkout->useStoreCredit($owner, true);
+        $summary = $this->shop->checkoutCodes->useStoreCredit($owner, true);
         self::assertSame([true, '20'], [$summary->usingStoreCredit, $summary->giftCardTotal]);
 
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'));
@@ -195,7 +195,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertSame('0', $this->shop->giftCards->storeCredit($ada)->card->balance);
 
         $this->expectExceptionMessage('Log in to use your store credit.');
-        $this->shop->checkout->useStoreCredit($this->cart([10, 1]), true);
+        $this->shop->checkoutCodes->useStoreCredit($this->cart([10, 1]), true);
     }
 
     public function testTheShopTakesOffNoMoreStoreCreditThanThereIs(): void
@@ -318,7 +318,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
         $this->shop->coupons->create(new SaveCoupon('TEN', 'order_amount', '10'));
         $owner = $this->cart([20, 3]);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'));
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer', null));
         $this->shop->orderPayments->markPaid($placed->number, null);
 
@@ -353,11 +353,11 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $owner = $this->cart([10, 1]);
         for ($i = 0; $i < 5; ++$i) {
-            $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($this->shop->giftCards->issue(new IssueGiftCard('1'), 1)->code));
+            $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($this->shop->giftCards->issue(new IssueGiftCard('1'), 1)->code));
         }
 
         $this->expectExceptionMessage('An order takes up to 5 gift cards.');
-        $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($this->shop->giftCards->issue(new IssueGiftCard('1'), 1)->code));
+        $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($this->shop->giftCards->issue(new IssueGiftCard('1'), 1)->code));
     }
 
     /** @return list<\OrillaCart\GiftCards\Application\Dto\GiftCardView> by id */
@@ -376,7 +376,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $issued = $this->shop->giftCards->issue(new IssueGiftCard('30'), 1);
         $owner = $this->cart([10, 1]);
-        $this->shop->checkout->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
+        $this->shop->checkoutCodes->applyGiftCard($owner, new GiftCardCodeInput($issued->code));
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('paypal'));
         $this->shop->payPalApi->captureStatus = 'DECLINED';
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);

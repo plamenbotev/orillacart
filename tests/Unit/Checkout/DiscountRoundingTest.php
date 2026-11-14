@@ -28,7 +28,7 @@ final class DiscountRoundingTest extends TestCase
         $shop->coupons->create(new SaveCoupon('', 'percent', '10', '10 % off', combines: true, automatic: true));
         $shop->coupons->create(new SaveCoupon('FREE', 'percent', '100', 'On the house', combines: true));
         $owner = new CartOwner($shop->carts->add(new CartOwner(null), new AddToCart(20))->newToken);
-        $shop->checkout->applyCoupon($owner, new CouponCode('FREE'));
+        $shop->checkoutCodes->applyCoupon($owner, new CouponCode('FREE'));
 
         // 10 % of 9.95 is 0.995, rounded 1.00; 100 % of the 8.955 left would round to 8.96, a cent more than is left.
         $summary = $shop->checkout->summary($owner, new CheckoutDetails('BG', billingCountry: 'BG'));

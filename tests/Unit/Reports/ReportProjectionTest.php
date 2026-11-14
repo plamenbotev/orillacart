@@ -121,7 +121,7 @@ final class ReportProjectionTest extends TestCase
         $this->shop->products->save(20, new SaveProduct('12', 'virtual'));
         $this->shop->coupons->create(new SaveCoupon('TEN', 'percent', '10', '10 % off'));
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(20, quantity: 2))->newToken);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'));
         $order = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
 
         $facts = $this->store->facts[$order->number];

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Http;
 
 use OrillaCart\Cart\Http\CartCookie;
-use OrillaCart\Checkout\Application\CheckoutService;
+use OrillaCart\Checkout\Application\CheckoutCodes;
 use OrillaCart\GiftCards\Application\Dto\GiftCardCodeInput;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
@@ -18,7 +18,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class ApplyGiftCardAction implements RequestHandlerInterface
 {
     public function __construct(
-        private CheckoutService $checkout,
+        private CheckoutCodes $codes,
         private CartCookie $cookie,
         private RequestMapper $input,
         private JsonResponder $responder,
@@ -26,6 +26,6 @@ final readonly class ApplyGiftCardAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->checkout->applyGiftCard($this->cookie->owner($request), $this->input->body($request, GiftCardCodeInput::class)));
+        return $this->responder->ok($this->codes->applyGiftCard($this->cookie->owner($request), $this->input->body($request, GiftCardCodeInput::class)));
     }
 }

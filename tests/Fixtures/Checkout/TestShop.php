@@ -31,6 +31,7 @@ use OrillaCart\Catalog\Infrastructure\Events\ConvertMeasures as ConvertProductMe
 use OrillaCart\Catalog\Infrastructure\Events\RecordPriceChanges;
 use OrillaCart\Checkout\Application\AddressChecks;
 use OrillaCart\Checkout\Application\AddressRules;
+use OrillaCart\Checkout\Application\CheckoutCodes;
 use OrillaCart\Checkout\Application\CheckoutFields;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\EmailConfirmations;
@@ -157,6 +158,7 @@ use OrillaCart\Platform\Twig\ShopExtension;
 use OrillaCart\Platform\Twig\Strictness;
 use OrillaCart\Platform\Twig\TwigFactory;
 use OrillaCart\Platform\Twig\TwigRenderer;
+use OrillaCart\Returns\Application\ReturnAmounts;
 use OrillaCart\Returns\Application\ReturnedOrders;
 use OrillaCart\Returns\Application\Returns;
 use OrillaCart\Returns\Application\SendWithdrawalAcknowledgements;
@@ -389,6 +391,7 @@ final class TestShop
     public readonly ListedOrderLookups $orderLookups;
     public readonly InMemoryReturnRepository $returnRecords;
     public readonly CheckoutService $checkout;
+    public readonly CheckoutCodes $checkoutCodes;
     public readonly PayNow $payNow;
     public readonly PriceHistory $priceHistory;
     public readonly InMemoryPriceHistory $pricePoints;
@@ -641,10 +644,11 @@ final class TestShop
             new CallerKeys($this->signatures),
             $this->emailConfirmations = new EmailConfirmations($this->signatures, $this->jobs->jobs, $this->clock, new InMemoryConfirmedEmails()),
         );
+        $this->checkoutCodes = new CheckoutCodes($this->carts, $this->pricing, $this->giftCardPayments, $this->currencies, $this->checkout);
         $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
         $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);
         $this->reorder = new Reorder($this->orders, $this->carts);
-        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->orderRefunds, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content, $giftCardProducts));
+        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->orderRefunds, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new ReturnAmounts($this->returnRecords, $this->refunds, $settings, new EarnedItems($this->couponRecords, $this->content, $giftCardProducts)));
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));
         $this->withdrawals = new \OrillaCart\Returns\Application\WithdrawalRequests($this->returns, $this->orders, $this->signatures, $this->jobs->jobs, $this->clock);
         $this->payNow = new PayNow($this->orders, $this->orderPayments, $paymentOptions, $payments, $links, $fees, $this->currencies, $this->pricing);

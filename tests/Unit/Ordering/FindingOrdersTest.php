@@ -68,7 +68,7 @@ final class FindingOrdersTest extends TestCase
     {
         $this->shop->coupons->create(new SaveCoupon('SPRING25', 'percent', '10', 'Spring'));
         $owner = $this->cart(20);
-        $this->shop->checkout->applyCoupon($owner, new CouponCode('SPRING25'));
+        $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('SPRING25'));
         $with = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', self::address(), payment: 'bank_transfer'))->number;
         $without = $this->place(20, 'bo@example.com', self::address());
 

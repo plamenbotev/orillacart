@@ -46,7 +46,7 @@ final class FailedOrderPaidLaterTest extends TestCase
         $numbers = [];
         for ($i = 0; $i < 3; ++$i) {
             $owner = $this->cart();
-            $this->shop->checkout->applyCoupon($owner, new CouponCode('WELCOME'));
+            $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('WELCOME'));
             $numbers[] = $number = $this->shop->checkout->placeOrder($owner, $this->order())->number;
             $this->shop->orderPayments->fail($number, 'Declined.');
         }
@@ -153,7 +153,7 @@ final class FailedOrderPaidLaterTest extends TestCase
     {
         $owner = $this->cart();
         if ($code !== null) {
-            $this->shop->checkout->applyCoupon($owner, new CouponCode($code));
+            $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode($code));
         }
         $number = $this->shop->checkout->placeOrder($owner, $this->order())->number;
         $this->shop->orderPayments->fail($number, 'Declined.');

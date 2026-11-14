@@ -17,7 +17,6 @@ use OrillaCart\Checkout\Application\Dto\CheckoutGiftCardView;
 use OrillaCart\Checkout\Application\Dto\CheckoutLineView;
 use OrillaCart\Checkout\Application\Dto\CheckoutTaxView;
 use OrillaCart\Checkout\Application\Dto\CheckoutView;
-use OrillaCart\Checkout\Application\Dto\CouponCode;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Checkout\Application\Dto\ShippingChoiceView;
@@ -34,7 +33,6 @@ use OrillaCart\Customers\Application\Dto\RegisterAccount;
 use OrillaCart\Customers\Domain\CustomerNotFound;
 use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Geography\Application\Dto\AddressData;
-use OrillaCart\GiftCards\Application\Dto\GiftCardCodeInput;
 use OrillaCart\GiftCards\Application\Dto\GiftCardPlan;
 use OrillaCart\GiftCards\Application\Dto\GiftCardUse;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
@@ -273,59 +271,6 @@ final readonly class CheckoutService
     }
 
     /**
-     * Enters a gift card code for the order, once it is one that can pay.
-     *
-     * @throws CheckoutRuleViolation for an empty cart, or a code that cannot pay
-     */
-    public function applyGiftCard(CartOwner $owner, GiftCardCodeInput $command): CheckoutView
-    {
-        $contents = $this->contents($owner);
-        $code = strtoupper(trim($command->code));
-        try {
-            $balance = $this->giftCards->balance($code, $this->currencies->current());
-        } catch (GiftCardRuleViolation $e) {
-            throw new CheckoutRuleViolation($e->text, 'orillacart_gift_card_refused', $e);
-        }
-        if ($balance->refused !== null) {
-            throw new CheckoutRuleViolation($balance->refused, 'orillacart_gift_card_refused');
-        }
-        if (!\in_array($code, $contents->giftCards, true) && \count($contents->giftCards) >= GiftCardPayments::MAX_CODES) {
-            throw new CheckoutRuleViolation('An order takes up to %d gift cards.', 'orillacart_gift_card_refused', values: [GiftCardPayments::MAX_CODES]);
-        }
-        $this->carts->useGiftCards($contents->cartId, array_values(array_unique([...$contents->giftCards, $code])), $contents->useStoreCredit);
-
-        return $this->summary($owner, new CheckoutDetails());
-    }
-
-    /**
-     * @throws CheckoutRuleViolation for an empty cart
-     */
-    public function removeGiftCard(CartOwner $owner, string $code): CheckoutView
-    {
-        $contents = $this->contents($owner);
-        $code = strtoupper(trim($code));
-        $this->carts->useGiftCards($contents->cartId, array_values(array_filter($contents->giftCards, static fn(string $kept): bool => $kept !== $code)), $contents->useStoreCredit);
-
-        return $this->summary($owner, new CheckoutDetails());
-    }
-
-    /**
-     * The logged-in customer pays with their store credit, as far as it goes, or stops.
-     *
-     * @throws CheckoutRuleViolation for an empty cart, or a visitor who is not logged in
-     */
-    public function useStoreCredit(CartOwner $owner, bool $use): CheckoutView
-    {
-        if ($owner->customerId === null) {
-            throw new CheckoutRuleViolation('Log in to use your store credit.', 'orillacart_store_credit_login');
-        }
-        $contents = $this->contents($owner);
-        $this->carts->useGiftCards($contents->cartId, $contents->giftCards, $use);
-
-        return $this->summary($owner, new CheckoutDetails());
-    }
-
-    /**
      * The shop's least order and how much more the items need, when they come to less after discounts.
      *
      * @param Money $items what the items come to after discounts, gift cards left out (OrderPricing's sized)
@@ -398,43 +343,6 @@ final readonly class CheckoutService
         $shop = $this->settings->current();
 
         return $shop->shopCountry === null || $shop->shopCountry === '' ? null : ['country' => $shop->shopCountry, 'state' => $shop->shopState, 'postcode' => $shop->shopPostcode, 'city' => null];
-    }
-
-    /**
-     * Adds a coupon code to the cart when it holds for what the cart has; rules about the address or the customer
-     * wait for checkout.
-     *
-     * @throws CheckoutRuleViolation for an empty cart, or a code that does not hold, saying why
-     */
-    public function applyCoupon(CartOwner $owner, CouponCode $command): CheckoutView
-    {
-        $contents = $this->contents($owner);
-        $code = Coupon::normalize($command->code);
-        $held = array_map(Coupon::normalize(...), $contents->coupons);
-        if (!\in_array($code, $held, true) && \count($held) >= Discounts::MAX_CODES) {
-            throw new CheckoutRuleViolation('An order takes up to %d codes.', 'orillacart_coupon_refused', values: [Discounts::MAX_CODES]);
-        }
-        $codes = array_values(array_unique([...$held, $code]));
-        $priced = $this->pricing->price($contents->lines, null, null, null, null, $codes, $owner->customerId, currency: $this->currencies->current());
-        $refused = $priced['discounts']->refused[$code] ?? null;
-        if ($refused !== null) {
-            throw new CheckoutRuleViolation($refused, 'orillacart_coupon_refused');
-        }
-        $this->carts->useCoupons($contents->cartId, $codes);
-
-        return $this->summary($owner, new CheckoutDetails());
-    }
-
-    /**
-     * @throws CheckoutRuleViolation for an empty cart
-     */
-    public function removeCoupon(CartOwner $owner, string $code): CheckoutView
-    {
-        $contents = $this->contents($owner);
-        $code = Coupon::normalize($code);
-        $this->carts->useCoupons($contents->cartId, array_values(array_filter(array_map(Coupon::normalize(...), $contents->coupons), static fn(string $kept): bool => $kept !== $code)));
-
-        return $this->summary($owner, new CheckoutDetails());
     }
 
     /**

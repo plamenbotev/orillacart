@@ -39,7 +39,7 @@ final class GivenItemsCountTowardsNoMinimumTest extends TestCase
         self::assertCount(2, $this->shop->carts->cart($owner)->cart->lines, 'the shade is given');
 
         try {
-            $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+            $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
             self::fail('the lamp is 40');
         } catch (CheckoutRuleViolation $e) {
             self::assertSame('This code needs an order of at least 100 EUR.', $e->getMessage());
@@ -50,7 +50,7 @@ final class GivenItemsCountTowardsNoMinimumTest extends TestCase
     {
         $owner = $this->cart(10, 30);
 
-        $summary = $this->shop->checkout->applyCoupon($owner, new CouponCode('BIG'));
+        $summary = $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('BIG'));
 
         self::assertSame(['BIG' => '30'], array_column(array_map(static fn($coupon): array => [$coupon->code, $coupon->amount], array_filter($summary->coupons, static fn($coupon): bool => $coupon->code === 'BIG')), 1, 0), 'the lamp and the shade bought come to 100');
     }

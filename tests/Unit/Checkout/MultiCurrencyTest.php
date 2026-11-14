@@ -118,13 +118,13 @@ final class MultiCurrencyTest extends TestCase
         $owner = $this->cart(1);
 
         try {
-            $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
+            $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'));
             self::fail('36.66 USD is under 50 EUR');
         } catch (RuleViolation $e) {
             self::assertSame('This code needs an order of at least 55 USD.', $e->getMessage());
         }
         $owner = $this->cart(2);
-        self::assertSame('11', $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'))->discount);
+        self::assertSame('11', $this->shop->checkoutCodes->applyCoupon($owner, new CouponCode('TEN'))->discount);
     }
 
     public function testACurrencyTheShopNoLongerOffersIsTheShopsOwn(): void
