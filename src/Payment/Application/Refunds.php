@@ -11,7 +11,6 @@ use OrillaCart\Extension\Payment\RefundRequest;
 use OrillaCart\Extension\Payment\RefundsPayments;
 use OrillaCart\Extension\ProviderUnavailable;
 use OrillaCart\Extension\Settings;
-use OrillaCart\GiftCards\Application\GiftCardService;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\RefundedView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
@@ -57,7 +56,7 @@ final readonly class Refunds
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private Transactions $transactions,
-        private GiftCardService $giftCards,
+        private StoreCredit $giftCards,
         private EventDispatcherInterface $events,
     ) {}
 

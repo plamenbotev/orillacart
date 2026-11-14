@@ -4,17 +4,8 @@ deptrac:
       - OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest
     OrillaCart\Audit\Infrastructure\WordPress\Hooks\RecordProductPostSaves:
       - OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType
-    OrillaCart\Catalog\Application\ProductService:
-      - OrillaCart\Shipping\Application\ShippingClassService
-      - OrillaCart\Tax\Application\TaxGroupService
-    OrillaCart\Catalog\Application\ProductTaxGroups:
-      - OrillaCart\Tax\Application\TaxGroupUse
     OrillaCart\Catalog\Http\ShowProductAction:
       - OrillaCart\Packages\Application\ExtensionFields
-    OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass:
-      - OrillaCart\Shipping\Domain\Event\ShippingClassDeleted
-    OrillaCart\Catalog\Infrastructure\WordPress\Admin\ProductListFilters:
-      - OrillaCart\Shipping\Application\ShippingClassService
     OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductPosts:
       - OrillaCart\Exchange\Application\Dto\ProductPost
       - OrillaCart\Exchange\Application\Dto\ProductPostChange
@@ -35,28 +26,12 @@ deptrac:
       - OrillaCart\Ordering\Application\OrderService
       - OrillaCart\Ordering\Domain\Event\OrderDeleted
       - OrillaCart\Ordering\Domain\Event\OrderPlaced
-    OrillaCart\Inventory\Http\ShowStockAction:
-      - OrillaCart\Catalog\Application\ProductTranslations
-    OrillaCart\Inventory\Http\UpdateStockAction:
-      - OrillaCart\Catalog\Application\ProductTranslations
-    OrillaCart\Inventory\Infrastructure\Events\ForgetStockOfRemovedItems:
-      - OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved
     OrillaCart\Invoicing\Application\EInvoices:
       - OrillaCart\Notifications\Application\EmailWriter
     OrillaCart\Newsletter\Infrastructure\WordPress\NewsletterUnsubscribeLinks:
       - OrillaCart\Notifications\Application\UnsubscribeLinks
     OrillaCart\Ordering\Http\ShowOrderAction:
       - OrillaCart\Packages\Application\ExtensionFields
-    OrillaCart\Ordering\Infrastructure\Events\FlagOrdersInQuestion:
-      - OrillaCart\Payment\Domain\Event\PaymentInQuestion
-    OrillaCart\Ordering\Infrastructure\Events\SettleOrdersByPayment:
-      - OrillaCart\Payment\Application\GiveBackLatePayments
-      - OrillaCart\Payment\Domain\Event\PaymentCancelled
-      - OrillaCart\Payment\Domain\Event\PaymentCompleted
-      - OrillaCart\Payment\Domain\Event\PaymentFailed
-      - OrillaCart\Payment\Domain\Event\PaymentHeld
-    OrillaCart\Payment\Application\Refunds:
-      - OrillaCart\GiftCards\Application\GiftCardService
     OrillaCart\Reports\Application\Home:
       - OrillaCart\Packages\Application\PackageService
       - OrillaCart\Packages\Application\RedirectTargets

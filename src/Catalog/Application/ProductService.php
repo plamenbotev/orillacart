@@ -38,8 +38,6 @@ use OrillaCart\Catalog\Domain\VariationDetails;
 use OrillaCart\Catalog\Domain\VariationNotFound;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Persistence\Transactions;
-use OrillaCart\Shipping\Application\ShippingClassService;
-use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Translations\Application\TranslationPackages;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -53,8 +51,8 @@ final readonly class ProductService
         private ProductRepository $products,
         private AttributeSetRepository $sets,
         private ProductContent $content,
-        private TaxGroupService $taxGroups,
-        private ShippingClassService $shippingClasses,
+        private TaxGroups $taxGroups,
+        private ShippingClasses $shippingClasses,
         private EventDispatcherInterface $events,
         private ProductTranslations $translations,
         private AttributeTexts $texts,

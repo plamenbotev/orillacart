@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Inventory\Infrastructure\Events;
+namespace OrillaCart\Catalog\Infrastructure\Events;
 
 use OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;

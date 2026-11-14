@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Inventory\Http;
+namespace OrillaCart\Catalog\Http;
 
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Inventory\Application\Dto\ChangeStockLevel;
@@ -12,6 +12,7 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\StockChangedMeanwhile;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Inventory\Http\StockConflict;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;

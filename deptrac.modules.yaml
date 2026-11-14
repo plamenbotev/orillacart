@@ -199,6 +199,7 @@ deptrac:
       - Translations
       - Settings
       - Audit
+      - Catalog
       - Customers
       - Forms
     # Tier 3. Selling it: carts, orders and their money.

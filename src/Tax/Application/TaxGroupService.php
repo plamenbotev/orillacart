@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tax\Application;
 
+use OrillaCart\Catalog\Application\TaxGroups;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
@@ -25,7 +26,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 /**
  * Use cases for tax groups and their rates, as the Tax admin screen runs them.
  */
-final readonly class TaxGroupService
+final readonly class TaxGroupService implements TaxGroups
 {
     public function __construct(
         private TaxGroupRepository $groups,

@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Catalog\Application;
+namespace OrillaCart\Tax\Application;
 
 use OrillaCart\Catalog\Domain\ProductRepository;
-use OrillaCart\Tax\Application\TaxGroupUse;
 
 /** The products a tax group taxes. */
 final readonly class ProductTaxGroups implements TaxGroupUse

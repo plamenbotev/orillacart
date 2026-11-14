@@ -8,6 +8,7 @@ use OrillaCart\Catalog\Application\AttributeSetService;
 use OrillaCart\Catalog\Application\Dto\AttributeSetView;
 use OrillaCart\Catalog\Application\Dto\ProductFilter;
 use OrillaCart\Catalog\Application\ProductFinder;
+use OrillaCart\Catalog\Application\ShippingClasses;
 use OrillaCart\Catalog\Domain\ProductCriteria;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
@@ -17,7 +18,6 @@ use OrillaCart\Inventory\Application\Dto\StockroomView;
 use OrillaCart\Inventory\Application\StockroomService;
 use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\WordPress\AsHook;
-use OrillaCart\Shipping\Application\ShippingClassService;
 
 /**
  * Finding a product on WordPress's list of them: the search box matches SKUs (variations' too), product numbers
@@ -49,7 +49,7 @@ final class ProductListFilters
     public function __construct(
         private readonly ProductFinder $finder,
         private readonly StockroomService $stockrooms,
-        private readonly ShippingClassService $shippingClasses,
+        private readonly ShippingClasses $shippingClasses,
         private readonly AttributeSetService $attributeSets,
         private readonly ContentLanguages $languages,
     ) {}
@@ -102,8 +102,8 @@ final class ProductListFilters
             );
         }
         $classes = ['0' => __('No shipping class', 'orillacart')];
-        foreach ($this->shippingClasses->classes() as $class) {
-            $classes[(string) $class->id] = $class->name;
+        foreach ($this->shippingClasses->names() as $id => $name) {
+            $classes[(string) $id] = $name;
         }
         self::select(self::SHIPPING_CLASS, __('Filter by shipping class', 'orillacart'), $classes, __('Any shipping class', 'orillacart'));
         self::select(self::ATTRIBUTE_SET, __('Filter by attribute set', 'orillacart'), array_column(array_map(static fn(AttributeSetView $set): array => [$set->id, $set->name], $this->attributeSets->sets()), 1, 0), __('Any attribute set', 'orillacart'));

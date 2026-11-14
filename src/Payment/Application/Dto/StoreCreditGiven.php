@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\GiftCards\Application\Dto;
+namespace OrillaCart\Payment\Application\Dto;
 
 /** Money given back as something to spend in the shop: how, for the order's history, and the email still to send. */
-final readonly class GiftCardCredit
+final readonly class StoreCreditGiven
 {
     /**
      * @param \Closure(): bool|null $mail sends a guest's new card, once the refund is saved; null for store credit

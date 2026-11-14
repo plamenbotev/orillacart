@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shipping\Application;
 
+use OrillaCart\Catalog\Application\ShippingClasses;
 use OrillaCart\Shipping\Application\Dto\SaveShippingClass;
 use OrillaCart\Shipping\Application\Dto\ShippingClassView;
 use OrillaCart\Shipping\Domain\CarrierRepository;
@@ -17,7 +18,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 /**
  * Use cases for shipping classes, as the Shipping admin screen and the product editor run them.
  */
-final readonly class ShippingClassService
+final readonly class ShippingClassService implements ShippingClasses
 {
     public function __construct(
         private ShippingClassRepository $classes,
@@ -36,6 +37,11 @@ final readonly class ShippingClassService
     public function exists(int $id): bool
     {
         return $this->classes->find($id) !== null;
+    }
+
+    public function names(): array
+    {
+        return array_column(array_map(static fn(ShippingClassView $class): array => [$class->id, $class->name], $this->classes()), 1, 0);
     }
 
     /**

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Ordering\Infrastructure\Events;
+namespace OrillaCart\Payment\Infrastructure\Events;
 
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;

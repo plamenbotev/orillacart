@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Catalog\Infrastructure\Events;
+namespace OrillaCart\Shipping\Infrastructure\Events;
 
 use OrillaCart\Catalog\Domain\ProductRepository;
 use OrillaCart\Shipping\Domain\Event\ShippingClassDeleted;

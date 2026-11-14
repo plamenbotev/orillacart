@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Inventory\Http;
+namespace OrillaCart\Catalog\Http;
 
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
