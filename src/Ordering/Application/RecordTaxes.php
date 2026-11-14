@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Tax\Application;
+namespace OrillaCart\Ordering\Application;
 
 use OrillaCart\Extension\Tax\TaxAddress as ExtensionTaxAddress;
 use OrillaCart\Extension\Tax\TaxedOrder;
@@ -17,10 +17,10 @@ use OrillaCart\Jobs\Application\JobProgress;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
-use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Tax\Application\TaxServices;
 use OrillaCart\Tax\Domain\TaxRefundReport;
 use OrillaCart\Tax\Domain\TaxRefundReports;
 use Psr\Clock\ClockInterface;

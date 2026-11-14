@@ -60,18 +60,5 @@ deptrac:
     OrillaCart\Reports\Application\Home:
       - OrillaCart\Packages\Application\PackageService
       - OrillaCart\Packages\Application\RedirectTargets
-    OrillaCart\Tax\Application\RecordTaxes:
-      - OrillaCart\Ordering\Application\Dto\LineTaxView
-      - OrillaCart\Ordering\Application\Dto\OrderLineView
-      - OrillaCart\Ordering\Application\Dto\OrderView
-      - OrillaCart\Ordering\Application\OrderService
-      - OrillaCart\Ordering\Domain\OrderNotFound
     OrillaCart\Tax\Application\TaxRatesCsv:
       - OrillaCart\Exchange\Application\CsvFile
-    OrillaCart\Tax\Infrastructure\Events\RecordTaxesWithTheService:
-      - OrillaCart\Ordering\Application\OrderService
-      - OrillaCart\Ordering\Domain\Event\OrderPaid
-      - OrillaCart\Ordering\Domain\Event\OrderRefunded
-      - OrillaCart\Ordering\Domain\Event\OrderStatusChanged
-      - OrillaCart\Ordering\Domain\OrderNotFound
-      - OrillaCart\Ordering\Domain\OrderStatus

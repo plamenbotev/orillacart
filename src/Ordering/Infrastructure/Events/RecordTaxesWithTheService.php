@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Tax\Infrastructure\Events;
+namespace OrillaCart\Ordering\Infrastructure\Events;
 
 use OrillaCart\Jobs\Application\Jobs;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\RecordTaxes;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderStatus;
-use OrillaCart\Tax\Application\RecordTaxes;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 /**
