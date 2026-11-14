@@ -20,7 +20,7 @@ use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;

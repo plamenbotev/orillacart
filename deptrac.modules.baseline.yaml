@@ -1,0 +1,133 @@
+deptrac:
+  skip_violations:
+    OrillaCart\Audit\Infrastructure\ChangeLogMiddleware:
+      - OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest
+    OrillaCart\Audit\Infrastructure\Events\ForgetErasedPeople:
+      - OrillaCart\Customers\Domain\Event\CustomerErased
+      - OrillaCart\Customers\Domain\Event\PersonErased
+      - OrillaCart\Ordering\Domain\Event\OrderAnonymised
+    OrillaCart\Audit\Infrastructure\WordPress\Hooks\RecordProductPostSaves:
+      - OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType
+    OrillaCart\Catalog\Application\ProductService:
+      - OrillaCart\Shipping\Application\ShippingClassService
+      - OrillaCart\Tax\Application\TaxGroupService
+    OrillaCart\Catalog\Application\ProductTaxGroups:
+      - OrillaCart\Tax\Application\TaxGroupUse
+    OrillaCart\Catalog\Http\ShowProductAction:
+      - OrillaCart\Packages\Application\ExtensionFields
+    OrillaCart\Catalog\Infrastructure\Events\ForgetDeletedShippingClass:
+      - OrillaCart\Shipping\Domain\Event\ShippingClassDeleted
+    OrillaCart\Catalog\Infrastructure\WordPress\Admin\ProductListFilters:
+      - OrillaCart\Shipping\Application\ShippingClassService
+    OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductPosts:
+      - OrillaCart\Exchange\Application\Dto\ProductPost
+      - OrillaCart\Exchange\Application\Dto\ProductPostChange
+      - OrillaCart\Exchange\Application\ProductPosts
+    OrillaCart\Checkout\Application\CheckoutService:
+      - OrillaCart\Storefront\Application\LegalSettingsService
+      - OrillaCart\Storefront\Application\ShopOpening
+    OrillaCart\Customers\Application\AddressBook:
+      - OrillaCart\Ordering\Application\Dto\AddressData
+    OrillaCart\Customers\Application\CustomerService:
+      - OrillaCart\Newsletter\Application\Newsletter
+      - OrillaCart\Newsletter\Domain\SignUpSource
+      - OrillaCart\Ordering\Application\Dto\AddressData
+      - OrillaCart\Ordering\Application\Dto\LifetimeValueView
+      - OrillaCart\Ordering\Application\Dto\OrderQuery
+      - OrillaCart\Ordering\Application\Dto\OrderView
+      - OrillaCart\Ordering\Application\OrderService
+      - OrillaCart\Ordering\Domain\OrderNotFound
+    OrillaCart\Customers\Application\CustomerSummaries:
+      - OrillaCart\Ordering\Application\Dto\AddressData
+    OrillaCart\Customers\Application\Dto\CustomerView:
+      - OrillaCart\Newsletter\Application\Dto\SubscriptionView
+      - OrillaCart\Ordering\Application\Dto\AddressData
+      - OrillaCart\Ordering\Application\Dto\LifetimeValueView
+    OrillaCart\Customers\Application\Dto\SaveAddress:
+      - OrillaCart\Ordering\Application\Dto\AddressData
+    OrillaCart\Customers\Application\Dto\SavedAddressView:
+      - OrillaCart\Ordering\Application\Dto\AddressData
+    OrillaCart\Customers\Application\PersonalData:
+      - OrillaCart\Newsletter\Application\Newsletter
+      - OrillaCart\Ordering\Application\Dto\AddressData
+      - OrillaCart\Ordering\Application\Dto\OrderLineView
+      - OrillaCart\Ordering\Application\Dto\OrderView
+      - OrillaCart\Ordering\Application\OrderService
+    OrillaCart\Customers\Application\TestData:
+      - OrillaCart\Ordering\Application\OrderService
+    OrillaCart\Customers\Application\Wishlists:
+      - OrillaCart\Storefront\Application\StorefrontSettingsService
+      - OrillaCart\Storefront\Domain\WishlistPolicy
+    OrillaCart\Customers\Http\ListAccountDownloadsAction:
+      - OrillaCart\Ordering\Application\Downloads
+    OrillaCart\Customers\Http\ListAccountOrdersAction:
+      - OrillaCart\Ordering\Application\Dto\OrderQuery
+      - OrillaCart\Ordering\Application\OrderService
+    OrillaCart\Customers\Http\ShowAccountOrderAction:
+      - OrillaCart\Ordering\Application\OrderService
+    OrillaCart\Customers\Http\ShowCustomerAction:
+      - OrillaCart\Packages\Application\ExtensionFields
+    OrillaCart\Customers\Infrastructure\WordPress\AnonymiseCommand:
+      - OrillaCart\Ordering\Application\OrderService
+      - OrillaCart\Ordering\Domain\OrderNotFound
+    OrillaCart\Customers\Infrastructure\WordPress\Hooks\PrivacyTools:
+      - OrillaCart\Cart\Application\CartService
+    OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts:
+      - OrillaCart\Ordering\Application\Dto\AddressData
+    OrillaCart\Forms\Infrastructure\Events\KeepOrderUploads:
+      - OrillaCart\Ordering\Application\Dto\OrderLineView
+      - OrillaCart\Ordering\Application\OrderService
+      - OrillaCart\Ordering\Domain\Event\OrderAnonymised
+      - OrillaCart\Ordering\Domain\Event\OrderDeleted
+      - OrillaCart\Ordering\Domain\Event\OrderPlaced
+    OrillaCart\Inventory\Http\ShowStockAction:
+      - OrillaCart\Catalog\Application\ProductTranslations
+    OrillaCart\Inventory\Http\UpdateStockAction:
+      - OrillaCart\Catalog\Application\ProductTranslations
+    OrillaCart\Inventory\Infrastructure\Events\ForgetStockOfRemovedItems:
+      - OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved
+    OrillaCart\Invoicing\Application\EInvoices:
+      - OrillaCart\Notifications\Application\EmailWriter
+    OrillaCart\Jobs\Infrastructure\Events\ForgetErasedCustomers:
+      - OrillaCart\Customers\Domain\Event\PersonErased
+      - OrillaCart\Ordering\Domain\Event\OrderAnonymised
+    OrillaCart\Newsletter\Infrastructure\WordPress\NewsletterUnsubscribeLinks:
+      - OrillaCart\Notifications\Application\UnsubscribeLinks
+    OrillaCart\Notifications\Application\OrderEmails:
+      - OrillaCart\Storefront\Application\LegalSettingsService
+    OrillaCart\Ordering\Http\ShowOrderAction:
+      - OrillaCart\Packages\Application\ExtensionFields
+    OrillaCart\Ordering\Infrastructure\Events\FlagOrdersInQuestion:
+      - OrillaCart\Payment\Domain\Event\PaymentInQuestion
+    OrillaCart\Ordering\Infrastructure\Events\SettleOrdersByPayment:
+      - OrillaCart\Payment\Application\GiveBackLatePayments
+      - OrillaCart\Payment\Domain\Event\PaymentCancelled
+      - OrillaCart\Payment\Domain\Event\PaymentCompleted
+      - OrillaCart\Payment\Domain\Event\PaymentFailed
+      - OrillaCart\Payment\Domain\Event\PaymentHeld
+    OrillaCart\Payment\Application\Refunds:
+      - OrillaCart\GiftCards\Application\GiftCardService
+    OrillaCart\Reports\Application\Home:
+      - OrillaCart\Packages\Application\PackageService
+      - OrillaCart\Packages\Application\RedirectTargets
+    OrillaCart\Settings\Infrastructure\WordPress\ForgetOldHistory:
+      - OrillaCart\Cart\Application\AbandonedCarts
+      - OrillaCart\Catalog\Application\PriceHistory
+      - OrillaCart\Inventory\Application\StockService
+      - OrillaCart\Packages\Application\Recordings
+      - OrillaCart\Packages\Application\RunLog
+    OrillaCart\Tax\Application\RecordTaxes:
+      - OrillaCart\Ordering\Application\Dto\LineTaxView
+      - OrillaCart\Ordering\Application\Dto\OrderLineView
+      - OrillaCart\Ordering\Application\Dto\OrderView
+      - OrillaCart\Ordering\Application\OrderService
+      - OrillaCart\Ordering\Domain\OrderNotFound
+    OrillaCart\Tax\Application\TaxRatesCsv:
+      - OrillaCart\Exchange\Application\CsvFile
+    OrillaCart\Tax\Infrastructure\Events\RecordTaxesWithTheService:
+      - OrillaCart\Ordering\Application\OrderService
+      - OrillaCart\Ordering\Domain\Event\OrderPaid
+      - OrillaCart\Ordering\Domain\Event\OrderRefunded
+      - OrillaCart\Ordering\Domain\Event\OrderStatusChanged
+      - OrillaCart\Ordering\Domain\OrderNotFound
+      - OrillaCart\Ordering\Domain\OrderStatus

@@ -6,7 +6,7 @@ namespace OrillaCart\Tax\Application;
 
 use OrillaCart\Customers\Application\Accounts;
 use OrillaCart\Customers\Domain\CustomerNotFound;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Tax\Application\Dto\SaveTaxExemption;
 use OrillaCart\Tax\Application\Dto\TaxExemptionView;

@@ -68,7 +68,7 @@ use OrillaCart\Ordering\Domain\PriceAdjustment;
 use OrillaCart\Ordering\Domain\ShippingChoice;
 use OrillaCart\Ordering\Domain\TakenItem;
 use OrillaCart\Ordering\Domain\TaxLine;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\TaxJurisdiction;

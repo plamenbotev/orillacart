@@ -42,7 +42,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrderLine;
 use OrillaCart\Ordering\Application\Dto\NewShipping;
 use OrillaCart\Ordering\Application\Dto\OrderDiscountView;
 use OrillaCart\Ordering\Domain\PriceAdjustment;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;

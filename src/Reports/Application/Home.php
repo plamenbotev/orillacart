@@ -16,6 +16,7 @@ use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Packages\Application\RedirectTargets;
 use OrillaCart\Reports\Application\Dto\ReportQuery;
 use OrillaCart\Settings\Application\SetupState;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Settings\Application\StatusReport;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;

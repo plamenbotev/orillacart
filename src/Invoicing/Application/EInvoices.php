@@ -13,7 +13,7 @@ use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Domain\Money;

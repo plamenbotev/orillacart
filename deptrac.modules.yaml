@@ -1,0 +1,650 @@
+# The modules' own rules (docs/architecture.md): each module may use the modules of the tiers below its own, and
+# in its own tier only those named, so the modules make no cycle. deptrac.yaml holds the layers inside a module;
+# this, the modules among themselves. Shared and Platform are under every module and are not checked here.
+#
+#   vendor/bin/deptrac analyse --config-file=deptrac.modules.yaml --no-cache
+#
+# What used a module it should not before the rules came is in deptrac.modules.baseline.yaml, each to be taken out
+# (PLAN.md): a new one fails CI. Take an entry out when its import is gone; never add one.
+imports:
+  - deptrac.modules.baseline.yaml
+deptrac:
+  paths:
+    - ./src
+  layers:
+    - name: Extension
+      collectors:
+        - type: directory
+          value: 'src/Extension/.*'
+    - name: Jobs
+      collectors:
+        - type: directory
+          value: 'src/Jobs/.*'
+    - name: Geography
+      collectors:
+        - type: directory
+          value: 'src/Geography/.*'
+    - name: Translations
+      collectors:
+        - type: directory
+          value: 'src/Translations/.*'
+    - name: Settings
+      collectors:
+        - type: directory
+          value: 'src/Settings/.*'
+    - name: Audit
+      collectors:
+        - type: directory
+          value: 'src/Audit/.*'
+    - name: Inventory
+      collectors:
+        - type: directory
+          value: 'src/Inventory/.*'
+    - name: Catalog
+      collectors:
+        - type: directory
+          value: 'src/Catalog/.*'
+    - name: Forms
+      collectors:
+        - type: directory
+          value: 'src/Forms/.*'
+    - name: Customers
+      collectors:
+        - type: directory
+          value: 'src/Customers/.*'
+    - name: Tax
+      collectors:
+        - type: directory
+          value: 'src/Tax/.*'
+    - name: Ordering
+      collectors:
+        - type: directory
+          value: 'src/Ordering/.*'
+    - name: Payment
+      collectors:
+        - type: directory
+          value: 'src/Payment/.*'
+    - name: GiftCards
+      collectors:
+        - type: directory
+          value: 'src/GiftCards/.*'
+    - name: Coupons
+      collectors:
+        - type: directory
+          value: 'src/Coupons/.*'
+    - name: Cart
+      collectors:
+        - type: directory
+          value: 'src/Cart/.*'
+    - name: Shipping
+      collectors:
+        - type: directory
+          value: 'src/Shipping/.*'
+    - name: Reports
+      collectors:
+        - type: directory
+          value: 'src/Reports/.*'
+    - name: Returns
+      collectors:
+        - type: directory
+          value: 'src/Returns/.*'
+    - name: Invoicing
+      collectors:
+        - type: directory
+          value: 'src/Invoicing/.*'
+    - name: Newsletter
+      collectors:
+        - type: directory
+          value: 'src/Newsletter/.*'
+    - name: Checkout
+      collectors:
+        - type: directory
+          value: 'src/Checkout/.*'
+    - name: Notifications
+      collectors:
+        - type: directory
+          value: 'src/Notifications/.*'
+    - name: Search
+      collectors:
+        - type: directory
+          value: 'src/Search/.*'
+    - name: Exchange
+      collectors:
+        - type: directory
+          value: 'src/Exchange/.*'
+    - name: Reviews
+      collectors:
+        - type: directory
+          value: 'src/Reviews/.*'
+    - name: Integrations
+      collectors:
+        - type: directory
+          value: 'src/Integrations/.*'
+    - name: Storefront
+      collectors:
+        - type: directory
+          value: 'src/Storefront/.*'
+    - name: Scripting
+      collectors:
+        - type: directory
+          value: 'src/Scripting/.*'
+    - name: Setup
+      collectors:
+        - type: directory
+          value: 'src/Setup/.*'
+    - name: Assistant
+      collectors:
+        - type: directory
+          value: 'src/Assistant/.*'
+    - name: Agents
+      collectors:
+        - type: directory
+          value: 'src/Agents/.*'
+    - name: Packages
+      collectors:
+        - type: directory
+          value: 'src/Packages/.*'
+  ruleset:
+    # Tier 0. The public API for add-ons: nothing of the shop.
+    Extension: ~
+    # Tier 1. Base: what every part of the shop counts on, knowing none of them.
+    Jobs:
+      - Extension
+    Geography:
+      - Extension
+    Translations:
+      - Extension
+      - Jobs
+    Settings:
+      - Extension
+      - Geography
+    Audit:
+      - Extension
+    # Tier 2. What is sold and to whom.
+    Inventory:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+    Catalog:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+    Forms:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Catalog
+    Customers:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Catalog
+    Tax:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Customers
+      - Forms
+    # Tier 3. Selling it: carts, orders and their money.
+    Ordering:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+    Payment:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+    GiftCards:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+    Coupons:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - GiftCards
+      - Ordering
+    Cart:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+    Shipping:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+    # Tier 4. What follows from orders, and the shop's work on them.
+    Reports:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+    Returns:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+    Invoicing:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Reports
+    Newsletter:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+    Checkout:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Newsletter
+      - Reports
+    Notifications:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Checkout
+      - Invoicing
+      - Newsletter
+      - Returns
+    Search:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+    Exchange:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Newsletter
+      - Reports
+    Reviews:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+    Integrations:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+    # Tier 5. The edges: pages, assistants, agents, extensions.
+    Storefront:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Reports
+      - Returns
+      - Invoicing
+      - Newsletter
+      - Checkout
+      - Notifications
+      - Search
+      - Exchange
+      - Reviews
+      - Integrations
+    Scripting:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Reports
+      - Returns
+      - Invoicing
+      - Newsletter
+      - Checkout
+      - Notifications
+      - Search
+      - Exchange
+      - Reviews
+      - Integrations
+    Setup:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Reports
+      - Returns
+      - Invoicing
+      - Newsletter
+      - Checkout
+      - Notifications
+      - Search
+      - Exchange
+      - Reviews
+      - Integrations
+      - Storefront
+    Assistant:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Reports
+      - Returns
+      - Invoicing
+      - Newsletter
+      - Checkout
+      - Notifications
+      - Search
+      - Exchange
+      - Reviews
+      - Integrations
+      - Scripting
+      - Setup
+      - Storefront
+    Agents:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Reports
+      - Returns
+      - Invoicing
+      - Newsletter
+      - Checkout
+      - Notifications
+      - Search
+      - Exchange
+      - Reviews
+      - Integrations
+      - Storefront
+    Packages:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
+      - Inventory
+      - Catalog
+      - Forms
+      - Customers
+      - Tax
+      - Ordering
+      - Payment
+      - GiftCards
+      - Coupons
+      - Cart
+      - Shipping
+      - Reports
+      - Returns
+      - Invoicing
+      - Newsletter
+      - Checkout
+      - Notifications
+      - Search
+      - Exchange
+      - Reviews
+      - Integrations
+      - Assistant
+      - Scripting

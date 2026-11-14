@@ -11,6 +11,7 @@ use OrillaCart\Reports\Application\Dto\EuSalesReport;
 use OrillaCart\Reports\Domain\Period;
 use OrillaCart\Settings\Application\Currencies;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Tax\Application\TaxGroupService;
 use OrillaCart\Tax\Application\TaxSettingsService;

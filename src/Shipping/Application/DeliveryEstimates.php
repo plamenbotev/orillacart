@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Shipping\Application;
 
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shipping\Application\Dto\DeliveryEstimateView;
 use OrillaCart\Shipping\Application\Dto\ShippingQuery;
 use OrillaCart\Shipping\Domain\Carrier;

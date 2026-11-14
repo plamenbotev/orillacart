@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Shipping\Application;
 
 use OrillaCart\Ordering\Application\OrderService;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shipping\Application\Dto\DeliveryChoiceView;
 use OrillaCart\Shipping\Application\Dto\DeliveryDayView;
 use OrillaCart\Shipping\Application\Dto\DeliveryPick;

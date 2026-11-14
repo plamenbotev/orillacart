@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Invoicing;
 
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 
 /** The shop's days are Sofia's. */
 final class SofiaCalendar implements ShopCalendar

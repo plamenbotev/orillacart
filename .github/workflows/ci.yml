@@ -38,6 +38,8 @@ jobs:
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
       - name: Architecture rules
         run: vendor/bin/deptrac analyse --no-progress --fail-on-uncovered
+      - name: Module rules
+        run: vendor/bin/deptrac analyse --config-file=deptrac.modules.yaml --no-progress --no-cache
       - name: Unit tests
         run: vendor/bin/phpunit --testsuite unit
 

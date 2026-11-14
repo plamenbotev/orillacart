@@ -27,7 +27,7 @@ use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Jobs\Application\Dto\JobOutcome;
 use OrillaCart\Jobs\Application\Dto\QueuedJob;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Users\UserNames;
 use OrillaCart\Tests\Fixtures\Audit\InMemoryChangeRecords;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;

@@ -1003,6 +1003,25 @@ The trade extension's 30 tests named one shop's customer, products and orders; t
 | ⬜ | 695 | P3 | Shop › Integrations shows the agents' work ([plan](docs/plans/shoppers-agents.md)) | |
 | ⬜ | 696 | P3 | Reports ([plan](docs/plans/shoppers-agents.md)) | |
 
+## Module boundaries (2026-11-14)
+
+The review of the architecture ([docs/architecture.md](docs/architecture.md)): the layers inside each module were held by Deptrac, the modules among themselves by nothing, and 29 of the 33 made one cycle. Now each module may use only the tiers below its own and, in its tier, the modules named (`deptrac.modules.yaml`, in CI). What broke that before is in `deptrac.modules.baseline.yaml`, 88 imports in 43 classes, each to be taken out by the items here.
+
+| Status | # | Priority | Item | Commit |
+| --- | --- | --- | --- | --- |
+| ✅ | 697 | P2 | Module rules: six tiers (the extension API; base; what is sold and to whom; selling; what follows from orders; the edges), no cycle, a baseline of what broke them, a CI step. `ShopCalendar` (the shop's time zone) moved from Reports to Settings: Ordering, Shipping, Tax and GiftCards no longer reach up to Reports | |
+| ⬜ | 698 | P2 | The shop's settings out of Storefront: `LegalSettingsService`, `ShopOpening`, `StorefrontSettingsService` and `WishlistPolicy` belong to Settings, or to the module whose rule they are (Checkout, Notifications and Customers use them) | |
+| ⬜ | 699 | P2 | Retention by each module: Settings' `ForgetOldHistory` calls Cart, Catalog, Inventory and Packages. Settings keeps the days; each module forgets its own history through a tagged interface Settings declares | |
+| ⬜ | 700 | P2 | Erasure by an interface, not by listening up: Audit and Jobs listen to Customers' and Ordering's erasure events. Customers' privacy tools call the erasers each module registers (an interface in Shared), which Customers and Ordering call too | |
+| ⬜ | 701 | P2 | Customers ↔ Ordering (24 imports one way, many back): `AddressData` to Geography; a customer's orders and lifetime value through an interface Customers declares and Ordering implements | |
+| ⬜ | 702 | P2 | Tax ↔ Ordering: `RecordTaxes` and the tax services' listeners read orders; they move to Ordering (or a module above both), Tax stays the calculation | |
+| ⬜ | 703 | P3 | Selling's cycles: Ordering → Payment, Payment → GiftCards, Catalog → Tax and Shipping, Inventory → Catalog: each by an event or an interface the lower module declares | |
+| ⬜ | 704 | P3 | Extension fields on the shop's own screens: Catalog's, Customers' and Ordering's actions use `Packages\ExtensionFields`; an interface where those modules may see it | |
+| ⬜ | 705 | P3 | The rest of the baseline: Notifications ↔ Newsletter and Invoicing, Reports' Home → Packages, `CsvFile` (with `ExportFile`) out of Exchange, Audit → Integrations (`ApiKeyRequest`), Customers → Cart and Newsletter; the baseline empty and its file gone | |
+| ⬜ | 706 | P2 | The largest classes split by their jobs, each a change that lands in one place: `Order` (1 729 lines), `OrderService` (1 274), `OrderPricing` (1 238), `Returns` (934), `CartService` (858), `CheckoutService` (798) | |
+| ⬜ | 707 | P2 | Reads that change nothing: `CartService::cart()` and `contents()` merge and rekey carts on the way (`find`, `loggedIn`), which lost agents' sessions (666). A command claims a visitor's cart once, on the storefront's request; reads only read | |
+| ⬜ | 708 | P3 | Integration tests that leave nothing: each in a transaction rolled back, or on data of its own, so the suites do not depend on their order | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO

@@ -24,7 +24,7 @@ use OrillaCart\GiftCards\Domain\GiftCardRepository;
 use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
 use OrillaCart\GiftCards\Domain\GiftCardSettings;
 use OrillaCart\GiftCards\Domain\GiftCardSettingsRepository;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Persistence\Transactions;

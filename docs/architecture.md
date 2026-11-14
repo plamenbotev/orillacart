@@ -49,6 +49,24 @@ tested without WordPress, with in-memory fakes (`tests/Fixtures`).
 (HTTP, security, routing). `Platform` is the one place that sees every layer. Type aliases that cross modules
 (`@phpstan-import-type`) belong to the `TypeAliases` layer.
 
+## Modules among themselves
+
+[deptrac.modules.yaml](../deptrac.modules.yaml) holds the modules in six tiers. A module may use the modules of
+the tiers below its own and, in its own tier, only those its rule names, so the modules make no cycle:
+
+| Tier | Modules |
+| --- | --- |
+| 0. The extension API | Extension |
+| 1. Base | Jobs, Geography, Translations, Settings, Audit |
+| 2. What is sold and to whom | Inventory, Catalog, Forms, Customers, Tax |
+| 3. Selling | Ordering, Payment, GiftCards, Coupons, Cart, Shipping |
+| 4. What follows from orders | Reports, Returns, Invoicing, Newsletter, Checkout, Notifications, Search, Exchange, Reviews, Integrations |
+| 5. The edges | Storefront, Scripting, Setup, Assistant, Agents, Packages |
+
+A lower module that needs something of a higher one declares an interface the higher one implements, or reacts to
+its events through an interface of its own (see below). What broke the tiers when they came is listed in
+`deptrac.modules.baseline.yaml`, each entry an item of PLAN.md to take out; a new one fails CI.
+
 ## Start-up and wiring
 
 ```
@@ -128,4 +146,5 @@ index, mail, retention, and timed tasks such as forgetting agents' old sessions.
 - **Integration** (`tests/Integration`): real WordPress and MySQL in wp-env (`npm run test:integration`).
   `self::kernel()` builds a fresh container at each call, and only Application services can be fetched from it.
 - **End to end** (`tests/e2e`): Playwright on the same site, after the integration tests.
-- **Static**: PHPStan, Deptrac, php-cs-fixer, and ESLint (`npm run lint:js`).
+- **Static**: PHPStan, Deptrac (the layers, and the modules with `--config-file=deptrac.modules.yaml`),
+  php-cs-fixer, and ESLint (`npm run lint:js`).

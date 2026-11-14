@@ -16,6 +16,7 @@ use OrillaCart\Reports\Domain\Interval;
 use OrillaCart\Reports\Domain\InvalidPeriod;
 use OrillaCart\Reports\Domain\Period;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\Money;
 use Psr\Clock\ClockInterface;
 

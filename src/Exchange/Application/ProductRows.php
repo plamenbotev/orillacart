@@ -24,7 +24,7 @@ use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\StockReason;
-use OrillaCart\Reports\Application\ShopCalendar;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\TaxCode;
 
 /**

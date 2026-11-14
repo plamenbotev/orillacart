@@ -21,6 +21,7 @@ use OrillaCart\Reports\Domain\SoldLine;
 use OrillaCart\Reports\Domain\SoldOrder;
 use OrillaCart\Reports\Domain\UsedCoupon;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Settings\Domain\ReportDay;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Security\Signatures;
