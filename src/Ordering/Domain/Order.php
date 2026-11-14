@@ -917,7 +917,7 @@ class Order
     {
         $this->checkRefund($refund);
         $before = array_map(static fn(OrderTax $row): Money => $row->refunded(), $this->taxRows());
-        $tax = $this->refundTax($refund);
+        $tax = RefundTaxes::share($this, $refund);
         $taken = [];
         foreach ($this->byQuantity() as $line) {
             $quantity = $refund->quantities[$line->position()] ?? 0;
@@ -943,100 +943,7 @@ class Order
             $this->grants->clear();
         }
 
-        return new RefundShare($tax, $this->givenBack($before), $taken);
-    }
-
-    /**
-     * The tax inside a refund's amount, given back on the lines it covers: the refunded items (by quantity) and
-     * shipping, or every line when it names neither, each line's rates by what they charged. The refund's tax
-     * is the share the lines' tax is of what they cost; never more than is left of the order's tax, and the
-     * refund that empties the order gives back all of it.
-     */
-    private function refundTax(OrderRefund $refund): Money
-    {
-        $covered = [];
-        foreach ($this->byQuantity() as $line) {
-            $quantity = $refund->quantities[$line->position()] ?? 0;
-            if ($quantity > 0) {
-                $covered[] = [$line, ...$this->lineShare($line, $quantity)];
-            }
-        }
-        $shipping = $this->shippingLine();
-        if ($refund->shipping && $shipping !== null) {
-            $covered[] = [$shipping, ...$this->lineShare($shipping, 1)];
-        }
-        if ($covered === []) {
-            foreach ($this->allLines() as $line) {
-                $covered[] = [$line, ...$this->lineShare($line, $line->quantity())];
-            }
-        }
-        // In the currency's cents, line by line: a credit note and the taxes report show 0.83 of 5 on 24, not 0.8333.
-        $decimals = new Currency($this->currency)->decimals();
-        $gross = self::sum($covered, static fn(array $share): Money => $share[1]);
-        $tax = self::sum($covered, static fn(array $share): Money => $share[2]);
-        $left = $refund->amount;
-        foreach ($covered as $index => [$line, $lineGross]) {
-            $part = $index === \count($covered) - 1 ? $left : ($gross->isZero() ? Money::zero() : $refund->amount->proportion($lineGross, $gross)->rounded($decimals));
-            $left = $left->subtract($part);
-            $line->refunded($part);
-        }
-
-        $taxLeft = $this->tax()->subtract($this->refundedTax())->atLeastZero();
-        if ($refund->amount->compare($this->refundable()) >= 0) {
-            foreach ($this->taxRows() as $row) {
-                $row->giveBack($row->amount()->subtract($row->refunded())->atLeastZero());
-            }
-
-            return $taxLeft;
-        }
-        $share = $gross->isZero() ? Money::zero() : $tax->proportion($refund->amount, $gross)->rounded($decimals);
-        $share = $share->compare($taxLeft) > 0 ? $taxLeft : $share;
-        $left = $share;
-        foreach ($covered as $index => [$line, , $lineTax]) {
-            $part = $index === \count($covered) - 1 ? $left : ($tax->isZero() ? Money::zero() : $share->proportion($lineTax, $tax)->rounded($decimals));
-            $left = $left->subtract($part);
-            $line->refundTax($part);
-        }
-
-        return $share;
-    }
-
-    /**
-     * What the customer paid for some of a line's items, and the tax inside it.
-     *
-     * @return array{Money, Money}
-     */
-    private function lineShare(OrderLine $line, int $quantity): array
-    {
-        $lineTax = $line->tax();
-        $lineGross = $line->net()->add($this->pricesIncludeTax ? Money::zero() : $lineTax);
-        $part = Money::of((string) $quantity);
-        $whole = Money::of((string) $line->quantity());
-
-        return [$lineGross->proportion($part, $whole), $lineTax->proportion($part, $whole)];
-    }
-
-    /**
-     * What a refund gave back of each rate: the order's tax rows now, less what they had given back before.
-     *
-     * @param list<Money> $before each row's refunded amount before the refund, as taxRows() lists them
-     *
-     * @return list<TaxLine>
-     */
-    private function givenBack(array $before): array
-    {
-        $shares = [];
-        foreach ($this->taxRows() as $index => $row) {
-            $given = $row->refunded()->subtract($before[$index] ?? Money::zero());
-            if ($given->isZero()) {
-                continue;
-            }
-            // By whom it is owed: a county's and a city's "Local tax" at 1 % each are two.
-            $key = $row->jurisdiction()->code . '|' . $row->percent();
-            $shares[$key] = new TaxLine($row->name(), $row->percent(), ($shares[$key]->amount ?? Money::zero())->add($given), $row->jurisdiction()->code);
-        }
-
-        return array_values($shares);
+        return new RefundShare($tax, RefundTaxes::givenBack($this, $before), $taken);
     }
 
     /**

@@ -44,6 +44,7 @@ final readonly class ManualOrders
 {
     public function __construct(
         private OrderPricing $pricing,
+        private PricedOrderLines $orderLines,
         private OrderService $orders,
         private OrderPayments $payments,
         private PaymentOptions $paymentOptions,
@@ -178,7 +179,7 @@ final readonly class ManualOrders
                 $command->email,
                 $billingAddress,
                 $priced['needs_shipping'] ? $shippingAddress : null,
-                $this->pricing->orderLines($priced),
+                $this->orderLines->orderLines($priced),
                 $this->pricing->shipping($priced, $pickupPoint),
                 (string) $bill->total(),
                 $currency,

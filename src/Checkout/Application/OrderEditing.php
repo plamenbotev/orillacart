@@ -45,6 +45,7 @@ final readonly class OrderEditing
     public function __construct(
         private OrderService $orders,
         private OrderPricing $pricing,
+        private PricedOrderLines $orderLines,
         private Transactions $transactions,
         private ShippingQuotes $shipping,
         private Discounts $discounts,
@@ -299,7 +300,7 @@ final readonly class OrderEditing
             }
 
             return $this->orders->replaceItems($orderId, new NewOrderItems(
-                $this->pricing->orderLines($priced),
+                $this->orderLines->orderLines($priced),
                 $this->pricing->shipping($priced, $pickupPoint),
                 $priced['needs_shipping'] ? $shippingAddress : null,
                 (string) $bill->total(),

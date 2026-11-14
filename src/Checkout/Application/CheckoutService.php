@@ -86,6 +86,7 @@ final readonly class CheckoutService
     public function __construct(
         private CartService $carts,
         private OrderPricing $pricing,
+        private PricedOrderLines $orderLines,
         private PaymentOptions $paymentOptions,
         private Payments $payments,
         private OrderService $orders,
@@ -590,7 +591,7 @@ final readonly class CheckoutService
             $command->email,
             $billingAddress,
             $priced['needs_shipping'] ? $shippingAddress : null,
-            $this->pricing->orderLines($priced),
+            $this->orderLines->orderLines($priced),
             $this->pricing->shipping($priced, $pickupPoint),
             (string) $bill->total(),
             $currency,

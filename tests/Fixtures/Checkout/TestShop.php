@@ -34,12 +34,14 @@ use OrillaCart\Checkout\Application\AddressRules;
 use OrillaCart\Checkout\Application\CheckoutFields;
 use OrillaCart\Checkout\Application\CheckoutService;
 use OrillaCart\Checkout\Application\EmailConfirmations;
+use OrillaCart\Checkout\Application\ExtensionPriceChanges;
 use OrillaCart\Checkout\Application\GivenItems;
 use OrillaCart\Checkout\Application\ManualOrders;
 use OrillaCart\Checkout\Application\OrderEditing;
 use OrillaCart\Checkout\Application\OrderFees;
 use OrillaCart\Checkout\Application\OrderPricing;
 use OrillaCart\Checkout\Application\PayNow;
+use OrillaCart\Checkout\Application\PricedOrderLines;
 use OrillaCart\Checkout\Application\PromotionProgress;
 use OrillaCart\Checkout\Application\Reorder;
 use OrillaCart\Checkout\Application\ShownPrices;
@@ -601,13 +603,15 @@ final class TestShop
         $fees = new OrderFees($paymentOptions, $extensions, $this->logger, $this->failures);
         $this->taxServices = new TaxServices($this->taxSettings, $extensions, $this->logger, $this->failures, $taxGroupRecords, $this->taxQuotes = new MemoryTaxQuoteCache());
         $this->importSchemes = new ImportSchemes(new InMemoryImportRegistrations(), $settings, $geography);
-        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms, new SofiaCalendar(), $giftCardProducts = new GiftCardProducts($this->giftCardSettings));
+        $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $this->importSchemes, new SofiaCalendar(), $giftCardProducts = new GiftCardProducts($this->giftCardSettings), new ExtensionPriceChanges($extensions, $this->logger, $this->failures));
         $vatNumbers = new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography);
-        $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts, $this->languages, $vatNumbers);
-        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $this->orderPayments, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers, new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers));
+        $orderLines = new PricedOrderLines($this->stock, $this->shopForms);
+        $this->editing = new OrderEditing($this->orders, $this->pricing, $orderLines, $this->transactions, $shippingQuotes, $this->discounts, $this->languages, $vatNumbers);
+        $this->manualOrders = new ManualOrders($this->pricing, $orderLines, $this->orders, $this->orderPayments, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers, new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers));
         $this->checkout = new CheckoutService(
             $this->carts,
             $this->pricing,
+            $orderLines,
             $paymentOptions,
             $payments,
             $this->orders,

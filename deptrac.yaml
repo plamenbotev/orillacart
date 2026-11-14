@@ -97,7 +97,7 @@ deptrac:
     - name: TypeAliases
       collectors:
         - type: classNameRegex
-          value: '#^OrillaCart\\(Checkout\\Application\\Priced|Storefront\\Infrastructure\\WordPress\\(Choices|Panel))$#'
+          value: '#^OrillaCart\\(Checkout\\Application\\Priced(Line)?|Storefront\\Infrastructure\\WordPress\\(Choices|Panel))$#'
 
   ruleset:
     # Entities and value objects: their own rules, mapping metadata and shared domain types only.
