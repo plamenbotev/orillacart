@@ -2,6 +2,8 @@
 
 The rebuild of OrillaCart on branch `rebuild`. Nothing is pushed until all of it is done.
 
+How the plugin is built (modules, layers, the request pipeline, extensibility): [docs/architecture.md](docs/architecture.md).
+
 Status: ✅ done · 🔄 in progress · ⬜ to do · 📝 needs a design approved before building · ➖ not now
 
 ## Phases of the rebuild
