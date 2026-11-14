@@ -15,6 +15,7 @@ use OrillaCart\Platform\DependencyInjection\RoutePass;
 use OrillaCart\Platform\DependencyInjection\TaggedKeyPass;
 use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Search\Application\FacetSource;
+use OrillaCart\Settings\Application\KeptHistory;
 use OrillaCart\Setup\Application\ReadinessCheck;
 use OrillaCart\Setup\Application\SetupStep;
 use OrillaCart\Shared\Extension\Registrant;
@@ -121,6 +122,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(TranslatableType::class)->addTag(TranslatableType::TAG);
         $builder->registerForAutoconfiguration(TranslationPackageSource::class)->addTag(TranslationPackageSource::TAG);
         $builder->registerForAutoconfiguration(PersonalDataSource::class)->addTag(PersonalDataSource::TAG);
+        $builder->registerForAutoconfiguration(KeptHistory::class)->addTag(KeptHistory::TAG);
         $builder->registerForAutoconfiguration(SetupStep::class)->addTag(SetupStep::TAG);
         $builder->registerForAutoconfiguration(ReadinessCheck::class)->addTag(ReadinessCheck::TAG);
         $builder->registerForAutoconfiguration(ToolSource::class)->addTag(ToolSource::TAG);

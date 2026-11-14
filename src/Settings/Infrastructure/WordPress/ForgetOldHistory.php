@@ -4,30 +4,25 @@ declare(strict_types=1);
 
 namespace OrillaCart\Settings\Infrastructure\WordPress;
 
-use OrillaCart\Cart\Application\AbandonedCarts;
-use OrillaCart\Catalog\Application\PriceHistory;
-use OrillaCart\Inventory\Application\StockService;
-use OrillaCart\Packages\Application\Recordings;
-use OrillaCart\Packages\Application\RunLog;
+use OrillaCart\Settings\Application\KeptHistory;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\WordPress\ScheduledTask;
 use Psr\Clock\ClockInterface;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
- * Every day: deletes the history older than the shop keeps it (the "Keep history for" setting): stock movements,
- * past prices (each item's current one stays) and the records of carts left at checkout. Tables that only grew
- * before (design 55); orders, and what the reports count, are not history and stay.
+ * Every day: each module forgets the history older than the shop keeps it (the "Keep history for" setting), such
+ * as stock movements, past prices and the records of carts left at checkout. Tables that only grew before
+ * (design 55); orders, and what the reports count, are not history and stay.
  */
 final readonly class ForgetOldHistory implements ScheduledTask
 {
+    /** @param iterable<KeptHistory> $histories */
     public function __construct(
         private SettingsService $settings,
-        private StockService $stock,
-        private PriceHistory $prices,
-        private AbandonedCarts $abandoned,
         private ClockInterface $clock,
-        private ?RunLog $runs = null,
-        private ?Recordings $recordings = null,
+        #[AutowireIterator(KeptHistory::TAG)]
+        private iterable $histories,
     ) {}
 
     public static function hook(): string
@@ -43,11 +38,8 @@ final readonly class ForgetOldHistory implements ScheduledTask
     public function run(): void
     {
         $before = $this->clock->now()->sub(new \DateInterval(\sprintf('P%dD', $this->settings->current()->historyDays)));
-        $this->stock->forgetMovementsBefore($before);
-        $this->prices->forgetBefore($before);
-        $this->abandoned->forgetBefore($before);
-        $this->runs?->forgetBefore($before);
-        // Recordings hold what a run saw, customers' data among it: a day, whatever the shop keeps of history.
-        $this->recordings?->forgetBefore($this->clock->now()->sub(new \DateInterval('PT' . Recordings::KEPT_HOURS . 'H')));
+        foreach ($this->histories as $history) {
+            $history->forgetBefore($before);
+        }
     }
 }

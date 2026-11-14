@@ -102,12 +102,6 @@ deptrac:
     OrillaCart\Reports\Application\Home:
       - OrillaCart\Packages\Application\PackageService
       - OrillaCart\Packages\Application\RedirectTargets
-    OrillaCart\Settings\Infrastructure\WordPress\ForgetOldHistory:
-      - OrillaCart\Cart\Application\AbandonedCarts
-      - OrillaCart\Catalog\Application\PriceHistory
-      - OrillaCart\Inventory\Application\StockService
-      - OrillaCart\Packages\Application\Recordings
-      - OrillaCart\Packages\Application\RunLog
     OrillaCart\Tax\Application\RecordTaxes:
       - OrillaCart\Ordering\Application\Dto\LineTaxView
       - OrillaCart\Ordering\Application\Dto\OrderLineView

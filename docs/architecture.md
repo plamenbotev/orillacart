@@ -119,6 +119,8 @@ attributes give the [REST reference](rest-api.md) (`bin/rest-docs`) and the assi
 
 `Jobs` is the shop's own queue, worked by WP-Cron or by WP-CLI workers (`wp orillacart jobs work`): the search
 index, mail, retention, and timed tasks such as forgetting agents' old sessions. See [workers.md](workers.md).
+Retention follows the module rule: Settings keeps the "Keep history for" days and declares `KeptHistory`; each
+module that keeps history implements it, and the daily task gathers them by tag.
 
 ## Extensibility
 
