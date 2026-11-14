@@ -347,13 +347,13 @@ final class RefundsTest extends TestCase
         self::assertSame(['refunded', 2], [$this->shop->orders->order($order)->status, $this->shop->orders->order($order)->lines[0]->restockable]);
         self::assertSame(7, $this->available(), 'refunded by amount: the stock waits for the items');
 
-        $view = $this->shop->orders->restock($order, new RestockItems([new RefundLine(0, 2)]), 7);
+        $view = $this->shop->orderRefunds->restock($order, new RestockItems([new RefundLine(0, 2)]), 7);
 
         self::assertSame(9, $this->available());
         self::assertSame([3, 0], [$view->lines[0]->refundedQuantity, $view->lines[0]->restockable]);
         self::assertSame('2 items came back and went back in stock.', $view->notes[\count($view->notes) - 1]->text);
         $this->expectException(OrderRuleViolation::class);
-        $this->shop->orders->restock($order, new RestockItems([new RefundLine(0, 1)]), 7);
+        $this->shop->orderRefunds->restock($order, new RestockItems([new RefundLine(0, 1)]), 7);
     }
 
     public function testAnOfflinePaymentIsRefundedAsARecordOfMoneySentOutside(): void
@@ -366,7 +366,7 @@ final class RefundsTest extends TestCase
         } catch (OrderRuleViolation $e) {
             self::assertSame('orillacart_order_not_refundable', $e->errorCode);
         }
-        $this->shop->orders->markPaidByShop($placed->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($placed->number, '', 7);
         self::assertNull($this->shop->refunds->forOrder($placed->number)->provider);
 
         try {

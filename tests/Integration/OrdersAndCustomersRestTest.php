@@ -11,6 +11,7 @@ use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsReposito
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Packages\Application\ObjectStore;
 use OrillaCart\Tests\Fixtures\Extension\TestAddOn;
@@ -416,9 +417,9 @@ final class OrdersAndCustomersRestTest extends RestTestCase
     {
         $placed = $this->order([[$this->lamp, 1]]);
         $container = self::kernel()->container();
-        $orders = $container->get(OrderService::class);
+        $orders = $container->get(OrderPayments::class);
         $store = $container->get(ObjectStore::class);
-        self::assertInstanceOf(OrderService::class, $orders);
+        self::assertInstanceOf(OrderPayments::class, $orders);
         self::assertInstanceOf(ObjectStore::class, $store);
         $orders->markPaid($placed['number'], 'txn_erased_' . $placed['number']);
         $record = $store->create('privacy-test', 'note', ['order' => ['$ref' => 'order', 'id' => $placed['number']], 'text' => 'Ada asked for gift wrap'], []);

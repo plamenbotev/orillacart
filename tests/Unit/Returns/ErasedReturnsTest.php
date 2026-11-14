@@ -39,7 +39,7 @@ final class ErasedReturnsTest extends TestCase
         $rate = $shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '5')]))->rates[0]->id;
         $owner = new CartOwner($shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 2))->newToken);
         $order = $shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$rate}", payment: 'bank_transfer'))->number;
-        $shop->orders->markPaid($order, null);
+        $shop->orderPayments->markPaid($order, null);
         $shop->orders->changeStatus($order, new ChangeOrderStatus('shipped'), 7);
         $return = $shop->returns->request($shop->receipts->issue($order), new RequestReturn([new ReturnItem(0, 1)], 'damaged', 'The shade is cracked. Call me on +359 2 000 0000.'));
         $shop->returns->approve($return->id, new AnswerReturn('Send it to 1 Shop St, Sofia, Ada.'), 7);

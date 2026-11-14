@@ -64,7 +64,7 @@ final class PayNowTest extends TestCase
 
         $this->shop->clock->modify('+61 minutes');
 
-        self::assertSame(1, $this->shop->orders->cancelAbandoned());
+        self::assertSame(1, $this->shop->orderPayments->cancelAbandoned());
         self::assertSame('cancelled', $this->shop->orders->order($placed->number)->status);
     }
 
@@ -76,7 +76,7 @@ final class PayNowTest extends TestCase
 
         $this->shop->clock->modify('+2 hours');
 
-        self::assertSame(0, $this->shop->orders->cancelAbandoned());
+        self::assertSame(0, $this->shop->orderPayments->cancelAbandoned());
         self::assertSame('pending_payment', $this->shop->orders->order($placed->number)->status);
     }
 

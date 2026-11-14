@@ -105,7 +105,7 @@ final class StripeGatewayTest extends TestCase
         self::assertSame(['on_hold', 'on_hold'], $statuses());
 
         $this->shop->clock->modify('+2 days');
-        $this->shop->orders->cancelAbandoned();
+        $this->shop->orderPayments->cancelAbandoned();
         self::assertSame('on_hold', $this->orderStatus($cleared), 'money on its way is not an abandoned order');
 
         $this->shop->outcomes->notified('stripe', $this->event('checkout.session.async_payment_succeeded', ['payment_status' => 'paid'] + $this->shop->stripeApi->sessions['cs_test_1']));

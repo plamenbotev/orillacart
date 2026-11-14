@@ -321,7 +321,7 @@ final class ReturnAmountsTest extends TestCase
     private function shipped(CartOwner $owner): string
     {
         $this->number = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'bank_transfer'))->number;
-        $this->shop->orders->markPaid($this->number, null);
+        $this->shop->orderPayments->markPaid($this->number, null);
         $this->shop->orders->changeStatus($this->number, new ChangeOrderStatus('shipped'), 7);
 
         return $this->shop->receipts->issue($this->number);

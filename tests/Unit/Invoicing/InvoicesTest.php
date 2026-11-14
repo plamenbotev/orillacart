@@ -53,8 +53,8 @@ final class InvoicesTest extends TestCase
         $second = $this->place();
         self::assertSame([], $this->shop->invoices->ofOrder($first->number), 'not paid yet');
 
-        $this->shop->orders->markPaidByShop($second->number, '', 7);
-        $this->shop->orders->markPaidByShop($first->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($second->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($first->number, '', 7);
         $this->shop->orders->changeStatus($first->number, new ChangeOrderStatus('shipped'), 7);
 
         // 22:00 in Sofia on the last day of the year.
@@ -63,14 +63,14 @@ final class InvoicesTest extends TestCase
 
         $this->shop->clock->modify('+2 hours');
         $third = $this->place();
-        $this->shop->orders->markPaidByShop($third->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($third->number, '', 7);
         self::assertSame(['INV-2027-00001'], self::numbers($this->shop->invoices->ofOrder($third->number)), 'midnight in Sofia restarts the year');
     }
 
     public function testMoneyGivenBackGetsACreditNoteOfItsOwnSeries(): void
     {
         $order = $this->place(2);
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
 
         $this->shop->refunds->refund($order->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
 
@@ -84,7 +84,7 @@ final class InvoicesTest extends TestCase
     public function testADocumentKeepsTheSellerAsItWasAndOpensOnlyWithItsOwnWorkingKey(): void
     {
         $order = $this->place(2);
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $this->shop->refunds->refund($order->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Holding Ltd'));
         $key = $this->shop->invoiceKeys->issue('INV-2026-00001');
@@ -111,7 +111,7 @@ final class InvoicesTest extends TestCase
     public function testThePrintablePageShowsTheSellerTheBuyerAndTheTotal(): void
     {
         $order = $this->place(2);
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $key = $this->shop->invoiceKeys->issue('INV-2026-00001');
 
         $html = $this->shop->templates->render('invoices/document.html.twig', ['document' => $this->shop->invoices->document('INV-2026-00001', $key), 'locale' => 'en-US']);
@@ -126,7 +126,7 @@ final class InvoicesTest extends TestCase
     public function testTheCustomersEmailLinksTheInvoice(): void
     {
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
 
         self::assertTrue($this->shop->emails->resend($order->number, new SendOrderEmail('order_processing')));
 
@@ -138,7 +138,7 @@ final class InvoicesTest extends TestCase
     {
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings(invoicePrefix: 'F', yearly: false));
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
 
         self::assertSame(['F00001'], self::numbers($this->shop->invoices->ofOrder($order->number)));
     }
@@ -164,7 +164,7 @@ final class InvoicesTest extends TestCase
         $order = $this->place(2);
         self::assertSame([], $this->lastCustomerEmail()->attachments, 'nothing to attach before it is paid');
 
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         // Here jobs run as they are pushed, before the payment's transaction issued the invoice; the queue runs them after.
         self::assertTrue($this->shop->emails->resend($order->number, new SendOrderEmail('order_processing')));
         $paid = $this->lastCustomerEmail();
@@ -178,7 +178,7 @@ final class InvoicesTest extends TestCase
     public function testEachRefundsEmailCarriesItsOwnCreditNote(): void
     {
         $order = $this->place(2);
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $this->shop->jobs->immediate = false;
         $sent = \count($this->shop->mail->emails);
 
@@ -194,7 +194,7 @@ final class InvoicesTest extends TestCase
     public function testTheShopTurnsTheAttachmentOffAndAFailedPrintSendsTheEmailWithout(): void
     {
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Lamps Ltd', attachToEmails: false));
         self::assertTrue($this->shop->emails->resend($order->number, new SendOrderEmail('order_processing')));
         self::assertSame([], $this->lastCustomerEmail()->attachments);
@@ -209,7 +209,7 @@ final class InvoicesTest extends TestCase
     public function testDompdfPrintsTheInvoicePageInEveryAlphabet(): void
     {
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('Лампи ООД'));
         $document = $this->shop->invoices->latest($order->number, InvoiceKind::Invoice);
         self::assertNotNull($document);
@@ -224,7 +224,7 @@ final class InvoicesTest extends TestCase
     {
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('灯具有限公司'));
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $document = $this->shop->invoices->latest($order->number, InvoiceKind::Invoice);
         self::assertNotNull($document);
         $context = new PluginContext(\dirname(__DIR__, 3) . '/orillacart.php', 'test');
@@ -246,7 +246,7 @@ final class InvoicesTest extends TestCase
     {
         $this->shop->invoices->updateSettings(new UpdateInvoiceSettings('שלום בע"מ'));
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $document = $this->shop->invoices->latest($order->number, InvoiceKind::Invoice);
         self::assertNotNull($document);
 

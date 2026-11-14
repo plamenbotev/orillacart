@@ -49,7 +49,7 @@ final class OrderAdministrationTest extends TestCase
     {
         $order = $this->place();
 
-        $view = $this->shop->orders->markPaidByShop($order->number, 'Money arrived.', 7);
+        $view = $this->shop->orderPayments->markPaidByShop($order->number, 'Money arrived.', 7);
         self::assertSame(['processing', ['shipped', 'completed']], [$view->status, $view->nextStatuses], 'a paid order is refunded, not cancelled');
         try {
             $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('cancelled'), 7);
@@ -126,7 +126,7 @@ final class OrderAdministrationTest extends TestCase
         self::assertSame(7, $this->available());
 
         foreach ([$refunded, $kept] as $order) {
-            $this->shop->orders->markPaidByShop($order->number, '', 7);
+            $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         }
         $this->shop->refunds->refund($refunded->number, new MakeRefund('16', [new RefundLine(0, 2)], restock: true), 7);
         $this->shop->refunds->refund($kept->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
@@ -150,7 +150,7 @@ final class OrderAdministrationTest extends TestCase
         $this->shop->orders->delete($waiting->number);
         self::assertSame(8, $this->available(), 'cancelling gave the stock back; deleting leaves it');
 
-        $this->shop->orders->markPaidByShop($paid->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($paid->number, '', 7);
         try {
             $this->shop->orders->delete($paid->number);
             self::fail('a paid order');

@@ -324,7 +324,7 @@ final class OrderEmailsTest extends TestCase
         $reminders = $this->reminders();
         $order = $this->place('bank_transfer');
         $paid = $this->place('bank_transfer');
-        $this->shop->orders->markPaid($paid->number, null);
+        $this->shop->orderPayments->markPaid($paid->number, null);
         $sent = \count($this->shop->mail->emails);
 
         $this->shop->clock->modify('+2 days');
@@ -356,7 +356,7 @@ final class OrderEmailsTest extends TestCase
     public function testAnOrderPaidBeforeItsReminderWentOutIsNotReminded(): void
     {
         $order = $this->place('bank_transfer');
-        $this->shop->orders->markPaid($order->number, null);
+        $this->shop->orderPayments->markPaid($order->number, null);
         $sent = \count($this->shop->mail->emails);
 
         $this->shop->emails->send($order->number, EmailKind::PaymentReminder);
@@ -377,7 +377,7 @@ final class OrderEmailsTest extends TestCase
     public function testTheShopHearsOfAFailedPaymentAndOfEveryRefund(): void
     {
         $failed = $this->place('paypal');
-        $this->shop->orders->fail($failed->number, 'Declined.');
+        $this->shop->orderPayments->fail($failed->number, 'Declined.');
 
         self::assertSame([
             "ada@example.com: [Lamp Shop] The payment for order #{$failed->number} failed",
@@ -385,9 +385,9 @@ final class OrderEmailsTest extends TestCase
         ], $this->shop->mail->summary());
 
         $order = $this->place('bank_transfer');
-        $this->shop->orders->markPaid($order->number, null);
+        $this->shop->orderPayments->markPaid($order->number, null);
         $sent = \count($this->shop->mail->emails);
-        $this->shop->orders->refund($order->number, new RefundOrder('3', reason: 'Goodwill.'), 'by hand', 1, tellCustomer: false);
+        $this->shop->orderRefunds->refund($order->number, new RefundOrder('3', reason: 'Goodwill.'), 'by hand', 1, tellCustomer: false);
 
         self::assertSame(["owner@shop.test: [Lamp Shop] Order #{$order->number} was refunded"], \array_slice($this->shop->mail->summary(), $sent), 'not the customer, as the shop said');
         self::assertStringContainsString('3.00 EUR went back to the customer.', $this->shop->mail->emails[$sent]->html);

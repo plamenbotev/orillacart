@@ -16,6 +16,7 @@ use OrillaCart\Ordering\Application\Dto\RefundedView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
 use OrillaCart\Ordering\Application\Dto\TaxLineView;
+use OrillaCart\Ordering\Application\OrderRefunds;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
@@ -53,6 +54,7 @@ final readonly class Refunds
         private PaymentMethodRepository $methods,
         private Gateways $gateways,
         private OrderService $orders,
+        private OrderRefunds $orderRefunds,
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private Transactions $transactions,
@@ -93,7 +95,7 @@ final readonly class Refunds
         // finds the first one pending and is refused, rather than both reaching the provider.
         [$refund, $payment, $credit] = $this->orders->whileLocked($orderId, function () use ($orderId, $command, $userId, $recorded): array {
             $order = $this->orders->order($orderId);
-            $this->orders->checkRefund($orderId, $command->forOrder());
+            $this->orderRefunds->checkRefund($orderId, $command->forOrder());
             foreach ($this->refunds->ofOrder($orderId) as $earlier) {
                 if ($earlier->status() === RefundStatus::Pending) {
                     throw new PaymentRuleViolation('A refund of this order is still waiting for the provider: try it again or give it up first.', 'orillacart_refund_pending');
@@ -140,7 +142,7 @@ final readonly class Refunds
                 $credit = $command->storeCredit
                     ? $this->giftCards->refundAsCredit($orderId, $order->customerId, $order->email, $order->billing->firstName, Money::of($command->amount), $order->currency, $userId, $order->locale)
                     : null;
-                $this->taxed($refund, $this->orders->refund($orderId, $command->forOrder(), $credit->how ?? 'outside the shop', $userId, credit: $credit?->kind()));
+                $this->taxed($refund, $this->orderRefunds->refund($orderId, $command->forOrder(), $credit->how ?? 'outside the shop', $userId, credit: $credit?->kind()));
             }
 
             return [$refund, $payment, $credit];
@@ -301,9 +303,9 @@ final readonly class Refunds
         $command = new RefundOrder((string) $amount, reason: \sprintf('Made at %s.', $this->name($payment->gateway())));
         // A refusal goes up to notified(), rolling back the whole transaction: rolled back to a savepoint, the
         // refund saved here would stay loaded while its row was gone.
-        $this->orders->checkRefund($payment->orderId(), $command);
+        $this->orderRefunds->checkRefund($payment->orderId(), $command);
         $this->refunds->save($refund);
-        $this->taxed($refund, $this->orders->refund($payment->orderId(), $command, \sprintf('through %s (refund %s)', $this->name($payment->gateway()), $refundId), null));
+        $this->taxed($refund, $this->orderRefunds->refund($payment->orderId(), $command, \sprintf('through %s (refund %s)', $this->name($payment->gateway()), $refundId), null));
         // Made at the provider, the refund names no items: whether they came back is the shop's to say.
         $order = $this->orders->order($payment->orderId());
         if (array_filter($order->lines, static fn(OrderLineView $line): bool => $line->restockable > 0) !== []) {
@@ -450,7 +452,7 @@ final readonly class Refunds
 
                     return;
                 }
-                $this->taxed($refund, $this->orders->refund($refund->orderId(), $command, \sprintf('through %s (refund %s)', $this->name((string) $refund->gateway()), $reference), $userId));
+                $this->taxed($refund, $this->orderRefunds->refund($refund->orderId(), $command, \sprintf('through %s (refund %s)', $this->name((string) $refund->gateway()), $reference), $userId));
             } catch (OrderNotFound|OrderRuleViolation $e) {
                 // The money went back: the order must learn of it, even if not item by item.
                 $this->logger->error('Refund {refund} went through but order {order} could not record it: {message}', ['refund' => $refund->id(), 'order' => $refund->orderId(), 'message' => $e->getMessage()]);

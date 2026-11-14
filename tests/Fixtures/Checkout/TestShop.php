@@ -100,8 +100,11 @@ use OrillaCart\Notifications\Application\WithdrawalEmails;
 use OrillaCart\Notifications\Infrastructure\Events\AcknowledgeWithdrawal;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Ordering\Application\OrderChanges;
 use OrillaCart\Ordering\Application\OrderChargeTaxGroups;
 use OrillaCart\Ordering\Application\OrderCustomers;
+use OrillaCart\Ordering\Application\OrderPayments;
+use OrillaCart\Ordering\Application\OrderRefunds;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
@@ -379,6 +382,8 @@ final class TestShop
     public readonly CartReminders $cartReminders;
     public readonly InMemoryOrderRepository $orderRecords;
     public readonly OrderService $orders;
+    public readonly OrderPayments $orderPayments;
+    public readonly OrderRefunds $orderRefunds;
     public readonly ListedOrderLookups $orderLookups;
     public readonly InMemoryReturnRepository $returnRecords;
     public readonly CheckoutService $checkout;
@@ -547,12 +552,15 @@ final class TestShop
         $links = new FakeOrderLinks($this->receipts);
         $this->orderLookups = new ListedOrderLookups($this->extensions, $this->logger);
         $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions, $this->receipts, $this->orderLookups);
+        $changes = new OrderChanges($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions);
+        $this->orderPayments = new OrderPayments($changes, $this->orderRecords, $this->stock, $this->events, $this->clock);
+        $this->orderRefunds = new OrderRefunds($changes, $this->orderRecords, $this->events, $this->clock);
         $this->refundRecords = new InMemoryRefundRepository($this->transactions);
         $this->giftCardRecords = new InMemoryGiftCards($this->transactions);
         $this->giftCardSettings = new MemoryGiftCardSettings();
         $this->giftCardMail = new SentGiftCards();
         $this->giftCards = new GiftCardService($this->giftCardRecords, $this->giftCardSettings, $this->giftCardMail, $settings, $this->transactions, new FixedUserNames(), $this->clock, new SofiaCalendar(), $this->productTranslations);
-        $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->clock, $this->logger, $this->transactions, $this->giftCards, $this->events);
+        $this->refunds = new Refunds($this->refundRecords, $this->paymentRecords, $methodRecords, $gateways, $this->orders, $this->orderRefunds, $this->clock, $this->logger, $this->transactions, $this->giftCards, $this->events);
         $this->outcomes = new PaymentOutcomes($this->paymentRecords, $methodRecords, $gateways, $this->events, $this->clock, $this->logger, $this->refunds, $this->transactions, $links, $this->signatures, $this->notifiedEvents = new InMemoryNotifiedEvents());
         $this->downloadFiles = new DownloadService($productRecords, $this->files, $this->events, $this->productTranslations);
         $this->downloads = new Downloads(new InMemoryDownloadGrantRepository($this->orderRecords), $this->files, $links, $this->clock, $this->logger);
@@ -584,8 +592,8 @@ final class TestShop
         $releasing = new ReleaseCouponUses($this->discounts);
         $this->events->addListener(OrderStatusChanged::class, $releasing->statusChanged(...));
         $this->events->addListener(OrderDeleted::class, $releasing->deleted(...));
-        $this->giftCardPayments = new GiftCardPayments($this->giftCardRecords, $this->orders, $this->clock, new GettextTranslations());
-        $withGiftCards = new GiftCardsWithOrders($this->giftCardPayments, new GiftCardSales($this->giftCardRecords, $this->giftCardSettings, $this->orders, $this->giftCardMail, $this->transactions, $this->clock), $this->orders);
+        $this->giftCardPayments = new GiftCardPayments($this->giftCardRecords, $this->orderPayments, $this->clock, new GettextTranslations());
+        $withGiftCards = new GiftCardsWithOrders($this->giftCardPayments, new GiftCardSales($this->giftCardRecords, $this->giftCardSettings, $this->orders, $this->giftCardMail, $this->transactions, $this->clock), $this->orderPayments);
         $this->events->addListener(OrderStatusChanged::class, $withGiftCards->statusChanged(...));
         $this->events->addListener(OrderPaid::class, $withGiftCards->paid(...));
         $this->events->addListener(OrderRefunded::class, $withGiftCards->refunded(...));
@@ -596,13 +604,14 @@ final class TestShop
         $this->pricing = new OrderPricing($quotes, $taxes, $shippingQuotes, $this->stock, $settings, $this->discounts, $fees, $this->currencies, $this->taxServices, $this->clock, $extensions, $this->logger, $this->failures, $this->importSchemes, $this->shopForms, new SofiaCalendar(), $giftCardProducts = new GiftCardProducts($this->giftCardSettings));
         $vatNumbers = new VatNumbers($this->vies = new FakeVatRegistry(), $this->taxSettings, $settings, $geography);
         $this->editing = new OrderEditing($this->orders, $this->pricing, $this->transactions, $shippingQuotes, $this->discounts, $this->languages, $vatNumbers);
-        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers, new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers));
+        $this->manualOrders = new ManualOrders($this->pricing, $this->orders, $this->orderPayments, $paymentOptions, new AddressRules($settings, $geography), $this->customers, $settings, $this->transactions, $this->discounts, $this->failures, $this->languages, $vatNumbers, new CheckoutFields($extensions, $this->logger, $this->failures, $this->shopForms, $this->fieldAnswers));
         $this->checkout = new CheckoutService(
             $this->carts,
             $this->pricing,
             $paymentOptions,
             $payments,
             $this->orders,
+            $this->orderPayments,
             $links,
             $settings,
             new AddressRules($settings, $geography),
@@ -631,10 +640,10 @@ final class TestShop
         $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
         $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);
         $this->reorder = new Reorder($this->orders, $this->carts);
-        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content, $giftCardProducts));
+        $this->returns = new Returns($this->returnRecords = new InMemoryReturnRepository(), $this->orders, $this->orderRefunds, $this->refunds, $settings, $this->clock, new GettextTranslations(), $this->jobs->jobs, new EarnedItems($this->couponRecords, $this->content, $giftCardProducts));
         $this->jobs->with(new SendWithdrawalAcknowledgements($this->returnRecords, $this->orders, $this->events, $this->logger));
         $this->withdrawals = new \OrillaCart\Returns\Application\WithdrawalRequests($this->returns, $this->orders, $this->signatures, $this->jobs->jobs, $this->clock);
-        $this->payNow = new PayNow($this->orders, $paymentOptions, $payments, $links, $fees, $this->currencies, $this->pricing);
+        $this->payNow = new PayNow($this->orders, $this->orderPayments, $paymentOptions, $payments, $links, $fees, $this->currencies, $this->pricing);
         $this->invoiceRecords = new InMemoryInvoices($this->transactions);
         $this->invoiceSettings = new MemoryInvoiceSettings();
         $this->invoices = new Invoices($this->invoiceRecords, $this->invoiceSettings, $this->orders, new FakeInvoiceLinks(), new SofiaCalendar(), $this->clock, $this->invoiceKeys = new InvoiceKeys($this->signatures, $this->clock));
@@ -686,7 +695,7 @@ final class TestShop
         $this->events->addListener(OrderReadyForPickup::class, $emailing->readyForPickup(...));
         $this->events->addListener(PaymentInQuestion::class, new FlagOrdersInQuestion($this->orders, $this->logger)->inQuestion(...));
 
-        $settle = new SettleOrdersByPayment($this->orders, $this->jobs->jobs, $this->logger);
+        $settle = new SettleOrdersByPayment($this->orders, $this->orderPayments, $this->jobs->jobs, $this->logger);
         $this->events->addListener(PaymentCompleted::class, $settle->completed(...));
         $this->events->addListener(PaymentHeld::class, $settle->held(...));
         $this->events->addListener(PaymentFailed::class, $settle->failed(...));

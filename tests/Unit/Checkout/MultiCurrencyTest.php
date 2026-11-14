@@ -70,7 +70,7 @@ final class MultiCurrencyTest extends TestCase
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['EUR', '1.1'], [$order->shopCurrency, $order->exchangeRate]);
 
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $invoice = $this->shop->invoices->ofOrder($order->number)[0]->number;
         $document = $this->shop->invoices->issued($invoice);
         // 15.76 USD of tax (14.66 on the items, 1.10 on shipping) is 14.33 EUR at 1.1.
@@ -107,7 +107,7 @@ final class MultiCurrencyTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart(1), $this->order());
         $order = $this->shop->orders->order($placed->number);
         self::assertSame([null, null], [$order->shopCurrency, $order->exchangeRate]);
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         self::assertNull($this->shop->invoices->issued($this->shop->invoices->ofOrder($order->number)[0]->number)->inShopCurrency);
     }
 

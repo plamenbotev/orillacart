@@ -42,7 +42,7 @@ final class WithdrawalLinksTest extends TestCase
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 2))->newToken);
         $this->order = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'))->number;
-        $this->shop->orders->markPaid($this->order, null);
+        $this->shop->orderPayments->markPaid($this->order, null);
         $this->shop->jobs->runAll();
         $this->shop->mail->emails = [];
     }

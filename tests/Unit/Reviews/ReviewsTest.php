@@ -214,7 +214,7 @@ final class ReviewsTest extends TestCase
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $customerId), new AddToCart($productId))->newToken, $customerId);
         $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder($email, new AddressData($email === 'grace@example.com' ? 'Grace' : 'Ada', $email === 'grace@example.com' ? 'Hopper' : 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
         if ($paid) {
-            $this->shop->orders->markPaid($placed->number, 'T-1');
+            $this->shop->orderPayments->markPaid($placed->number, 'T-1');
         }
 
         return $placed->number;

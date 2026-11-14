@@ -42,7 +42,7 @@ final class DownloadsTest extends TestCase
         $unpaid = $this->shop->orders->order($order->number);
         self::assertSame([], $unpaid->downloads, 'nothing before the money arrives');
 
-        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 1);
 
         $downloads = $this->shop->orders->order($order->number)->downloads;
         self::assertCount(1, $downloads);
@@ -59,7 +59,7 @@ final class DownloadsTest extends TestCase
     public function testABrowserResumingADownloadSoonAfterIsNotCountedAgain(): void
     {
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 1);
         $token = $this->token($this->shop->orders->order($order->number)->downloads[0]->url);
 
         $this->shop->downloads->open($token);
@@ -77,7 +77,7 @@ final class DownloadsTest extends TestCase
     public function testOnlyWhoTheDownloadWentToResumesItAndOnlyAFewTimes(): void
     {
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 1);
         $token = $this->token($this->shop->orders->order($order->number)->downloads[0]->url);
         $this->shop->downloads->open($token, client: '203.0.113.5');
         $this->shop->downloads->open($token, client: '203.0.113.5');
@@ -100,7 +100,7 @@ final class DownloadsTest extends TestCase
     public function testAResumeGoesOnFromWhereTheDownloadBrokeOffNotFromTheStart(): void
     {
         $order = $this->place();
-        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 1);
         $token = $this->token($this->shop->orders->order($order->number)->downloads[0]->url);
         $this->shop->downloads->open($token);
         $this->shop->downloads->open($token);
@@ -221,7 +221,7 @@ final class DownloadsTest extends TestCase
     private function paid(CartOwner $owner = new CartOwner(null)): PlacedOrderView
     {
         $order = $this->place($owner);
-        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 1);
 
         return $order;
     }

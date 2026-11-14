@@ -34,7 +34,7 @@ final class DownloadResumesTest extends TestCase
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
         $result = $this->shop->carts->add(new CartOwner(null), new AddToCart(20));
         $order = $this->shop->checkout->placeOrder(new CartOwner($result->newToken, null), new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), payment: 'bank_transfer'));
-        $this->shop->orders->markPaidByShop($order->number, '', 1);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 1);
         $this->token = substr($this->shop->orders->order($order->number)->downloads[0]->url, -64);
     }
 

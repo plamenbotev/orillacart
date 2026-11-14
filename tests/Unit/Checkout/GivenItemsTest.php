@@ -196,7 +196,7 @@ final class GivenItemsTest extends TestCase
     private function shippedOrder(): string
     {
         $order = $this->place($this->cart(2));
-        $this->shop->orders->markPaid($order, null);
+        $this->shop->orderPayments->markPaid($order, null);
         $this->shop->orders->changeStatus($order, new ChangeOrderStatus('shipped'), 7);
 
         return $this->shop->receipts->issue($order);

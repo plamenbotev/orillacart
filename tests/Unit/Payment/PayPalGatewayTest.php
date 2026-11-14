@@ -61,7 +61,7 @@ final class PayPalGatewayTest extends TestCase
     {
         $placed = $this->place();
         $number = $this->shop->orders->order($placed->number)->number;
-        $this->shop->orders->markPaidByShop($number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($number, '', 7);
 
         $this->shop->outcomes->notified('paypal', $this->notification('CHECKOUT.ORDER.APPROVED', ['id' => 'PAYPAL-1']));
 
@@ -142,7 +142,7 @@ final class PayPalGatewayTest extends TestCase
         $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.PENDING', 'PENDING', 'PAYPAL-2', '8.00'));
         self::assertSame('on_hold', $this->orderStatus($held));
         $this->shop->clock->modify('+2 hours');
-        $this->shop->orders->cancelAbandoned();
+        $this->shop->orderPayments->cancelAbandoned();
         self::assertSame('on_hold', $this->orderStatus($held), 'a payment under review is not abandoned');
         $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.COMPLETED', 'COMPLETED', 'PAYPAL-2', '8.00'));
         self::assertSame('processing', $this->orderStatus($held));
@@ -161,7 +161,7 @@ final class PayPalGatewayTest extends TestCase
         $this->shop->outcomes->notified('paypal', $this->capture('PAYMENT.CAPTURE.PENDING', 'PENDING', 'PAYPAL-1', '8.00'));
 
         // The shop saw the money arrive at PayPal before PayPal said so.
-        $this->shop->orders->markPaidByShop($held->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($held->number, '', 7);
 
         $payment = $this->shop->paymentRecords->findByReference('paypal', 'PAYPAL-1');
         self::assertSame(['processing', 'CAPTURE-PAYPAL-1'], [$this->orderStatus($held), $this->shop->orderRecords->orders[$held->number]->transactionId()]);

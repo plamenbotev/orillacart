@@ -111,7 +111,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         [$placed, $issued] = $this->failedWithACard();
         $this->shop->giftCards->adjust(self::id($issued->card), new AdjustBalance('-30', 'Spent in the shop downstairs'), 1);
 
-        self::assertTrue($this->shop->orders->paidAfterClosing($placed->number, 'TX-LATE', '', '24'));
+        self::assertTrue($this->shop->orderPayments->paidAfterClosing($placed->number, 'TX-LATE', '', '24'));
 
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['processing', '0', '24', '54'], [$order->status, $order->giftCardTotal, $order->refundable, $order->total]);
@@ -122,7 +122,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         [$placed, $issued] = $this->failedWithACard();
 
-        self::assertTrue($this->shop->orders->paidAfterClosing($placed->number, 'TX-LATE', '', '24'));
+        self::assertTrue($this->shop->orderPayments->paidAfterClosing($placed->number, 'TX-LATE', '', '24'));
 
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['30', '54', null], [$order->giftCardTotal, $order->refundable, $order->attention]);
@@ -213,8 +213,8 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($this->cart([20, 2]), $this->order('bank_transfer', null));
         self::assertSame([], $this->shop->giftCardMail->sent, 'not before it is paid');
 
-        $this->shop->orders->markPaid($placed->number, null);
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
 
         self::assertSame([['ada@example.com', '25'], ['ada@example.com', '25']], array_map(static fn(array $sent): array => [$sent['to'], $sent['amount']], $this->shop->giftCardMail->sent), 'once per order');
         $cards = $this->shop->giftCards->page(new \OrillaCart\GiftCards\Application\Dto\GiftCardQuery())->cards;
@@ -229,7 +229,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         self::assertSame('de_DE', $this->shop->orders->order($placed->number)->locale);
 
         $this->shop->languages->locale = 'bg_BG';
-        $this->shop->orders->markPaidByShop($placed->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($placed->number, '', 7);
 
         self::assertSame(['de_DE'], $this->shop->giftCardMail->locales);
     }
@@ -239,14 +239,14 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $ada = $this->shop->accounts->add('ada@example.com', 'Ada');
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null, $ada), new AddToCart(10))->newToken, $ada);
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'));
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
 
         $this->shop->refunds->refund($placed->number, new MakeRefund('10', reason: 'Scratched', storeCredit: true), 1);
         self::assertSame('10', $this->shop->giftCards->storeCredit($ada)->card->balance);
         self::assertSame('store_credit', $this->shop->refunds->forOrder($placed->number)->refunds[0]->method);
 
         $guest = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
-        $this->shop->orders->markPaid($guest->number, null);
+        $this->shop->orderPayments->markPaid($guest->number, null);
         $this->shop->refunds->refund($guest->number, new MakeRefund('5', storeCredit: true), 1);
         self::assertSame([['ada@example.com', '5']], array_map(static fn(array $sent): array => [$sent['to'], $sent['amount']], $this->shop->giftCardMail->sent));
         self::assertStringContainsString('as gift card ····', implode(' ', array_map(static fn($note): string => $note->text, $this->shop->orders->order($guest->number)->notes)));
@@ -260,7 +260,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
         $placed = $this->shop->checkout->placeOrder($this->cart([20, 2]), $this->order('bank_transfer', null));
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
         $cards = $this->cards();
         $this->shop->giftCards->adjust(self::id($cards[1]), new AdjustBalance('-10', 'Spent at the shop'), 1);
 
@@ -277,7 +277,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
         $placed = $this->shop->checkout->placeOrder($this->cart([20, 2]), $this->order('bank_transfer', null));
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
 
         $this->shop->refunds->refund($placed->number, new MakeRefund('5', outside: true), 1);
 
@@ -289,7 +289,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 1], [20, 1]), $this->order('bank_transfer'));
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
         $lamp = array_key_first(array_filter($this->shop->orders->order($placed->number)->lines, static fn($line): bool => $line->productId === 10));
         self::assertNotNull($lamp);
 
@@ -305,7 +305,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([20], 12));
         $this->shop->giftCardMail->refuse = true;
         $placed = $this->shop->checkout->placeOrder($this->cart([20, 1]), $this->order('bank_transfer', null));
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
 
         $order = $this->shop->orders->order($placed->number);
         self::assertNotNull($order->attention);
@@ -320,7 +320,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
         $owner = $this->cart([20, 3]);
         $this->shop->checkout->applyCoupon($owner, new CouponCode('TEN'));
         $placed = $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer', null));
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
 
         self::assertSame(['21.67', '21.67', '21.66'], array_map(static fn(array $sent): string => $sent['amount'], $this->shop->giftCardMail->sent), '65 in three');
     }
@@ -329,7 +329,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     {
         $this->shop->giftCards->saveSettings(new GiftCardSettingsView([], 12));
         $guest = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
-        $this->shop->orders->markPaid($guest->number, null);
+        $this->shop->orderPayments->markPaid($guest->number, null);
 
         $this->shop->refunds->refund($guest->number, new MakeRefund('5', storeCredit: true), 1);
 
@@ -339,7 +339,7 @@ final class GiftCardsAtCheckoutTest extends TestCase
     public function testAGuestsRefundCardWhoseEmailDidNotGoIsFlaggedForTheShop(): void
     {
         $guest = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
-        $this->shop->orders->markPaid($guest->number, null);
+        $this->shop->orderPayments->markPaid($guest->number, null);
         $this->shop->giftCardMail->refuse = true;
 
         $this->shop->refunds->refund($guest->number, new MakeRefund('5', storeCredit: true), 1);

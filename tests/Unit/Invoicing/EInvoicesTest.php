@@ -322,7 +322,7 @@ final class EInvoicesTest extends TestCase
         $this->shop->carts->add($owner, new AddToCart(11));
         $address = new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000');
         $placed = $this->shop->checkout->placeOrder($owner, new PlaceOrder('max@example.de', $address, shippingOption: $this->shop->checkout->summary($owner, new CheckoutDetails('DE'))->shippingOption, payment: 'bank_transfer', vatNumber: $vatNumber, buyerReference: $buyerReference));
-        $this->shop->orders->markPaidByShop($placed->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($placed->number, '', 7);
 
         return $this->shop->orders->order($placed->number);
     }

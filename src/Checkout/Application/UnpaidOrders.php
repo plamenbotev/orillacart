@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Checkout\Application;
 
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\PaymentOptions;
@@ -19,6 +20,7 @@ final readonly class UnpaidOrders
 {
     public function __construct(
         private OrderService $orders,
+        private OrderPayments $orderPayments,
         private PaymentOptions $payments,
         private SettingsService $settings,
         private ClockInterface $clock,
@@ -34,7 +36,7 @@ final readonly class UnpaidOrders
         $cancelled = 0;
         foreach ($this->orders->unpaidOnHold(new \DateTimeImmutable('@0'), $this->clock->now()->sub(new \DateInterval("P{$days}D")), $this->payments->paidOffline()) as $id) {
             try {
-                $cancelled += $this->orders->expireUnpaid($id, $days) ? 1 : 0;
+                $cancelled += $this->orderPayments->expireUnpaid($id, $days) ? 1 : 0;
             } catch (OrderNotFound) {
                 // Deleted since.
             }

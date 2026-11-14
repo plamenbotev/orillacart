@@ -45,6 +45,7 @@ use OrillaCart\Newsletter\Domain\SignUpSource;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Payment\Application\Dto\StartPayment;
@@ -88,6 +89,7 @@ final readonly class CheckoutService
         private PaymentOptions $paymentOptions,
         private Payments $payments,
         private OrderService $orders,
+        private OrderPayments $orderPayments,
         private OrderLinks $links,
         private SettingsService $settings,
         private AddressRules $addresses,
@@ -651,7 +653,7 @@ final readonly class CheckoutService
         $this->carts->clear($contents->cartId, $order->number, $order->total, $order->currency);
         $this->rememberCustomer($owner, $command, $registering, $order->number, $billingAddress, $priced['needs_shipping'] ? $shippingAddress : null);
         if ($payment->isOffline()) {
-            $this->orders->hold($order->number);
+            $this->orderPayments->hold($order->number);
         }
 
         return $this->placed($order->number, $receiptUrl, $payment->redirectUrl);
@@ -739,7 +741,7 @@ final readonly class CheckoutService
         }
         if ($free) {
             // Nothing to pay: paid with the order, in its transaction, so a free order is never left unpaid.
-            $this->orders->markPaid($order->number, null);
+            $this->orderPayments->markPaid($order->number, null);
         }
 
         return $order;

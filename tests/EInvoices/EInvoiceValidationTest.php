@@ -110,7 +110,7 @@ final class EInvoiceValidationTest extends TestCase
             'business', 'business_credit_note' => 'BG175074752',
             default => null,
         }, buyerReference: '04011000-1234512345-06'));
-        $this->shop->orders->markPaidByShop($placed->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($placed->number, '', 7);
         $number = $this->shop->invoices->ofOrder($placed->number)[0]->number;
         if ($case === 'credit_note' || $case === 'business_credit_note') {
             $this->shop->refunds->refund($placed->number, new MakeRefund('39.66', [new RefundLine(0, 1)]), 7);

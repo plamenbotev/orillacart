@@ -55,7 +55,7 @@ final class ReturnsTest extends TestCase
         $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '5')]))->rates[0]->id;
         $owner = new CartOwner($this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 2))->newToken);
         $this->order = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$rate}", payment: 'bank_transfer'))->number;
-        $this->shop->orders->markPaid($this->order, null);
+        $this->shop->orderPayments->markPaid($this->order, null);
         $this->receipt = $this->shop->receipts->issue($this->order);
     }
 
@@ -234,7 +234,7 @@ final class ReturnsTest extends TestCase
         // The second request read the return as received; the first one refunds it while the second waits for the
         // order's lock, and the second reads the return again under it.
         $racing = new RacingReturnRepository($this->shop->returnRecords, fn() => $this->shop->returns->refund($return->id, new RefundReturn(outside: true), 7));
-        $second = new Returns($racing, $this->shop->orders, $this->shop->refunds, $this->shop->settingsService, $this->shop->clock, new GettextTranslations(), $this->shop->jobs->jobs, new EarnedItems($this->shop->couponRecords, $this->shop->content, new \OrillaCart\GiftCards\Application\GiftCardProducts($this->shop->giftCardSettings)));
+        $second = new Returns($racing, $this->shop->orders, $this->shop->orderRefunds, $this->shop->refunds, $this->shop->settingsService, $this->shop->clock, new GettextTranslations(), $this->shop->jobs->jobs, new EarnedItems($this->shop->couponRecords, $this->shop->content, new \OrillaCart\GiftCards\Application\GiftCardProducts($this->shop->giftCardSettings)));
 
         try {
             $second->refund($return->id, new RefundReturn(outside: true), 7);
@@ -260,7 +260,7 @@ final class ReturnsTest extends TestCase
         $number = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: $this->shop->orders->order($this->order)->shippingOption, payment: 'bank_transfer'))->number;
         $this->shop->languages->locale = 'en_US';
         $this->shop->contentLanguages->current = null;
-        $this->shop->orders->markPaid($number, null);
+        $this->shop->orderPayments->markPaid($number, null);
         $this->shop->orders->changeStatus($number, new ChangeOrderStatus('shipped'), 7);
         $receipt = $this->shop->receipts->issue($number);
 

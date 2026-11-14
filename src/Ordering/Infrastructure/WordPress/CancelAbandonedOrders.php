@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Infrastructure\WordPress;
 
-use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Shared\WordPress\ScheduledTask;
 
 /**
@@ -12,7 +12,7 @@ use OrillaCart\Shared\WordPress\ScheduledTask;
  */
 final readonly class CancelAbandonedOrders implements ScheduledTask
 {
-    public function __construct(private OrderService $orders) {}
+    public function __construct(private OrderPayments $payments) {}
 
     public static function hook(): string
     {
@@ -26,6 +26,6 @@ final readonly class CancelAbandonedOrders implements ScheduledTask
 
     public function run(): void
     {
-        $this->orders->cancelAbandoned();
+        $this->payments->cancelAbandoned();
     }
 }

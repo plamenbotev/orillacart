@@ -38,8 +38,8 @@ final class CustomerInsightsTest extends TestCase
         $second = $this->place($ada, 1);
         $this->shop->clock->modify('+10 days');
         $this->place($ada, 5);
-        $this->shop->orders->markPaid($first->number, null);
-        $this->shop->orders->markPaid($second->number, null);
+        $this->shop->orderPayments->markPaid($first->number, null);
+        $this->shop->orderPayments->markPaid($second->number, null);
         $this->shop->refunds->refund($first->number, new MakeRefund('5', outside: true), null);
 
         $value = $this->shop->customers->customer($ada)->lifetimeValue;

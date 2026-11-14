@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Payment\Infrastructure\Events;
 
 use OrillaCart\Jobs\Application\Jobs;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;
@@ -24,6 +25,7 @@ final readonly class SettleOrdersByPayment
 {
     public function __construct(
         private OrderService $orders,
+        private OrderPayments $payments,
         private Jobs $jobs,
         private LoggerInterface $logger,
     ) {}
@@ -32,7 +34,7 @@ final readonly class SettleOrdersByPayment
     public function completed(PaymentCompleted $event): void
     {
         try {
-            $this->orders->markPaid($event->orderId, $event->transactionId, self::note('Paid', $event), amount: $event->amount);
+            $this->payments->markPaid($event->orderId, $event->transactionId, self::note('Paid', $event), amount: $event->amount);
 
             return;
         } catch (OrderRuleViolation) {
@@ -43,7 +45,7 @@ final readonly class SettleOrdersByPayment
             return;
         }
         try {
-            if ($this->orders->paidAfterClosing($event->orderId, $event->transactionId, self::note('Paid', $event), $event->amount)) {
+            if ($this->payments->paidAfterClosing($event->orderId, $event->transactionId, self::note('Paid', $event), $event->amount)) {
                 return;
             }
         } catch (OrderRuleViolation $e) {
@@ -62,7 +64,7 @@ final readonly class SettleOrdersByPayment
     public function held(PaymentHeld $event): void
     {
         try {
-            $this->orders->hold($event->orderId, self::note('The provider holds the payment for review', $event));
+            $this->payments->hold($event->orderId, self::note('The provider holds the payment for review', $event));
             // The money may be taken: the shop looks before the order ships, and the customer cannot pay it again.
             $this->orders->needsAttention($event->orderId, \sprintf('The payment through %s (transaction %s) waits for the shop: the provider holds it for review, or it is not what the order asked. Look at it at the provider before the order ships, and mark the order paid once the money is there.', $event->gateway, $event->transactionId ?? 'none'));
         } catch (OrderNotFound) {
@@ -79,7 +81,7 @@ final readonly class SettleOrdersByPayment
     public function failed(PaymentFailed $event): void
     {
         try {
-            $this->orders->fail($event->orderId, self::note('The payment failed', $event));
+            $this->payments->fail($event->orderId, self::note('The payment failed', $event));
         } catch (OrderNotFound) {
             $this->gone($event, 'failed');
         }

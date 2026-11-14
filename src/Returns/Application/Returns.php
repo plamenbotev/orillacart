@@ -12,6 +12,7 @@ use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Ordering\Application\Dto\RefundOrder;
+use OrillaCart\Ordering\Application\OrderRefunds;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\Charge;
 use OrillaCart\Ordering\Domain\OrderNotFound;
@@ -59,6 +60,7 @@ final readonly class Returns
     public function __construct(
         private ReturnRepository $returns,
         private OrderService $orders,
+        private OrderRefunds $orderRefunds,
         private Refunds $refunds,
         private SettingsService $settings,
         private ClockInterface $clock,
@@ -386,7 +388,7 @@ final readonly class Returns
             // Read again under the order's lock: a second click finds it refunded and is refused.
             $return = $this->returns->find($id, true) ?? throw new ReturnNotFound($id);
             $return->closedWithoutMoney($this->clock->now(), $values);
-            $this->orders->refund($order->number, new RefundOrder(
+            $this->orderRefunds->refund($order->number, new RefundOrder(
                 '0',
                 array_map(static fn(int $line, int $quantity): RefundLine => new RefundLine($line, $quantity), array_keys($return->items()), $return->items()),
                 restock: $command->restock,

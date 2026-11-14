@@ -85,7 +85,7 @@ final class ChargesTest extends TestCase
     {
         $this->deposit();
         $number = $this->place($this->cart(6));
-        $this->shop->orders->markPaid($number, null);
+        $this->shop->orderPayments->markPaid($number, null);
         $order = $this->shop->orders->order($number);
         $deposit = array_values(array_filter($order->charges, static fn(OrderLineView $line): bool => $line->type === 'charge'))[0];
 
@@ -100,7 +100,7 @@ final class ChargesTest extends TestCase
         $this->shop->settings->save(new \OrillaCart\Settings\Domain\StoreSettings(new \OrillaCart\Shared\Domain\Currency('EUR'), 2, \OrillaCart\Settings\Domain\WeightUnit::Kilogram, \OrillaCart\Settings\Domain\DimensionUnit::Centimetre, 'BG', returnDays: 30));
         $this->deposit();
         $number = $this->place($this->cart(6));
-        $this->shop->orders->markPaid($number, null);
+        $this->shop->orderPayments->markPaid($number, null);
         $this->shop->orders->changeStatus($number, new \OrillaCart\Ordering\Application\Dto\ChangeOrderStatus('shipped'), 7);
         $receipt = $this->shop->receipts->issue($number);
 

@@ -15,6 +15,7 @@ use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderLinks;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinkExpired;
 use OrillaCart\Ordering\Domain\OrderNotFound;
@@ -40,6 +41,7 @@ final readonly class PayNow
 {
     public function __construct(
         private OrderService $orders,
+        private OrderPayments $orderPayments,
         private PaymentOptions $paymentOptions,
         private Payments $payments,
         private OrderLinks $links,
@@ -102,7 +104,7 @@ final readonly class PayNow
             $this->checkStillSo($order);
         }
         try {
-            $this->orders->awaitPayment($order->number, $command->payment, $this->paymentOptions->name($command->payment), $this->paymentOptions->receiptNote($command->payment), $this->paymentOptions->shopName($command->payment));
+            $this->orderPayments->awaitPayment($order->number, $command->payment, $this->paymentOptions->name($command->payment), $this->paymentOptions->receiptNote($command->payment), $this->paymentOptions->shopName($command->payment));
         } catch (InsufficientStock) {
             throw new CheckoutRuleViolation('Some of the items sold out since: this order cannot be paid any more. Order them again from the shop.', 'orillacart_out_of_stock');
         } catch (OrderRuleViolation $e) {
@@ -119,14 +121,14 @@ final readonly class PayNow
         } catch (PaymentProviderUnavailable $e) {
             // An order that had failed fails again, giving its stock back; one that waited goes on waiting.
             if ($failed) {
-                $this->orders->fail($order->number, 'The payment could not start.');
+                $this->orderPayments->fail($order->number, 'The payment could not start.');
             }
 
             throw $e;
         }
         if ($payment->isOffline()) {
             // The shop heard of the order when it was placed.
-            $this->orders->hold($order->number, tellShop: false);
+            $this->orderPayments->hold($order->number, tellShop: false);
         }
         $placed = $this->orders->order($order->number);
 

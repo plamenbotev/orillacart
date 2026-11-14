@@ -339,7 +339,7 @@ final class ConsignmentsTest extends TestCase
     {
         $rate = $this->shop->carriers->create(new SaveCarrier('Post', rates: [new SaveShippingRate('Anywhere', '4')]))->rates[0]->id;
         $placed = $this->shop->checkout->placeOrder($this->cart(3), new PlaceOrder('ada@example.com', self::address(), shippingOption: "rate:{$rate}", payment: 'bank_transfer'));
-        $this->shop->orders->markPaidByShop($placed->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($placed->number, '', 7);
         $shipments = $this->shop->consignments->forOrder($placed->number);
         self::assertSame([false, true], [$shipments->bookable, $shipments->sendable]);
 

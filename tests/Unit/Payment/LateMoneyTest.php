@@ -93,7 +93,7 @@ final class LateMoneyTest extends TestCase
         $this->shop->payPalApi->orderStatus['PAYPAL-1'] = 'CREATED';
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true);
         $this->shop->clock->modify('+181 minutes');
-        self::assertSame(1, $this->shop->orders->cancelAbandoned());
+        self::assertSame(1, $this->shop->orderPayments->cancelAbandoned());
         self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(20))->available);
 
         $this->shop->outcomes->notified('paypal', $this->payPalCapture('COMPLETED', 'PAYPAL-1', '8.00'));
@@ -111,7 +111,7 @@ final class LateMoneyTest extends TestCase
         $this->shop->payPalApi->orderStatus['PAYPAL-1'] = 'CREATED';
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), true);
         $this->shop->clock->modify('+181 minutes');
-        $this->shop->orders->cancelAbandoned();
+        $this->shop->orderPayments->cancelAbandoned();
         $this->place('stripe', 2);
 
         $this->shop->outcomes->notified('paypal', $this->payPalCapture('COMPLETED', 'PAYPAL-1', '8.00'));

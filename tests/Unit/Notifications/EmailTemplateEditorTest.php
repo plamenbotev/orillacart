@@ -261,7 +261,7 @@ final class EmailTemplateEditorTest extends TestCase
 
     private function ship(PlacedOrderView $order): void
     {
-        $this->shop->orders->markPaid($order->number, null);
+        $this->shop->orderPayments->markPaid($order->number, null);
         $this->shop->orders->changeStatus($order->number, new ChangeOrderStatus('shipped'), 1);
     }
 

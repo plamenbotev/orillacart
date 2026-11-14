@@ -68,7 +68,7 @@ final class RefundTaxTest extends TestCase
     public function testAPaymentOfAnotherAmountFlagsTheOrderAndIsTheMostThatGoesBack(): void
     {
         $placed = $this->place(2, 'bank_transfer');
-        $this->shop->orders->markPaid($placed, 'BANK-1', amount: '20');
+        $this->shop->orderPayments->markPaid($placed, 'BANK-1', amount: '20');
 
         $order = $this->shop->orders->order($placed);
         self::assertSame(['processing', '20'], [$order->status, $order->refundable]);
@@ -105,7 +105,7 @@ final class RefundTaxTest extends TestCase
     public function testAnOrderAProviderIsAskedToChargeKeepsItsItems(): void
     {
         $placed = $this->place(1, 'paypal');
-        $this->shop->orders->hold($placed, 'Waiting.');
+        $this->shop->orderPayments->hold($placed, 'Waiting.');
 
         $this->expectException(PaymentRuleViolation::class);
         $this->expectExceptionMessage('has a payment open at paypal for its total');
@@ -115,7 +115,7 @@ final class RefundTaxTest extends TestCase
     private function paid(int $quantity): int
     {
         $placed = $this->place($quantity, 'bank_transfer');
-        $this->shop->orders->markPaidByShop($placed, '', 7);
+        $this->shop->orderPayments->markPaidByShop($placed, '', 7);
 
         return $placed;
     }

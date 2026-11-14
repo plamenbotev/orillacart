@@ -82,15 +82,15 @@ final class FindingOrdersTest extends TestCase
     {
         $unpaid = $this->place(10, 'ada@example.com', self::address(), note: 'Ring twice.');
         $paid = $this->place(10, 'bo@example.com', new AddressData('Bo', 'Peep', '3 Shepherd Lane', 'Athens', '10552', 'GR', '+30 21 0000 0000'));
-        $this->shop->orders->markPaidByShop($paid, '', 7);
+        $this->shop->orderPayments->markPaidByShop($paid, '', 7);
         $shipped = $this->place(10, 'cy@example.com', self::address());
-        $this->shop->orders->markPaidByShop($shipped, '', 7);
+        $this->shop->orderPayments->markPaidByShop($shipped, '', 7);
         $this->shop->orders->changeStatus($shipped, new ChangeOrderStatus('shipped'), 7);
         $refunded = $this->place(20, 'di@example.com', self::address());
-        $this->shop->orders->markPaidByShop($refunded, '', 7);
+        $this->shop->orderPayments->markPaidByShop($refunded, '', 7);
         $this->shop->refunds->refund($refunded, new MakeRefund('8', outside: true), 7);
         $partly = $this->place(20, 'ed@example.com', self::address());
-        $this->shop->orders->markPaidByShop($partly, '', 7);
+        $this->shop->orderPayments->markPaidByShop($partly, '', 7);
         $this->shop->refunds->refund($partly, new MakeRefund('3', outside: true), 7);
 
         self::assertSame([$partly, $shipped, $paid], $this->found(new OrderQuery(status: 'processing,shipped')), 'a partly refunded order is still processing');

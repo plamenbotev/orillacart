@@ -48,7 +48,7 @@ final class FailedOrderPaidLaterTest extends TestCase
             $owner = $this->cart();
             $this->shop->checkout->applyCoupon($owner, new CouponCode('WELCOME'));
             $numbers[] = $number = $this->shop->checkout->placeOrder($owner, $this->order())->number;
-            $this->shop->orders->fail($number, 'Declined.');
+            $this->shop->orderPayments->fail($number, 'Declined.');
         }
 
         $this->shop->payNow->pay($this->shop->receipts->issue($numbers[0]), new PayOrder('bank_transfer'));
@@ -128,9 +128,9 @@ final class FailedOrderPaidLaterTest extends TestCase
         $this->shop->paymentMethods->update('stripe', new SavePaymentMethod('Card', true, settings: ['secret_key' => 'sk_live_shop', 'webhook_secret' => 'whsec_shop']));
         $number = $this->shop->checkout->placeOrder($owner, new PlaceOrder('ada@example.com', new AddressData('Ada', 'Lovelace', '1 Vitosha Blvd', 'Sofia', '1000', 'BG', '+359 2 000 0000'), shippingOption: "rate:{$this->rate}", payment: 'stripe'))->number;
         $this->shop->clock->modify('+2 hours');
-        $this->shop->orders->fail($number, 'Declined.');
+        $this->shop->orderPayments->fail($number, 'Declined.');
         $this->shop->payNow->pay($this->shop->receipts->issue($number), new PayOrder('stripe'));
-        $this->shop->orders->fail($number, 'Declined again.');
+        $this->shop->orderPayments->fail($number, 'Declined again.');
 
         $this->shop->clock->modify('+61 minutes');
 
@@ -156,7 +156,7 @@ final class FailedOrderPaidLaterTest extends TestCase
             $this->shop->checkout->applyCoupon($owner, new CouponCode($code));
         }
         $number = $this->shop->checkout->placeOrder($owner, $this->order())->number;
-        $this->shop->orders->fail($number, 'Declined.');
+        $this->shop->orderPayments->fail($number, 'Declined.');
 
         return $number;
     }

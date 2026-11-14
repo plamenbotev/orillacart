@@ -21,6 +21,7 @@ use OrillaCart\Extension\Checkout\FieldContext;
 use OrillaCart\Ordering\Application\Dto\AddOrderNote;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\OrderView;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Payment\Application\PaymentOptions;
 use OrillaCart\Settings\Application\SettingsService;
@@ -44,6 +45,7 @@ final readonly class ManualOrders
     public function __construct(
         private OrderPricing $pricing,
         private OrderService $orders,
+        private OrderPayments $payments,
         private PaymentOptions $paymentOptions,
         private AddressRules $addresses,
         private CustomerService $customers,
@@ -205,9 +207,9 @@ final readonly class ManualOrders
                 $this->orders->note($order->number, $failure, false);
             }
             if ($command->paid || Money::of($order->total)->isZero()) {
-                $this->orders->markPaid($order->number, null, 'Paid when the shop took the order.', tellCustomer: $command->emailCustomer, tellShop: false);
+                $this->payments->markPaid($order->number, null, 'Paid when the shop took the order.', tellCustomer: $command->emailCustomer, tellShop: false);
             } else {
-                $this->orders->hold($order->number, 'Waiting for the payment.', tellCustomer: $command->emailCustomer, tellShop: false);
+                $this->payments->hold($order->number, 'Waiting for the payment.', tellCustomer: $command->emailCustomer, tellShop: false);
             }
 
             return $order;

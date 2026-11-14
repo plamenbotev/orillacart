@@ -12,7 +12,7 @@ use OrillaCart\GiftCards\Domain\GiftCardCode;
 use OrillaCart\GiftCards\Domain\GiftCardEntry;
 use OrillaCart\GiftCards\Domain\GiftCardRepository;
 use OrillaCart\GiftCards\Domain\GiftCardRuleViolation;
-use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\I18n\Translations;
@@ -29,7 +29,7 @@ final readonly class GiftCardPayments
 
     public function __construct(
         private GiftCardRepository $cards,
-        private OrderService $orders,
+        private OrderPayments $payments,
         private ClockInterface $clock,
         private Translations $translations,
     ) {}
@@ -115,7 +115,7 @@ final readonly class GiftCardPayments
             $paid[] = ['label' => $this->translations->text($card->label()), 'amount' => (string) $amount];
         }
         if ($paid !== []) {
-            $this->orders->payWithGiftCards($orderId, $paid);
+            $this->payments->payWithGiftCards($orderId, $paid);
         }
     }
 

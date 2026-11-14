@@ -344,7 +344,7 @@ final class CheckoutServiceTest extends TestCase
 
         self::assertSame('pending_payment', $paying->status);
         self::assertNotNull($paying->redirectUrl);
-        self::assertSame(0, $this->shop->orders->cancelAbandoned(), 'the payment window starts again');
+        self::assertSame(0, $this->shop->orderPayments->cancelAbandoned(), 'the payment window starts again');
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);
         self::assertSame('processing', $this->shop->orders->order($placed->number)->status);
         self::assertSame([], $this->shop->payNow->methods($this->shop->orders->order($placed->number)), 'a paid order is not paid again');
@@ -476,9 +476,9 @@ final class CheckoutServiceTest extends TestCase
         $held = $this->shop->checkout->placeOrder($this->cart([10, 1]), $this->order('bank_transfer'));
 
         $this->shop->clock->modify('+179 minutes');
-        self::assertSame(0, $this->shop->orders->cancelAbandoned());
+        self::assertSame(0, $this->shop->orderPayments->cancelAbandoned());
         $this->shop->clock->modify('+2 minutes');
-        self::assertSame(1, $this->shop->orders->cancelAbandoned());
+        self::assertSame(1, $this->shop->orderPayments->cancelAbandoned());
 
         self::assertSame(['cancelled', 'on_hold'], [$this->shop->orders->order($placed->number)->status, $this->shop->orders->order($held->number)->status]);
         self::assertSame(2, $this->shop->stock->stock(StockItemRef::product(10))->available);
@@ -488,7 +488,7 @@ final class CheckoutServiceTest extends TestCase
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
         $this->shop->clock->modify('+181 minutes');
-        $this->shop->orders->cancelAbandoned();
+        $this->shop->orderPayments->cancelAbandoned();
         self::assertSame(3, $this->shop->stock->stock(StockItemRef::product(10))->available);
 
         // The customer approves at PayPal after all, and comes back.
@@ -509,7 +509,7 @@ final class CheckoutServiceTest extends TestCase
     {
         $placed = $this->shop->checkout->placeOrder($this->cart([10, 2]), $this->order('paypal'));
         $this->shop->clock->modify('+181 minutes');
-        $this->shop->orders->cancelAbandoned();
+        $this->shop->orderPayments->cancelAbandoned();
         $this->shop->checkout->placeOrder($this->cart([10, 3]), $this->order('bank_transfer'));
 
         $this->shop->outcomes->returned('paypal', $this->shop->returnQuery('PAYPAL-1', 'paypal'), false);

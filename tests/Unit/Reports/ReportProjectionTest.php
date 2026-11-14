@@ -78,7 +78,7 @@ final class ReportProjectionTest extends TestCase
         self::assertSame([false, '2029-12-31', '16', 2], [$facts->order->counted, $facts->order->day->format('Y-m-d'), $facts->order->gross, $facts->order->items], 'three in the morning in UTC is the evening before in New York; on hold is not a sale yet');
 
         $this->shop->clock->modify('+2 days');
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $facts = $this->store->facts[$order->number];
         self::assertSame([true, '2030-01-02'], [$facts->order->counted, $facts->order->day->format('Y-m-d')], 'a sale of the day its money came, as filed periods want');
         self::assertSame([[20, 2, '16', '2030-01-02']], array_map(static fn($line): array => [$line->productId, $line->quantity, $line->net, $line->day->format('Y-m-d')], $facts->lines));
@@ -106,7 +106,7 @@ final class ReportProjectionTest extends TestCase
         $this->shop->taxGroups->addRate($vat, new SaveTaxRate('BG', null, '20', 'VAT'));
         $this->shop->taxSettings->save(new TaxSettings(TaxBasis::BillingAddress, $vat));
         $order = $this->place(2);
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $this->shop->refunds->refund($order->number, new MakeRefund('9.6', [new RefundLine(0, 1)]), 7);
         $this->shop->jobs->jobs->push(ProjectOrders::TYPE, [], (string) $order->number);
 
@@ -151,7 +151,7 @@ final class ReportProjectionTest extends TestCase
         $this->shop->taxSettings->save(new TaxSettings(TaxBasis::BillingAddress, $vat, reverseCharge: true));
         $this->shop->clock->modify('2030-03-30 12:00:00');
         $order = $this->place(2);
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $this->shop->clock->modify('+5 days');
         $this->shop->refunds->refund($order->number, new MakeRefund('9.6', [new RefundLine(0, 1)]), 7);
 
@@ -165,7 +165,7 @@ final class ReportProjectionTest extends TestCase
         $business = $this->shop->checkout->placeOrder($owner, new PlaceOrder('max@example.de', new AddressData('Max', 'Muster', 'Hauptstr. 1', 'Berlin', '10115', 'DE', '+49 30 000000'), payment: 'bank_transfer', vatNumber: 'DE123456789'));
         self::assertSame([['DE-RC', '8', '0']], array_map(static fn($tax): array => [$tax->code, $tax->taxable, $tax->amount], $this->store->facts[$business->number]->taxes), 'its base, for the intra-EU supplies');
 
-        $this->shop->orders->markPaidByShop($business->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($business->number, '', 7);
         $this->shop->refunds->refund($business->number, new MakeRefund('8', [new RefundLine(0, 1)]), 7);
         $this->shop->jobs->jobs->push(ProjectOrders::TYPE, [], (string) $business->number);
         self::assertSame([['DE-RC', '8', '0'], ['DE-RC', '-8', '0']], array_map(static fn($tax): array => [$tax->code, $tax->taxable, $tax->amount], $this->store->facts[$business->number]->taxes), 'a credit under the reverse charge takes its base off again');

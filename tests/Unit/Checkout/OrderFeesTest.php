@@ -148,7 +148,7 @@ final class OrderFeesTest extends TestCase
     public function testARefundOfTheWholeOrderGivesBackTheFeesTaxToo(): void
     {
         $placed = $this->shop->checkout->placeOrder($this->cart(10), $this->order('cash_on_delivery'));
-        $this->shop->orders->markPaid($placed->number, null);
+        $this->shop->orderPayments->markPaid($placed->number, null);
 
         $this->shop->refunds->refund($placed->number, new MakeRefund('48.86', outside: true), null);
 

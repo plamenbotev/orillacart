@@ -94,7 +94,7 @@ final class OrderMoneyTest extends TestCase
     public function testARefundGivesBackTheTaxOfWhatItCoversRateByRate(): void
     {
         $number = $this->place();
-        $this->shop->orders->markPaidByShop($number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($number, '', 7);
 
         $this->shop->refunds->refund($number, new MakeRefund('10.85', shipping: true), 7);
         $order = $this->shop->orders->order($number);
@@ -185,7 +185,7 @@ final class OrderMoneyTest extends TestCase
         $order = $this->shop->editing->edit($number, new EditOrderItems([new EditedItem(10, 3, line: 0)], "rate:{$this->rate}"), 7);
         self::assertSame(['-10', '-5'], array_column($order->priceChanges, 'amount'));
 
-        $this->shop->orders->markPaidByShop($number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($number, '', 7);
         $this->expectException(\InvalidArgumentException::class);
         new AddOnOrderPrices($this->shop->editing)->adjust($number, 'b2b_prices', 'Too late', '-1');
     }

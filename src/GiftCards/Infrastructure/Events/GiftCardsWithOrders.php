@@ -6,7 +6,7 @@ namespace OrillaCart\GiftCards\Infrastructure\Events;
 
 use OrillaCart\GiftCards\Application\GiftCardPayments;
 use OrillaCart\GiftCards\Application\GiftCardSales;
-use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Ordering\Domain\Event\OrderPaid;
 use OrillaCart\Ordering\Domain\Event\OrderRefunded;
 use OrillaCart\Ordering\Domain\Event\OrderStatusChanged;
@@ -23,7 +23,7 @@ final readonly class GiftCardsWithOrders
     public function __construct(
         private GiftCardPayments $payments,
         private GiftCardSales $sales,
-        private OrderService $orders,
+        private OrderPayments $orderPayments,
     ) {}
 
     #[AsEventListener]
@@ -36,7 +36,7 @@ final readonly class GiftCardsWithOrders
             $short = $this->payments->reclaim($event->orderId);
             if (!$short->isZero()) {
                 // What the cards no longer pay is asked of the customer's way to pay, as Pay now does.
-                $this->orders->giftCardsFellShort($event->orderId, $short);
+                $this->orderPayments->giftCardsFellShort($event->orderId, $short);
             }
         }
     }

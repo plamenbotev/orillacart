@@ -64,7 +64,7 @@ final class AbandonedCartsTest extends TestCase
         $report = $this->shop->abandonedCarts->report($from, $until, 'EUR', 10);
         self::assertSame(['abandoned' => 1, 'value' => '40', 'reminded' => 1, 'recovered' => 0, 'recovered_value' => '0', 'recovered_after_reminder' => 0], $report['totals'], 'ordered, not paid yet: nothing won back so far');
 
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         $report = $this->shop->abandonedCarts->report($from, $until, 'EUR', 10);
         self::assertSame(['abandoned' => 1, 'value' => '40', 'reminded' => 1, 'recovered' => 1, 'recovered_value' => (string) Money::of($order->total), 'recovered_after_reminder' => 1], $report['totals'], 'recovered once its money came');
         self::assertSame($order->number, $report['latest'][0]->orderId);
@@ -116,7 +116,7 @@ final class AbandonedCartsTest extends TestCase
         self::assertNull($this->shop->carts->recover($link[1], $here), 'the link works once');
 
         $order = $this->shop->checkout->placeOrder(new CartOwner($token), new PlaceOrder('ada@example.com', $this->address(), payment: 'bank_transfer'));
-        $this->shop->orders->markPaidByShop($order->number, '', 7);
+        $this->shop->orderPayments->markPaidByShop($order->number, '', 7);
         [$from, $until] = $this->today();
         self::assertSame(1, $this->shop->abandonedCarts->report($from, $until, 'EUR', 10)['totals']['recovered'], 'the reminded cart counts as won back');
     }

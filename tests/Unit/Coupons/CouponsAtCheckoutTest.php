@@ -156,7 +156,7 @@ final class CouponsAtCheckoutTest extends TestCase
     {
         $placed = $this->failedWithACodeUsedUpSince();
 
-        self::assertTrue($this->shop->orders->paidAfterClosing($placed->number, 'TX-LATE'));
+        self::assertTrue($this->shop->orderPayments->paidAfterClosing($placed->number, 'TX-LATE'));
 
         self::assertSame(['processing', 2], [$this->shop->orders->order($placed->number)->status, $this->shop->coupons->coupon(1)->uses], 'the money came: its use counts');
     }
@@ -519,7 +519,7 @@ final class CouponsAtCheckoutTest extends TestCase
         $owner = $this->cart([10, 1]);
         $this->shop->checkout->applyCoupon($owner, new CouponCode('ONCE'));
         $placed = $this->shop->checkout->placeOrder($owner, $this->order());
-        $this->shop->orders->fail($placed->number, 'The payment failed.');
+        $this->shop->orderPayments->fail($placed->number, 'The payment failed.');
         self::assertSame(0, $this->shop->coupons->coupon(1)->uses);
         $other = $this->cart([20, 1]);
         $this->shop->checkout->applyCoupon($other, new CouponCode('ONCE'));

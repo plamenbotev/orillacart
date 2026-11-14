@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Http;
 
 use OrillaCart\Ordering\Application\Dto\RestockItems;
-use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\OrderRefunds;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
@@ -25,7 +25,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class RestockOrderAction implements RequestHandlerInterface
 {
     public function __construct(
-        private OrderService $orders,
+        private OrderRefunds $orderRefunds,
         private RequestMapper $input,
         private Authorization $authorization,
         private JsonResponder $responder,
@@ -33,6 +33,6 @@ final readonly class RestockOrderAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->orders->restock(PathParameter::id($request), $this->input->body($request, RestockItems::class), $this->authorization->userId()));
+        return $this->responder->ok($this->orderRefunds->restock(PathParameter::id($request), $this->input->body($request, RestockItems::class), $this->authorization->userId()));
     }
 }

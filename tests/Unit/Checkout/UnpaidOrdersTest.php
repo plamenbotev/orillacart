@@ -37,7 +37,7 @@ final class UnpaidOrdersTest extends TestCase
         $this->shop->products->save(20, new SaveProduct('8', 'virtual'));
         $this->shop->stock->setLevels(StockItemRef::product(20), new SetStockLevels([new SetStockLevel($room, 5)]));
         $this->shop->paymentMethods->update('bank_transfer', new SavePaymentMethod('Bank transfer', true));
-        $this->unpaid = new UnpaidOrders($this->shop->orders, $this->shop->paymentOptions, $this->shop->settingsService, $this->shop->clock);
+        $this->unpaid = new UnpaidOrders($this->shop->orders, $this->shop->orderPayments, $this->shop->paymentOptions, $this->shop->settingsService, $this->shop->clock);
     }
 
     public function testAnOrderUnpaidTheShopsDaysIsCancelledAndItsStockSellsAgain(): void
@@ -45,7 +45,7 @@ final class UnpaidOrdersTest extends TestCase
         $this->shop->settingsService->update(new UpdateSettings('EUR', null, 'kg', 'cm', null, null, unpaidHoldDays: 7));
         $late = $this->place();
         $paid = $this->place();
-        $this->shop->orders->markPaid($paid->number, null);
+        $this->shop->orderPayments->markPaid($paid->number, null);
         self::assertSame(3, $this->shop->stock->available([StockItemRef::product(20)]));
 
         $this->shop->clock->modify('+6 days');
@@ -95,7 +95,7 @@ final class UnpaidOrdersTest extends TestCase
         }
         self::assertSame('on_hold', $this->place('grace@example.com', customer: $this->shop->accounts->add('grace@example.com', 'Grace'))->status, 'another shopper orders');
 
-        $this->shop->orders->markPaid($orders[0]->number, null);
+        $this->shop->orderPayments->markPaid($orders[0]->number, null);
         self::assertSame('on_hold', $this->place(customer: $ada)->status, 'one paid makes room');
     }
 
@@ -132,7 +132,7 @@ final class UnpaidOrdersTest extends TestCase
         $refused('and a try that was refused takes no room');
         self::assertSame('on_hold', $this->place('other@example.com', caller: 'ip:203.0.113.7')->status, 'another place orders');
 
-        $this->shop->orders->markPaid($orders[0]->number, null);
+        $this->shop->orderPayments->markPaid($orders[0]->number, null);
         self::assertSame('on_hold', $this->place('guest4@example.com', caller: 'ip:198.51.100.9')->status, 'one paid makes room');
         $refused('for one');
         $this->shop->orders->cancel($orders[1]->number);
@@ -186,7 +186,7 @@ final class UnpaidOrdersTest extends TestCase
         self::assertSame('on_hold', $this->place('grace+shop@example.com', caller: 'ip:198.51.100.9', cart: $cart)->status, 'however the address is written');
         self::assertSame('on_hold', $this->place('grace@example.com', caller: 'ip:198.51.100.9', cart: $cart)->status);
         $refused('orillacart_too_many_unpaid_orders', 'grace@example.com', $cart, 'three of hers wait');
-        $this->shop->orders->markPaid($first->number, null);
+        $this->shop->orderPayments->markPaid($first->number, null);
         self::assertSame('on_hold', $this->place('grace@example.com', caller: 'ip:198.51.100.9', cart: $cart)->status, 'one paid makes room');
 
         $this->shop->mail->emails = [];
@@ -251,7 +251,7 @@ final class UnpaidOrdersTest extends TestCase
         $waiting = $this->place('guest@example.com', caller: 'ip:198.51.100.9');
         $paid = $this->place('guest@example.com', caller: 'ip:198.51.100.9');
         $ada = $this->place(customer: $this->shop->accounts->add('ada@example.com', 'Ada'), caller: 'ip:198.51.100.9');
-        $this->shop->orders->markPaid($paid->number, null);
+        $this->shop->orderPayments->markPaid($paid->number, null);
 
         self::assertSame(32, \strlen($key));
         self::assertStringNotContainsString('198', $this->shop->orderRecords->find($waiting->number)?->callerKey() ?? '');

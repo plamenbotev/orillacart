@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Http;
 
 use OrillaCart\Ordering\Application\Dto\MarkOrderPaid;
-use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Ordering\Application\OrderPayments;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
@@ -25,7 +25,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class MarkOrderPaidAction implements RequestHandlerInterface
 {
     public function __construct(
-        private OrderService $orders,
+        private OrderPayments $payments,
         private RequestMapper $input,
         private Authorization $authorization,
         private JsonResponder $responder,
@@ -33,6 +33,6 @@ final readonly class MarkOrderPaidAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->orders->markPaidByShop(PathParameter::id($request), $this->input->body($request, MarkOrderPaid::class)->note, $this->authorization->userId()));
+        return $this->responder->ok($this->payments->markPaidByShop(PathParameter::id($request), $this->input->body($request, MarkOrderPaid::class)->note, $this->authorization->userId()));
     }
 }
