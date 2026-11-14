@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Exchange\Application\Dto;
 
+use OrillaCart\Catalog\Application\Dto\ProductPost;
 use OrillaCart\Catalog\Application\Dto\ProductView;
 use OrillaCart\Catalog\Application\Dto\VariationView;
 

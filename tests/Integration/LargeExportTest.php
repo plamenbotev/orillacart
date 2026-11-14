@@ -7,12 +7,12 @@ namespace OrillaCart\Tests\Integration;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
-use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\Dto\ChooseColumns;
 use OrillaCart\Exchange\Application\OrdersExport;
 use OrillaCart\Exchange\Infrastructure\WordPress\OptionExportChoices;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Domain\OrderSearch;
+use OrillaCart\Shared\Files\CsvFile;
 
 /**
  * An export of more orders than one batch on MySQL: every order once, in the list's order, whether by number or

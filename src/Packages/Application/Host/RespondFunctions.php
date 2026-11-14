@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace OrillaCart\Packages\Application\Host;
 
 use OrillaCart\Packages\Application\Dto\ScriptResponse;
-use OrillaCart\Packages\Application\RedirectTargets;
 use OrillaCart\Packages\Application\Values;
 use OrillaCart\Scripting\Application\Context;
 use OrillaCart\Scripting\Application\Dto\HostFunction;
 use OrillaCart\Scripting\Application\Host\HostNamespace;
 use OrillaCart\Scripting\Domain\Ops;
 use OrillaCart\Scripting\Domain\ScriptError;
+use OrillaCart\Shared\Http\RedirectTargets;
 
 /** `respond`: what a route answers with. A page's handler returns a map instead, the data for its template. */
 final readonly class RespondFunctions implements HostNamespace

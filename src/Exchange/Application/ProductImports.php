@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Exchange\Application;
 
 use OrillaCart\Audit\Application\ChangeLog;
+use OrillaCart\Catalog\Application\ProductPosts;
 use OrillaCart\Exchange\Application\Dto\Column;
 use OrillaCart\Exchange\Application\Dto\ColumnView;
 use OrillaCart\Exchange\Application\Dto\ImportView;

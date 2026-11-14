@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Catalog\Infrastructure\WordPress;
 
+use OrillaCart\Catalog\Application\Dto\ProductPost;
+use OrillaCart\Catalog\Application\Dto\ProductPostChange;
+use OrillaCart\Catalog\Application\ProductPosts;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductBrandTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductTagTaxonomy;
-use OrillaCart\Exchange\Application\Dto\ProductPost;
-use OrillaCart\Exchange\Application\Dto\ProductPostChange;
-use OrillaCart\Exchange\Application\ProductPosts;
 
 /**
  * Products' posts for the products file: a batch's posts in one query, their terms primed with them; and the

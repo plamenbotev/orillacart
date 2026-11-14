@@ -8,13 +8,13 @@ use OrillaCart\Cart\Http\CartCookie;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductCategoryTaxonomy;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
-use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\OrdersExport;
 use OrillaCart\Exchange\Application\ProductImports;
 use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Exchange\Infrastructure\WordPress\OptionExportChoices;
 use OrillaCart\Jobs\Application\JobRunner;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
+use OrillaCart\Shared\Files\CsvFile;
 
 /**
  * Exports over the REST routes and the download: the columns the shop manager chooses, an add-on's among them,

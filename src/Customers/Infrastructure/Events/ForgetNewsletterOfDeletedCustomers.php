@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Newsletter\Infrastructure\Events;
+namespace OrillaCart\Customers\Infrastructure\Events;
 
 use OrillaCart\Customers\Domain\Event\CustomerDeleted;
 use OrillaCart\Newsletter\Domain\SubscriberRepository;
@@ -13,7 +13,7 @@ use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
  * newsletter, not the account. It no longer names the account.
  */
 #[AsEventListener]
-final readonly class ForgetDeletedCustomers
+final readonly class ForgetNewsletterOfDeletedCustomers
 {
     public function __construct(private SubscriberRepository $subscribers) {}
 

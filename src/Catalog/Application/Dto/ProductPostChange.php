@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Exchange\Application\Dto;
+namespace OrillaCart\Catalog\Application\Dto;
 
 /**
  * What an import row changes of a product's post; null keeps it.

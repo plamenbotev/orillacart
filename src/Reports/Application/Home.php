@@ -12,13 +12,12 @@ use OrillaCart\Extension\Home\HomeUrl;
 use OrillaCart\Jobs\Application\JobOverview;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
-use OrillaCart\Packages\Application\PackageService;
-use OrillaCart\Packages\Application\RedirectTargets;
 use OrillaCart\Reports\Application\Dto\ReportQuery;
 use OrillaCart\Settings\Application\SetupState;
 use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Settings\Application\StatusReport;
 use OrillaCart\Shared\Extension\InstalledExtensions;
+use OrillaCart\Shared\Http\RedirectTargets;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -43,7 +42,7 @@ final readonly class Home
         private InstalledExtensions $extensions,
         private LoggerInterface $logger,
         private ?HomeCache $cache = null,
-        private ?PackageService $packages = null,
+        private ?StoppedExtensions $packages = null,
         private ?RedirectTargets $site = null,
     ) {}
 

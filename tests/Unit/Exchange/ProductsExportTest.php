@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Unit\Exchange;
 
+use OrillaCart\Catalog\Application\Dto\ProductPost;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Exchange\Application\ColumnChoice;
-use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\Dto\ChooseColumns;
-use OrillaCart\Exchange\Application\Dto\ProductPost;
 use OrillaCart\Exchange\Application\ProductColumns;
 use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Extension\Catalog\ProductColumn;
@@ -21,6 +20,7 @@ use OrillaCart\Inventory\Application\Dto\SaveStockroom;
 use OrillaCart\Inventory\Application\Dto\SetStockLevel;
 use OrillaCart\Inventory\Application\Dto\SetStockLevels;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
+use OrillaCart\Shared\Files\CsvFile;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\CountedForgets;
 use OrillaCart\Tests\Fixtures\Exchange\EnglishColumnNames;

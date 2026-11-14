@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tests\Fixtures\Exchange;
 
-use OrillaCart\Exchange\Application\Dto\ProductPost;
-use OrillaCart\Exchange\Application\Dto\ProductPostChange;
-use OrillaCart\Exchange\Application\ProductPosts;
+use OrillaCart\Catalog\Application\Dto\ProductPost;
+use OrillaCart\Catalog\Application\Dto\ProductPostChange;
+use OrillaCart\Catalog\Application\ProductPosts;
 use OrillaCart\Tests\Fixtures\Catalog\InMemoryProductContent;
 
 /** Products' posts a test gives: a published post with no texts for each product unless it says otherwise. */

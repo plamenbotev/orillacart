@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Exchange\Application;
 
 use OrillaCart\Newsletter\Application\Newsletter;
+use OrillaCart\Shared\Files\ExportFile;
 
 /**
  * Everyone subscribed to the newsletter now, with what they agreed to and when: for a newsletter service the

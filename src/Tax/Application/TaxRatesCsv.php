@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace OrillaCart\Tax\Application;
 
-use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Shared\Domain\PostcodePattern;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\TextEncoding;
+use OrillaCart\Shared\Files\CsvFile;
 use OrillaCart\Tax\Application\Dto\ImportTaxRates;
 use OrillaCart\Tax\Application\Dto\TaxGroupView;
 use OrillaCart\Tax\Domain\Event\TaxRatesChanged;

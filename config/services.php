@@ -29,6 +29,7 @@ use OrillaCart\Assistant\Infrastructure\TaggedToolSources;
 use OrillaCart\Assistant\Infrastructure\WordPress\SignedRequestStates;
 use OrillaCart\Assistant\Infrastructure\WordPress\WordPressAssistantContext;
 use OrillaCart\Assistant\Infrastructure\WordPress\WordPressAssistantRequests;
+use OrillaCart\Audit\Application\RequestApiKey;
 use OrillaCart\Audit\Domain\ChangeRecordRepository;
 use OrillaCart\Audit\Domain\LoggedProblemRepository;
 use OrillaCart\Audit\Infrastructure\Doctrine\DoctrineChangeRecordRepository;
@@ -38,6 +39,7 @@ use OrillaCart\Cart\Domain\AbandonedCartRepository;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Cart\Infrastructure\Doctrine\DoctrineAbandonedCartRepository;
 use OrillaCart\Cart\Infrastructure\Doctrine\DoctrineCartRepository;
+use OrillaCart\Catalog\Application\ProductPosts;
 use OrillaCart\Catalog\Application\ShippingClasses;
 use OrillaCart\Catalog\Application\ShopperGroups;
 use OrillaCart\Catalog\Application\ShopperPricing;
@@ -76,7 +78,6 @@ use OrillaCart\Customers\Infrastructure\GroupsOfShoppers;
 use OrillaCart\Customers\Infrastructure\WordPress\OptionCustomerSettingsRepository;
 use OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts;
 use OrillaCart\Exchange\Application\ColumnNames;
-use OrillaCart\Exchange\Application\ProductPosts;
 use OrillaCart\Exchange\Domain\ExportChoices;
 use OrillaCart\Exchange\Domain\ProductImportRepository;
 use OrillaCart\Exchange\Infrastructure\Doctrine\DoctrineProductImports;
@@ -114,6 +115,7 @@ use OrillaCart\Integrations\Infrastructure\Doctrine\DoctrineOAuthClientRepositor
 use OrillaCart\Integrations\Infrastructure\Doctrine\DoctrineOAuthTokenRepository;
 use OrillaCart\Integrations\Infrastructure\Doctrine\DoctrineWebhookRepository;
 use OrillaCart\Integrations\Infrastructure\SerializerViewNormalizer;
+use OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest;
 use OrillaCart\Integrations\Infrastructure\WordPress\KeyReadOnlyRequest;
 use OrillaCart\Integrations\Infrastructure\WordPress\TransientAuthorizationCodes;
 use OrillaCart\Integrations\Infrastructure\WordPress\WordPressClientDocuments;
@@ -127,6 +129,7 @@ use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockLevelRepository;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockMovements;
 use OrillaCart\Inventory\Infrastructure\Doctrine\DoctrineStockroomRepository;
 use OrillaCart\Invoicing\Application\InvoiceLinks;
+use OrillaCart\Invoicing\Application\ShopEmail;
 use OrillaCart\Invoicing\Domain\InvoiceRepository;
 use OrillaCart\Invoicing\Domain\InvoiceSettingsRepository;
 use OrillaCart\Invoicing\Infrastructure\Doctrine\DoctrineInvoiceRepository;
@@ -184,10 +187,10 @@ use OrillaCart\Packages\Application\ExtensionFields;
 use OrillaCart\Packages\Application\ExtensionFrames;
 use OrillaCart\Packages\Application\ObjectStore;
 use OrillaCart\Packages\Application\PackageArchives;
+use OrillaCart\Packages\Application\PackageService;
 use OrillaCart\Packages\Application\PackageTemplates;
 use OrillaCart\Packages\Application\PluginTemplates;
 use OrillaCart\Packages\Application\Recordings;
-use OrillaCart\Packages\Application\RedirectTargets;
 use OrillaCart\Packages\Application\RolledBackCaches;
 use OrillaCart\Packages\Application\RouteAnswers;
 use OrillaCart\Packages\Application\RunLog;
@@ -268,6 +271,7 @@ use OrillaCart\Platform\WordPress\WordPressUserNames;
 use OrillaCart\Reports\Application\HomeCache;
 use OrillaCart\Reports\Application\ReportQueries;
 use OrillaCart\Reports\Application\ReportStore;
+use OrillaCart\Reports\Application\StoppedExtensions;
 use OrillaCart\Reports\Infrastructure\Doctrine\DbalReportQueries;
 use OrillaCart\Reports\Infrastructure\Doctrine\DbalReportStore;
 use OrillaCart\Reports\Infrastructure\WordPress\TransientHomeCache;
@@ -326,6 +330,7 @@ use OrillaCart\Shared\Extension\ExtensionFieldValues;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use OrillaCart\Shared\Files\FileDelivery;
 use OrillaCart\Shared\Files\PrivateFiles;
+use OrillaCart\Shared\Http\RedirectTargets;
 use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\RouteCollection;
 use OrillaCart\Shared\I18n\ContentLanguages;
@@ -436,13 +441,14 @@ return static function (ContainerConfigurator $container): void {
             '../src/Search/Infrastructure/Doctrine/SqlParams.php',
             '../src/Shared/Persistence/FullTextQuery.php',
             '../src/Scripting/Application/{Scope,Context,CompiledScript}.php',
-            '../src/Exchange/Application/{CsvFile,JsonFile}.php',
+            '../src/Exchange/Application/JsonFile.php',
+            '../src/Shared/Files/CsvFile.php',
             '../src/Packages/Application/Adapters/',
         ]);
 
     // Application services are each area's API: other areas, WordPress hooks and WP-CLI commands call them.
     $services->load('OrillaCart\\', '../src/*/Application/')
-        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/', '../src/Payment/Application/PayPal/PayPalWebhookSignature.php', '../src/Agents/Application/{Ucp,UcpError}.php'])
+        ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/JsonFile.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/', '../src/Payment/Application/PayPal/PayPalWebhookSignature.php', '../src/Agents/Application/{Ucp,UcpError}.php'])
         ->public();
     // The host functions scripts may call: every tagged namespace, gathered once.
     // Every module's eraser, for Customers and Ordering to call when a privacy request erases someone.
@@ -628,6 +634,9 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(CustomerOrders::class, OrderCustomers::class);
     $services->alias(StoreCredit::class, GiftCardService::class);
     $services->alias(ExtensionFieldValues::class, ExtensionFields::class);
+    $services->alias(ShopEmail::class, EmailWriter::class);
+    $services->alias(RequestApiKey::class, ApiKeyRequest::class);
+    $services->alias(StoppedExtensions::class, PackageService::class);
     $services->alias(TaxGroups::class, TaxGroupService::class);
     $services->alias(ShippingClasses::class, ShippingClassService::class);
     $services->alias(\OrillaCart\Returns\Application\WithdrawalLinks::class, \OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks::class);

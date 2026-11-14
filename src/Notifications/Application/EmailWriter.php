@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Notifications\Application;
 
+use OrillaCart\Invoicing\Application\ShopEmail;
 use OrillaCart\Notifications\Application\Dto\Email;
 use OrillaCart\Notifications\Domain\EmailSettingsRepository;
 use OrillaCart\Shared\Lifecycle\Languages;
@@ -14,7 +15,7 @@ use OrillaCart\Shared\View\TemplateRenderer;
  * "subject" block as plain text, its body as HTML and as plain text. Every template gets site_name, site_url
  * and lang (the reader's language, such as de-DE), and unsubscribe_url for a reader on the newsletter.
  */
-final readonly class EmailWriter
+final readonly class EmailWriter implements ShopEmail
 {
     public function __construct(
         private TemplateRenderer $templates,

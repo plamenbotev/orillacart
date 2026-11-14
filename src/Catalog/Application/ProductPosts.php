@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Exchange\Application;
+namespace OrillaCart\Catalog\Application;
 
-use OrillaCart\Exchange\Application\Dto\ProductPost;
-use OrillaCart\Exchange\Application\Dto\ProductPostChange;
+use OrillaCart\Catalog\Application\Dto\ProductPost;
+use OrillaCart\Catalog\Application\Dto\ProductPostChange;
 
 /**
  * Products as WordPress keeps them: the post, its texts and its terms.

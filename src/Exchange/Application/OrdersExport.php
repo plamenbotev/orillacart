@@ -14,6 +14,7 @@ use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\OrderSummaries;
+use OrillaCart\Shared\Files\ExportFile;
 use OrillaCart\Shared\Persistence\LoadedEntities;
 use Psr\Log\LoggerInterface;
 

@@ -10,7 +10,6 @@ use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Invoicing\Application\Dto\InvoiceDocument;
 use OrillaCart\Invoicing\Domain\InvoiceSettings;
 use OrillaCart\Invoicing\Domain\InvoiceSettingsRepository;
-use OrillaCart\Notifications\Application\EmailWriter;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Settings\Application\SettingsService;
@@ -73,7 +72,7 @@ final readonly class EInvoices
         private InvoiceSettingsRepository $settings,
         private SettingsService $shop,
         private GeographyService $geography,
-        private EmailWriter $emails,
+        private ShopEmail $emails,
         private ShopCalendar $calendar,
     ) {}
 

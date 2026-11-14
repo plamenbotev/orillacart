@@ -7,7 +7,6 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
 use OrillaCart\Exchange\Application\AddOnProductWriting;
-use OrillaCart\Exchange\Application\CsvFile;
 use OrillaCart\Exchange\Application\Dto\ChooseColumns;
 use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Extension\Catalog\ProductDraft;
@@ -22,6 +21,7 @@ use OrillaCart\Packages\Application\ScriptedRegistrant;
 use OrillaCart\Packages\Infrastructure\WordPress\RunExtensionSchedules;
 use OrillaCart\Search\Application\DocumentBuilder;
 use OrillaCart\Search\Application\Dto\DocumentOption;
+use OrillaCart\Shared\Files\CsvFile;
 
 /**
  * Design 56: an extension's own records and its fields on the shop's, queried on indexed fields; its handlers

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Exchange\Application;
+namespace OrillaCart\Shared\Files;
 
 /**
  * Writes an export as CSV to a stream, in UTF-8 with a byte-order mark so spreadsheets read its letters right.

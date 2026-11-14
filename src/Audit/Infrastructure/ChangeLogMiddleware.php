@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Audit\Infrastructure;
 
 use OrillaCart\Audit\Application\ChangeLog;
-use OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest;
+use OrillaCart\Audit\Application\RequestApiKey;
 use OrillaCart\Shared\Http\HttpKernel;
 use OrillaCart\Shared\Http\Routing\RouteDefinition;
 use OrillaCart\Shared\Http\Security\Authorization;
@@ -35,7 +35,7 @@ final readonly class ChangeLogMiddleware implements MiddlewareInterface
         private \Closure $log,
         private Authorization $authorization,
         private LoggerInterface $logger,
-        private ApiKeyRequest $keys,
+        private RequestApiKey $keys,
     ) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -48,10 +48,10 @@ final readonly class ChangeLogMiddleware implements MiddlewareInterface
         }
         try {
             $body = json_decode((string) $request->getBody(), true);
-            $key = $this->keys->key;
+            $key = $this->keys->keyName();
             $via = $request->getAttribute(RouteDefinition::VIA);
             $via = \is_string($via) ? $via : ($key === null ? null : 'api_key');
-            ($this->log)()->record($this->authorization->userId(), $method, $route->path, self::called($route, $request), \is_array($body) ? $body : [], $via, $key?->name);
+            ($this->log)()->record($this->authorization->userId(), $method, $route->path, self::called($route, $request), \is_array($body) ? $body : [], $via, $key);
         } catch (\Throwable $e) {
             $this->logger->error('The change log could not record {route}: {message}', ['route' => "{$method} {$route->path}", 'message' => $e->getMessage()]);
         }

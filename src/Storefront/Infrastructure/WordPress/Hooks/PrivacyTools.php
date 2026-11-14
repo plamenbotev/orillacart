@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Customers\Infrastructure\WordPress\Hooks;
+namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Customers\Application\PersonalData;

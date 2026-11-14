@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Exchange\Application\Dto;
+namespace OrillaCart\Catalog\Application\Dto;
 
 /**
  * What WordPress keeps of a product: its status, texts and terms.

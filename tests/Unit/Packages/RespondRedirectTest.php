@@ -6,12 +6,12 @@ namespace OrillaCart\Tests\Unit\Packages;
 
 use OrillaCart\Packages\Application\Dto\ScriptResponse;
 use OrillaCart\Packages\Application\Host\RespondFunctions;
-use OrillaCart\Packages\Application\RedirectTargets;
 use OrillaCart\Scripting\Application\Context;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Grant;
 use OrillaCart\Scripting\Application\HostCatalog;
 use OrillaCart\Scripting\Domain\ScriptError;
+use OrillaCart\Shared\Http\RedirectTargets;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

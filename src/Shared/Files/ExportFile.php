@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Exchange\Application;
+namespace OrillaCart\Shared\Files;
 
 /**
  * Where an export writes its rows, as they come: a CSV or JSON file streamed to the browser.

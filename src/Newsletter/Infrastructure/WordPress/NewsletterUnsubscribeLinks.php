@@ -6,14 +6,13 @@ namespace OrillaCart\Newsletter\Infrastructure\WordPress;
 
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Newsletter\Domain\Subscriber;
-use OrillaCart\Notifications\Application\UnsubscribeLinks;
 use OrillaCart\Shared\Security\Signatures;
 
 /**
  * A link that unsubscribes the email from the newsletter, signed so no one unsubscribes someone else, with no
  * account and no expiry: a guest who signed up at checkout leaves from any of the shop's emails.
  */
-final readonly class NewsletterUnsubscribeLinks implements UnsubscribeLinks
+final readonly class NewsletterUnsubscribeLinks
 {
     public const string PARAMETER = 'orillacart_unsubscribe';
     public const string SIGNATURE = 'newsletter-unsubscribe';

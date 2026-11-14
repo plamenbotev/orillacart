@@ -58,14 +58,14 @@ the tiers below its own and, in its own tier, only those its rule names, so the 
 | --- | --- |
 | 0. The extension API | Extension |
 | 1. Base | Jobs, Geography, Translations, Settings, Audit |
-| 2. What is sold and to whom | Inventory, Catalog, Forms, Customers, Tax |
+| 2. What is sold and to whom | Inventory, Catalog, Forms, Customers, Tax, Newsletter |
 | 3. Selling | Ordering, Payment, GiftCards, Coupons, Cart, Shipping |
-| 4. What follows from orders | Reports, Returns, Invoicing, Newsletter, Checkout, Notifications, Search, Exchange, Reviews, Integrations |
+| 4. What follows from orders | Reports, Returns, Invoicing, Checkout, Notifications, Search, Exchange, Reviews, Integrations |
 | 5. The edges | Storefront, Scripting, Setup, Assistant, Agents, Packages |
 
 A lower module that needs something of a higher one declares an interface the higher one implements, or reacts to
-its events through an interface of its own (see below). What broke the tiers when they came is listed in
-`deptrac.modules.baseline.yaml`, each entry an item of PLAN.md to take out; a new one fails CI.
+its events through an interface of its own (see below). There are no exceptions: a module that uses another it
+may not fails CI.
 
 ## Start-up and wiring
 

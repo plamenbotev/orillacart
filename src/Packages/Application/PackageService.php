@@ -26,6 +26,7 @@ use OrillaCart\Packages\Domain\PackageRuleViolation;
 use OrillaCart\Packages\Domain\PackageState;
 use OrillaCart\Packages\Domain\PackageVersion;
 use OrillaCart\Packages\Domain\PackageVersions;
+use OrillaCart\Reports\Application\StoppedExtensions;
 use OrillaCart\Scripting\Application\CompiledScript;
 use OrillaCart\Scripting\Application\Dto\Budget;
 use OrillaCart\Scripting\Application\Dto\Compiled;
@@ -48,7 +49,7 @@ use Psr\Log\LoggerInterface;
  * Extensions written in the script language: installing, writing their files, checking, enabling with granted
  * permissions, disabling, uninstalling, their settings, the console, and what happens when one keeps failing.
  */
-final readonly class PackageService
+final readonly class PackageService implements StoppedExtensions
 {
     public function __construct(
         private PackageRepository $packages,

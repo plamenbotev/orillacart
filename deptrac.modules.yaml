@@ -4,10 +4,7 @@
 #
 #   vendor/bin/deptrac analyse --config-file=deptrac.modules.yaml --no-cache
 #
-# What used a module it should not before the rules came is in deptrac.modules.baseline.yaml, each to be taken out
-# (PLAN.md): a new one fails CI. Take an entry out when its import is gone; never add one.
-imports:
-  - deptrac.modules.baseline.yaml
+# There are no exceptions: a lower module that needs a higher one declares an interface the higher one implements.
 deptrac:
   paths:
     - ./src
@@ -192,6 +189,7 @@ deptrac:
       - Settings
       - Audit
       - Catalog
+      - Newsletter
     Tax:
       - Extension
       - Jobs
@@ -202,6 +200,13 @@ deptrac:
       - Catalog
       - Customers
       - Forms
+    Newsletter:
+      - Extension
+      - Jobs
+      - Geography
+      - Translations
+      - Settings
+      - Audit
     # Tier 3. Selling it: carts, orders and their money.
     Ordering:
       - Extension
@@ -215,6 +220,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
     Payment:
       - Extension
       - Jobs
@@ -227,6 +233,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
     GiftCards:
       - Extension
@@ -240,6 +247,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
     Coupons:
@@ -254,6 +262,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - GiftCards
       - Ordering
     Cart:
@@ -268,6 +277,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
     Shipping:
       - Extension
@@ -281,6 +291,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
     # Tier 4. What follows from orders, and the shop's work on them.
@@ -296,6 +307,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
       - GiftCards
@@ -314,6 +326,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
       - GiftCards
@@ -332,6 +345,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
       - GiftCards
@@ -339,24 +353,6 @@ deptrac:
       - Cart
       - Shipping
       - Reports
-    Newsletter:
-      - Extension
-      - Jobs
-      - Geography
-      - Translations
-      - Settings
-      - Audit
-      - Inventory
-      - Catalog
-      - Forms
-      - Customers
-      - Tax
-      - Ordering
-      - Payment
-      - GiftCards
-      - Coupons
-      - Cart
-      - Shipping
     Checkout:
       - Extension
       - Jobs
@@ -411,6 +407,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
       - GiftCards
@@ -449,6 +446,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
       - GiftCards
@@ -467,6 +465,7 @@ deptrac:
       - Forms
       - Customers
       - Tax
+      - Newsletter
       - Ordering
       - Payment
       - GiftCards

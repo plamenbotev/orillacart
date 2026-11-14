@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Forms\Infrastructure\Events;
+namespace OrillaCart\Ordering\Infrastructure\Events;
 
 use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;

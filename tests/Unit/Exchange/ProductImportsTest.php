@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Tests\Unit\Exchange;
 
 use OrillaCart\Audit\Application\ChangeLog;
+use OrillaCart\Catalog\Application\Dto\ProductPostChange;
 use OrillaCart\Catalog\Application\Dto\SaveAttribute;
 use OrillaCart\Catalog\Application\Dto\SaveOption;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
@@ -13,7 +14,6 @@ use OrillaCart\Catalog\Application\ProductLookup;
 use OrillaCart\Exchange\Application\ColumnChoice;
 use OrillaCart\Exchange\Application\Dto\ColumnView;
 use OrillaCart\Exchange\Application\Dto\ImportView;
-use OrillaCart\Exchange\Application\Dto\ProductPostChange;
 use OrillaCart\Exchange\Application\ImportProducts;
 use OrillaCart\Exchange\Application\ProductColumns;
 use OrillaCart\Exchange\Application\ProductImports;

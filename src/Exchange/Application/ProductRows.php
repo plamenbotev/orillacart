@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Exchange\Application;
 
+use OrillaCart\Catalog\Application\Dto\ProductPost;
+use OrillaCart\Catalog\Application\Dto\ProductPostChange;
 use OrillaCart\Catalog\Application\Dto\ProductView;
 use OrillaCart\Catalog\Application\Dto\SaleView;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
@@ -11,10 +13,10 @@ use OrillaCart\Catalog\Application\Dto\SaveSale;
 use OrillaCart\Catalog\Application\Dto\SaveVariation;
 use OrillaCart\Catalog\Application\Dto\VariationView;
 use OrillaCart\Catalog\Application\ProductLookup;
+use OrillaCart\Catalog\Application\ProductPosts;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Domain\Backorders;
 use OrillaCart\Exchange\Application\Dto\Column;
-use OrillaCart\Exchange\Application\Dto\ProductPostChange;
 use OrillaCart\Exchange\Application\Dto\ProductRow;
 use OrillaCart\Exchange\Domain\ExchangeRuleViolation;
 use OrillaCart\Extension\Catalog\ImportsProductColumn;
@@ -26,6 +28,7 @@ use OrillaCart\Inventory\Application\StockService;
 use OrillaCart\Inventory\Domain\StockReason;
 use OrillaCart\Settings\Application\ShopCalendar;
 use OrillaCart\Shared\Domain\TaxCode;
+use OrillaCart\Shared\Files\CsvFile;
 
 /**
  * Imports one row of a products file. The row finds its product by variation_id, id or SKU, in that order, and
@@ -346,7 +349,7 @@ final readonly class ProductRows
      */
     private function addOns(array $row, ProductView $product, ?int $variationId, array $columns): ?string
     {
-        $item = ProductsExport::item(new ProductRow($product, $variationId === null ? null : self::variation($product, $variationId), new Dto\ProductPost('', '', '', [], [], []), []));
+        $item = ProductsExport::item(new ProductRow($product, $variationId === null ? null : self::variation($product, $variationId), new ProductPost('', '', '', [], [], []), []));
         $refused = [];
         foreach ($columns as $id => $column) {
             if (!$column instanceof ImportsProductColumn || !\array_key_exists($id, $row)) {

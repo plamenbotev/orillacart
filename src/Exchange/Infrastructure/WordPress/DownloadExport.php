@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace OrillaCart\Exchange\Infrastructure\WordPress;
 
-use OrillaCart\Exchange\Application\CsvFile;
-use OrillaCart\Exchange\Application\ExportFile;
 use OrillaCart\Exchange\Application\JsonFile;
 use OrillaCart\Exchange\Application\OrdersExport;
 use OrillaCart\Exchange\Application\ProductsExport;
 use OrillaCart\Exchange\Application\SubscribersExport;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Files\CsvFile;
+use OrillaCart\Shared\Files\ExportFile;
 use OrillaCart\Shared\Http\HttpException;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\I18n\Translations;

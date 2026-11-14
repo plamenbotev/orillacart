@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Exchange\Application;
 
+use OrillaCart\Shared\Files\ExportFile;
+
 /**
  * Writes an export as a JSON list of objects, keyed by column id, one row at a time.
  */

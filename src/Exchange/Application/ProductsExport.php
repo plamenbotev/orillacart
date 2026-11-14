@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace OrillaCart\Exchange\Application;
 
+use OrillaCart\Catalog\Application\Dto\ProductPost;
 use OrillaCart\Catalog\Application\Dto\ProductView;
 use OrillaCart\Catalog\Application\Dto\VariationView;
 use OrillaCart\Catalog\Application\ProductLookup;
+use OrillaCart\Catalog\Application\ProductPosts;
 use OrillaCart\Catalog\Application\ProductService;
 use OrillaCart\Catalog\Domain\ProductNotFound;
 use OrillaCart\Exchange\Application\Dto\ChooseColumns;
 use OrillaCart\Exchange\Application\Dto\Column;
 use OrillaCart\Exchange\Application\Dto\ColumnView;
-use OrillaCart\Exchange\Application\Dto\ProductPost;
 use OrillaCart\Exchange\Application\Dto\ProductRow;
 use OrillaCart\Exchange\Domain\ExchangeRuleViolation;
 use OrillaCart\Exchange\Domain\ExportKind;
@@ -20,6 +21,7 @@ use OrillaCart\Extension\Catalog\ProductColumn;
 use OrillaCart\Extension\Catalog\ProductItem;
 use OrillaCart\Inventory\Application\Dto\StockItemRef;
 use OrillaCart\Inventory\Application\StockService;
+use OrillaCart\Shared\Files\ExportFile;
 use OrillaCart\Shared\Persistence\LoadedEntities;
 use Psr\Log\LoggerInterface;
 

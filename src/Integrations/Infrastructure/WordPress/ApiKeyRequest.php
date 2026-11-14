@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Integrations\Infrastructure\WordPress;
 
+use OrillaCart\Audit\Application\RequestApiKey;
 use OrillaCart\Integrations\Application\Dto\AuthenticatedKey;
 
 /**
  * The key the request authenticated with, if any: one per request, as WordPress handles one.
  */
-final class ApiKeyRequest
+final class ApiKeyRequest implements RequestApiKey
 {
     public ?AuthenticatedKey $key = null;
 
@@ -21,4 +22,9 @@ final class ApiKeyRequest
      * once it does (ApiKeyAuthentication::serving()).
      */
     public bool $deferred = false;
+
+    public function keyName(): ?string
+    {
+        return $this->key?->name;
+    }
 }

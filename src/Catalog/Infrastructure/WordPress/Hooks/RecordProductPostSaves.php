@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Audit\Infrastructure\WordPress\Hooks;
+namespace OrillaCart\Catalog\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Audit\Application\ChangeLog;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
