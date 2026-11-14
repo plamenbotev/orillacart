@@ -27,15 +27,9 @@ use OrillaCart\Customers\Domain\Event\CustomerErased;
 use OrillaCart\Customers\Domain\InvitationNotFound;
 use OrillaCart\Customers\Domain\PendingAccount;
 use OrillaCart\Customers\Domain\PendingAccountRepository;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Newsletter\Application\Newsletter;
 use OrillaCart\Newsletter\Domain\SignUpSource;
-use OrillaCart\Ordering\Application\Dto\AddressData;
-use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
-use OrillaCart\Ordering\Application\Dto\OrderQuery;
-use OrillaCart\Ordering\Application\Dto\OrderView;
-use OrillaCart\Ordering\Application\OrderService;
-use OrillaCart\Ordering\Domain\OrderNotFound;
-use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Privacy\PersonalDataErasers;
 use Psr\Clock\ClockInterface;
@@ -50,14 +44,13 @@ final readonly class CustomerService
     public function __construct(
         private Accounts $accounts,
         private CustomerSettingsRepository $settings,
-        private OrderService $orders,
+        private CustomerOrders $orders,
         private CustomerGroupRepository $groups,
         private EventDispatcherInterface $events,
         private PendingAccountRepository $pending,
         private AccountMail $accountMail,
         private AccountLinks $links,
         private ClockInterface $clock,
-        private SettingsService $shop,
         private CustomerNoteRepository $notes,
         private Newsletter $newsletter,
         private PersonalDataErasers $erasers = new PersonalDataErasers(),
@@ -199,17 +192,7 @@ final readonly class CustomerService
      */
     public function latestOrderAddresses(int $id): ?array
     {
-        $latest = $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->orders[0] ?? null;
-        if ($latest === null) {
-            return null;
-        }
-        try {
-            $order = $this->orders->order($latest->number);
-        } catch (OrderNotFound) {
-            return null;
-        }
-
-        return [$order->number, $order->billing, $order->shippingAddress];
+        return $this->orders->latestAddresses($id);
     }
 
     /** Whether the user is one of the shop's customers: see customer(). */
@@ -228,7 +211,7 @@ final readonly class CustomerService
     {
         $record = $this->accounts->find($id) ?? throw new CustomerNotFound($id);
 
-        return CustomerView::fromRecord($record, $this->orders->orders(new OrderQuery(customerId: $id, perPage: 1))->total, $this->groups->groupIdsOf($id), $this->lifetimeValues([$id])[$id], $this->newsletter->subscription($record->email));
+        return CustomerView::fromRecord($record, $this->orders->counts([$id])[$id] ?? 0, $this->groups->groupIdsOf($id), $this->orders->lifetimeValues([$id])[$id] ?? null, $this->newsletter->subscription($record->email));
     }
 
     public function customers(CustomerQuery $query): CustomerPageView
@@ -237,9 +220,9 @@ final readonly class CustomerService
         [$records, $total] = $this->accounts->search($search, ($query->page - 1) * $query->perPage, $query->perPage);
         // Three queries for the page, not three a customer.
         $ids = array_map(static fn($record): int => $record->id, $records);
-        $orders = $this->orders->orderCounts($ids);
+        $orders = $this->orders->counts($ids);
         $groups = $this->groups->groupIdsOfMany($ids);
-        $values = $this->lifetimeValues($ids);
+        $values = $this->orders->lifetimeValues($ids);
 
         return new CustomerPageView(
             array_map(static fn($record): CustomerView => CustomerView::fromRecord($record, $orders[$record->id] ?? 0, $groups[$record->id] ?? [], $values[$record->id] ?? null), $records),
@@ -247,18 +230,6 @@ final readonly class CustomerService
             $query->page,
             max(1, (int) ceil($total / $query->perPage)),
         );
-    }
-
-    /**
-     * @param list<int> $ids
-     *
-     * @return array<int, LifetimeValueView>
-     */
-    private function lifetimeValues(array $ids): array
-    {
-        $shop = $this->shop->current();
-
-        return $this->orders->lifetimeValues($ids, $shop->currency, $shop->priceDecimals);
     }
 
     /** Where a customer has things sent, as they saved it: their shipping address, or their billing one. */
@@ -557,14 +528,12 @@ final readonly class CustomerService
         $guestOrders = $this->settings->load()->guestOrders ? $this->orders->guestOrdersOf($account->email()) : [];
         $addressedBy ??= $guestOrders === [] ? null : max($guestOrders);
         foreach (array_values(array_unique([...$account->orderIds(), ...$guestOrders])) as $orderId) {
-            try {
-                $order = $this->orders->order($orderId);
-                $this->orders->giveTo($orderId, $id);
-            } catch (OrderNotFound) {
+            $addresses = $this->orders->giveTo($orderId, $id);
+            if ($addresses === null) {
                 continue;
             }
             if (!$addressed && $orderId === $addressedBy) {
-                $this->accounts->saveAddresses($id, new AddressBook()->remembering($order->billing, $order->shippingAddress));
+                $this->accounts->saveAddresses($id, new AddressBook()->remembering(...$addresses));
                 $addressed = true;
             }
         }
@@ -610,22 +579,6 @@ final readonly class CustomerService
         }
 
         return $this->account($id);
-    }
-
-    /**
-     * Moves an order to a customer's account, or makes it a guest's order.
-     *
-     * @throws CustomerNotFound for an account that does not exist or is not one of the shop's customers
-     * @throws OrderNotFound
-     */
-    public function assignOrder(int $orderId, ?int $customerId, ?int $userId): OrderView
-    {
-        // Only the shop's own customers take orders: not its staff, and on a network not another site's users.
-        if ($customerId !== null && (!$this->accounts->isShopCustomer($customerId) || $this->accounts->find($customerId) === null)) {
-            throw new CustomerNotFound($customerId);
-        }
-
-        return $this->orders->changeCustomer($orderId, $customerId, $userId);
     }
 
     /**

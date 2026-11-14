@@ -104,6 +104,7 @@ use OrillaCart\Notifications\Infrastructure\Events\AcknowledgeWithdrawal;
 use OrillaCart\Notifications\Infrastructure\Events\EmailAboutOrders;
 use OrillaCart\Ordering\Application\Downloads;
 use OrillaCart\Ordering\Application\OrderChargeTaxGroups;
+use OrillaCart\Ordering\Application\OrderCustomers;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
@@ -431,6 +432,7 @@ final class TestShop
     public readonly FakeSite $site;
     public readonly InMemoryCustomerSettingsRepository $customerSettings;
     public readonly CustomerService $customers;
+    public readonly OrderCustomers $orderCustomers;
     public readonly PersonalData $personalData;
     public readonly TemporaryPrivateFiles $files;
     public readonly DownloadService $downloadFiles;
@@ -560,7 +562,8 @@ final class TestShop
         $this->accountMail = new RecordingAccountMail();
         $this->newsletter = new Newsletter($this->subscribers = new InMemorySubscribers(), $this->newsletterSettings = new InMemoryNewsletterSettings(), $extensions, $this->jobs->jobs, $this->clock, $this->languages);
         $this->jobs->with(new SyncSubscriber($this->newsletter, $this->logger));
-        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orders, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock, $settings, $this->customerNoteRecords = new InMemoryCustomerNotes(), $this->newsletter);
+        $this->orderCustomers = new OrderCustomers($this->orders, $this->accounts, $settings);
+        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orderCustomers, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock, $this->customerNoteRecords = new InMemoryCustomerNotes(), $this->newsletter);
         $this->customerNotes = new CustomerNotes($this->customerNoteRecords, $this->accounts, new FixedUserNames(), $this->clock);
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCustomers($this->orders)(...));
         $this->events->addListener(OrderPlaced::class, new KeepOrderUploads($this->uploads, $this->orders)->placed(...));
@@ -568,7 +571,7 @@ final class TestShop
         $this->events->addListener(CustomerDeleted::class, $forgetCarts(...));
         $this->events->addListener(CustomerErased::class, $forgetCarts->erased(...));
         $this->events->addListener(PersonErased::class, $forgetCarts->personErased(...));
-        $this->personalData = new PersonalData($this->orders, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog, sources: new TaggedPersonalDataSources([new AbandonedCartPersonalData($this->abandonedCartRecords), new GiftCardPersonalData($this->giftCardRecords)]));
+        $this->personalData = new PersonalData($this->orderCustomers, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog, sources: new TaggedPersonalDataSources([new AbandonedCartPersonalData($this->abandonedCartRecords), new GiftCardPersonalData($this->giftCardRecords)]));
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $this->shippingQuotes = $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger, $this->shippingTexts);
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);

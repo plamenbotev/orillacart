@@ -10,7 +10,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Payment\Notification;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Application\PaymentOutcomes;
 use OrillaCart\Payment\Domain\PaymentRuleViolation;

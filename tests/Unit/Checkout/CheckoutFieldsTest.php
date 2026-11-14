@@ -16,7 +16,7 @@ use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Forms\Application\Dto\AskedField;
 use OrillaCart\Forms\Application\Dto\SaveForm;
 use OrillaCart\Forms\Application\Dto\SaveFormField;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;
 use OrillaCart\Ordering\Application\Dto\OrderNoteView;

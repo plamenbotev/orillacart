@@ -15,7 +15,7 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Forms\Application\Dto\SaveFieldChoice;
 use OrillaCart\Forms\Application\Dto\SaveForm;
 use OrillaCart\Forms\Application\Dto\SaveFormField;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderPageView;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\OrderSummaryView;

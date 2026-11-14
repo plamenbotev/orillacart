@@ -11,7 +11,7 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Order\OrderAction;
 use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Extension\ProviderUnavailable;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderActionView;
 use OrillaCart\Ordering\Application\OrderActions;
 use OrillaCart\Ordering\Domain\OrderRuleViolation;

@@ -10,7 +10,7 @@ use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Customers\Application\AddressBook;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Geography\Application\Dto\AddressData;
+
 /**
  * Command: what an order on hold contains now, as the shop repriced it.
  */

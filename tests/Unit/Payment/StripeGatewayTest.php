@@ -11,7 +11,7 @@ use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Extension\Payment\Notification;
 use OrillaCart\Extension\Settings;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Payment\Application\Dto\MakeRefund;

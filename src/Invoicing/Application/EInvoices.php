@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace OrillaCart\Invoicing\Application;
 
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Geography\Application\Dto\LocationView;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Invoicing\Application\Dto\InvoiceDocument;
 use OrillaCart\Invoicing\Domain\InvoiceSettings;
 use OrillaCart\Invoicing\Domain\InvoiceSettingsRepository;
 use OrillaCart\Notifications\Application\EmailWriter;
-use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Settings\Application\SettingsService;

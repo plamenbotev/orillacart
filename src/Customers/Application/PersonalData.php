@@ -8,10 +8,6 @@ use OrillaCart\Catalog\Application\Dto\ProductOffer;
 use OrillaCart\Catalog\Application\ShopCatalog;
 use OrillaCart\Customers\Domain\Event\PersonErased;
 use OrillaCart\Newsletter\Application\Newsletter;
-use OrillaCart\Ordering\Application\Dto\AddressData;
-use OrillaCart\Ordering\Application\Dto\OrderLineView;
-use OrillaCart\Ordering\Application\Dto\OrderView;
-use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Shared\Privacy\PersonalDataErasers;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -26,7 +22,7 @@ final readonly class PersonalData
     public const int PER_PAGE = 20;
 
     public function __construct(
-        private OrderService $orders,
+        private CustomerOrders $orders,
         private CustomerService $customers,
         private CustomerNotes $notes,
         private Newsletter $newsletter,
@@ -47,7 +43,7 @@ final readonly class PersonalData
             $id = $this->customers->customerIdOf($email);
             $customer = $id === null ? null : $this->customers->account($id);
             foreach ($customer->addresses ?? [] as $saved) {
-                $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-address-' . $saved->id, 'data' => [['name' => 'Saved address', 'value' => self::address($saved->address)]]];
+                $items[] = ['group' => 'orillacart-account', 'label' => 'Shop account', 'id' => 'orillacart-account-address-' . $saved->id, 'data' => [['name' => 'Saved address', 'value' => $saved->address->oneLine()]]];
             }
             $subscription = $this->newsletter->subscription($email);
             if ($subscription !== null) {
@@ -71,10 +67,8 @@ final readonly class PersonalData
             }
             array_push($items, ...($this->sources?->of($email, $id) ?? []));
         }
-        $orders = $this->orders->ofPerson($email, $this->customers->customerIdOf($email), $page, self::PER_PAGE);
-        foreach ($orders as $order) {
-            $items[] = ['group' => 'orillacart-orders', 'label' => 'Orders', 'id' => "orillacart-order-{$order->number}", 'data' => self::orderData($order)];
-        }
+        $orders = $this->orders->exportPage($email, $this->customers->customerIdOf($email), $page, self::PER_PAGE);
+        array_push($items, ...$orders);
 
         return ['items' => $items, 'done' => \count($orders) < self::PER_PAGE];
     }
@@ -94,62 +88,14 @@ final readonly class PersonalData
             $this->erasers->erasedPerson($email);
             $this->events?->dispatch(new PersonErased($email));
         }
-        // Erased orders no longer match the email, so each page starts at the first that still does.
-        $orders = $this->orders->ofPerson($email, $customerId, 1, self::PER_PAGE);
-        foreach ($orders as $order) {
-            $this->orders->anonymise($order->number, null);
-        }
+        $orders = $this->orders->erasePage($email, $customerId, self::PER_PAGE);
 
         return [
-            'removed' => $removed || $orders !== [],
-            'retained' => $orders !== [],
-            'messages' => $orders === [] ? [] : [\sprintf('%d orders were kept for the books, with the customer\'s details erased.', \count($orders))],
-            'done' => \count($orders) < self::PER_PAGE,
+            'removed' => $removed || $orders > 0,
+            'retained' => $orders > 0,
+            'messages' => $orders === 0 ? [] : [\sprintf('%d orders were kept for the books, with the customer\'s details erased.', $orders)],
+            'done' => $orders < self::PER_PAGE,
         ];
     }
 
-    /**
-     * @return list<array{name: string, value: string}>
-     */
-    private static function orderData(OrderView $order): array
-    {
-        $data = [
-            ['name' => 'Order', 'value' => '#' . $order->number],
-            ['name' => 'Placed', 'value' => $order->placedAt],
-            ['name' => 'Status', 'value' => $order->status],
-            ['name' => 'Total', 'value' => "{$order->total} {$order->currency}"],
-            ['name' => 'Email', 'value' => $order->email],
-            ['name' => 'Billing address', 'value' => self::address($order->billing)],
-            ['name' => 'Items', 'value' => implode(', ', array_map(static fn(OrderLineView $line): string => "{$line->quantity} × {$line->name}", $order->lines))],
-        ];
-        if ($order->shippingAddress !== null) {
-            $data[] = ['name' => 'Shipping address', 'value' => self::address($order->shippingAddress)];
-        }
-        if ($order->vatNumber !== null) {
-            $data[] = ['name' => 'VAT number', 'value' => $order->vatNumber];
-        }
-        if ($order->note !== '') {
-            $data[] = ['name' => 'Note', 'value' => $order->note];
-        }
-        // What they answered at checkout and for each item, which may name people or carry their files.
-        foreach ($order->fields as $field) {
-            $data[] = ['name' => $field->label, 'value' => $field->answer];
-        }
-        foreach ($order->lines as $line) {
-            foreach ($line->personalisation as $answer) {
-                if ($answer['answer'] !== '') {
-                    $data[] = ['name' => "{$line->name}: {$answer['label']}", 'value' => $answer['answer']];
-                }
-            }
-        }
-
-        return $data;
-    }
-
-    private static function address(AddressData $address): string
-    {
-        $parts = [trim("{$address->firstName} {$address->lastName}"), $address->street, $address->city, $address->postcode, $address->state ?? '', $address->country, $address->phone];
-
-        return implode(', ', array_filter(array_map(trim(...), $parts), static fn(string $part): bool => $part !== ''));
-    }
 }

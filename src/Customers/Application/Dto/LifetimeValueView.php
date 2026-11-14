@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Ordering\Application\Dto;
+namespace OrillaCart\Customers\Application\Dto;
 
 /**
  * What a customer is worth to the shop: what they paid in the shop's currency less what went back, over how

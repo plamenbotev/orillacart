@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Customers\Http;
+namespace OrillaCart\Ordering\Http;
 
-use OrillaCart\Customers\Application\TestData;
+use OrillaCart\Ordering\Application\TestData;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Security\Capability;

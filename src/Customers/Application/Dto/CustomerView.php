@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Customers\Application\Dto;
 
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Newsletter\Application\Dto\SubscriptionView;
-use OrillaCart\Ordering\Application\Dto\AddressData;
-use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
 
 final readonly class CustomerView
 {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Customers\Application;
 
 use OrillaCart\Customers\Domain\CustomerRuleViolation;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 
 /**
  * A customer's saved addresses, each under an id, and which of them checkout starts from for billing and for

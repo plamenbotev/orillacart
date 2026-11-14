@@ -21,7 +21,7 @@ use OrillaCart\Customers\Application\Dto\SaveCustomerGroup;
 use OrillaCart\Customers\Application\Dto\SetCustomerGroups;
 use OrillaCart\Customers\Application\Dto\UpdateCustomerSettings;
 use OrillaCart\Customers\Domain\InvitationNotFound;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
@@ -487,7 +487,7 @@ final class CustomerAccountsTest extends TestCase
             fn() => $this->shop->customers->saveAddressOf($staff, null, new SaveAddress($this->address)),
             fn() => $this->shop->customers->removeAddressOf($staff, 'none'),
             fn() => $this->shop->customerGroups->setGroupsOf($staff, new SetCustomerGroups([])),
-            fn() => $this->shop->customers->assignOrder(1, $staff, 7),
+            fn() => $this->shop->orderCustomers->assign(1, $staff, 7),
         ] as $reach) {
             try {
                 $reach();

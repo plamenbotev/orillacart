@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Application;
 
 use OrillaCart\Catalog\Application\Dto\QuotedDownload;
+use OrillaCart\Customers\Application\Dto\LifetimeValueView;
 use OrillaCart\Inventory\Application\Dto\StockNote;
 use OrillaCart\Inventory\Application\Dto\TakenStock;
 use OrillaCart\Inventory\Application\StockService;
@@ -15,7 +16,6 @@ use OrillaCart\Ordering\Application\Dto\AdjustmentView;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderContact;
 use OrillaCart\Ordering\Application\Dto\ChangeOrderStatus;
-use OrillaCart\Ordering\Application\Dto\LifetimeValueView;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\NewOrder;
 use OrillaCart\Ordering\Application\Dto\NewOrderItems;
@@ -113,8 +113,8 @@ final readonly class OrderService
         $order = new Order(new OrderDraft(
             $command->customerId,
             $command->email,
-            $command->billing->toAddress(),
-            $command->shippingAddress?->toAddress(),
+            OrderAddresses::address($command->billing),
+            ($command->shippingAddress === null ? null : OrderAddresses::address($command->shippingAddress)),
             self::lineDrafts($command->lines),
             self::shippingChoice($command->shipping),
             Money::of($command->total),
@@ -676,12 +676,12 @@ final readonly class OrderService
     public function changeContact(int $id, ChangeOrderContact $command, ?int $userId): OrderView
     {
         return $this->changing($id, function (Order $order) use ($command, $userId): OrderView {
-            $shippingAddress = $command->shippingAddress?->toAddress();
+            $shippingAddress = ($command->shippingAddress === null ? null : OrderAddresses::address($command->shippingAddress));
             // Asked before anything changes: a shipment booked to the old address refuses it.
             if ($order->shipsElsewhere($shippingAddress)) {
                 $this->events->dispatch(new OrderReaddressing($order->id()));
             }
-            $order->changeContact($command->email, $command->billing->toAddress(), $shippingAddress);
+            $order->changeContact($command->email, OrderAddresses::address($command->billing), $shippingAddress);
             $order->answer($command->fields);
             $order->addNote('The customer\'s details were changed.', NoteAuthor::System, false, $this->clock->now(), $userId);
             $this->orders->save($order);
@@ -1126,7 +1126,7 @@ final readonly class OrderService
         $order->replaceItems(
             self::lineDrafts($command->lines),
             self::shippingChoice($command->shipping),
-            $command->shippingAddress?->toAddress(),
+            ($command->shippingAddress === null ? null : OrderAddresses::address($command->shippingAddress)),
             Money::of($command->total),
             $command->pricesIncludeTax,
             $command->taxExemption,

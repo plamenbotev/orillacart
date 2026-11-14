@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Geography\Application\Dto\AddressData;
+use OrillaCart\Ordering\Application\OrderAddresses;
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\Order;
 use OrillaCart\Ordering\Domain\OrderDiscount;
@@ -149,8 +151,8 @@ final readonly class OrderView
             $order->id(),
             $order->status()->value,
             $order->email(),
-            AddressData::fromAddress($order->billing()),
-            $shippingAddress === null ? null : AddressData::fromAddress($shippingAddress),
+            OrderAddresses::data($order->billing()),
+            $shippingAddress === null ? null : OrderAddresses::data($shippingAddress),
             array_map(static fn(OrderLine $line): OrderLineView => OrderLineView::fromLine($line, $words), $order->lines()),
             // The shop reads its own words, the customer theirs (design 51).
             $words ? $order->shopShippingName() : $order->shippingName(),

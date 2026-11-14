@@ -11,7 +11,7 @@ use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Customers\Application\Dto\CreateCustomer;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\ReceiptHandles;
 use OrillaCart\Ordering\Http\PresentedReceipt;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;

@@ -22,7 +22,7 @@ use OrillaCart\Forms\Application\Dto\SaveForm;
 use OrillaCart\Forms\Application\Dto\SaveFormField;
 use OrillaCart\Forms\Application\Dto\SendUpload;
 use OrillaCart\Forms\Application\FormUploads;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Payment\Domain\PaymentProviderUnavailable;
 use OrillaCart\Shared\Domain\InvalidFields;

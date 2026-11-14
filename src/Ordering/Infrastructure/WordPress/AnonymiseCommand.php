@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Customers\Infrastructure\WordPress;
+namespace OrillaCart\Ordering\Infrastructure\WordPress;
 
 use OrillaCart\Customers\Application\PersonalData;
 use OrillaCart\Ordering\Application\OrderService;

@@ -11,7 +11,7 @@ use OrillaCart\Catalog\Application\Dto\UploadDownload;
 use OrillaCart\Checkout\Application\Dto\PlacedOrderView;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Customers\Domain\CustomerNotFound;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\ChangeDownloadAllowance;
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
@@ -195,13 +195,13 @@ final class DownloadsTest extends TestCase
         $customer = $this->shop->accounts->add('grace@example.com');
         $order = $this->paid();
 
-        $moved = $this->shop->customers->assignOrder($order->number, $customer, 1);
+        $moved = $this->shop->orderCustomers->assign($order->number, $customer, 1);
         self::assertSame($customer, $moved->customerId);
         self::assertCount(1, $this->shop->downloads->ofCustomer($customer), 'the files come with the order');
 
-        self::assertNull($this->shop->customers->assignOrder($order->number, null, 1)->customerId);
+        self::assertNull($this->shop->orderCustomers->assign($order->number, null, 1)->customerId);
         $this->expectException(CustomerNotFound::class);
-        $this->shop->customers->assignOrder($order->number, 999, 1);
+        $this->shop->orderCustomers->assign($order->number, 999, 1);
     }
 
     public function testAnOrderDoesNotMoveToAMemberOfStaff(): void
@@ -211,7 +211,7 @@ final class DownloadsTest extends TestCase
         $order = $this->paid();
 
         try {
-            $this->shop->customers->assignOrder($order->number, $manager, 1);
+            $this->shop->orderCustomers->assign($order->number, $manager, 1);
             self::fail('a manager is not one of the shop\'s customers');
         } catch (CustomerNotFound) {
         }

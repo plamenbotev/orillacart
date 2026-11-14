@@ -2,28 +2,29 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Ordering\Application\Dto;
+namespace OrillaCart\Geography\Application\Dto;
 
-use OrillaCart\Ordering\Domain\Address;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * A postal address as the customer types it at checkout, and as orders show it.
+ * A postal address as the customer types it at checkout, as accounts keep it and as orders show it.
  */
 final readonly class AddressData
 {
+    public const int MAX_LENGTH = 200;
+
     public function __construct(
         #[Assert\NotBlank]
-        #[Assert\Length(max: Address::MAX_LENGTH)]
+        #[Assert\Length(max: self::MAX_LENGTH)]
         public string $firstName,
         #[Assert\NotBlank]
-        #[Assert\Length(max: Address::MAX_LENGTH)]
+        #[Assert\Length(max: self::MAX_LENGTH)]
         public string $lastName,
         #[Assert\NotBlank]
-        #[Assert\Length(max: Address::MAX_LENGTH)]
+        #[Assert\Length(max: self::MAX_LENGTH)]
         public string $street,
         #[Assert\NotBlank]
-        #[Assert\Length(max: Address::MAX_LENGTH)]
+        #[Assert\Length(max: self::MAX_LENGTH)]
         public string $city,
         #[Assert\NotBlank]
         #[Assert\Length(max: 20)]
@@ -39,13 +40,11 @@ final readonly class AddressData
         public ?string $state = null,
     ) {}
 
-    public static function fromAddress(Address $address): self
+    /** The address on one line, as a privacy export shows it. */
+    public function oneLine(): string
     {
-        return new self($address->firstName(), $address->lastName(), $address->street(), $address->city(), $address->postcode(), $address->country(), $address->phone(), $address->state());
-    }
+        $parts = [trim("{$this->firstName} {$this->lastName}"), $this->street, $this->city, $this->postcode, $this->state ?? '', $this->country, $this->phone];
 
-    public function toAddress(): Address
-    {
-        return Address::of($this->firstName, $this->lastName, $this->street, $this->city, $this->postcode, $this->country, $this->state, $this->phone);
+        return implode(', ', array_filter(array_map(trim(...), $parts), static fn(string $part): bool => $part !== ''));
     }
 }

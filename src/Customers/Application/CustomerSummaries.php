@@ -12,7 +12,7 @@ use OrillaCart\Extension\Customer\Customers;
 use OrillaCart\Extension\Customer\CustomerSummary;
 use OrillaCart\Extension\Customer\NewCustomer;
 use OrillaCart\Extension\Order\OrderAddress;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Validation\CommandChecks;
 

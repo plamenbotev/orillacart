@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Customers\Http;
+namespace OrillaCart\Ordering\Http;
 
-use OrillaCart\Customers\Application\CustomerService;
-use OrillaCart\Customers\Application\Dto\AssignOrder;
+use OrillaCart\Ordering\Application\Dto\AssignOrder;
+use OrillaCart\Ordering\Application\OrderCustomers;
 use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Input\RequestMapper;
 use OrillaCart\Shared\Http\Output\JsonResponder;
@@ -23,7 +23,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 final readonly class AssignOrderAction implements RequestHandlerInterface
 {
     public function __construct(
-        private CustomerService $customers,
+        private OrderCustomers $customers,
         private RequestMapper $input,
         private JsonResponder $responder,
         private Authorization $authorization,
@@ -33,6 +33,6 @@ final readonly class AssignOrderAction implements RequestHandlerInterface
     {
         $command = $this->input->body($request, AssignOrder::class);
 
-        return $this->responder->ok($this->customers->assignOrder(PathParameter::id($request), $command->customerId, $this->authorization->userId()));
+        return $this->responder->ok($this->customers->assign(PathParameter::id($request), $command->customerId, $this->authorization->userId()));
     }
 }

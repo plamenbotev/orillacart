@@ -10,7 +10,7 @@ use OrillaCart\Assistant\Infrastructure\Descriptions\OrderMoneyDescription;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Checkout\Application\Dto\CreateOrder;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use PHPUnit\Framework\TestCase;
 

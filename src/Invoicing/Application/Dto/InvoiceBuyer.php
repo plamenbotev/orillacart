@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Invoicing\Application\Dto;
 
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 
 /**

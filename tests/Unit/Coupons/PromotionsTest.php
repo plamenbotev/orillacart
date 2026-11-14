@@ -21,7 +21,7 @@ use OrillaCart\Coupons\Application\Dto\SaveCoupon;
 use OrillaCart\Customers\Application\AddressBook;
 use OrillaCart\Customers\Application\Dto\SaveCustomerGroup;
 use OrillaCart\Customers\Application\Dto\SetCustomerGroups;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;

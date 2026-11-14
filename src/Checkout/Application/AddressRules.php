@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Application;
 
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\Geography\Domain\InvalidPostcode;
-use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
 

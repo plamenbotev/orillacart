@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Customers\Http;
+namespace OrillaCart\Ordering\Http;
 
-use OrillaCart\Ordering\Application\Downloads;
+use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Shared\Http\HttpException;
+use OrillaCart\Shared\Http\Input\PathParameter;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Http\Security\Authorization;
@@ -14,20 +15,17 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-/**
- * Every file the logged-in customer bought and may download.
- */
-#[Route('/account/downloads', methods: ['GET'], capability: Capability::ACCOUNT)]
-final readonly class ListAccountDownloadsAction implements RequestHandlerInterface
+#[Route('/account/orders/{id}', methods: ['GET'], capability: Capability::ACCOUNT, requirements: ['id' => '\d+'])]
+final readonly class ShowAccountOrderAction implements RequestHandlerInterface
 {
     public function __construct(
-        private Downloads $downloads,
+        private OrderService $orders,
         private Authorization $authorization,
         private JsonResponder $responder,
     ) {}
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->downloads->ofCustomer($this->authorization->userId() ?? throw HttpException::unauthorized()));
+        return $this->responder->ok($this->orders->customerOrder($this->authorization->userId() ?? throw HttpException::unauthorized(), PathParameter::id($request)));
     }
 }

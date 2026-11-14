@@ -15,7 +15,7 @@ use OrillaCart\Extension\Order\OrderAddress;
 use OrillaCart\Extension\Order\OrderQuote;
 use OrillaCart\Extension\Order\OrderSummary;
 use OrillaCart\Extension\Order\ShippingChoice;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Payment\Application\Dto\PaymentOptionView;
 use OrillaCart\Shared\Domain\Money;

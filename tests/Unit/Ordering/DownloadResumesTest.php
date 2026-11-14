@@ -9,7 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\Dto\UploadDownload;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Domain\DownloadGrant;
 use OrillaCart\Ordering\Domain\DownloadUnavailable;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;

@@ -23,7 +23,7 @@ use OrillaCart\Extension\Cart\KeptCharge;
 use OrillaCart\Extension\Checkout\Fee;
 use OrillaCart\Extension\Checkout\FeeQuery;
 use OrillaCart\Extension\Checkout\OrderFee;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\RefundLine;
 use OrillaCart\Payment\Application\Dto\MakeRefund;

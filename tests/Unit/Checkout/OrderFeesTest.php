@@ -15,7 +15,7 @@ use OrillaCart\Extension\Checkout\Fee;
 use OrillaCart\Extension\Checkout\FeeQuery;
 use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\FailsClosed;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Payment\Application\Dto\MakeRefund;

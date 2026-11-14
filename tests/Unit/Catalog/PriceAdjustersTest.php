@@ -17,7 +17,7 @@ use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Extension\FailsClosed;
 use OrillaCart\Extension\Pricing\PriceAdjuster;
 use OrillaCart\Extension\Pricing\PriceQuery;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderNoteView;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;

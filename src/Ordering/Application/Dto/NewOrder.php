@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Geography\Application\Dto\AddressData;
+
 /**
  * Command from checkout: record a placed order. Amounts are decimal strings rounded to the currency.
  */

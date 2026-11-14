@@ -8,7 +8,7 @@ use OrillaCart\Extension\Order\OrderAddress;
 use OrillaCart\Extension\Order\OrderLine;
 use OrillaCart\Extension\Order\Orders;
 use OrillaCart\Extension\Order\OrderSummary;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\AdjustmentView;
 use OrillaCart\Ordering\Application\Dto\NewOrderFee;
 use OrillaCart\Ordering\Application\Dto\OrderFieldView;

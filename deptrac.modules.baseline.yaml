@@ -19,51 +19,17 @@ deptrac:
       - OrillaCart\Exchange\Application\Dto\ProductPost
       - OrillaCart\Exchange\Application\Dto\ProductPostChange
       - OrillaCart\Exchange\Application\ProductPosts
-    OrillaCart\Customers\Application\AddressBook:
-      - OrillaCart\Ordering\Application\Dto\AddressData
     OrillaCart\Customers\Application\CustomerService:
       - OrillaCart\Newsletter\Application\Newsletter
       - OrillaCart\Newsletter\Domain\SignUpSource
-      - OrillaCart\Ordering\Application\Dto\AddressData
-      - OrillaCart\Ordering\Application\Dto\LifetimeValueView
-      - OrillaCart\Ordering\Application\Dto\OrderQuery
-      - OrillaCart\Ordering\Application\Dto\OrderView
-      - OrillaCart\Ordering\Application\OrderService
-      - OrillaCart\Ordering\Domain\OrderNotFound
-    OrillaCart\Customers\Application\CustomerSummaries:
-      - OrillaCart\Ordering\Application\Dto\AddressData
     OrillaCart\Customers\Application\Dto\CustomerView:
       - OrillaCart\Newsletter\Application\Dto\SubscriptionView
-      - OrillaCart\Ordering\Application\Dto\AddressData
-      - OrillaCart\Ordering\Application\Dto\LifetimeValueView
-    OrillaCart\Customers\Application\Dto\SaveAddress:
-      - OrillaCart\Ordering\Application\Dto\AddressData
-    OrillaCart\Customers\Application\Dto\SavedAddressView:
-      - OrillaCart\Ordering\Application\Dto\AddressData
     OrillaCart\Customers\Application\PersonalData:
       - OrillaCart\Newsletter\Application\Newsletter
-      - OrillaCart\Ordering\Application\Dto\AddressData
-      - OrillaCart\Ordering\Application\Dto\OrderLineView
-      - OrillaCart\Ordering\Application\Dto\OrderView
-      - OrillaCart\Ordering\Application\OrderService
-    OrillaCart\Customers\Application\TestData:
-      - OrillaCart\Ordering\Application\OrderService
-    OrillaCart\Customers\Http\ListAccountDownloadsAction:
-      - OrillaCart\Ordering\Application\Downloads
-    OrillaCart\Customers\Http\ListAccountOrdersAction:
-      - OrillaCart\Ordering\Application\Dto\OrderQuery
-      - OrillaCart\Ordering\Application\OrderService
-    OrillaCart\Customers\Http\ShowAccountOrderAction:
-      - OrillaCart\Ordering\Application\OrderService
     OrillaCart\Customers\Http\ShowCustomerAction:
       - OrillaCart\Packages\Application\ExtensionFields
-    OrillaCart\Customers\Infrastructure\WordPress\AnonymiseCommand:
-      - OrillaCart\Ordering\Application\OrderService
-      - OrillaCart\Ordering\Domain\OrderNotFound
     OrillaCart\Customers\Infrastructure\WordPress\Hooks\PrivacyTools:
       - OrillaCart\Cart\Application\CartService
-    OrillaCart\Customers\Infrastructure\WordPress\WordPressAccounts:
-      - OrillaCart\Ordering\Application\Dto\AddressData
     OrillaCart\Forms\Infrastructure\Events\KeepOrderUploads:
       - OrillaCart\Ordering\Application\Dto\OrderLineView
       - OrillaCart\Ordering\Application\OrderService

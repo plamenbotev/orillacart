@@ -239,7 +239,7 @@ final readonly class RouteDocumentation
         return $fields;
     }
 
-    /** "?OrillaCart\Ordering\Application\Dto\AddressData" reads "AddressData|null". */
+    /** "?OrillaCart\Geography\Application\Dto\AddressData" reads "AddressData|null". */
     private static function shortType(string $type): string
     {
         $nullable = str_starts_with($type, '?');

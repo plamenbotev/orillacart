@@ -9,7 +9,7 @@ use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Catalog\Application\Dto\SaveProduct;
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Platform\WordPress\WordPressLanguages;
 use OrillaCart\Settings\Application\SettingsService;

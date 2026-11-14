@@ -21,7 +21,7 @@ use OrillaCart\Extension\Cart\CartRule;
 use OrillaCart\Extension\Cart\CheckedCart;
 use OrillaCart\Extension\Cart\CheckedLine;
 use OrillaCart\Extension\FailsClosed;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shared\Domain\Event\PublicEvent;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;

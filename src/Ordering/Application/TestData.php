@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Customers\Application;
+namespace OrillaCart\Ordering\Application;
 
-use OrillaCart\Customers\Application\Dto\TestDataView;
-use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Customers\Application\Accounts;
+use OrillaCart\Customers\Application\CustomerService;
+use OrillaCart\Ordering\Application\Dto\TestDataView;
 
 /**
  * The records made to try the shop out (design 62): how many there are, and their removal, test orders first

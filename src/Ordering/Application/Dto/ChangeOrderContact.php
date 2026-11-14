@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Ordering\Application\Dto;
 
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Domain\FieldAnswer;
 use Symfony\Component\Validator\Constraints as Assert;
 

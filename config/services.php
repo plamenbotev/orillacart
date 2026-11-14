@@ -61,6 +61,7 @@ use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineRedemptionRepository;
 use OrillaCart\Customers\Application\AccountLinks;
 use OrillaCart\Customers\Application\AccountMail;
 use OrillaCart\Customers\Application\Accounts;
+use OrillaCart\Customers\Application\CustomerOrders;
 use OrillaCart\Customers\Application\WishlistSetting;
 use OrillaCart\Customers\Domain\CustomerGroupRepository;
 use OrillaCart\Customers\Domain\CustomerNoteRepository;
@@ -165,6 +166,7 @@ use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsReposit
 use OrillaCart\Notifications\Infrastructure\WordPress\WordPressMailer;
 use OrillaCart\Notifications\Infrastructure\WordPress\WordPressSite;
 use OrillaCart\Notifications\Infrastructure\WordPress\WordPressUndeliverable;
+use OrillaCart\Ordering\Application\OrderCustomers;
 use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderLookups;
 use OrillaCart\Ordering\Domain\DownloadGrantRepository;
@@ -615,6 +617,7 @@ return static function (ContainerConfigurator $container): void {
     $services->alias(GiftCardMail::class, GiftCardEmails::class);
     $services->alias(AccountLinks::class, StorefrontAccountLinks::class);
     $services->alias(WishlistSetting::class, StorefrontWishlistSetting::class);
+    $services->alias(CustomerOrders::class, OrderCustomers::class);
     $services->alias(\OrillaCart\Returns\Application\WithdrawalLinks::class, \OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWithdrawalLinks::class);
     $services->alias(\OrillaCart\Checkout\Application\EmailConfirmationLinks::class, \OrillaCart\Storefront\Infrastructure\WordPress\StorefrontEmailConfirmationLinks::class);
     $services->alias(\OrillaCart\Checkout\Application\ConfirmedEmails::class, \OrillaCart\Checkout\Infrastructure\WordPress\TransientConfirmedEmails::class);

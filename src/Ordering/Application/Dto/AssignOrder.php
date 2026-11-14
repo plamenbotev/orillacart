@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Customers\Application\Dto;
+namespace OrillaCart\Ordering\Application\Dto;
 
 use Symfony\Component\Validator\Constraints as Assert;
 

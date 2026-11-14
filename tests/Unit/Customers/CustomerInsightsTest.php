@@ -12,7 +12,7 @@ use OrillaCart\Checkout\Application\Dto\PlaceOrder;
 use OrillaCart\Customers\Application\Dto\AddCustomerNote;
 use OrillaCart\Customers\Application\Dto\CustomerQuery;
 use OrillaCart\Customers\Domain\CustomerRuleViolation;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;

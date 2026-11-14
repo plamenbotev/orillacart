@@ -15,7 +15,7 @@ use OrillaCart\Extension\Checkout\AddressCheck;
 use OrillaCart\Extension\Checkout\AddressSuggestion;
 use OrillaCart\Extension\Checkout\CheckedAddress;
 use OrillaCart\Extension\FailsClosed;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SaveShippingRate;

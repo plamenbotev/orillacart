@@ -19,7 +19,7 @@ use OrillaCart\Exchange\Application\OrdersExport;
 use OrillaCart\Exchange\Domain\ExchangeRuleViolation;
 use OrillaCart\Extension\Order\OrderColumn;
 use OrillaCart\Extension\Order\OrderSummary;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderQuery;
 use OrillaCart\Ordering\Application\OrderSummaries;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;

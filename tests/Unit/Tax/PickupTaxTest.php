@@ -12,7 +12,7 @@ use OrillaCart\Checkout\Application\Dto\CheckoutView;
 use OrillaCart\Checkout\Application\Dto\CreateOrder;
 use OrillaCart\Checkout\Application\Dto\EditedItem;
 use OrillaCart\Checkout\Application\Dto\PlaceOrder;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Payment\Application\Dto\SavePaymentMethod;
 use OrillaCart\Shipping\Application\Dto\SaveCarrier;
 use OrillaCart\Shipping\Application\Dto\SavePickupLocation;

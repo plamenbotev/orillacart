@@ -10,7 +10,7 @@ use OrillaCart\Checkout\Application\Dto\CheckAddresses;
 use OrillaCart\Checkout\Domain\CheckoutRuleViolation;
 use OrillaCart\Extension\Checkout\CheckedAddress;
 use OrillaCart\Extension\FailsClosed;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Shared\Extension\ClosedFailures;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Log\LoggerInterface;

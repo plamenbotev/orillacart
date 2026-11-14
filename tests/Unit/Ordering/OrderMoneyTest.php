@@ -21,7 +21,7 @@ use OrillaCart\Extension\Checkout\OrderFee;
 use OrillaCart\Extension\Pricing\Adjustment;
 use OrillaCart\Extension\Pricing\AdjustmentQuery;
 use OrillaCart\Extension\Pricing\OrderAdjuster;
-use OrillaCart\Ordering\Application\Dto\AddressData;
+use OrillaCart\Geography\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\LineTaxView;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Payment\Application\Dto\MakeRefund;
