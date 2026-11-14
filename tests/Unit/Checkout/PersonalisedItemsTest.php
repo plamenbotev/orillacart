@@ -226,7 +226,7 @@ final class PersonalisedItemsTest extends TestCase
         $guest = new CartOwner($this->shop->carts->add($guest, new AddToCart(30, personalisation: ["f{$logo}_logo" => $send()]))->newToken ?? $guest->token);
         $this->shop->clock->modify('+6 days');
 
-        $joined = $this->shop->carts->cart(new CartOwner($guest->token, $ada));
+        $joined = $this->shop->carts->cart(new CartOwner($this->shop->carts->claim(new CartOwner($guest->token, $ada)), $ada));
 
         self::assertCount(FormUploads::MAX_HELD, $joined->cart->lines, 'the line past the limit stays out');
         $this->shop->clock->modify('+3 days');

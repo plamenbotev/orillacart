@@ -87,17 +87,26 @@ final readonly class CartService
         $this->views = new CartViews($quotes, $settings, $extensions, $logger, $currencies, $forms, $content, $closedFailures);
     }
 
+    /**
+     * The owner's cart as it is: reading it changes nothing (a visitor's cart a customer logged in with is claimed by
+     * claim() or the first change, not here).
+     */
     public function cart(CartOwner $owner): CartResult
     {
-        [$cart, $newToken] = $this->find($owner);
-        if ($cart === null) {
-            return new CartResult(CartView::empty(), null);
-        }
-        if ($newToken !== null) {
-            $this->carts->save($cart);
-        }
+        $cart = $this->held($owner);
 
-        return new CartResult($this->views->view($cart), $newToken);
+        return new CartResult($cart === null ? CartView::empty() : $this->views->view($cart), null);
+    }
+
+    /**
+     * Makes the visitor's cart in the browser the logged-in customer's, joined with what their account's cart held,
+     * under a new token. The storefront asks once, on the first page after logging in; any change asks too.
+     *
+     * @return string|null the token for the browser; null when there was nothing to claim
+     */
+    public function claim(CartOwner $owner): ?string
+    {
+        return $this->find($owner)[1];
     }
 
     /**
@@ -200,7 +209,7 @@ final readonly class CartService
      */
     public function contents(CartOwner $owner): ?CartContents
     {
-        [$cart] = $this->find($owner);
+        $cart = $this->held($owner);
 
         return $cart === null ? null : $this->views->contents($cart);
     }
@@ -488,32 +497,34 @@ final readonly class CartService
     }
 
     /**
-     * The owner's cart, and a new token when the browser has to be given one.
+     * The owner's cart, claimed for the logged-in customer when it was a visitor's, and a new token when the browser
+     * has to be given one.
      *
      * @return array{?Cart, ?string}
      */
     private function find(CartOwner $owner): array
+    {
+        $cart = $this->held($owner);
+        if ($cart === null || $owner->customerId === null || $cart->customerId() !== null) {
+            return [$cart, null];
+        }
+
+        return $this->loggedIn($cart, $owner->customerId);
+    }
+
+    /**
+     * The owner's cart, changing nothing: the browser's, unless it is another customer's; else the account's, found
+     * by the customer, so a second device needs no token of its own (and does not take it from the first).
+     */
+    private function held(CartOwner $owner): ?Cart
     {
         $cart = $owner->token === null || $owner->token === '' ? null : $this->carts->findByToken($owner->token);
         if ($cart !== null && $cart->customerId() !== null && $cart->customerId() !== $owner->customerId) {
             // Another customer's cart, left in a shared browser: not this one's to see or order from.
             $cart = null;
         }
-        if ($cart !== null) {
-            if ($owner->customerId === null || $cart->customerId() !== null) {
-                return [$cart, null];
-            }
 
-            return $this->loggedIn($cart, $owner->customerId);
-        }
-        $cart = $owner->customerId === null ? null : $this->carts->findByCustomer($owner->customerId);
-        if ($cart === null) {
-            return [null, null];
-        }
-        $token = self::token();
-        $cart->rekey($token);
-
-        return [$cart, $token];
+        return $cart ?? ($owner->customerId === null ? null : $this->carts->findByCustomer($owner->customerId));
     }
 
     /** How many files the cart's lines name. */

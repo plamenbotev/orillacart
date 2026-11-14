@@ -102,15 +102,30 @@ final class CartServiceTest extends TestCase
         $phone = $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10));
 
         $laptop = $this->shop->carts->cart(new CartOwner(null, 7));
-        self::assertNotNull($laptop->newToken);
-        self::assertNotSame($phone->newToken, $laptop->newToken);
+        self::assertNull($laptop->newToken, 'found by the account: reading it rekeys nothing');
         self::assertSame(1, $laptop->cart->items);
-        self::assertSame(0, $this->shop->carts->cart(new CartOwner($phone->newToken))->cart->items, 'the old cookie no longer opens it');
+        self::assertSame(1, $this->shop->carts->cart(new CartOwner($phone->newToken, 7))->cart->items, 'the phone keeps its cookie');
+        self::assertSame(0, $this->shop->carts->cart(new CartOwner($phone->newToken))->cart->items, 'logged out, the cookie opens nothing');
 
         // A visitor who logs in keeps the cart they filled.
         $visitor = $this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 2));
-        $this->shop->carts->cart(new CartOwner($visitor->newToken, 8));
+        self::assertNotNull($this->shop->carts->claim(new CartOwner($visitor->newToken, 8)));
         self::assertSame(2, $this->shop->carts->cart(new CartOwner(null, 8))->cart->items);
+    }
+
+    public function testReadingACartChangesNothing(): void
+    {
+        $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10, [$this->gold], 1));
+        $visitor = $this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 2));
+        $owner = new CartOwner($visitor->newToken, 7);
+
+        $seen = $this->shop->carts->cart($owner);
+        self::assertNull($seen->newToken);
+        self::assertSame(2, $seen->cart->items, 'the browser\'s cart, as it is');
+        self::assertNotNull($this->shop->carts->contents($owner));
+        self::assertCount(2, $this->shop->cartRecords->carts, 'nothing joined');
+        self::assertSame(2, $this->shop->carts->cart(new CartOwner($visitor->newToken))->cart->items, 'nor rekeyed');
+        self::assertNull($this->shop->carts->claim(new CartOwner($visitor->newToken)), 'a visitor has nothing to claim');
     }
 
     public function testAnotherCustomersCartIsNotServedByItsCookie(): void
@@ -132,11 +147,13 @@ final class CartServiceTest extends TestCase
         self::assertNotNull($visitor->newToken);
         $this->shop->carts->add(new CartOwner($visitor->newToken), new AddToCart(10));
 
-        $joined = $this->shop->carts->cart(new CartOwner($visitor->newToken, 7));
+        $token = $this->shop->carts->claim(new CartOwner($visitor->newToken, 7));
 
-        self::assertNotNull($joined->newToken, 'the browser gets a new token');
-        self::assertNotSame($visitor->newToken, $joined->newToken);
+        self::assertNotNull($token, 'the browser gets a new token');
+        self::assertNotSame($visitor->newToken, $token);
+        $joined = $this->shop->carts->cart(new CartOwner($token, 7));
         self::assertSame([3, 1], array_map(static fn($line): int => $line->quantity, $joined->cart->lines), 'the same item adds up');
+        self::assertNull($this->shop->carts->claim(new CartOwner($token, 7)), 'claimed once');
         self::assertCount(1, $this->shop->cartRecords->carts, 'the visitor\'s cart is gone');
         self::assertSame(0, $this->shop->carts->cart(new CartOwner($visitor->newToken))->cart->items, 'the visitor\'s token opens nothing');
     }

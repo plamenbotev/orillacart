@@ -180,8 +180,13 @@ final class ShoppersAgentsTest extends RestTestCase
             $token = $checkouts->handover($id);
             self::assertIsString($token);
 
-            // The buyer opens the link logged in: the agent's cart joins their account's.
-            $merged = $carts->contents(new CartOwner($token, $user));
+            // The buyer opens the link logged in: reading the cart changes nothing, the page claims it (ClaimedCart)
+            // and the agent's cart joins their account's.
+            self::assertCount(1, $carts->contents(new CartOwner($token, $user))->lines ?? []);
+            self::assertSame($token, $checkouts->handover($id), 'not claimed by reading it');
+            $claimed = $carts->claim(new CartOwner($token, $user));
+            self::assertIsString($claimed);
+            $merged = $carts->contents(new CartOwner($claimed, $user));
             self::assertNotNull($merged);
             self::assertCount(2, $merged->lines);
             self::assertNull($checkouts->handover($id), 'the cart has a new token, which the link does not hand out');
