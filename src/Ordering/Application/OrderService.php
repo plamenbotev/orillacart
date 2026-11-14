@@ -73,6 +73,7 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Domain\TaxJurisdiction;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shared\Privacy\PersonalDataErasers;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -99,6 +100,7 @@ final readonly class OrderService
         private ReceiptLinks $receipts,
         private OrderLookups $lookups,
         private ?ShopCalendar $calendar = null,
+        private PersonalDataErasers $erasers = new PersonalDataErasers(),
     ) {}
 
     public function place(NewOrder $command): OrderView
@@ -539,6 +541,7 @@ final readonly class OrderService
             if ($order->anonymise($this->clock->now())) {
                 $order->addNote('The customer\'s details were erased, as a privacy request asked.', $userId === null ? NoteAuthor::System : NoteAuthor::Shop, false, $this->clock->now(), $userId);
                 $this->orders->save($order);
+                $this->erasers->erasedFromOrder($order->id(), $email);
                 $this->events->dispatch(new OrderAnonymised($order->id(), $email));
                 $this->events->dispatch(new OrderChanged($order->id()));
             }

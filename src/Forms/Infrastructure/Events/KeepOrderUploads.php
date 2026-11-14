@@ -7,7 +7,6 @@ namespace OrillaCart\Forms\Infrastructure\Events;
 use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\OrderService;
-use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
 use OrillaCart\Ordering\Domain\Event\OrderDeleted;
 use OrillaCart\Ordering\Domain\Event\OrderPlaced;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -33,12 +32,6 @@ final readonly class KeepOrderUploads
         if ($ids !== []) {
             $this->uploads->take($event->orderId, $ids);
         }
-    }
-
-    #[AsEventListener]
-    public function anonymised(OrderAnonymised $event): void
-    {
-        $this->uploads->forgetOrder($event->orderId);
     }
 
     #[AsEventListener]

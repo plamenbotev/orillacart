@@ -12,6 +12,7 @@ use OrillaCart\Ordering\Application\Dto\AddressData;
 use OrillaCart\Ordering\Application\Dto\OrderLineView;
 use OrillaCart\Ordering\Application\Dto\OrderView;
 use OrillaCart\Ordering\Application\OrderService;
+use OrillaCart\Shared\Privacy\PersonalDataErasers;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -33,6 +34,7 @@ final readonly class PersonalData
         private ShopCatalog $catalog,
         private ?EventDispatcherInterface $events = null,
         private ?PersonalDataSources $sources = null,
+        private PersonalDataErasers $erasers = new PersonalDataErasers(),
     ) {}
 
     /**
@@ -89,6 +91,7 @@ final readonly class PersonalData
             $removed = $this->newsletter->erase($email) || $account;
         }
         if ($page === 1) {
+            $this->erasers->erasedPerson($email);
             $this->events?->dispatch(new PersonErased($email));
         }
         // Erased orders no longer match the email, so each page starts at the first that still does.

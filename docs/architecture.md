@@ -114,6 +114,9 @@ attributes give the [REST reference](rest-api.md) (`bin/rest-docs`) and the assi
   `CartOrdered` and `CartClaimed`; the Agents module's listener completes or moves its sessions. The Cart module
   knows nothing of agents.
 - **Interfaces the other side implements**: Checkout declares `CheckoutPrefills`; Agents implements it.
+- **Erasure**: when a privacy request erases someone, Customers and Ordering call every `ErasesPersonalData`
+  (in Shared) first: the modules below them (Audit, Jobs, Forms) forget their part there. Modules above them may
+  listen to `PersonErased`, `CustomerErased` and `OrderAnonymised` instead.
 
 ## Work in the background
 

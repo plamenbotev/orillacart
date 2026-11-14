@@ -37,6 +37,7 @@ use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Domain\OrderNotFound;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Shared\Domain\RuleViolation;
+use OrillaCart\Shared\Privacy\PersonalDataErasers;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 
@@ -59,6 +60,7 @@ final readonly class CustomerService
         private SettingsService $shop,
         private CustomerNoteRepository $notes,
         private Newsletter $newsletter,
+        private PersonalDataErasers $erasers = new PersonalDataErasers(),
     ) {}
 
     /**
@@ -94,6 +96,7 @@ final readonly class CustomerService
                 $this->groups->save($group);
             }
         }
+        $this->erasers->erasedCustomer($id);
         $this->events->dispatch(new CustomerErased($id));
 
         return $record->addresses->addresses !== [] || $groupIds !== [] || $noted || $wished;

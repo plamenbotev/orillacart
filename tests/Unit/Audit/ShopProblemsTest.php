@@ -9,9 +9,7 @@ use OrillaCart\Audit\Application\ShopProblems;
 use OrillaCart\Audit\Domain\ChangeRecordRepository;
 use OrillaCart\Audit\Domain\LoggedProblem;
 use OrillaCart\Audit\Domain\LoggedProblemRepository;
-use OrillaCart\Audit\Infrastructure\Events\ForgetErasedPeople;
-use OrillaCart\Customers\Domain\Event\PersonErased;
-use OrillaCart\Ordering\Domain\Event\OrderAnonymised;
+use OrillaCart\Audit\Infrastructure\Privacy\ForgetErasedPeople;
 use OrillaCart\Shared\Security\LoggedText;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shared\Users\UserNames;
@@ -50,12 +48,12 @@ final class ShopProblemsTest extends TestCase
             new LoggedProblem('c', 'warning', 'About nobody', 1, $now, $now),
         ]);
         $records = self::createStub(ChangeRecordRepository::class);
-        $listener = new ForgetErasedPeople(new ChangeLog($records, self::createStub(UserNames::class), new MockClock($now)), new ShopProblems($problems, new MockClock($now), $signatures));
+        $eraser = new ForgetErasedPeople(new ChangeLog($records, self::createStub(UserNames::class), new MockClock($now)), new ShopProblems($problems, new MockClock($now), $signatures));
 
-        $listener->anonymised(new OrderAnonymised(12, 'jane@example.com'));
+        $eraser->erasedFromOrder(12, 'jane@example.com');
         self::assertSame(['b', 'c'], $problems->fingerprints());
 
-        $listener->personErased(new PersonErased('joe@example.com'));
+        $eraser->erasedPerson('joe@example.com');
         self::assertSame(['c'], $problems->fingerprints());
     }
 

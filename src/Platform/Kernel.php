@@ -22,6 +22,7 @@ use OrillaCart\Shared\Extension\Registrant;
 use OrillaCart\Shared\Http\Routing\ActionDispatcher;
 use OrillaCart\Shared\Http\Routing\DynamicRoutes;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Privacy\ErasesPersonalData;
 use OrillaCart\Shared\Security\HoldsSealedValues;
 use OrillaCart\Shared\View\TemplateContextSource;
 use OrillaCart\Shared\WordPress\AsHook;
@@ -123,6 +124,7 @@ final class Kernel
         $builder->registerForAutoconfiguration(TranslationPackageSource::class)->addTag(TranslationPackageSource::TAG);
         $builder->registerForAutoconfiguration(PersonalDataSource::class)->addTag(PersonalDataSource::TAG);
         $builder->registerForAutoconfiguration(KeptHistory::class)->addTag(KeptHistory::TAG);
+        $builder->registerForAutoconfiguration(ErasesPersonalData::class)->addTag(ErasesPersonalData::TAG);
         $builder->registerForAutoconfiguration(SetupStep::class)->addTag(SetupStep::TAG);
         $builder->registerForAutoconfiguration(ReadinessCheck::class)->addTag(ReadinessCheck::TAG);
         $builder->registerForAutoconfiguration(ToolSource::class)->addTag(ToolSource::TAG);

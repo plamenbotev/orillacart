@@ -326,6 +326,8 @@ use OrillaCart\Shared\Lifecycle\AfterResponse;
 use OrillaCart\Shared\Lifecycle\Languages;
 use OrillaCart\Shared\Persistence\LoadedEntities;
 use OrillaCart\Shared\Persistence\Transactions;
+use OrillaCart\Shared\Privacy\ErasesPersonalData;
+use OrillaCart\Shared\Privacy\PersonalDataErasers;
 use OrillaCart\Shared\Security\ReadOnlyRequest;
 use OrillaCart\Shared\Security\Secrets;
 use OrillaCart\Shared\Security\Signatures;
@@ -433,6 +435,8 @@ return static function (ContainerConfigurator $container): void {
         ->exclude(['../src/*/Application/Dto/', '../src/Exchange/Application/{CsvFile,JsonFile}.php', '../src/Scripting/Application/{Scope,Context,CompiledScript}.php', '../src/Packages/Application/Adapters/', '../src/Payment/Application/PayPal/PayPalWebhookSignature.php', '../src/Agents/Application/{Ucp,UcpError}.php'])
         ->public();
     // The host functions scripts may call: every tagged namespace, gathered once.
+    // Every module's eraser, for Customers and Ordering to call when a privacy request erases someone.
+    $services->set(PersonalDataErasers::class)->args([tagged_iterator(ErasesPersonalData::TAG)]);
     $services->set(HostCatalog::class)->args(['$namespaces' => tagged_iterator(HostNamespace::TAG)])->public();
     $services->set(DocumentBuilder::class)->args(['$sources' => tagged_iterator(FacetSource::TAG)])->public();
     $services->set(SearchFilters::class)->args(['$sources' => tagged_iterator(FacetSource::TAG)]);

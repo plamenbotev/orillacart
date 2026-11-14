@@ -2,10 +2,6 @@ deptrac:
   skip_violations:
     OrillaCart\Audit\Infrastructure\ChangeLogMiddleware:
       - OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest
-    OrillaCart\Audit\Infrastructure\Events\ForgetErasedPeople:
-      - OrillaCart\Customers\Domain\Event\CustomerErased
-      - OrillaCart\Customers\Domain\Event\PersonErased
-      - OrillaCart\Ordering\Domain\Event\OrderAnonymised
     OrillaCart\Audit\Infrastructure\WordPress\Hooks\RecordProductPostSaves:
       - OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType
     OrillaCart\Catalog\Application\ProductService:
@@ -71,7 +67,6 @@ deptrac:
     OrillaCart\Forms\Infrastructure\Events\KeepOrderUploads:
       - OrillaCart\Ordering\Application\Dto\OrderLineView
       - OrillaCart\Ordering\Application\OrderService
-      - OrillaCart\Ordering\Domain\Event\OrderAnonymised
       - OrillaCart\Ordering\Domain\Event\OrderDeleted
       - OrillaCart\Ordering\Domain\Event\OrderPlaced
     OrillaCart\Inventory\Http\ShowStockAction:
@@ -82,9 +77,6 @@ deptrac:
       - OrillaCart\Catalog\Domain\Event\CatalogItemsRemoved
     OrillaCart\Invoicing\Application\EInvoices:
       - OrillaCart\Notifications\Application\EmailWriter
-    OrillaCart\Jobs\Infrastructure\Events\ForgetErasedCustomers:
-      - OrillaCart\Customers\Domain\Event\PersonErased
-      - OrillaCart\Ordering\Domain\Event\OrderAnonymised
     OrillaCart\Newsletter\Infrastructure\WordPress\NewsletterUnsubscribeLinks:
       - OrillaCart\Notifications\Application\UnsubscribeLinks
     OrillaCart\Ordering\Http\ShowOrderAction:
