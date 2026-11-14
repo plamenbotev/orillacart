@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Settings\Application\ShopOpening;
 use OrillaCart\Shared\View\TemplateRenderer;
 use OrillaCart\Shared\WordPress\AsHook;
-use OrillaCart\Storefront\Application\ShopOpening;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 
 /**

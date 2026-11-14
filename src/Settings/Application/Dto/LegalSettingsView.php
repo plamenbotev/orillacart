@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Application\Dto;
+namespace OrillaCart\Settings\Application\Dto;
 
-use OrillaCart\Storefront\Domain\LegalSettings;
-use OrillaCart\Storefront\Domain\OrderButton;
+use OrillaCart\Settings\Domain\LegalSettings;
+use OrillaCart\Settings\Domain\OrderButton;
 
 final readonly class LegalSettingsView
 {

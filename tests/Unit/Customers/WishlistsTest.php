@@ -8,6 +8,7 @@ use OrillaCart\Customers\Application\Wishlists;
 use OrillaCart\Customers\Domain\CustomerRuleViolation;
 use OrillaCart\Storefront\Domain\StorefrontSettings;
 use OrillaCart\Storefront\Domain\WishlistPolicy;
+use OrillaCart\Storefront\Infrastructure\WordPress\StorefrontWishlistSetting;
 use OrillaCart\Tests\Fixtures\Checkout\TestShop;
 use OrillaCart\Tests\Fixtures\Customers\InMemoryAccounts;
 use OrillaCart\Tests\Fixtures\Storefront\InMemoryStorefrontSettings;
@@ -24,7 +25,7 @@ final class WishlistsTest extends TestCase
     {
         $this->accounts = new InMemoryAccounts();
         $this->settings = new InMemoryStorefrontSettings();
-        $this->wishlists = new Wishlists($this->accounts, $this->settings->service(), new TestShop()->productTranslations);
+        $this->wishlists = new Wishlists($this->accounts, new StorefrontWishlistSetting($this->settings->service()), new TestShop()->productTranslations);
         $this->ada = $this->accounts->add('ada@example.com');
     }
 

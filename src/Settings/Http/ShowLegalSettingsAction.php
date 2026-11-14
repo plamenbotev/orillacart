@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Http;
+namespace OrillaCart\Settings\Http;
 
+use OrillaCart\Settings\Application\LegalSettingsService;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
 use OrillaCart\Shared\Security\Capability;
-use OrillaCart\Storefront\Application\LegalSettingsService;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;

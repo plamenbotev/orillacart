@@ -32,7 +32,7 @@ use OrillaCart\Reviews\Infrastructure\WordPress\OptionReviewSettingsRepository;
 use OrillaCart\Search\Infrastructure\EngineCatalogSearch;
 use OrillaCart\Search\Infrastructure\WordPress\OptionEngineSettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionCurrencySettingsRepository;
-use OrillaCart\Storefront\Infrastructure\WordPress\OptionOpeningRepository;
+use OrillaCart\Settings\Infrastructure\WordPress\OptionOpeningRepository;
 use OrillaCart\Storefront\Infrastructure\WordPress\OptionStorefrontSettingsRepository;
 use PHPUnit\Framework\TestCase;
 

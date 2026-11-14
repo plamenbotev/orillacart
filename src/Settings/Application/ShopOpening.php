@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Application;
+namespace OrillaCart\Settings\Application;
 
+use OrillaCart\Settings\Domain\OpeningRepository;
 use OrillaCart\Shared\Http\Security\Authorization;
 use OrillaCart\Shared\Security\Capability;
-use OrillaCart\Storefront\Domain\OpeningRepository;
 
 /**
  * "Opening soon": while the shop is set up, visitors see that instead of its pages and cannot order; shop

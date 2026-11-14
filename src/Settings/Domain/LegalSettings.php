@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Domain;
+namespace OrillaCart\Settings\Domain;
+
+use OrillaCart\Shared\Domain\RuleViolation;
 
 /**
  * The pages the law asks a shop to show, and what checkout asks before an order: the terms of sale, the right
@@ -29,7 +31,7 @@ final readonly class LegalSettings
             }
         }
         if ($acceptTerms && $terms === null) {
-            throw new StorefrontRuleViolation('Choose the page of the terms of sale for checkout to ask for them to be accepted.', 'orillacart_terms_page_missing');
+            throw new RuleViolation('Choose the page of the terms of sale for checkout to ask for them to be accepted.', 'orillacart_terms_page_missing');
         }
     }
 }

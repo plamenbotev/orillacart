@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Setup\Application\Check;
 
+use OrillaCart\Settings\Application\LegalSettingsService;
 use OrillaCart\Settings\Application\SettingsService;
 use OrillaCart\Setup\Application\Dto\Readiness;
 use OrillaCart\Setup\Application\ReadinessCheck;
 use OrillaCart\Setup\Domain\LegalProfiles;
 use OrillaCart\Shared\Domain\Text;
-use OrillaCart\Storefront\Application\LegalSettingsService;
 
 /**
  * The pages the law of the shop's country asks for, published: the terms of sale, the right of withdrawal, the

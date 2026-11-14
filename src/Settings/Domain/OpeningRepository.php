@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Domain;
+namespace OrillaCart\Settings\Domain;
 
 /**
  * Whether the shop is open, or shows visitors "Opening soon" while it is set up.

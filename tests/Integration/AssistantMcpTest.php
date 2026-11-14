@@ -23,8 +23,8 @@ use OrillaCart\Extension\Registry;
 use OrillaCart\Integrations\Application\OAuthServer;
 use OrillaCart\Packages\Application\ScriptedRouteToolSource;
 use OrillaCart\Platform\WordPress\Extensions\WordPressExtensions;
+use OrillaCart\Settings\Infrastructure\WordPress\OptionLegalSettingsRepository;
 use OrillaCart\Shared\Http\Routing\Tool;
-use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
 use OrillaCart\Tests\Fixtures\Http\MemoryLogger;
 
 /**

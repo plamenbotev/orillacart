@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace OrillaCart\Setup\Application\Step;
 
 use OrillaCart\Geography\Application\GeographyService;
+use OrillaCart\Settings\Application\LegalSettingsService;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Domain\OrderButton;
 use OrillaCart\Setup\Application\AskedByCountry;
 use OrillaCart\Setup\Application\Dto\LegalAnswers;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
@@ -16,8 +18,6 @@ use OrillaCart\Setup\Domain\LegalProfile;
 use OrillaCart\Setup\Domain\LegalProfiles;
 use OrillaCart\Shared\Domain\Text;
 use OrillaCart\Shared\I18n\Translations;
-use OrillaCart\Storefront\Application\LegalSettingsService;
-use OrillaCart\Storefront\Domain\OrderButton;
 
 /**
  * Legal: the pages the law of the shop's country asks for (terms of sale and the right of withdrawal as drafts to

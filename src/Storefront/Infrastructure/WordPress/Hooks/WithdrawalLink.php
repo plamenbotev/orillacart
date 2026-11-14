@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress\Hooks;
 
+use OrillaCart\Settings\Application\LegalSettingsService;
 use OrillaCart\Shared\WordPress\AsHook;
-use OrillaCart\Storefront\Application\LegalSettingsService;
 use OrillaCart\Storefront\Infrastructure\WordPress\ShopLinks;
 
 /**

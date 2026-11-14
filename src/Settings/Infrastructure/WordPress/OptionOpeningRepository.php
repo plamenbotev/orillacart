@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Infrastructure\WordPress;
+namespace OrillaCart\Settings\Infrastructure\WordPress;
 
+use OrillaCart\Settings\Domain\OpeningRepository;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
 use OrillaCart\Shared\WordPress\AutoloadedOption;
-use OrillaCart\Storefront\Domain\OpeningRepository;
 
 final readonly class OptionOpeningRepository implements OpeningRepository, LifecycleListener, RemovesShopData
 {

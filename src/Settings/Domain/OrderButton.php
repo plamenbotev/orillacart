@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Domain;
+namespace OrillaCart\Settings\Domain;
 
 /**
  * What checkout's last button says. In the EU it must say plainly that ordering means paying (Consumer Rights

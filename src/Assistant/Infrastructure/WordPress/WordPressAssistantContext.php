@@ -7,8 +7,8 @@ namespace OrillaCart\Assistant\Infrastructure\WordPress;
 use OrillaCart\Assistant\Application\AssistantContext;
 use OrillaCart\Integrations\Application\ViewNormalizer;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Settings\Application\ShopOpening;
 use OrillaCart\Setup\Application\ShopReadiness;
-use OrillaCart\Storefront\Application\ShopOpening;
 
 /**
  * The shop as WordPress and its settings describe it, for the assistant's server.

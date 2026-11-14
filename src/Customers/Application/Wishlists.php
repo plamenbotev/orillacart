@@ -6,8 +6,6 @@ namespace OrillaCart\Customers\Application;
 
 use OrillaCart\Catalog\Application\ProductTranslations;
 use OrillaCart\Customers\Domain\CustomerRuleViolation;
-use OrillaCart\Storefront\Application\StorefrontSettingsService;
-use OrillaCart\Storefront\Domain\WishlistPolicy;
 
 /**
  * The products customers save for later, newest first, in their account. A visitor's wishlist lives in their
@@ -19,7 +17,7 @@ final readonly class Wishlists
 
     public function __construct(
         private Accounts $accounts,
-        private StorefrontSettingsService $storefront,
+        private WishlistSetting $setting,
         private ProductTranslations $translations,
     ) {}
 
@@ -82,7 +80,7 @@ final readonly class Wishlists
 
     private function open(): void
     {
-        if ($this->storefront->current()->wishlist === WishlistPolicy::Off) {
+        if (!$this->setting->keepsWishlists()) {
             throw new CustomerRuleViolation('The shop keeps no wishlists.', 'orillacart_wishlist_off');
         }
     }

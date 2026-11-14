@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Tests\Fixtures\Storefront;
+namespace OrillaCart\Tests\Fixtures\Settings;
 
-use OrillaCart\Storefront\Domain\LegalSettings;
-use OrillaCart\Storefront\Domain\LegalSettingsRepository;
+use OrillaCart\Settings\Domain\LegalSettings;
+use OrillaCart\Settings\Domain\LegalSettingsRepository;
 
 final class InMemoryLegalSettings implements LegalSettingsRepository
 {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Setup\Application\Dto;
 
-use OrillaCart\Storefront\Domain\OrderButton;
+use OrillaCart\Settings\Domain\OrderButton;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**

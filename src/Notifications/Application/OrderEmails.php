@@ -21,8 +21,8 @@ use OrillaCart\Ordering\Application\OrderLinks;
 use OrillaCart\Ordering\Application\OrderService;
 use OrillaCart\Ordering\Application\ReceiptLinks;
 use OrillaCart\Ordering\Domain\OrderNotFound;
+use OrillaCart\Settings\Application\LegalSettingsService;
 use OrillaCart\Shipping\Application\ShipmentTracking;
-use OrillaCart\Storefront\Application\LegalSettingsService;
 use Psr\Log\LoggerInterface;
 
 /**

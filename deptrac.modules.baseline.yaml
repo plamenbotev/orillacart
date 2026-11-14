@@ -23,9 +23,6 @@ deptrac:
       - OrillaCart\Exchange\Application\Dto\ProductPost
       - OrillaCart\Exchange\Application\Dto\ProductPostChange
       - OrillaCart\Exchange\Application\ProductPosts
-    OrillaCart\Checkout\Application\CheckoutService:
-      - OrillaCart\Storefront\Application\LegalSettingsService
-      - OrillaCart\Storefront\Application\ShopOpening
     OrillaCart\Customers\Application\AddressBook:
       - OrillaCart\Ordering\Application\Dto\AddressData
     OrillaCart\Customers\Application\CustomerService:
@@ -55,9 +52,6 @@ deptrac:
       - OrillaCart\Ordering\Application\OrderService
     OrillaCart\Customers\Application\TestData:
       - OrillaCart\Ordering\Application\OrderService
-    OrillaCart\Customers\Application\Wishlists:
-      - OrillaCart\Storefront\Application\StorefrontSettingsService
-      - OrillaCart\Storefront\Domain\WishlistPolicy
     OrillaCart\Customers\Http\ListAccountDownloadsAction:
       - OrillaCart\Ordering\Application\Downloads
     OrillaCart\Customers\Http\ListAccountOrdersAction:
@@ -93,8 +87,6 @@ deptrac:
       - OrillaCart\Ordering\Domain\Event\OrderAnonymised
     OrillaCart\Newsletter\Infrastructure\WordPress\NewsletterUnsubscribeLinks:
       - OrillaCart\Notifications\Application\UnsubscribeLinks
-    OrillaCart\Notifications\Application\OrderEmails:
-      - OrillaCart\Storefront\Application\LegalSettingsService
     OrillaCart\Ordering\Http\ShowOrderAction:
       - OrillaCart\Packages\Application\ExtensionFields
     OrillaCart\Ordering\Infrastructure\Events\FlagOrdersInQuestion:

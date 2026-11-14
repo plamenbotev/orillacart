@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
 use OrillaCart\Returns\Application\WithdrawalLinks;
-use OrillaCart\Storefront\Application\LegalSettingsService;
+use OrillaCart\Settings\Application\LegalSettingsService;
 
 /** An order's withdrawal opens on the shop's withdrawal page (?orillacart_withdrawal=TOKEN), or the home page without one. */
 final readonly class StorefrontWithdrawalLinks implements WithdrawalLinks

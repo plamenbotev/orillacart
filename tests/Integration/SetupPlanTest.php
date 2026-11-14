@@ -6,11 +6,11 @@ namespace OrillaCart\Tests\Integration;
 
 use OrillaCart\Invoicing\Infrastructure\WordPress\OptionInvoiceSettingsRepository;
 use OrillaCart\Notifications\Infrastructure\WordPress\OptionEmailSettingsRepository;
+use OrillaCart\Settings\Infrastructure\WordPress\OptionLegalSettingsRepository;
+use OrillaCart\Settings\Infrastructure\WordPress\OptionOpeningRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSettingsRepository;
 use OrillaCart\Settings\Infrastructure\WordPress\OptionSetupState;
 use OrillaCart\Setup\Infrastructure\WordPress\OptionSetupAnswers;
-use OrillaCart\Storefront\Infrastructure\WordPress\OptionLegalSettingsRepository;
-use OrillaCart\Storefront\Infrastructure\WordPress\OptionOpeningRepository;
 use OrillaCart\Tax\Infrastructure\WordPress\OptionTaxSettingsRepository;
 
 /**

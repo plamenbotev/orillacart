@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace OrillaCart\Setup\Application\Step;
 
+use OrillaCart\Settings\Application\ShopOpening;
 use OrillaCart\Setup\Application\Dto\OpeningAnswers;
 use OrillaCart\Setup\Application\Dto\PlannedChange;
 use OrillaCart\Setup\Application\SetupAnswers;
 use OrillaCart\Setup\Application\SetupStep;
 use OrillaCart\Shared\Domain\Text;
-use OrillaCart\Storefront\Application\ShopOpening;
 
 /**
  * Before anything else: visitors see "Opening soon" until the setup's last step opens the shop, so no one orders

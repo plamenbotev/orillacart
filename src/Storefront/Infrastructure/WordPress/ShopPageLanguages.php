@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Storefront\Infrastructure\WordPress;
 
+use OrillaCart\Settings\Domain\LegalSettingsRepository;
 use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\I18n\Language;
 use OrillaCart\Shared\Lifecycle\Languages;
@@ -32,7 +33,7 @@ final readonly class ShopPageLanguages implements LifecycleListener
 
     public function __construct(
         private OptionShopPagesRepository $pages,
-        private OptionLegalSettingsRepository $legal,
+        private LegalSettingsRepository $legal,
         private ContentLanguages $languages,
         private Languages $locales,
     ) {}

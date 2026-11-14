@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Domain;
+namespace OrillaCart\Settings\Domain;
 
 interface LegalSettingsRepository
 {

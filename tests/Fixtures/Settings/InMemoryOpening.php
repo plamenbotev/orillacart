@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Tests\Fixtures\Storefront;
+namespace OrillaCart\Tests\Fixtures\Settings;
 
-use OrillaCart\Storefront\Domain\OpeningRepository;
+use OrillaCart\Settings\Domain\OpeningRepository;
 
 final class InMemoryOpening implements OpeningRepository
 {

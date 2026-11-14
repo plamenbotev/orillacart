@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace OrillaCart\Storefront\Infrastructure\WordPress;
+namespace OrillaCart\Settings\Infrastructure\WordPress;
 
+use OrillaCart\Settings\Domain\LegalSettings;
+use OrillaCart\Settings\Domain\LegalSettingsRepository;
+use OrillaCart\Settings\Domain\OrderButton;
+use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\I18n\ContentLanguages;
 use OrillaCart\Shared\Lifecycle\LifecycleListener;
 use OrillaCart\Shared\Lifecycle\RemovesShopData;
-use OrillaCart\Storefront\Domain\LegalSettings;
-use OrillaCart\Storefront\Domain\LegalSettingsRepository;
-use OrillaCart\Storefront\Domain\OrderButton;
-use OrillaCart\Storefront\Domain\StorefrontRuleViolation;
 
 final readonly class OptionLegalSettingsRepository implements LegalSettingsRepository, LifecycleListener, RemovesShopData
 {
@@ -28,7 +28,7 @@ final readonly class OptionLegalSettingsRepository implements LegalSettingsRepos
         $button = \is_string($stored['order_button'] ?? null) ? OrderButton::tryFrom($stored['order_button']) : null;
         try {
             return new LegalSettings($page('terms'), $page('withdrawal'), $page('delivery'), $page('legal_notice'), ($stored['accept_terms'] ?? false) === true, $button ?? OrderButton::PlaceOrder, $page('withdrawal_form'));
-        } catch (StorefrontRuleViolation) {
+        } catch (RuleViolation) {
             // The terms page went: checkout no longer asks for it.
             return new LegalSettings(null, $page('withdrawal'), $page('delivery'), $page('legal_notice'), false, $button ?? OrderButton::PlaceOrder, $page('withdrawal_form'));
         }
