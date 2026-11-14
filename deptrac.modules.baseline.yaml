@@ -4,8 +4,6 @@ deptrac:
       - OrillaCart\Integrations\Infrastructure\WordPress\ApiKeyRequest
     OrillaCart\Audit\Infrastructure\WordPress\Hooks\RecordProductPostSaves:
       - OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType
-    OrillaCart\Catalog\Http\ShowProductAction:
-      - OrillaCart\Packages\Application\ExtensionFields
     OrillaCart\Catalog\Infrastructure\WordPress\WordPressProductPosts:
       - OrillaCart\Exchange\Application\Dto\ProductPost
       - OrillaCart\Exchange\Application\Dto\ProductPostChange
@@ -17,8 +15,6 @@ deptrac:
       - OrillaCart\Newsletter\Application\Dto\SubscriptionView
     OrillaCart\Customers\Application\PersonalData:
       - OrillaCart\Newsletter\Application\Newsletter
-    OrillaCart\Customers\Http\ShowCustomerAction:
-      - OrillaCart\Packages\Application\ExtensionFields
     OrillaCart\Customers\Infrastructure\WordPress\Hooks\PrivacyTools:
       - OrillaCart\Cart\Application\CartService
     OrillaCart\Forms\Infrastructure\Events\KeepOrderUploads:
@@ -30,8 +26,6 @@ deptrac:
       - OrillaCart\Notifications\Application\EmailWriter
     OrillaCart\Newsletter\Infrastructure\WordPress\NewsletterUnsubscribeLinks:
       - OrillaCart\Notifications\Application\UnsubscribeLinks
-    OrillaCart\Ordering\Http\ShowOrderAction:
-      - OrillaCart\Packages\Application\ExtensionFields
     OrillaCart\Reports\Application\Home:
       - OrillaCart\Packages\Application\PackageService
       - OrillaCart\Packages\Application\RedirectTargets

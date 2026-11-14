@@ -11,6 +11,7 @@ use OrillaCart\Packages\Application\Dto\FieldSpec;
 use OrillaCart\Packages\Domain\PackageRuleViolation;
 use OrillaCart\Scripting\Domain\Ops;
 use OrillaCart\Scripting\Domain\ScriptError;
+use OrillaCart\Shared\Extension\ExtensionFieldValues;
 
 /**
  * The fields the enabled extensions declare on the shop's products, orders and customers (`fields on product {
@@ -18,7 +19,7 @@ use OrillaCart\Scripting\Domain\ScriptError;
  * builds its "Extensions" section from; the values of a record by extension, as the REST views show them under
  * `extensions.<id>`; and a save from the admin, checked against the declaration as a script's `fields.set` is.
  */
-final readonly class ExtensionFields
+final readonly class ExtensionFields implements ExtensionFieldValues
 {
     /** The REST path's plural and the owner kind it names. */
     public const array KINDS = ['products' => 'product', 'orders' => 'order', 'customers' => 'customer'];
