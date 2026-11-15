@@ -115,6 +115,18 @@ final readonly class CartService
     }
 
     /**
+     * For work that reads the cart and then changes it by what it read (checkout's codes), inside that work's
+     * transaction: the cart is claimed as claim() does and its lock is held from here, so what is read next is what
+     * the change starts from, and a second change to the same cart waits for this one.
+     *
+     * @return string|null the token for the browser, as claim() gives it
+     */
+    public function hold(CartOwner $owner): ?string
+    {
+        return $this->locked($owner)[1];
+    }
+
+    /**
      * Whether claim() would join the browser's cart with one the customer's account holds: what they read as their
      * cart (the browser's) is then not all an order placed after claiming would hold.
      */
@@ -156,27 +168,31 @@ final readonly class CartService
             throw new CartRuleViolation('%s is not for sale right now.', 'orillacart_not_for_sale', values: [$quote->name]);
         }
 
-        [$cart, $newToken] = $this->find($owner);
-        // Checked before the cart changes, so a refused change is never saved by whatever saves later.
-        $existing = $cart?->lineFor($command->productId, $command->optionIds, $command->bundleChoices, $values);
-        $files = FieldAnswers::uploadIds($answers);
-        if ($files !== [] && $existing === null && self::files($cart) + \count($files) > FormUploads::MAX_HELD) {
-            throw new CartRuleViolation('A cart holds up to %d files sent with its items.', 'orillacart_cart_files', values: [FormUploads::MAX_HELD]);
-        }
-        $quantity = ($existing?->quantity() ?? 0) + $command->quantity;
-        self::checkStock($quote, $quantity);
-        $this->checkRules($cart, $owner->customerId, $existing, $quantity, $command->productId, $command->optionIds, $command->bundleChoices);
-        if ($cart === null) {
-            $newToken = self::token();
-            $cart = new Cart($newToken, $owner->customerId, $this->clock->now());
-        }
-        $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices, $values);
-        $this->keepAddOns($cart);
-        $this->carts->save($cart);
-        // Files in a cart last as long as it does.
-        $this->uploads->hold($files);
-        $this->events->dispatch(new CartItemAdded($quote->productId, $quote->variationId, $command->quantity, $cart->customerId()));
-        $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
+        [$cart, $newToken] = $this->change(function (\Closure $tell) use ($owner, $command, $answers, $values, $quote): array {
+            [$cart, $newToken] = $this->locked($owner);
+            // Checked before the cart changes, so a refused change is never saved by whatever saves later.
+            $existing = $cart?->lineFor($command->productId, $command->optionIds, $command->bundleChoices, $values);
+            $files = FieldAnswers::uploadIds($answers);
+            if ($files !== [] && $existing === null && self::files($cart) + \count($files) > FormUploads::MAX_HELD) {
+                throw new CartRuleViolation('A cart holds up to %d files sent with its items.', 'orillacart_cart_files', values: [FormUploads::MAX_HELD]);
+            }
+            $quantity = ($existing?->quantity() ?? 0) + $command->quantity;
+            self::checkStock($quote, $quantity);
+            $this->checkRules($cart, $owner->customerId, $existing, $quantity, $command->productId, $command->optionIds, $command->bundleChoices);
+            if ($cart === null) {
+                $newToken = self::token();
+                $cart = new Cart($newToken, $owner->customerId, $this->clock->now());
+            }
+            $cart->add($command->productId, $command->optionIds, $command->quantity, $this->clock->now(), $command->bundleChoices, $values);
+            $this->keepAddOns($cart);
+            $this->carts->save($cart);
+            // Files in a cart last as long as it does.
+            $this->uploads->hold($files);
+            $tell(new CartItemAdded($quote->productId, $quote->variationId, $command->quantity, $cart->customerId()));
+            $tell(new CartChanged($cart->id(), $cart->customerId()));
+
+            return [$cart, $newToken];
+        });
 
         return new CartResult($this->views->view($cart), $newToken);
     }
@@ -187,31 +203,35 @@ final readonly class CartService
      */
     public function changeQuantity(CartOwner $owner, int $lineId, ChangeQuantity $command): CartResult
     {
-        [$cart, $newToken] = $this->find($owner);
-        if ($cart === null) {
-            throw new CartLineNotFound($lineId);
-        }
-        $line = $cart->line($lineId);
-        $previous = $line->quantity();
-        $variationId = $this->variationOf($line);
-        if ($command->quantity === 0) {
-            $cart->remove($lineId, $this->clock->now());
-            $this->keepAddOns($cart);
-            $event = new CartItemRemoved($line->productId(), $variationId, $previous, $cart->customerId());
-        } else {
-            if ($command->quantity > $previous) {
-                self::checkStock($this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), bundleChoices: $line->bundleChoices())), $command->quantity);
-                $this->checkRules($cart, $cart->customerId(), $line, $command->quantity, $line->productId(), $line->optionIds(), $line->bundleChoices());
+        [$cart, $newToken] = $this->change(function (\Closure $tell) use ($owner, $lineId, $command): array {
+            [$cart, $newToken] = $this->locked($owner);
+            if ($cart === null) {
+                throw new CartLineNotFound($lineId);
             }
-            $cart->changeQuantity($lineId, $command->quantity, $this->clock->now());
-            $this->keepAddOns($cart);
-            $event = new CartItemChanged($line->productId(), $variationId, $command->quantity, $previous, $cart->customerId());
-        }
-        $this->carts->save($cart);
-        if ($command->quantity !== $previous) {
-            $this->events->dispatch($event);
-            $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
-        }
+            $line = $cart->line($lineId);
+            $previous = $line->quantity();
+            $variationId = $this->variationOf($line);
+            if ($command->quantity === 0) {
+                $cart->remove($lineId, $this->clock->now());
+                $this->keepAddOns($cart);
+                $event = new CartItemRemoved($line->productId(), $variationId, $previous, $cart->customerId());
+            } else {
+                if ($command->quantity > $previous) {
+                    self::checkStock($this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), bundleChoices: $line->bundleChoices())), $command->quantity);
+                    $this->checkRules($cart, $cart->customerId(), $line, $command->quantity, $line->productId(), $line->optionIds(), $line->bundleChoices());
+                }
+                $cart->changeQuantity($lineId, $command->quantity, $this->clock->now());
+                $this->keepAddOns($cart);
+                $event = new CartItemChanged($line->productId(), $variationId, $command->quantity, $previous, $cart->customerId());
+            }
+            $this->carts->save($cart);
+            if ($command->quantity !== $previous) {
+                $tell($event);
+                $tell(new CartChanged($cart->id(), $cart->customerId()));
+            }
+
+            return [$cart, $newToken];
+        });
 
         return new CartResult($this->views->view($cart), $newToken);
     }
@@ -253,13 +273,15 @@ final readonly class CartService
      */
     public function keepGiven(int $cartId, array $items): bool
     {
-        $cart = $this->carts->find($cartId);
-        if ($cart === null || !$cart->keepGiven($items, $this->clock->now())) {
-            return false;
-        }
-        $this->carts->save($cart);
+        return $this->change(function () use ($cartId, $items): bool {
+            $cart = $this->carts->find($cartId, true);
+            if ($cart === null || !$cart->keepGiven($items, $this->clock->now())) {
+                return false;
+            }
+            $this->carts->save($cart);
 
-        return true;
+            return true;
+        });
     }
 
     /**
@@ -267,16 +289,19 @@ final readonly class CartService
      */
     public function restoreGiven(CartOwner $owner, string $code): CartResult
     {
-        [$cart, $newToken] = $this->find($owner);
-        if ($cart === null) {
-            return new CartResult(CartView::empty(), null);
-        }
-        $cart->undecline($code, $this->clock->now());
-        $this->keepAddOns($cart);
-        $this->carts->save($cart);
-        $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
+        [$cart, $newToken] = $this->change(function (\Closure $tell) use ($owner, $code): array {
+            [$cart, $newToken] = $this->locked($owner);
+            if ($cart !== null) {
+                $cart->undecline($code, $this->clock->now());
+                $this->keepAddOns($cart);
+                $this->carts->save($cart);
+                $tell(new CartChanged($cart->id(), $cart->customerId()));
+            }
 
-        return new CartResult($this->views->view($cart), $newToken);
+            return [$cart, $newToken];
+        });
+
+        return $cart === null ? new CartResult(CartView::empty(), null) : new CartResult($this->views->view($cart), $newToken);
     }
 
     /**
@@ -286,12 +311,14 @@ final readonly class CartService
      */
     public function useGiftCards(int $cartId, array $codes, bool $storeCredit): void
     {
-        $cart = $this->carts->find($cartId);
-        if ($cart !== null) {
-            $cart->useGiftCards($codes, $this->clock->now());
-            $cart->useStoreCredit($storeCredit, $this->clock->now());
-            $this->carts->save($cart);
-        }
+        $this->change(function () use ($cartId, $codes, $storeCredit): void {
+            $cart = $this->carts->find($cartId, true);
+            if ($cart !== null) {
+                $cart->useGiftCards($codes, $this->clock->now());
+                $cart->useStoreCredit($storeCredit, $this->clock->now());
+                $this->carts->save($cart);
+            }
+        });
     }
 
     /**
@@ -301,12 +328,14 @@ final readonly class CartService
      */
     public function useCoupons(int $cartId, array $codes): void
     {
-        $cart = $this->carts->find($cartId);
-        if ($cart !== null) {
-            $cart->useCoupons($codes, $this->clock->now());
-            $this->carts->save($cart);
-            $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));
-        }
+        $this->change(function (\Closure $tell) use ($cartId, $codes): void {
+            $cart = $this->carts->find($cartId, true);
+            if ($cart !== null) {
+                $cart->useCoupons($codes, $this->clock->now());
+                $this->carts->save($cart);
+                $tell(new CartChanged($cart->id(), $cart->customerId()));
+            }
+        });
     }
 
     /**
@@ -317,21 +346,23 @@ final readonly class CartService
      */
     public function clear(int $cartId, ?int $orderId = null, ?string $orderTotal = null, ?string $orderCurrency = null): void
     {
-        $cart = $this->carts->find($cartId);
-        if ($cart === null) {
-            return;
-        }
-        $abandonedId = $cart->abandonedId();
-        $left = $abandonedId === null || $orderId === null ? null : $this->abandoned->find($abandonedId);
-        if ($left !== null && $orderId !== null && !$left->isOrdered()) {
-            // The abandoned cart was kept in the shop's currency: an order in another is counted back in it.
-            $total = Money::of($orderTotal ?? '0');
-            $left->ordered($orderId, ($orderCurrency === null ? $total : $this->currencies->back($total, $orderCurrency))->toFixed());
-            $this->abandoned->save($left);
-            $this->events->dispatch(new LeftCartOrdered($orderId));
-        }
-        $cart->clear($this->clock->now());
-        $this->carts->save($cart);
+        $this->change(function (\Closure $tell) use ($cartId, $orderId, $orderTotal, $orderCurrency): void {
+            $cart = $this->carts->find($cartId, true);
+            if ($cart === null) {
+                return;
+            }
+            $abandonedId = $cart->abandonedId();
+            $left = $abandonedId === null || $orderId === null ? null : $this->abandoned->find($abandonedId);
+            if ($left !== null && $orderId !== null && !$left->isOrdered()) {
+                // The abandoned cart was kept in the shop's currency: an order in another is counted back in it.
+                $total = Money::of($orderTotal ?? '0');
+                $left->ordered($orderId, ($orderCurrency === null ? $total : $this->currencies->back($total, $orderCurrency))->toFixed());
+                $this->abandoned->save($left);
+                $tell(new LeftCartOrdered($orderId));
+            }
+            $cart->clear($this->clock->now());
+            $this->carts->save($cart);
+        });
     }
 
     /**
@@ -346,20 +377,22 @@ final readonly class CartService
      */
     public function atCheckout(CartOwner $owner, CheckoutContact $contact, ?string $locale, ?\Closure $mayRemind = null): ?string
     {
-        [$cart, $newToken] = $this->find($owner);
-        if ($cart === null) {
-            return null;
-        }
-        $email = $contact->email === null || trim($contact->email) === '' ? null : strtolower(trim($contact->email));
-        $remind = $contact->remind && $email !== null;
-        $already = $cart->remind() && $cart->contactEmail() !== null && $email !== null && EmailAddress::key($cart->contactEmail()) === EmailAddress::key($email);
-        if ($remind && !$already && $mayRemind !== null && !$mayRemind($email)) {
-            $remind = false;
-        }
-        $cart->atCheckout($email, $remind, $locale, $this->clock->now());
-        $this->carts->save($cart);
+        return $this->change(function () use ($owner, $contact, $locale, $mayRemind): ?string {
+            [$cart, $newToken] = $this->locked($owner);
+            if ($cart === null) {
+                return null;
+            }
+            $email = $contact->email === null || trim($contact->email) === '' ? null : strtolower(trim($contact->email));
+            $remind = $contact->remind && $email !== null;
+            $already = $cart->remind() && $cart->contactEmail() !== null && $email !== null && EmailAddress::key($cart->contactEmail()) === EmailAddress::key($email);
+            if ($remind && !$already && $mayRemind !== null && !$mayRemind($email)) {
+                $remind = false;
+            }
+            $cart->atCheckout($email, $remind, $locale, $this->clock->now());
+            $this->carts->save($cart);
 
-        return $newToken;
+            return $newToken;
+        });
     }
 
     /**
@@ -374,45 +407,50 @@ final readonly class CartService
      */
     public function recover(#[\SensitiveParameter] string $token, ?CartOwner $browser = null): ?string
     {
-        $cart = $this->carts->findByRecoverToken($token);
-        if ($cart === null || $cart->customerId() !== null) {
-            return null;
-        }
-        $held = $browser === null || $browser->token === null || $browser->token === '' ? null : $this->carts->findByToken($browser->token);
-        $newToken = self::token();
-        if ($held === null || $held->id() === $cart->id() || $held->isEmpty() || $held->customerId() !== null && $held->customerId() !== $browser?->customerId) {
-            $cart->recovered($newToken);
-            $this->carts->save($cart);
+        return $this->change(function (\Closure $tell) use ($token, $browser): ?string {
+            // Under their locks, the reminded cart first: the link works once, whoever opens it twice at once.
+            $cart = $this->lockedCart($this->carts->findByRecoverToken($token));
+            if ($cart === null || !$cart->hasRecoverToken($token) || $cart->customerId() !== null) {
+                return null;
+            }
+            $held = $browser === null || $browser->token === null || $browser->token === '' ? null : $this->lockedCart($this->carts->findByToken($browser->token));
+            $newToken = self::token();
+            if ($held === null || $held->id() === $cart->id() || $held->isEmpty() || $held->customerId() !== null && $held->customerId() !== $browser->customerId) {
+                $cart->recovered($newToken);
+                $this->carts->save($cart);
+
+                return $newToken;
+            }
+            $held->takeFrom($cart, $this->clock->now(), FormUploads::MAX_HELD);
+            // The reminded cart lives on in this one: ordered, it counts as won back.
+            $abandonedId = $cart->abandonedId();
+            if ($held->abandonedId() === null && $abandonedId !== null) {
+                $held->abandon($abandonedId);
+            }
+            $held->rekey($newToken);
+            $this->keepAddOns($held);
+            $this->carts->remove($cart);
+            $this->carts->save($held);
+            $this->uploads->holdNamed($held->fileHashes());
+            $tell(new CartChanged($held->id(), $held->customerId()));
 
             return $newToken;
-        }
-        $held->takeFrom($cart, $this->clock->now(), FormUploads::MAX_HELD);
-        // The reminded cart lives on in this one: ordered, it counts as won back.
-        $abandonedId = $cart->abandonedId();
-        if ($held->abandonedId() === null && $abandonedId !== null) {
-            $held->abandon($abandonedId);
-        }
-        $held->rekey($newToken);
-        $this->keepAddOns($held);
-        $this->carts->remove($cart);
-        $this->carts->save($held);
-        $this->uploads->holdNamed($held->fileHashes());
-        $this->events->dispatch(new CartChanged($held->id(), $held->customerId()));
-
-        return $newToken;
+        });
     }
 
     /** Puts a coupon code a reminder offered in the owner's cart; checkout decides whether it holds. */
     public function offerCoupon(CartOwner $owner, string $code): ?string
     {
-        [$cart, $newToken] = $this->find($owner);
-        if ($cart === null || trim($code) === '') {
-            return $newToken;
-        }
-        $cart->useCoupons([...$cart->coupons(), trim($code)], $this->clock->now());
-        $this->carts->save($cart);
+        return $this->change(function () use ($owner, $code): ?string {
+            [$cart, $newToken] = $this->locked($owner);
+            if ($cart === null || trim($code) === '') {
+                return $newToken;
+            }
+            $cart->useCoupons([...$cart->coupons(), trim($code)], $this->clock->now());
+            $this->carts->save($cart);
 
-        return $newToken;
+            return $newToken;
+        });
     }
 
     /** A cart as the customer would see it now; null for one that is gone. */
@@ -465,16 +503,18 @@ final readonly class CartService
     /** The order's payment could not start: the customer has the cart as it was, the files its lines name too. */
     public function notPlacing(int $cartId): void
     {
-        $cart = $this->carts->find($cartId);
-        if ($cart !== null) {
-            $orderId = $cart->placingOrderId();
-            if ($orderId !== null) {
-                // The cancelled order took them; ordered again, they would be refused as another order's.
-                $this->uploads->giveBack($orderId, $cart->fileHashes());
+        $this->change(function () use ($cartId): void {
+            $cart = $this->carts->find($cartId, true);
+            if ($cart !== null) {
+                $orderId = $cart->placingOrderId();
+                if ($orderId !== null) {
+                    // The cancelled order took them; ordered again, they would be refused as another order's.
+                    $this->uploads->giveBack($orderId, $cart->fileHashes());
+                }
+                $cart->notPlacing();
+                $this->carts->save($cart);
             }
-            $cart->notPlacing();
-            $this->carts->save($cart);
-        }
+        });
     }
 
     /**
@@ -537,6 +577,54 @@ final readonly class CartService
         $this->events->dispatch(new CartClaimed($from, $cart->id(), $customerId));
 
         return [$cart, $token];
+    }
+
+    /**
+     * One change to carts, whole or not at all (PLAN 732): the work runs in one transaction, changes a cart it read
+     * under its lock (locked(), lockedCart(), CartRepository::find() with a lock), and names the events to tell of,
+     * which are told once the change is saved. Tried once more when the database gave up on it for other work that
+     * held the same rows, so the work reads everything it changes itself.
+     *
+     * @template T
+     *
+     * @param \Closure(\Closure(object): void): T $work
+     *
+     * @return T
+     */
+    private function change(\Closure $work): mixed
+    {
+        $events = [];
+        $result = $this->transactions->runRetrying(static function () use ($work, &$events): mixed {
+            $events = [];
+
+            return $work(static function (object $event) use (&$events): void {
+                $events[] = $event;
+            });
+        });
+        foreach ($events as $event) {
+            $this->events->dispatch($event);
+        }
+
+        return $result;
+    }
+
+    /**
+     * The owner's cart for a change to it, inside change(): claimed for the logged-in customer when it was a
+     * visitor's, then read again under its lock, so two changes to one cart happen one after the other and each
+     * starts from what the other saved.
+     *
+     * @return array{?Cart, ?string}
+     */
+    private function locked(CartOwner $owner): array
+    {
+        [$cart, $token] = $this->find($owner);
+
+        return [$this->lockedCart($cart), $token];
+    }
+
+    private function lockedCart(?Cart $cart): ?Cart
+    {
+        return $cart === null ? null : $this->carts->find($cart->id(), true);
     }
 
     /**

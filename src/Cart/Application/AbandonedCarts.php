@@ -10,6 +10,7 @@ use OrillaCart\Cart\Domain\AbandonedCart;
 use OrillaCart\Cart\Domain\AbandonedCartRepository;
 use OrillaCart\Cart\Domain\CartRepository;
 use OrillaCart\Settings\Application\SettingsService;
+use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 
 /**
@@ -28,6 +29,7 @@ final readonly class AbandonedCarts
         private CartService $cartService,
         private SettingsService $settings,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -40,15 +42,25 @@ final readonly class AbandonedCarts
         $now = $this->clock->now();
         $currency = $this->settings->current()->currency;
         $remind = [];
-        foreach ($this->abandoned->leftSince($before, self::BATCH) as $cart) {
-            $view = $this->cartService->viewOf($cart->id());
-            $email = $cart->remind() ? $cart->contactEmail() : null;
-            $left = new AbandonedCart($cart->id(), $cart->customerId(), $email, $view->items ?? 0, $view->subtotal ?? '0', $currency, $now);
-            $this->abandoned->save($left);
-            $cart->abandon($left->id());
-            $this->carts->save($cart);
-            if ($email !== null) {
-                $remind[] = $left->id();
+        foreach ($this->abandoned->leftSince($before, self::BATCH) as $found) {
+            $view = $this->cartService->viewOf($found->id());
+            // The count and the cart's mark of it are saved together, on the cart as it is under its lock: its
+            // customer may be changing it, or ordering from it, right now.
+            $id = $this->transactions->run(function () use ($found, $view, $currency, $now): ?int {
+                $cart = $this->carts->find($found->id(), true);
+                if ($cart === null) {
+                    return null;
+                }
+                $email = $cart->remind() ? $cart->contactEmail() : null;
+                $left = new AbandonedCart($cart->id(), $cart->customerId(), $email, $view->items ?? 0, $view->subtotal ?? '0', $currency, $now);
+                $this->abandoned->save($left);
+                $cart->abandon($left->id());
+                $this->carts->save($cart);
+
+                return $email === null ? null : $left->id();
+            });
+            if ($id !== null) {
+                $remind[] = $id;
             }
         }
 
@@ -84,13 +96,23 @@ final readonly class AbandonedCarts
     public function withLink(CartReminder $reminder): CartReminder
     {
         $left = $reminder->customerId === null ? $this->abandoned->find($reminder->abandonedId) : null;
-        $cart = $left === null ? null : $this->carts->find($left->cartId());
-        if ($cart === null) {
+        if ($left === null) {
             return $reminder;
         }
         $token = bin2hex(random_bytes(32));
-        $cart->recoverWith($token);
-        $this->carts->save($cart);
+        $given = $this->transactions->run(function () use ($left, $token): bool {
+            $cart = $this->carts->find($left->cartId(), true);
+            if ($cart === null) {
+                return false;
+            }
+            $cart->recoverWith($token);
+            $this->carts->save($cart);
+
+            return true;
+        });
+        if (!$given) {
+            return $reminder;
+        }
 
         return new CartReminder($reminder->abandonedId, $reminder->email, $reminder->locale, $reminder->customerId, $reminder->cart, $token);
     }

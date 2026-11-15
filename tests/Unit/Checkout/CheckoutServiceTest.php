@@ -98,7 +98,7 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame('https://shop.test/?orillacart_order=' . $this->shop->receipts->issue($placed->number), $placed->receiptUrl);
         self::assertSame(1, $this->shop->stock->stock(StockItemRef::product(10))->available);
         self::assertSame(0, $this->shop->carts->cart($owner)->cart->items);
-        self::assertSame(2, $this->shop->transactions->outermost - $before, 'stock and order were saved together, then the order was put on hold');
+        self::assertSame(3, $this->shop->transactions->outermost - $before, 'stock and order were saved together, then the order was put on hold, then the cart was emptied');
 
         $order = $this->shop->orders->order($placed->number);
         self::assertSame(['Cash on delivery', 'Have the cash ready.', 'Courier – Bulgaria', 'ada@example.com'], [$order->paymentName, $order->paymentNote, $order->shipping, $order->email]);
@@ -176,7 +176,7 @@ final class CheckoutServiceTest extends TestCase
         $placed = $this->shop->checkout->placeOrder($owner, $this->order(null, rate: null));
 
         self::assertSame(['processing', '0'], [$placed->status, $placed->total]);
-        self::assertSame(1, $this->shop->transactions->outermost - $before, 'placed and paid together');
+        self::assertSame(2, $this->shop->transactions->outermost - $before, 'placed and paid together, then the cart was emptied');
         self::assertNull($this->shop->orders->order($placed->number)->shippingAddress, 'nothing ships');
     }
 
@@ -422,7 +422,7 @@ final class CheckoutServiceTest extends TestCase
         $cartId = $this->shop->carts->contents($owner)?->cartId;
         self::assertIsInt($cartId);
         $this->shop->transactions->run(fn() => $this->shop->carts->lockForOrder($cartId));
-        $this->shop->carts->placing($cartId, 999);
+        $this->shop->transactions->run(fn() => $this->shop->carts->placing($cartId, 999));
 
         try {
             $this->shop->checkout->placeOrder($owner, $this->order('bank_transfer'));
@@ -724,6 +724,17 @@ final class CheckoutServiceTest extends TestCase
 
         self::assertSame(0, $this->shop->carts->cart(new CartOwner($visitor->token))->cart->items, 'the visitor\'s token opens nothing now');
         self::assertSame(1, $this->shop->carts->cart($owner)->cart->items, 'the browser still reaches it, by its customer');
+    }
+
+    public function testAChangeToTheCartsCodesIsOneTransaction(): void
+    {
+        $visitor = $this->cart([10, 1]);
+        $owner = new CartOwner($visitor->token, 7);
+        $before = $this->shop->transactions->outermost;
+
+        $this->shop->checkoutCodes->useStoreCredit($owner, true);
+
+        self::assertSame(1, $this->shop->transactions->outermost - $before, 'claimed, read under its lock and changed together');
     }
 
     /**

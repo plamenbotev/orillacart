@@ -64,6 +64,7 @@ final class InMemoryCartRepository implements CartRepository
 
     public function takeUnowned(int $cartId, int $customerId): bool
     {
+        $this->transactions?->written('A cart');
         $cart = $this->carts[$cartId] ?? null;
         if ($cart === null || $cart->customerId() !== null) {
             return false;
@@ -75,6 +76,7 @@ final class InMemoryCartRepository implements CartRepository
 
     public function save(Cart $cart): void
     {
+        $this->transactions?->written('A cart');
         $id = new \ReflectionProperty(Cart::class, 'id');
         if ($id->getValue($cart) === null) {
             $id->setValue($cart, $this->nextCartId++);
@@ -90,6 +92,7 @@ final class InMemoryCartRepository implements CartRepository
 
     public function remove(Cart $cart): void
     {
+        $this->transactions?->written('A cart');
         unset($this->carts[$cart->id()]);
     }
 

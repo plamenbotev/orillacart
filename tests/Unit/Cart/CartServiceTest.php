@@ -142,6 +142,35 @@ final class CartServiceTest extends TestCase
         self::assertNull($this->shop->carts->claim($owner), 'and there is nothing to claim');
     }
 
+    public function testEachChangeToACartIsOneTransactionOnTheCartUnderItsLock(): void
+    {
+        $visitor = $this->shop->carts->add(new CartOwner(null), new AddToCart(10));
+        $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10));
+        $owner = new CartOwner($visitor->newToken, 7);
+        $before = $this->shop->transactions->outermost;
+
+        // Claiming the visitor's cart, joining it with the account's and adding to it: one step.
+        $added = $this->shop->carts->add($owner, new AddToCart(10));
+
+        // The second is another change, told of the first: the items discounts give are kept in step (GivenItems).
+        self::assertSame(2, $this->shop->transactions->outermost - $before);
+        self::assertSame(3, $added->cart->items);
+        $line = $added->cart->lines[0]->id;
+        $this->shop->carts->changeQuantity($owner, $line, new ChangeQuantity(1));
+        self::assertSame(4, $this->shop->transactions->outermost - $before, 'the same for the next change');
+    }
+
+    public function testACartWrittenOutsideATransactionFailsTheTest(): void
+    {
+        $this->shop->carts->add(new CartOwner(null), new AddToCart(10));
+        $cart = array_values($this->shop->cartRecords->carts)[0];
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('outside a transaction');
+
+        $this->shop->cartRecords->save($cart);
+    }
+
     public function testACartIsClaimedOnceWhenTwoRequestsAskTogether(): void
     {
         $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10, quantity: 1));
@@ -150,8 +179,8 @@ final class CartServiceTest extends TestCase
         self::assertTrue($this->shop->carts->claimJoins(new CartOwner($visitor->newToken, 7)));
 
         // The other request took the cart between this one's read and its claim.
-        self::assertTrue($this->shop->cartRecords->takeUnowned($cartId, 7));
-        self::assertFalse($this->shop->cartRecords->takeUnowned($cartId, 7), 'only one is told yes');
+        self::assertTrue($this->shop->transactions->run(fn(): bool => $this->shop->cartRecords->takeUnowned($cartId, 7)));
+        self::assertFalse($this->shop->transactions->run(fn(): bool => $this->shop->cartRecords->takeUnowned($cartId, 7)), 'only one is told yes');
     }
 
     public function testAnotherCustomersCartIsNotServedByItsCookie(): void

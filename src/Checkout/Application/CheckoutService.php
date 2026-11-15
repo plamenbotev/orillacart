@@ -557,8 +557,12 @@ final readonly class CheckoutService
             $payment = $this->payments->start(StartPayment::forOrder($order, $gateway));
         } catch (PaymentProviderUnavailable|PaymentMethodNotFound $e) {
             // The stock and the coupons' uses go back, and the customer keeps the cart to try again.
-            $this->orders->cancel($order->number, 'The payment could not start.');
-            $this->carts->notPlacing($contents->cartId);
+            // Together: an order cancelled with its cart still marked as being ordered from would keep the cart
+            // from being ordered again until the mark ran out.
+            $this->transactions->run(function () use ($order, $contents): void {
+                $this->orders->cancel($order->number, 'The payment could not start.');
+                $this->carts->notPlacing($contents->cartId);
+            });
             if ($e instanceof PaymentMethodNotFound) {
                 // Turned off between the summary and the order: the customer chooses another way to pay.
                 throw new CheckoutRuleViolation('This way to pay is no longer offered. Choose another.', 'orillacart_payment_required', $e);
@@ -706,14 +710,16 @@ final readonly class CheckoutService
     }
 
     /**
-     * What the cart holds, for a change to it: a visitor's cart the customer logged in with becomes theirs first
-     * (CartService::claim()), as every change to a cart makes it.
+     * What the cart holds, for a change to it by what it holds, inside that change's transaction: a visitor's cart
+     * the customer logged in with becomes theirs first, as every change to a cart makes it, and the cart's lock is
+     * held from here (CartService::hold()), so two changes at once do not each start from what the other is about
+     * to replace.
      *
      * @throws CheckoutRuleViolation for an empty cart, or one a cart rule refuses
      */
     public function claimedContents(CartOwner $owner): CartContents
     {
-        $this->carts->claim($owner);
+        $this->carts->hold($owner);
 
         return $this->contents($owner);
     }

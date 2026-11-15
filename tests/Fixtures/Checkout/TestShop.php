@@ -556,7 +556,7 @@ final class TestShop
         $this->files = new TemporaryPrivateFiles();
         $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings, $this->productTranslations);
         $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations, new CartViews($quotes, $settings, $extensions, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->closedFailures = new MemoryClosedFailures()), $this->transactions);
-        $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
+        $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock, $this->transactions);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
         $links = new FakeOrderLinks($this->receipts);
         $this->orderLookups = new ListedOrderLookups($this->extensions, $this->logger);
@@ -648,7 +648,7 @@ final class TestShop
             new CallerKeys($this->signatures),
             $this->emailConfirmations = new EmailConfirmations($this->signatures, $this->jobs->jobs, $this->clock, new InMemoryConfirmedEmails()),
         );
-        $this->checkoutCodes = new CheckoutCodes($this->carts, $this->pricing, $this->giftCardPayments, $this->currencies, $this->checkout);
+        $this->checkoutCodes = new CheckoutCodes($this->carts, $this->pricing, $this->giftCardPayments, $this->currencies, $this->checkout, $this->transactions);
         $this->events->addListener(CartChanged::class, new KeepGivenItems($this->givenItems, $this->checkout)->changed(...));
         $this->promotionProgress = new PromotionProgress($this->checkout, $this->carts, $this->pricing, $this->promotions, $this->currencies, $quotes, $this->shownPrices);
         $this->reorder = new Reorder($this->orders, $this->carts);

@@ -296,11 +296,13 @@ final class InMemoryOrderRepository implements OrderRepository
 
     public function remove(Order $order): void
     {
+        $this->transactions?->written('An order');
         unset($this->orders[$order->id()]);
     }
 
     public function save(Order $order): void
     {
+        $this->transactions?->written('An order');
         // Grants and notes get ids on save, as the database gives them.
         foreach ($order->notes() as $note) {
             $id = new \ReflectionProperty($note, 'id');

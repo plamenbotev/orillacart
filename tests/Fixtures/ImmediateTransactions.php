@@ -48,6 +48,18 @@ final class ImmediateTransactions implements Transactions
     }
 
     /**
+     * A repository saved or removed something (PLAN 732): work that changes the shop's carts, orders and payments
+     * runs in a transaction, so what is done in several steps is saved whole or not at all. A write outside one
+     * fails the test that made it; a test that writes to a repository itself does so inside run().
+     */
+    public function written(string $what): void
+    {
+        if ($this->depth === 0) {
+            throw new \LogicException(\sprintf('%s was written outside a transaction: change it through its service, or inside Transactions::run().', $what));
+        }
+    }
+
+    /**
      * What Doctrine does for a pessimistic lock with no transaction open.
      */
     public function requireOpen(): void

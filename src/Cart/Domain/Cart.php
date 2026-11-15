@@ -519,6 +519,12 @@ class Cart
         $this->recoverHash = self::hash($token);
     }
 
+    /** Whether the reminder's link with this token still opens the cart: it does until it brought the cart back. */
+    public function hasRecoverToken(#[\SensitiveParameter] string $token): bool
+    {
+        return $this->recoverHash !== null && hash_equals($this->recoverHash, self::hash($token));
+    }
+
     /**
      * The reminder's link brought the cart back: it works once. Sent on to someone else, a link that kept working
      * would let whoever sent it open the cart again later and see what was added, and the email given.
