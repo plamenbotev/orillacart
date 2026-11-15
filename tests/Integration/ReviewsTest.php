@@ -197,6 +197,11 @@ final class ReviewsTest extends RestTestCase
         wp_insert_comment(['comment_post_ID' => $this->lamp, 'comment_parent' => $review, 'comment_content' => 'Nobody wrote this.', 'comment_author' => 'The shop', 'comment_approved' => 1]);
 
         $manager = $this->actAs('administrator');
+        // With an email, as WordPress's own route asks of who comments: the tests' users are made without one.
+        self::assertSame($manager, wp_update_user(['ID' => $manager, 'user_email' => 'reviews-manager@example.com']));
+        // Read again: WordPress keeps the current user as it was when set.
+        wp_set_current_user(0);
+        wp_set_current_user($manager);
         $answered = $comment(['post' => $this->lamp, 'parent' => $review, 'content' => 'A new lamp is on its way.']);
         self::assertSame(201, $answered->get_status(), (string) wp_json_encode($answered->get_data()));
         $answer = $this->data($answered)['id'];

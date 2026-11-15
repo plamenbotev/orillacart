@@ -59,6 +59,31 @@ foreach ($classes as $class) {
 }
 echo "Autoloader resolves library and plugin classes\n";
 
+// A constant of the site's (wp-config.php's, WordPress', another plugin's) that PHP-Scoper prefixed is one nobody
+// defines: defined() says no for ever, define() tells nobody. Each belongs in scoper.inc.php's exclude-constants.
+$prefixed = [];
+$sources = [$pluginDir . '/orillacart.php', $pluginDir . '/uninstall.php'];
+foreach (['src', 'config'] as $folder) {
+    if (is_dir($pluginDir . '/' . $folder)) {
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($pluginDir . '/' . $folder, FilesystemIterator::SKIP_DOTS)) as $file) {
+            if ($file instanceof SplFileInfo && $file->getExtension() === 'php') {
+                $sources[] = $file->getPathname();
+            }
+        }
+    }
+}
+foreach ($sources as $source) {
+    if (is_file($source) && preg_match_all('/[\'"]OrillaCart\\\\{1,2}Vendor\\\\{1,2}([A-Z][A-Z0-9_]*)[\'"]/', (string) file_get_contents($source), $found) > 0) {
+        foreach ($found[1] as $constant) {
+            $prefixed[$constant] = substr($source, strlen($pluginDir) + 1);
+        }
+    }
+}
+if ($prefixed !== []) {
+    $fail("The build prefixed constants the site defines; name them in scoper.inc.php's exclude-constants:\n" . implode("\n", array_map(static fn(string $constant, string $in): string => "  {$constant} ({$in})", array_keys($prefixed), $prefixed)));
+}
+echo "No constant of the site's is prefixed\n";
+
 // Twig writes PHP for each template that names its own classes; they must be the prefixed ones.
 // Rendered through the plugin's own factory, from a template in a temporary plugin folder.
 $plugin = sys_get_temp_dir() . '/orillacart-check-build-' . bin2hex(random_bytes(4));

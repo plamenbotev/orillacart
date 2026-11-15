@@ -69,9 +69,13 @@ return [
         ...$wordpressExcludes('constants'),
         'ABSPATH', 'WPINC', 'WP_DEBUG', 'WP_CLI', 'WP_UNINSTALL_PLUGIN',
         'DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'DB_CHARSET', 'DB_COLLATE',
-        'ORILLACART_VERSION',
+        // The shop's own, the ones a site sets in wp-config.php too: defined('ORILLACART_TRUSTED_PROXIES') must ask
+        // for that name, not a prefixed one nobody defines.
+        '/^ORILLACART_[A-Z0-9_]+$/',
+        // WordPress' and caching plugins', which no stub lists.
+        'DISABLE_WP_CRON', 'DONOTCACHEPAGE',
         // WPML's, by which the shop knows it is there.
-        'ICL_SITEPRESS_VERSION',
+        'ICL_SITEPRESS_VERSION', 'WPML_ST_VERSION',
         // symfony/polyfill-deepclone's, as the extension names them.
         'DEEPCLONE_HYDRATE_CALL_HOOKS', 'DEEPCLONE_HYDRATE_NO_LAZY_INIT', 'DEEPCLONE_HYDRATE_PRESERVE_REFS',
     ],

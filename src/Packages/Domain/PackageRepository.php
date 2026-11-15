@@ -9,7 +9,7 @@ interface PackageRepository
     /** @return list<Package> by name */
     public function all(): array;
 
-    /** @return list<Package> the ones that run */
+    /** @return list<Package> the ones that run; none while the shop's tables are not there yet */
     public function enabled(): array;
 
     public function find(string $slug): ?Package;

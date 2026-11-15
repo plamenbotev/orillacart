@@ -33,6 +33,8 @@ fail() {
     echo "FAIL: $1" >&2
     # The containers go when the script ends: show what WordPress logged first.
     docker exec "$WP" tail -n 40 /var/www/html/wp-content/debug.log >&2 2> /dev/null || true
+    # A fatal error on a page goes to the web server's log, not WordPress' own.
+    docker logs "$WP" 2>&1 | grep -E 'PHP (Fatal|Parse) error|Uncaught' | tail -n 5 | cut -c1-2000 >&2 || true
     exit 1
 }
 wp() { docker exec "$WP" wp --allow-root --path=/var/www/html "$@"; }
@@ -67,7 +69,7 @@ add_filter('pre_wp_mail', static function ($short, array $mail) {
 PHP
 wp config set WP_ENVIRONMENT_TYPE local > /dev/null  # application passwords over plain HTTP
 wp core install --url=http://localhost --title=Smoke --admin_user=admin --admin_password=admin \
-    --admin_email=admin@example.com --skip-email > /dev/null
+    --admin_email=owner@orillacart-smoke.dev --skip-email > /dev/null
 echo "    WordPress $(wp core version), $(docker exec "$WP" php -r 'echo PHP_VERSION;')"
 
 echo "==> Install and activate $(basename "$ZIP")"
@@ -277,8 +279,11 @@ grep -q '"nonce":null' <<< "$shop_page" || fail "a visitor's page carries a nonc
 product_page="$(html "$product")"
 grep -q 'data-orillacart-add-to-cart' <<< "$product_page" \
     || fail "the product page has no way to buy: $(echo "$product_page" | grep -o 'orillacart-[a-z-]*' | sort -u | tr '\n' ' ')"
-receipt_page="$(html "$(page_of checkout)" orillacart_order "$key")"
-grep -q "<strong>#$number</strong>" <<< "$receipt_page" || fail "the receipt page does not show the order"
+# The link's token goes into a cookie and the browser on to the address without it (KeptTokens): followed as a
+# browser does, with its cookies.
+receipt_page="$(docker exec "$WP" curl -s -L -b /tmp/receipt -c /tmp/receipt "$(link_to "$(page_of checkout)" orillacart_order "$key")")"
+grep -q "<strong>#$number</strong>" <<< "$receipt_page" \
+    || fail "the receipt page does not show the order"
 headers() { docker exec "$WP" curl -s -D - -o /dev/null "$(link_to "$@")"; }
 for part in cart checkout account; do
     grep -qi '^cache-control:.*no-store' <<< "$(headers "$(page_of "$part")")" || fail "the $part page may be cached"

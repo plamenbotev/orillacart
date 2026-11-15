@@ -814,7 +814,11 @@ final class OrdersAndCustomersRestTest extends RestTestCase
 
         self::assertSame($answers[0], $answers[1], 'nothing tells them apart');
         self::assertSame(202, $answers[0][0]);
-        self::assertSame([['grace@example.com', '[orillacart] You have an account already'], ['ada@example.com', '[orillacart] Make your account']], array_map(static fn(array $mail): array => [$mail['to'], $mail['subject']], $this->sentMail()));
+        // The site's title, which wp-env takes from the folder it runs in.
+        $title = get_option('blogname');
+        self::assertIsString($title);
+        $site = wp_specialchars_decode($title, \ENT_QUOTES);
+        self::assertSame([['grace@example.com', "[{$site}] You have an account already"], ['ada@example.com', "[{$site}] Make your account"]], array_map(static fn(array $mail): array => [$mail['to'], $mail['subject']], $this->sentMail()));
         self::assertNotSame('', $this->accountToken('ada@example.com'));
     }
 
