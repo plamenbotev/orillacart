@@ -39,8 +39,8 @@ final class RefundTaxes
         }
         // In the currency's cents, line by line: a credit note and the taxes report show 0.83 of 5 on 24, not 0.8333.
         $decimals = new Currency($order->currency())->decimals();
-        $gross = self::sum($covered, static fn(array $share): Money => $share[1]);
-        $tax = self::sum($covered, static fn(array $share): Money => $share[2]);
+        $gross = Money::sum($covered, static fn(array $share): Money => $share[1]);
+        $tax = Money::sum($covered, static fn(array $share): Money => $share[2]);
         $left = $refund->amount;
         foreach ($covered as $index => [$line, $lineGross]) {
             $part = $index === \count($covered) - 1 ? $left : ($gross->isZero() ? Money::zero() : $refund->amount->proportion($lineGross, $gross)->rounded($decimals));
@@ -104,16 +104,5 @@ final class RefundTaxes
         }
 
         return array_values($shares);
-    }
-
-    /**
-     * @template T
-     *
-     * @param list<T>          $of
-     * @param \Closure(T): Money $amount
-     */
-    private static function sum(array $of, \Closure $amount): Money
-    {
-        return array_reduce($of, static fn(Money $sum, mixed $one): Money => $sum->add($amount($one)), Money::zero());
     }
 }

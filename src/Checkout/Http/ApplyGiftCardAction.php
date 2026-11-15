@@ -26,6 +26,8 @@ final readonly class ApplyGiftCardAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->codes->applyGiftCard($this->cookie->owner($request), $this->input->body($request, GiftCardCodeInput::class)));
+        [$owner, $token] = $this->cookie->claimed($request);
+
+        return $this->cookie->give($this->responder->ok($this->codes->applyGiftCard($owner, $this->input->body($request, GiftCardCodeInput::class))), $token, $request);
     }
 }

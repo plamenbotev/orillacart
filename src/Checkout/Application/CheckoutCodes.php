@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OrillaCart\Checkout\Application;
 
 use OrillaCart\Cart\Application\CartService;
-use OrillaCart\Cart\Application\Dto\CartContents;
 use OrillaCart\Cart\Application\Dto\CartOwner;
 use OrillaCart\Checkout\Application\Dto\CheckoutDetails;
 use OrillaCart\Checkout\Application\Dto\CheckoutView;
@@ -39,7 +38,7 @@ final readonly class CheckoutCodes
      */
     public function applyGiftCard(CartOwner $owner, GiftCardCodeInput $command): CheckoutView
     {
-        $contents = $this->contents($owner);
+        $contents = $this->checkout->claimedContents($owner);
         $code = strtoupper(trim($command->code));
         try {
             $balance = $this->giftCards->balance($code, $this->currencies->current());
@@ -62,7 +61,7 @@ final readonly class CheckoutCodes
      */
     public function removeGiftCard(CartOwner $owner, string $code): CheckoutView
     {
-        $contents = $this->contents($owner);
+        $contents = $this->checkout->claimedContents($owner);
         $code = strtoupper(trim($code));
         $this->carts->useGiftCards($contents->cartId, array_values(array_filter($contents->giftCards, static fn(string $kept): bool => $kept !== $code)), $contents->useStoreCredit);
 
@@ -79,7 +78,7 @@ final readonly class CheckoutCodes
         if ($owner->customerId === null) {
             throw new CheckoutRuleViolation('Log in to use your store credit.', 'orillacart_store_credit_login');
         }
-        $contents = $this->contents($owner);
+        $contents = $this->checkout->claimedContents($owner);
         $this->carts->useGiftCards($contents->cartId, $contents->giftCards, $use);
 
         return $this->checkout->summary($owner, new CheckoutDetails());
@@ -93,7 +92,7 @@ final readonly class CheckoutCodes
      */
     public function applyCoupon(CartOwner $owner, CouponCode $command): CheckoutView
     {
-        $contents = $this->contents($owner);
+        $contents = $this->checkout->claimedContents($owner);
         $code = Coupon::normalize($command->code);
         $held = array_map(Coupon::normalize(...), $contents->coupons);
         if (!\in_array($code, $held, true) && \count($held) >= Discounts::MAX_CODES) {
@@ -115,22 +114,10 @@ final readonly class CheckoutCodes
      */
     public function removeCoupon(CartOwner $owner, string $code): CheckoutView
     {
-        $contents = $this->contents($owner);
+        $contents = $this->checkout->claimedContents($owner);
         $code = Coupon::normalize($code);
         $this->carts->useCoupons($contents->cartId, array_values(array_filter(array_map(Coupon::normalize(...), $contents->coupons), static fn(string $kept): bool => $kept !== $code)));
 
         return $this->checkout->summary($owner, new CheckoutDetails());
-    }
-
-    private function contents(CartOwner $owner): CartContents
-    {
-        // Every caller changes the cart: a visitor's cart the customer logged in with becomes theirs first.
-        $this->carts->claim($owner);
-        $contents = $this->carts->contents($owner) ?? throw new CheckoutRuleViolation('The cart is empty.', 'orillacart_cart_empty');
-        if ($contents->refusals !== []) {
-            throw new CheckoutRuleViolation(implode(' ', $contents->refusals), 'orillacart_cart_refused');
-        }
-
-        return $contents;
     }
 }

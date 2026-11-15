@@ -39,6 +39,16 @@ final readonly class DoctrineCartRepository implements CartRepository
         return $this->entityManager->getRepository(Cart::class)->findOneBy(['customerId' => $customerId], ['updatedAt' => 'DESC', 'id' => 'DESC']);
     }
 
+    public function takeUnowned(int $cartId, int $customerId): bool
+    {
+        $taken = $this->entityManager->createQuery('UPDATE ' . Cart::class . ' c SET c.customerId = :customer WHERE c.id = :id AND c.customerId IS NULL')
+            ->setParameter('customer', $customerId)
+            ->setParameter('id', $cartId)
+            ->execute();
+
+        return $taken === 1;
+    }
+
     public function save(Cart $cart): void
     {
         $this->entityManager->persist($cart);

@@ -62,6 +62,17 @@ final class InMemoryCartRepository implements CartRepository
         return $found;
     }
 
+    public function takeUnowned(int $cartId, int $customerId): bool
+    {
+        $cart = $this->carts[$cartId] ?? null;
+        if ($cart === null || $cart->customerId() !== null) {
+            return false;
+        }
+        $cart->belongTo($customerId);
+
+        return true;
+    }
+
     public function save(Cart $cart): void
     {
         $id = new \ReflectionProperty(Cart::class, 'id');

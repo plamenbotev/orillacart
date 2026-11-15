@@ -83,7 +83,7 @@ final readonly class RouteTools
                     $name,
                     ucfirst(str_replace('_', ' ', $name)),
                     trim($tool->description ?? RouteInputs::summary($route->action)),
-                    self::areaOf($route->action),
+                    $tool->area ?? self::areaOf($route->action),
                     $method,
                     $route->path,
                     InputSchemas::placeholders($route->path, $dto),
@@ -175,20 +175,11 @@ final readonly class RouteTools
     }
 
     /**
-     * OrillaCart\Ordering\Http\ChangeOrderStatusAction: Ordering; the area its #[Tool] names, when it names one,
-     * so an action that moves between modules stays where the owner switched it off.
+     * OrillaCart\Ordering\Http\ChangeOrderStatusAction: Ordering. The area of a tool whose #[Tool] names none: one
+     * that names its area keeps it wherever its action moves (tool-areas.json holds every tool to its area).
      */
     public static function areaOf(string $action): string
     {
-        if (class_exists($action)) {
-            foreach (new \ReflectionClass($action)->getAttributes(Tool::class) as $attribute) {
-                $area = $attribute->newInstance()->area;
-                if ($area !== null) {
-                    return $area;
-                }
-            }
-        }
-
         return explode('\\', $action)[1] ?? '';
     }
 }

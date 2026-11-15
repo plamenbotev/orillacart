@@ -290,13 +290,33 @@ final class RouteToolsTest extends TestCase
         }
     }
 
+    /**
+     * The owner switches areas off for the assistant (AssistantChoices::$offAreas), and finds tools by them: a tool
+     * that changes area with a move of its action between modules would come back on, unasked. Every tool is held
+     * to its area here; one that is new, or moved on purpose, is written into the file with
+     * `UPDATE_TOOL_AREAS=1 vendor/bin/phpunit --filter testEveryToolKeepsItsArea`.
+     */
+    public function testEveryToolKeepsItsArea(): void
+    {
+        $file = __DIR__ . '/tool-areas.json';
+        $areas = [];
+        foreach (self::catalogue()->all() as $tool) {
+            $areas[$tool->name] = $tool->area;
+        }
+        ksort($areas);
+        if (getenv('UPDATE_TOOL_AREAS') === '1') {
+            file_put_contents($file, json_encode($areas, \JSON_PRETTY_PRINT | \JSON_THROW_ON_ERROR) . "\n");
+        }
+
+        self::assertSame(json_decode((string) file_get_contents($file), true, flags: \JSON_THROW_ON_ERROR), $areas, 'A tool changed its area, or is new: name its area with #[Tool(area: …)], or write the file again (see above).');
+    }
+
     public function testNamesAreTheActions(): void
     {
         self::assertSame('change_order_status', RouteTools::nameOf('OrillaCart\Ordering\Http\ChangeOrderStatusAction'));
         self::assertSame('Ordering', RouteTools::areaOf('OrillaCart\Ordering\Http\ChangeOrderStatusAction'));
         // Stock counts live in Catalog since the modules got their tiers; the owner still finds them, and switches
         // them off, under Inventory.
-        self::assertSame('Inventory', RouteTools::areaOf(\OrillaCart\Catalog\Http\UpdateStockAction::class));
         self::assertSame(['Inventory', 'Inventory'], [self::catalogue()->get('update_stock')?->area, self::catalogue()->get('show_stock')?->area]);
         self::assertNotNull(self::catalogue()->get('change_order_status'));
         self::assertSame(RouteInputs::summary('OrillaCart\Ordering\Http\ChangeOrderStatusAction'), self::catalogue()->get('change_order_status')->description);

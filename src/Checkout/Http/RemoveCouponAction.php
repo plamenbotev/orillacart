@@ -24,6 +24,8 @@ final readonly class RemoveCouponAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->codes->removeCoupon($this->cookie->owner($request), PathParameter::string($request, 'code')));
+        [$owner, $token] = $this->cookie->claimed($request);
+
+        return $this->cookie->give($this->responder->ok($this->codes->removeCoupon($owner, PathParameter::string($request, 'code'))), $token, $request);
     }
 }

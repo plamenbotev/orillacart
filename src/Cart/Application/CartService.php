@@ -113,6 +113,21 @@ final readonly class CartService
     }
 
     /**
+     * Whether claim() would join the browser's cart with one the customer's account holds: what they read as their
+     * cart (the browser's) is then not all an order placed after claiming would hold.
+     */
+    public function claimJoins(CartOwner $owner): bool
+    {
+        $cart = $this->held($owner);
+        if ($cart === null || $owner->customerId === null || $cart->customerId() !== null) {
+            return false;
+        }
+        $account = $this->carts->findByCustomer($owner->customerId);
+
+        return $account !== null && $account->id() !== $cart->id() && !$account->isEmpty();
+    }
+
+    /**
      * @throws ProductNotFound
      * @throws InvalidSelection   for options the product does not offer, or required ones missing
      * @throws CartRuleViolation  for a product not for sale, more than the stock allows, an add-on's cart rule, or a
@@ -472,13 +487,20 @@ final readonly class CartService
      * A visitor with a cart logged in: the cart becomes theirs, joined with what their account's cart held, under
      * a new token, so whoever knew the visitor's cookie does not reach the account's cart.
      *
-     * @return array{Cart, string}
+     * Two requests may ask at once (the pages a browser opens together after logging in): the database lets one take
+     * the cart (CartRepository::takeUnowned()), and the other finds it the customer's, so nothing is joined twice.
+     *
+     * @return array{?Cart, ?string}
      */
     private function loggedIn(Cart $visitors, int $customerId): array
     {
         $now = $this->clock->now();
         $from = $visitors->id();
+        // Read before the cart is taken: once it is the customer's, it may be the one found here.
         $cart = $this->carts->findByCustomer($customerId);
+        if (!$this->carts->takeUnowned($from, $customerId)) {
+            return [$this->carts->findByCustomer($customerId), null];
+        }
         if ($cart !== null && $cart->id() !== $visitors->id()) {
             // Within the files a cart holds: a line whose files would pass the limit stays out, as adding it would.
             $cart->takeFrom($visitors, $now, FormUploads::MAX_HELD);
@@ -525,6 +547,10 @@ final readonly class CartService
         if ($cart !== null && $cart->customerId() !== null && $cart->customerId() !== $owner->customerId) {
             // Another customer's cart, left in a shared browser: not this one's to see or order from.
             $cart = null;
+        }
+        if ($cart !== null && $cart->customerId() === null && $owner->customerId !== null && $cart->isEmpty()) {
+            // An empty visitor's cart (the one a guest's order emptied) hides nothing the account's cart holds.
+            $cart = $this->carts->findByCustomer($owner->customerId) ?? $cart;
         }
 
         return $cart ?? ($owner->customerId === null ? null : $this->carts->findByCustomer($owner->customerId));

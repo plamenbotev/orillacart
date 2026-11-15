@@ -683,20 +683,36 @@ final class CheckoutServiceTest extends TestCase
 
     public function testOrderingClaimsTheVisitorsCartACustomerLoggedInWith(): void
     {
-        // The account's cart holds an e-book; the customer fills a visitor's cart and logs in through the API
-        // alone, so no page of the storefront joined the two.
+        // The customer fills a visitor's cart and logs in through the API alone: no page of the storefront made
+        // the cart theirs.
+        $visitor = $this->cart([10, 1]);
+        $owner = new CartOwner($visitor->token, 7);
+
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+
+        self::assertSame(7, $this->shop->orders->order($placed->number)->customerId);
+        self::assertSame(0, $this->shop->carts->cart(new CartOwner($visitor->token))->cart->items, 'the visitor\'s token opens nothing now');
+    }
+
+    public function testAnOrderWaitsWhenClaimingJoinsWhatTheAccountsCartHeld(): void
+    {
+        // The account's cart holds an e-book the customer did not see in the browser's cart.
         $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(20));
         $visitor = $this->cart([10, 1]);
         $owner = new CartOwner($visitor->token, 7);
         self::assertSame(1, $this->shop->carts->cart($owner)->cart->items, 'reading joined nothing');
 
-        $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+        try {
+            $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+            self::fail('The order was placed with an item the customer had not read.');
+        } catch (CheckoutRuleViolation $e) {
+            self::assertSame('orillacart_cart_joined', $e->errorCode);
+        }
 
-        $order = $this->shop->orders->order($placed->number);
-        self::assertEqualsCanonicalizing(['Lamp', 'E-book'], array_map(static fn($line): string => $line->name, $order->lines), 'what the account held is ordered with it, not left behind');
-        self::assertSame(7, $order->customerId);
-        self::assertCount(1, $this->shop->cartRecords->carts, 'one cart, the customer\'s');
-        self::assertSame(0, $this->shop->carts->cart(new CartOwner(null, 7))->cart->items, 'and it is empty');
+        self::assertSame(2, $this->shop->carts->cart($owner)->cart->items, 'joined: they read both now');
+        self::assertCount(1, $this->shop->cartRecords->carts);
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+        self::assertEqualsCanonicalizing(['Lamp', 'E-book'], array_map(static fn($line): string => $line->name, $this->shop->orders->order($placed->number)->lines));
     }
 
     public function testChangingTheCartsCodesClaimsIt(): void

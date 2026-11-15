@@ -31,7 +31,8 @@ use PHPUnit\TextUI\Configuration\Configuration;
  * The tables' counters are left where the classes moved them, on purpose: the plugin's kernel lives as long as
  * the process and remembers products, prices and pages by id, so a class given the ids of the one before it
  * would be shown that one's lamp for its hoodie. No test may therefore expect an id, only the ids it was given.
- * Files and hooks are the classes' own to undo (RestTestCase uninstalls the extensions a class installed).
+ * Only the database WordPress is connected to is kept: on a site whose tables lie in several (a sharded network,
+ * LudicrousDB), the others are not, and keep() says so. Files and hooks are the classes' own to undo (RestTestCase uninstalls the extensions a class installed).
  */
 final class KeptDatabase implements Extension
 {
@@ -73,6 +74,9 @@ final class KeptDatabase implements Extension
         $lifecycle->activate();
 
         $kept = self::database();
+        if (self::wpdb()::class !== \wpdb::class) {
+            fwrite(\STDERR, \sprintf("\nKeptDatabase: the site reads its tables through %s; only `%s` is kept and put back, tables in other databases are not.\n", self::wpdb()::class, substr($kept, 0, -5)));
+        }
         self::$kept = [];
         self::$made = [];
         self::run("DROP DATABASE IF EXISTS `{$kept}`");

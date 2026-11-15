@@ -20,6 +20,12 @@ interface CartRepository
     /** The customer's most recently changed cart. */
     public function findByCustomer(int $customerId): ?Cart;
 
+    /**
+     * Makes a visitor's cart the customer's, in one statement the database decides: of two requests that ask at
+     * once, one is told yes. False for a cart that has a customer already, or is gone.
+     */
+    public function takeUnowned(int $cartId, int $customerId): bool;
+
     public function save(Cart $cart): void;
 
     public function remove(Cart $cart): void;

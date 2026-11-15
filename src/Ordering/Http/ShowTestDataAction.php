@@ -7,12 +7,14 @@ namespace OrillaCart\Ordering\Http;
 use OrillaCart\Ordering\Application\TestData;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** How many test orders and test customers the shop has: those made to try it out, never emailed and not counted. */
+#[Tool(area: 'Customers')]
 #[Route('/test-data', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowTestDataAction implements RequestHandlerInterface
 {

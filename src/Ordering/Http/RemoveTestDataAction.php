@@ -7,12 +7,14 @@ namespace OrillaCart\Ordering\Http;
 use OrillaCart\Ordering\Application\TestData;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** Removes every test order (an open one cancelled first, so its stock comes back) and every test customer's account; answers how many went. Sales and real customers are never touched. */
+#[Tool(area: 'Customers')]
 #[Route('/test-data', methods: ['DELETE'], capability: Capability::MANAGE_SHOP)]
 final readonly class RemoveTestDataAction implements RequestHandlerInterface
 {

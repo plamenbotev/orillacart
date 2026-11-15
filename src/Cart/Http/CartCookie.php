@@ -23,11 +23,26 @@ final readonly class CartCookie
 {
     public const string NAME = CartOwner::COOKIE;
 
-    public function __construct(private Authorization $authorization) {}
+    public function __construct(private Authorization $authorization, private CartService $carts) {}
 
     public function owner(ServerRequestInterface $request): CartOwner
     {
         return CartOwner::fromCookie($request->getCookieParams()[self::NAME] ?? null, $this->authorization->userId());
+    }
+
+    /**
+     * The owner for a request that changes the cart other than by its lines (its codes at checkout): a visitor's
+     * cart the customer logged in with is claimed first, and the token to give() with the answer comes with it, so
+     * the browser holds the cart's new token and not one that opens nothing.
+     *
+     * @return array{CartOwner, ?string}
+     */
+    public function claimed(ServerRequestInterface $request): array
+    {
+        $owner = $this->owner($request);
+        $token = $this->carts->claim($owner);
+
+        return [$token === null ? $owner : new CartOwner($token, $owner->customerId), $token];
     }
 
     /** After a change: the new token, or again the one the browser sent, for as long as the shop keeps carts. */

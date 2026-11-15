@@ -372,9 +372,14 @@ final readonly class CheckoutService
             throw new CheckoutRuleViolation('Accept the terms of sale to order.', 'orillacart_terms_not_accepted');
         }
         $failed = $this->failures->mark();
-        // The order is the customer's: a visitor's cart they logged in with becomes theirs, joined with what their
-        // account's cart held, before it is read (the storefront's first page did so, a client of the API alone not).
+        // The order is the customer's: a visitor's cart they logged in with becomes theirs before it is read (the
+        // storefront's first page did so, a client of the API alone not). When that joins it with what their
+        // account's cart held, the order waits: they order what they read, and they have not read this cart yet.
+        $joins = $this->carts->claimJoins($owner);
         $this->carts->claim($owner);
+        if ($joins) {
+            throw new CheckoutRuleViolation('Your cart now also holds what you had left in it before. Look it over, then order.', 'orillacart_cart_joined');
+        }
         $contents = $this->contents($owner);
         $billingAddress = $this->addresses->require($command->billing, 'billing');
         $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->addresses->require($command->shippingAddress, 'shipping');
@@ -698,6 +703,19 @@ final readonly class CheckoutService
             && ($command->expectedTotal === null || $priced['bill']->total()->compare(Money::of($command->expectedTotal)) <= 0)
             && $this->minimum($priced['sized'], $currency)['minimumOrder'] === null
             && (!$priced['needs_shipping'] || $priced['chosen']?->id === $command->shippingOption);
+    }
+
+    /**
+     * What the cart holds, for a change to it: a visitor's cart the customer logged in with becomes theirs first
+     * (CartService::claim()), as every change to a cart makes it.
+     *
+     * @throws CheckoutRuleViolation for an empty cart, or one a cart rule refuses
+     */
+    public function claimedContents(CartOwner $owner): CartContents
+    {
+        $this->carts->claim($owner);
+
+        return $this->contents($owner);
     }
 
     private function contents(CartOwner $owner): CartContents

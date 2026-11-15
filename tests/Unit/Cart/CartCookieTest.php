@@ -79,7 +79,7 @@ final class CartCookieTest extends TestCase
 
     private function give(string $token, string $url): string
     {
-        $cookie = new CartCookie(new FakeAuthorization());
+        $cookie = new CartCookie(new FakeAuthorization(), new \OrillaCart\Tests\Fixtures\Checkout\TestShop()->carts);
         $response = $cookie->give(new Response(), $token, new ServerRequest('POST', $url));
 
         return $response->getHeaderLine('Set-Cookie');

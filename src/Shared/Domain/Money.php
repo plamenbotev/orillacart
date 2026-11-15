@@ -50,6 +50,19 @@ final readonly class Money implements \Stringable
         return new self($tenThousandths);
     }
 
+    /**
+     * What the amounts of a list add up to.
+     *
+     * @template T
+     *
+     * @param list<T>             $of
+     * @param \Closure(T): self $amount
+     */
+    public static function sum(array $of, \Closure $amount): self
+    {
+        return array_reduce($of, static fn(self $sum, mixed $one): self => $sum->add($amount($one)), self::zero());
+    }
+
     public static function zero(): self
     {
         return new self(0);

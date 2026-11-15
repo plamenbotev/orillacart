@@ -26,6 +26,8 @@ final readonly class UseStoreCreditAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->codes->useStoreCredit($this->cookie->owner($request), $this->input->body($request, UseStoreCredit::class)->use));
+        [$owner, $token] = $this->cookie->claimed($request);
+
+        return $this->cookie->give($this->responder->ok($this->codes->useStoreCredit($owner, $this->input->body($request, UseStoreCredit::class)->use)), $token, $request);
     }
 }

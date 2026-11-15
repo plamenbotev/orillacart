@@ -128,6 +128,32 @@ final class CartServiceTest extends TestCase
         self::assertNull($this->shop->carts->claim(new CartOwner($visitor->newToken)), 'a visitor has nothing to claim');
     }
 
+    public function testAnEmptyVisitorsCartDoesNotHideTheAccounts(): void
+    {
+        $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10, quantity: 2));
+        // The cart a guest's order emptied: its row stays, and so does the browser's cookie.
+        $visitor = $this->shop->carts->add(new CartOwner(null), new AddToCart(10));
+        $this->shop->carts->clear((int) $this->shop->carts->contents(new CartOwner($visitor->newToken))?->cartId);
+
+        $owner = new CartOwner($visitor->newToken, 7);
+        self::assertSame(2, $this->shop->carts->cart($owner)->cart->items, 'the account\'s cart is read');
+        self::assertNotNull($this->shop->carts->contents($owner));
+        self::assertFalse($this->shop->carts->claimJoins($owner));
+        self::assertNull($this->shop->carts->claim($owner), 'and there is nothing to claim');
+    }
+
+    public function testACartIsClaimedOnceWhenTwoRequestsAskTogether(): void
+    {
+        $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(10, quantity: 1));
+        $visitor = $this->shop->carts->add(new CartOwner(null), new AddToCart(10, quantity: 2));
+        $cartId = (int) $this->shop->carts->contents(new CartOwner($visitor->newToken))?->cartId;
+        self::assertTrue($this->shop->carts->claimJoins(new CartOwner($visitor->newToken, 7)));
+
+        // The other request took the cart between this one's read and its claim.
+        self::assertTrue($this->shop->cartRecords->takeUnowned($cartId, 7));
+        self::assertFalse($this->shop->cartRecords->takeUnowned($cartId, 7), 'only one is told yes');
+    }
+
     public function testAnotherCustomersCartIsNotServedByItsCookie(): void
     {
         // Ada fills a cart, logs out; the cookie stays in the shared browser.

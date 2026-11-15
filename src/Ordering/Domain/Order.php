@@ -529,12 +529,12 @@ class Order
 
     public function feesTotal(): Money
     {
-        return self::sum($this->charged(), static fn(OrderLine $line): Money => $line->net());
+        return Money::sum($this->charged(), static fn(OrderLine $line): Money => $line->net());
     }
 
     public function feesTax(): Money
     {
-        return self::sum($this->charged(), static fn(OrderLine $line): Money => $line->tax());
+        return Money::sum($this->charged(), static fn(OrderLine $line): Money => $line->tax());
     }
 
     /**
@@ -574,18 +574,18 @@ class Order
     /** The items before tax and before the changes to their prices. */
     public function subtotal(): Money
     {
-        return self::sum($this->lines(), static fn(OrderLine $line): Money => $line->total());
+        return Money::sum($this->lines(), static fn(OrderLine $line): Money => $line->total());
     }
 
     public function itemsTax(): Money
     {
-        return self::sum($this->lines(), static fn(OrderLine $line): Money => $line->tax());
+        return Money::sum($this->lines(), static fn(OrderLine $line): Money => $line->tax());
     }
 
     /** All the tax charged: on the items, the shipping and the fees. */
     public function tax(): Money
     {
-        return self::sum($this->allLines(), static fn(OrderLine $line): Money => $line->tax());
+        return Money::sum($this->allLines(), static fn(OrderLine $line): Money => $line->tax());
     }
 
     /** @return array{reason: string, certificate: string}|null */
@@ -713,7 +713,7 @@ class Order
     /** What the changes to the items' prices took off, in all: coupons and the shop's. */
     public function discountTotal(): Money
     {
-        return self::sum($this->lines(), static fn(OrderLine $line): Money => $line->discount());
+        return Money::sum($this->lines(), static fn(OrderLine $line): Money => $line->discount());
     }
 
     /**
@@ -1584,17 +1584,6 @@ class Order
         usort($ordered, static fn(LineDraft $a, LineDraft $b): int => $a->type->rank() <=> $b->type->rank());
 
         return $ordered;
-    }
-
-    /**
-     * @template T
-     *
-     * @param list<T>          $of
-     * @param \Closure(T): Money $amount
-     */
-    private static function sum(array $of, \Closure $amount): Money
-    {
-        return array_reduce($of, static fn(Money $sum, mixed $one): Money => $sum->add($amount($one)), Money::zero());
     }
 
     /**

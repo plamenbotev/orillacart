@@ -7,12 +7,14 @@ namespace OrillaCart\Settings\Http;
 use OrillaCart\Settings\Application\LegalSettingsService;
 use OrillaCart\Shared\Http\Output\JsonResponder;
 use OrillaCart\Shared\Http\Routing\Route;
+use OrillaCart\Shared\Http\Routing\Tool;
 use OrillaCart\Shared\Security\Capability;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 /** The shop's legal pages, and whether checkout asks to accept the terms and what its order button says. */
+#[Tool(area: 'Storefront')]
 #[Route('/legal-settings', methods: ['GET'], capability: Capability::MANAGE_SHOP)]
 final readonly class ShowLegalSettingsAction implements RequestHandlerInterface
 {

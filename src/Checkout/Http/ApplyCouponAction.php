@@ -26,6 +26,8 @@ final readonly class ApplyCouponAction implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->responder->ok($this->codes->applyCoupon($this->cookie->owner($request), $this->input->body($request, CouponCode::class)));
+        [$owner, $token] = $this->cookie->claimed($request);
+
+        return $this->cookie->give($this->responder->ok($this->codes->applyCoupon($owner, $this->input->body($request, CouponCode::class))), $token, $request);
     }
 }

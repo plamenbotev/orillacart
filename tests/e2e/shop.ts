@@ -349,13 +349,46 @@ async function shopIn(
 }
 
 /**
- * Removes what setUpShop made, and the orders and customers the tests made.
+ * Removes what setUpShop made and the customers the tests made, cancels the orders they left waiting for a
+ * payment, and empties the admin's cart.
  * @param requestUtils
  */
 export async function tearDownShop(
 	requestUtils: RequestUtils
 ): Promise< void > {
 	await shopIn( requestUtils, null );
+	// The orders the tests left waiting for a payment are cancelled, and the admin's cart emptied: the admin's
+	// waiting orders count toward the shop's "unpaid orders each", and a cart keeps items of products that are
+	// gone, so a few runs on one site would refuse the next run's orders.
+	// Before the products go: a cancelled order gives its stock back.
+	const waiting: number[] = [];
+	for ( let page = 1, pages = 1; page <= pages; page++ ) {
+		const found = await requestUtils.rest< {
+			orders: { number: number; email: string }[];
+			pages: number;
+		} >( {
+			path: `/orillacart/v1/orders?status=on_hold,pending_payment&per_page=100&page=${ page }`,
+		} );
+		pages = found.pages;
+		waiting.push(
+			...found.orders
+				.filter( ( order ) => order.email.startsWith( 'e2e' ) )
+				.map( ( order ) => order.number )
+		);
+	}
+	for ( const number of waiting ) {
+		await requestUtils.rest( {
+			method: 'PUT',
+			path: `/orillacart/v1/orders/${ number }/status`,
+			data: { status: 'cancelled' },
+		} );
+	}
+	const cart = await requestUtils.rest< { lines: { id: number }[] } >( {
+		path: '/orillacart/v1/cart',
+	} );
+	for ( const line of cart.lines ) {
+		await remove( requestUtils, `/orillacart/v1/cart/items/${ line.id }` );
+	}
 	const products = await requestUtils.rest< { id: number }[] >( {
 		path: '/wp/v2/orillacart_product?search=E2E&status=any&per_page=100&_fields=id',
 	} );
