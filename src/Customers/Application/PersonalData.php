@@ -28,9 +28,9 @@ final readonly class PersonalData
         private Newsletter $newsletter,
         private Accounts $accounts,
         private ShopCatalog $catalog,
+        private PersonalDataErasers $erasers,
         private ?EventDispatcherInterface $events = null,
         private ?PersonalDataSources $sources = null,
-        private PersonalDataErasers $erasers = new PersonalDataErasers(),
     ) {}
 
     /**

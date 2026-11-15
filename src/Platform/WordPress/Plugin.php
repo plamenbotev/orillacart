@@ -21,10 +21,22 @@ final class Plugin
     /** How long a failed upgrade waits before a request tries it again by itself. */
     private const int RETRY_AFTER_SECONDS = 600;
 
+    /** The kernel boot() made: the one WordPress' hooks and REST routes run on in this process. */
+    private static ?Kernel $booted = null;
+
+    /**
+     * The kernel the plugin booted in this process, if it did. For what runs many requests in one process (the
+     * integration tests put the database back between classes, and have it forget the entities it loaded).
+     */
+    public static function booted(): ?Kernel
+    {
+        return self::$booted;
+    }
+
     public static function boot(string $pluginFile, string $version): void
     {
         $context = new PluginContext($pluginFile, $version);
-        $kernel = new Kernel($context);
+        $kernel = self::$booted = new Kernel($context);
 
         // Network-wide on a multisite, every site gets the shop: each has its own tables, pages and roles.
         register_activation_hook(

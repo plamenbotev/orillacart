@@ -7,6 +7,8 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Platform\Kernel;
 use OrillaCart\Platform\Lifecycle\PluginLifecycle;
 use OrillaCart\Platform\PluginContext;
+use OrillaCart\Platform\WordPress\Plugin;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 use PHPUnit\Event\TestRunner\ExecutionStarted;
 use PHPUnit\Event\TestRunner\ExecutionStartedSubscriber;
 use PHPUnit\Event\TestSuite\Finished;
@@ -21,14 +23,23 @@ use PHPUnit\TextUI\Configuration\Configuration;
  * it, and the end-to-end tests after the suite open the shop the suite started with.
  *
  * Before the first class, with the plugin activated, every table is copied to a database of its own (the site's
- * name with `_kept`); after each class, a table whose checksum changed is put back row for row, and a table the
- * class made is dropped. A class may so clear a table to count what it makes: the rows it cleared come back.
+ * name with `_kept`); after each class, a table whose checksum changed is put back row for row, a table the
+ * class dropped is made again with its foreign keys, and a table the class made is dropped. A class may so clear
+ * a table to count what it makes: the rows it cleared come back. A statement that fails stops the run (run()):
+ * nothing is emptied that cannot be filled again.
+ *
+ * The tables' counters are left where the classes moved them, on purpose: the plugin's kernel lives as long as
+ * the process and remembers products, prices and pages by id, so a class given the ids of the one before it
+ * would be shown that one's lamp for its hoodie. No test may therefore expect an id, only the ids it was given.
  * Files and hooks are the classes' own to undo (RestTestCase uninstalls the extensions a class installed).
  */
 final class KeptDatabase implements Extension
 {
     /** @var array<string, string> each kept table's checksum */
     private static array $kept = [];
+
+    /** @var array<string, string> the statement that makes each kept table, as the site had it */
+    private static array $made = [];
 
     public function bootstrap(Configuration $configuration, Facade $facade, ParameterCollection $parameters): void
     {
@@ -61,14 +72,24 @@ final class KeptDatabase implements Extension
         \assert($lifecycle instanceof PluginLifecycle);
         $lifecycle->activate();
 
-        $wpdb = self::wpdb();
         $kept = self::database();
-        $wpdb->query("DROP DATABASE IF EXISTS `{$kept}`");
-        $wpdb->query("CREATE DATABASE `{$kept}`");
         self::$kept = [];
+        self::$made = [];
+        self::run("DROP DATABASE IF EXISTS `{$kept}`");
+        self::run("CREATE DATABASE `{$kept}`");
         foreach (self::tables() as $table) {
-            $wpdb->query("CREATE TABLE `{$kept}`.`{$table}` LIKE `{$table}`");
-            $wpdb->query("INSERT INTO `{$kept}`.`{$table}` SELECT * FROM `{$table}`");
+            self::run("CREATE TABLE `{$kept}`.`{$table}` LIKE `{$table}`");
+            self::run("INSERT INTO `{$kept}`.`{$table}` SELECT * FROM `{$table}`");
+            // As the site has it, foreign keys and all: the copy, made LIKE it, has none.
+            $made = self::wpdb()->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
+            $statement = \is_array($made) ? ($made[1] ?? null) : null;
+            if (!\is_string($statement) || $statement === '') {
+                self::stop("SHOW CREATE TABLE `{$table}`");
+            }
+            self::$made[$table] = $statement;
+        }
+        // Last, and only once every table was copied: restore() works from this list alone.
+        foreach (array_keys(self::$made) as $table) {
             self::$kept[$table] = self::checksum($table);
         }
     }
@@ -78,28 +99,60 @@ final class KeptDatabase implements Extension
         if (self::$kept === []) {
             return;
         }
-        $wpdb = self::wpdb();
         $kept = self::database();
         $tables = self::tables();
-        $wpdb->query('SET FOREIGN_KEY_CHECKS = 0');
-        try {
-            foreach (array_diff($tables, array_keys(self::$kept)) as $made) {
-                $wpdb->query("DROP TABLE `{$made}`");
-            }
-            foreach (self::$kept as $table => $checksum) {
-                if (!\in_array($table, $tables, true)) {
-                    $wpdb->query("CREATE TABLE `{$table}` LIKE `{$kept}`.`{$table}`");
-                } elseif (self::checksum($table) === $checksum) {
-                    continue;
-                }
-                $wpdb->query("DELETE FROM `{$table}`");
-                $wpdb->query("INSERT INTO `{$table}` SELECT * FROM `{$kept}`.`{$table}`");
-            }
-        } finally {
-            $wpdb->query('SET FOREIGN_KEY_CHECKS = 1');
+        self::run('SET FOREIGN_KEY_CHECKS = 0');
+        foreach (array_diff($tables, array_keys(self::$kept)) as $made) {
+            self::run("DROP TABLE `{$made}`");
         }
-        // Options and users read before are read again.
+        foreach (self::$kept as $table => $checksum) {
+            if (!\in_array($table, $tables, true)) {
+                self::run(self::$made[$table]);
+            } elseif (self::checksum($table) === $checksum) {
+                continue;
+            }
+            // Together or not at all: a refill that fails leaves the rows the class left, not an empty table.
+            self::run('START TRANSACTION');
+            self::run("DELETE FROM `{$table}`", 'ROLLBACK');
+            self::run("INSERT INTO `{$table}` SELECT * FROM `{$kept}`.`{$table}`", 'ROLLBACK');
+            self::run('COMMIT');
+        }
+        self::run('SET FOREIGN_KEY_CHECKS = 1');
+        // Options and users read before are read again, and so are the shop's entities: the plugin's kernel lives
+        // as long as the process, and what it loaded for one class is not what the next class finds in the tables
+        // (an id given again is another row).
         wp_cache_flush();
+        $container = Plugin::booted()?->container();
+        $loaded = $container?->has(LoadedEntities::class) === true ? $container->get(LoadedEntities::class) : null;
+        if ($loaded instanceof LoadedEntities) {
+            $loaded->forget();
+        }
+    }
+
+    /**
+     * Runs the statement, or stops the whole run: a copy that failed would have restore() empty the site's tables
+     * and put nothing back, and a restore that failed leaves the classes after it, and the end-to-end tests,
+     * another shop than the one they expect. PHPUnit turns a subscriber's exception into a warning and goes on,
+     * so this ends the process instead.
+     */
+    private static function run(string $statement, ?string $undo = null): void
+    {
+        if (self::wpdb()->query($statement) !== false) {
+            return;
+        }
+        $error = self::wpdb()->last_error;
+        if ($undo !== null) {
+            self::wpdb()->query($undo);
+        }
+        self::stop($statement, $error);
+    }
+
+    private static function stop(string $statement, string $error = ''): never
+    {
+        // Nothing more is restored from a copy that cannot be trusted.
+        self::$kept = [];
+        fwrite(\STDERR, \sprintf("\nKeptDatabase: the tests stop here, the site's database could not be kept or put back.\n  %s\n  %s\nThe database user needs CREATE and DROP on `%s`.\n", $statement, $error === '' ? '(no answer)' : $error, self::database()));
+        exit(1);
     }
 
     /** @return list<string> the site database's tables */

@@ -124,6 +124,8 @@ final readonly class CheckoutCodes
 
     private function contents(CartOwner $owner): CartContents
     {
+        // Every caller changes the cart: a visitor's cart the customer logged in with becomes theirs first.
+        $this->carts->claim($owner);
         $contents = $this->carts->contents($owner) ?? throw new CheckoutRuleViolation('The cart is empty.', 'orillacart_cart_empty');
         if ($contents->refusals !== []) {
             throw new CheckoutRuleViolation(implode(' ', $contents->refusals), 'orillacart_cart_refused');

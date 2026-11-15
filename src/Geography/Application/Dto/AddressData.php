@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OrillaCart\Geography\Application\Dto;
 
+use OrillaCart\Geography\Domain\AddressFormat;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -11,7 +12,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 final readonly class AddressData
 {
-    public const int MAX_LENGTH = 200;
+    public const int MAX_LENGTH = AddressFormat::MAX_PART_LENGTH;
 
     public function __construct(
         #[Assert\NotBlank]

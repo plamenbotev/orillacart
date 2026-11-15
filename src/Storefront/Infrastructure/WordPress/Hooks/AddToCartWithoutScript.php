@@ -62,8 +62,7 @@ final readonly class AddToCartWithoutScript
         // A new cart's token, or again the one the browser has, for as long as the shop keeps carts.
         $token = $result->newToken ?? $this->shopper->cart()->token;
         if ($token !== null) {
-            $days = new \DateInterval(CartService::KEEP_FOR)->d;
-            setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
+            SiteCookies::send(CartOwner::COOKIE, $token, CartService::keepSeconds());
         }
         wp_safe_redirect($this->links->pages()['cart'] ?? home_url('/'), 303);
         exit;

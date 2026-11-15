@@ -53,7 +53,7 @@ final readonly class CustomerService
         private ClockInterface $clock,
         private CustomerNoteRepository $notes,
         private Newsletter $newsletter,
-        private PersonalDataErasers $erasers = new PersonalDataErasers(),
+        private PersonalDataErasers $erasers,
     ) {}
 
     /**

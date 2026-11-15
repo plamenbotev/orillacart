@@ -84,4 +84,11 @@ final class CartCookieTest extends TestCase
 
         return $response->getHeaderLine('Set-Cookie');
     }
+
+    public function testTheStorefrontsPagesWriteTheSameCookieAsTheApi(): void
+    {
+        self::assertSame(30 * 86400, \OrillaCart\Cart\Application\CartService::keepSeconds(), 'as long as the shop keeps carts');
+        self::assertSame('orillacart_cart=abc; Path=/; Max-Age=60; HttpOnly; SameSite=Lax; Secure', \OrillaCart\Shared\Http\SiteCookies::line('orillacart_cart', 'abc', 60, true));
+        self::assertSame('a=b%3Bc; Path=/; Max-Age=1; HttpOnly; SameSite=Lax', \OrillaCart\Shared\Http\SiteCookies::line('a', 'b;c', 1, false), 'a value cannot add attributes');
+    }
 }

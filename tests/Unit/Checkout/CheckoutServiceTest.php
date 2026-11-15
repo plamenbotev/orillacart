@@ -681,6 +681,35 @@ final class CheckoutServiceTest extends TestCase
         self::assertSame(['Bulgaria', 'Pallet'], $names(), 'now an item without a class');
     }
 
+    public function testOrderingClaimsTheVisitorsCartACustomerLoggedInWith(): void
+    {
+        // The account's cart holds an e-book; the customer fills a visitor's cart and logs in through the API
+        // alone, so no page of the storefront joined the two.
+        $this->shop->carts->add(new CartOwner(null, 7), new AddToCart(20));
+        $visitor = $this->cart([10, 1]);
+        $owner = new CartOwner($visitor->token, 7);
+        self::assertSame(1, $this->shop->carts->cart($owner)->cart->items, 'reading joined nothing');
+
+        $placed = $this->shop->checkout->placeOrder($owner, $this->order('cash_on_delivery'));
+
+        $order = $this->shop->orders->order($placed->number);
+        self::assertEqualsCanonicalizing(['Lamp', 'E-book'], array_map(static fn($line): string => $line->name, $order->lines), 'what the account held is ordered with it, not left behind');
+        self::assertSame(7, $order->customerId);
+        self::assertCount(1, $this->shop->cartRecords->carts, 'one cart, the customer\'s');
+        self::assertSame(0, $this->shop->carts->cart(new CartOwner(null, 7))->cart->items, 'and it is empty');
+    }
+
+    public function testChangingTheCartsCodesClaimsIt(): void
+    {
+        $visitor = $this->cart([10, 1]);
+        $owner = new CartOwner($visitor->token, 7);
+
+        $this->shop->checkoutCodes->useStoreCredit($owner, true);
+
+        self::assertSame(0, $this->shop->carts->cart(new CartOwner($visitor->token))->cart->items, 'the visitor\'s token opens nothing now');
+        self::assertSame(1, $this->shop->carts->cart($owner)->cart->items, 'the browser still reaches it, by its customer');
+    }
+
     /**
      * @param array{int, int} ...$lines product id, quantity
      */

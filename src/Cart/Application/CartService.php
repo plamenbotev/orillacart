@@ -46,7 +46,6 @@ use OrillaCart\Shared\Domain\EmailAddress;
 use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
-use OrillaCart\Shared\Extension\ClosedFailures;
 use OrillaCart\Shared\Extension\InstalledExtensions;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -66,7 +65,11 @@ final readonly class CartService
     /** Carts nobody changed for this long are deleted. */
     public const string KEEP_FOR = 'P30D';
 
-    private CartViews $views;
+    /** KEEP_FOR in seconds: how long the browser keeps the cart's cookie. */
+    public static function keepSeconds(): int
+    {
+        return new \DateTimeImmutable('@0')->add(new \DateInterval(self::KEEP_FOR))->getTimestamp();
+    }
 
     public function __construct(
         private CartRepository $carts,
@@ -82,25 +85,25 @@ final readonly class CartService
         private ProductContent $content,
         private FormUploads $uploads,
         private ProductTranslations $translations,
-        private ClosedFailures $closedFailures,
-    ) {
-        $this->views = new CartViews($quotes, $settings, $extensions, $logger, $currencies, $forms, $content, $closedFailures);
-    }
+        private CartViews $views,
+    ) {}
 
     /**
      * The owner's cart as it is: reading it changes nothing (a visitor's cart a customer logged in with is claimed by
-     * claim() or the first change, not here).
+     * claim() or the first change, not here). Such a cart is priced and checked for the customer reading it.
      */
     public function cart(CartOwner $owner): CartResult
     {
         $cart = $this->held($owner);
 
-        return new CartResult($cart === null ? CartView::empty() : $this->views->view($cart), null);
+        return new CartResult($cart === null ? CartView::empty() : $this->views->view($cart, $owner->customerId), null);
     }
 
     /**
      * Makes the visitor's cart in the browser the logged-in customer's, joined with what their account's cart held,
-     * under a new token. The storefront asks once, on the first page after logging in; any change asks too.
+     * under a new token. The storefront asks once, on the first page after logging in; any change asks too, and so
+     * does checkout before it changes the cart's codes or places its order (a customer who logged in without
+     * opening a page). A browser left with the old token still reaches the cart, by its customer.
      *
      * @return string|null the token for the browser; null when there was nothing to claim
      */
@@ -211,7 +214,7 @@ final readonly class CartService
     {
         $cart = $this->held($owner);
 
-        return $cart === null ? null : $this->views->contents($cart);
+        return $cart === null ? null : $this->views->contents($cart, $owner->customerId);
     }
 
     /**

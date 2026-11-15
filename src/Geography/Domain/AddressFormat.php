@@ -11,6 +11,12 @@ namespace OrillaCart\Geography\Domain;
  */
 final class AddressFormat
 {
+    /**
+     * How long a name, a street or a city may be: what the shop accepts (AddressData) and what orders hold
+     * (Ordering's Address and its columns), one value for both.
+     */
+    public const int MAX_PART_LENGTH = 200;
+
     public const string DEFAULT = "{name}\n{street}\n{postcode} {city}\n{state}\n{country}";
 
     /** Countries that write addresses otherwise, after the conventions their post offices publish. */

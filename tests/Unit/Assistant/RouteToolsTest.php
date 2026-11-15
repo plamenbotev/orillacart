@@ -294,6 +294,10 @@ final class RouteToolsTest extends TestCase
     {
         self::assertSame('change_order_status', RouteTools::nameOf('OrillaCart\Ordering\Http\ChangeOrderStatusAction'));
         self::assertSame('Ordering', RouteTools::areaOf('OrillaCart\Ordering\Http\ChangeOrderStatusAction'));
+        // Stock counts live in Catalog since the modules got their tiers; the owner still finds them, and switches
+        // them off, under Inventory.
+        self::assertSame('Inventory', RouteTools::areaOf(\OrillaCart\Catalog\Http\UpdateStockAction::class));
+        self::assertSame(['Inventory', 'Inventory'], [self::catalogue()->get('update_stock')?->area, self::catalogue()->get('show_stock')?->area]);
         self::assertNotNull(self::catalogue()->get('change_order_status'));
         self::assertSame(RouteInputs::summary('OrillaCart\Ordering\Http\ChangeOrderStatusAction'), self::catalogue()->get('change_order_status')->description);
     }

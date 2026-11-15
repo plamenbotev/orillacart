@@ -21,6 +21,23 @@ final class SiteCookies
         return \is_string($path) && $path !== '' ? $path : '/';
     }
 
+    /**
+     * A shop cookie's Set-Cookie line, the one place its attributes are written: HttpOnly, so scripts cannot read
+     * it; SameSite=Lax, so other sites cannot make the browser act with it; at the site's own path, for the host
+     * alone; Secure on a site served over HTTPS.
+     */
+    public static function line(string $name, #[\SensitiveParameter] string $value, int $seconds, bool $secure): string
+    {
+        return \sprintf('%s=%s; Path=%s; Max-Age=%d; HttpOnly; SameSite=Lax%s', $name, rawurlencode($value), self::path(), $seconds, $secure ? '; Secure' : '');
+    }
+
+    /** Gives the browser the cookie from a WordPress page, and the rest of this request its value. */
+    public static function send(string $name, #[\SensitiveParameter] string $value, int $seconds): void
+    {
+        header('Set-Cookie: ' . self::line($name, $value, $seconds, \function_exists('is_ssl') && is_ssl()), false);
+        $_COOKIE[$name] = $value;
+    }
+
     /** On a network, the current site's folder ("/shop-b/"); null on a single site, or where it is not known. */
     private static function sitePath(): ?string
     {

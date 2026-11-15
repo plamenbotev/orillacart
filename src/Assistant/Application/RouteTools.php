@@ -174,9 +174,21 @@ final readonly class RouteTools
         return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $short));
     }
 
-    /** OrillaCart\Ordering\Http\ChangeOrderStatusAction: Ordering. */
+    /**
+     * OrillaCart\Ordering\Http\ChangeOrderStatusAction: Ordering; the area its #[Tool] names, when it names one,
+     * so an action that moves between modules stays where the owner switched it off.
+     */
     public static function areaOf(string $action): string
     {
+        if (class_exists($action)) {
+            foreach (new \ReflectionClass($action)->getAttributes(Tool::class) as $attribute) {
+                $area = $attribute->newInstance()->area;
+                if ($area !== null) {
+                    return $area;
+                }
+            }
+        }
+
         return explode('\\', $action)[1] ?? '';
     }
 }

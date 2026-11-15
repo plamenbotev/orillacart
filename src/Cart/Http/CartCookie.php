@@ -17,7 +17,7 @@ use Psr\Http\Message\ServerRequestInterface;
  * cannot read it, and SameSite=Lax, so other sites cannot make the browser change the cart or order from it;
  * Secure on a site served over HTTPS. Every change to the cart gives it again, so a cart in use does not expire
  * in the browser before the shop forgets it. It is set at the site's own cookie path for the host alone
- * (SiteCookies), so two shops of a network, in folders of one domain or on subdomains, each keep a cart of their own.
+ * (SiteCookies::line(), which the storefront's pages write it with too), so two shops of a network, in folders of one domain or on subdomains, each keep a cart of their own.
  */
 final readonly class CartCookie
 {
@@ -41,9 +41,6 @@ final readonly class CartCookie
         if ($token === null) {
             return $response;
         }
-        $secure = $request->getUri()->getScheme() === 'https' ? '; Secure' : '';
-        $days = new \DateInterval(CartService::KEEP_FOR)->d;
-
-        return $response->withAddedHeader('Set-Cookie', \sprintf('%s=%s; Path=%s; Max-Age=%d; HttpOnly; SameSite=Lax%s', self::NAME, $token, SiteCookies::path(), $days * 86400, $secure));
+        return $response->withAddedHeader('Set-Cookie', SiteCookies::line(self::NAME, $token, CartService::keepSeconds(), $request->getUri()->getScheme() === 'https'));
     }
 }

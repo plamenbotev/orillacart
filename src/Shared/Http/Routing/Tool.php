@@ -57,6 +57,8 @@ final readonly class Tool
      * @param string|null $leftOut     why the route is not a tool: it is then left out
      * @param string|null $path        the route this is about, when the action has several
      * @param string|null $method      the method this is about, when the route has several
+     * @param string|null $area        the area the owner finds the tool under and switches off, when it is not the
+     *                                 module the action lives in (stock counts live in Catalog; they are Inventory's)
      * @param array<string, string>|null $wholeBody a body the action reads whole, without a DTO, as one
      *                                              argument: [name => what it is]
      */
@@ -69,7 +71,11 @@ final readonly class Tool
         public ?string $method = null,
         public ?array $wholeBody = null,
         public ?string $unasked = null,
+        public ?string $area = null,
     ) {
+        if ($area !== null && preg_match('/^[A-Z][A-Za-z]{0,99}$/', $area) !== 1) {
+            throw new \InvalidArgumentException(\sprintf('Tool area "%s" must be one word, as a module is named.', $area));
+        }
         if ($risk !== null && !\in_array($risk, self::RISKS, true)) {
             throw new \InvalidArgumentException(\sprintf('Unknown risk "%s"; use one of %s.', $risk, implode(', ', self::RISKS)));
         }

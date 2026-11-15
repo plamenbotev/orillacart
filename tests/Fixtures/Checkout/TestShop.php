@@ -7,6 +7,7 @@ namespace OrillaCart\Tests\Fixtures\Checkout;
 use OrillaCart\Cart\Application\AbandonedCartPersonalData;
 use OrillaCart\Cart\Application\AbandonedCarts;
 use OrillaCart\Cart\Application\CartService;
+use OrillaCart\Cart\Application\CartViews;
 use OrillaCart\Cart\Domain\Event\CartChanged;
 use OrillaCart\Cart\Infrastructure\Events\ForgetDeletedCustomers as ForgetDeletedCarts;
 use OrillaCart\Catalog\Application\AttributeNames;
@@ -74,6 +75,7 @@ use OrillaCart\Forms\Application\FormTexts;
 use OrillaCart\Forms\Application\FormTranslations;
 use OrillaCart\Forms\Application\FormUploads;
 use OrillaCart\Forms\Application\ShopForms;
+use OrillaCart\Forms\Infrastructure\Privacy\ForgetErasedUploads;
 use OrillaCart\Forms\Infrastructure\SafeUploadInspector;
 use OrillaCart\Geography\Application\GeographyService;
 use OrillaCart\GiftCards\Application\GiftCardPayments;
@@ -175,6 +177,7 @@ use OrillaCart\Settings\Domain\WeightUnit;
 use OrillaCart\Shared\Domain\Currency;
 use OrillaCart\Shared\Extension\ExtensionFailures;
 use OrillaCart\Shared\Http\Security\CallerKeys;
+use OrillaCart\Shared\Privacy\PersonalDataErasers;
 use OrillaCart\Shared\Security\Signatures;
 use OrillaCart\Shipping\Application\CarrierPackages;
 use OrillaCart\Shipping\Application\CarrierService;
@@ -453,6 +456,7 @@ final class TestShop
     public readonly ShopForms $shopForms;
     public readonly FieldAnswers $fieldAnswers;
     public readonly FormUploads $uploads;
+    public readonly PersonalDataErasers $erasers;
 
     /**
      * @param list<ShippingMethod> $shippingMethods as add-ons would register them
@@ -551,13 +555,13 @@ final class TestShop
         $this->currencies = new Currencies($this->currencySettings, $settings, $this->chosenCurrency);
         $this->files = new TemporaryPrivateFiles();
         $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings, $this->productTranslations);
-        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations, $this->closedFailures = new MemoryClosedFailures());
+        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations, new CartViews($quotes, $settings, $extensions, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->closedFailures = new MemoryClosedFailures()));
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
         $links = new FakeOrderLinks($this->receipts);
         $this->orderLookups = new ListedOrderLookups($this->extensions, $this->logger);
-        $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions, $this->receipts, $this->orderLookups);
         $changes = new OrderChanges($this->orderRecords, $this->stock, $this->events, $this->clock, $links, $this->transactions);
+        $this->orders = new OrderService($this->orderRecords, $this->stock, $this->events, $this->clock, $changes, $this->transactions, $this->receipts, $this->orderLookups, $this->erasers = new PersonalDataErasers([new ForgetErasedUploads($this->uploads)]));
         $this->orderPayments = new OrderPayments($changes, $this->orderRecords, $this->stock, $this->events, $this->clock);
         $this->orderRefunds = new OrderRefunds($changes, $this->orderRecords, $this->events, $this->clock);
         $this->refundRecords = new InMemoryRefundRepository($this->transactions);
@@ -576,7 +580,7 @@ final class TestShop
         $this->newsletter = new Newsletter($this->subscribers = new InMemorySubscribers(), $this->newsletterSettings = new InMemoryNewsletterSettings(), $extensions, $this->jobs->jobs, $this->clock, $this->languages);
         $this->jobs->with(new SyncSubscriber($this->newsletter, $this->logger));
         $this->orderCustomers = new OrderCustomers($this->orders, $this->accounts, $settings);
-        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orderCustomers, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock, $this->customerNoteRecords = new InMemoryCustomerNotes(), $this->newsletter);
+        $this->customers = new CustomerService($this->accounts, $this->customerSettings, $this->orderCustomers, $this->customerGroupRecords, $this->events, $this->pendingAccounts, $this->accountMail, $this->accountMail, $this->clock, $this->customerNoteRecords = new InMemoryCustomerNotes(), $this->newsletter, $this->erasers);
         $this->customerNotes = new CustomerNotes($this->customerNoteRecords, $this->accounts, new FixedUserNames(), $this->clock);
         $this->events->addListener(CustomerDeleted::class, new ForgetDeletedCustomers($this->orders)(...));
         $this->events->addListener(OrderPlaced::class, new KeepOrderUploads($this->uploads, $this->orders)->placed(...));
@@ -584,7 +588,7 @@ final class TestShop
         $this->events->addListener(CustomerDeleted::class, $forgetCarts(...));
         $this->events->addListener(CustomerErased::class, $forgetCarts->erased(...));
         $this->events->addListener(PersonErased::class, $forgetCarts->personErased(...));
-        $this->personalData = new PersonalData($this->orderCustomers, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog, sources: new TaggedPersonalDataSources([new AbandonedCartPersonalData($this->abandonedCartRecords), new GiftCardPersonalData($this->giftCardRecords)]));
+        $this->personalData = new PersonalData($this->orderCustomers, $this->customers, $this->customerNotes, $this->newsletter, $this->accounts, $this->catalog, $this->erasers, sources: new TaggedPersonalDataSources([new AbandonedCartPersonalData($this->abandonedCartRecords), new GiftCardPersonalData($this->giftCardRecords)]));
         $this->customerGroups = new CustomerGroups($this->customerGroupRecords, $this->accounts);
         $this->shippingQuotes = $shippingQuotes = new ShippingQuotes($carrierRecords, $classRecords, $shippingMethodList, $settings, $this->rateCache, $this->logger, $this->shippingTexts);
         $this->couponRecords = new InMemoryCouponRepository($this->transactions);

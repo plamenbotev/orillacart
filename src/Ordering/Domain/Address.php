@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OrillaCart\Ordering\Domain;
 
 use Doctrine\ORM\Mapping as ORM;
+use OrillaCart\Geography\Domain\AddressFormat;
 
 /**
  * A postal address as the customer gave it at checkout. Orders keep it unchanged. Where an order has none, as
@@ -13,7 +14,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Embeddable]
 final class Address
 {
-    public const int MAX_LENGTH = 200;
+    public const int MAX_LENGTH = AddressFormat::MAX_PART_LENGTH;
 
     #[ORM\Column(length: self::MAX_LENGTH, options: ['default' => ''])]
     private string $firstName;

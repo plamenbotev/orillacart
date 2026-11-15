@@ -33,8 +33,6 @@ final readonly class ClaimedCart
         if ($token === null) {
             return;
         }
-        $days = new \DateInterval(CartService::KEEP_FOR)->d;
-        setcookie(CartOwner::COOKIE, $token, ['expires' => time() + $days * DAY_IN_SECONDS, 'path' => SiteCookies::path(), 'secure' => is_ssl(), 'httponly' => true, 'samesite' => 'Lax']);
-        $_COOKIE[CartOwner::COOKIE] = $token;
+        SiteCookies::send(CartOwner::COOKIE, $token, CartService::keepSeconds());
     }
 }

@@ -372,6 +372,9 @@ final readonly class CheckoutService
             throw new CheckoutRuleViolation('Accept the terms of sale to order.', 'orillacart_terms_not_accepted');
         }
         $failed = $this->failures->mark();
+        // The order is the customer's: a visitor's cart they logged in with becomes theirs, joined with what their
+        // account's cart held, before it is read (the storefront's first page did so, a client of the API alone not).
+        $this->carts->claim($owner);
         $contents = $this->contents($owner);
         $billingAddress = $this->addresses->require($command->billing, 'billing');
         $shippingAddress = $command->shippingAddress === null ? $billingAddress : $this->addresses->require($command->shippingAddress, 'shipping');

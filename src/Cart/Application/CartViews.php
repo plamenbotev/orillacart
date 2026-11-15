@@ -51,14 +51,19 @@ final readonly class CartViews
         private ClosedFailures $closedFailures,
     ) {}
 
-    public function contents(Cart $cart): ?CartContents
+    /**
+     * @param int|null $viewer the logged-in customer reading a visitor's cart not yet theirs: it is priced and
+     *                         checked for them, as it will be once claimed
+     */
+    public function contents(Cart $cart, ?int $viewer = null): ?CartContents
     {
         if ($cart->isEmpty()) {
             return null;
         }
+        $customerId = $cart->customerId() ?? $viewer;
         $refusals = [];
         if ($this->extensions->cartRules() !== []) {
-            $view = $this->view($cart);
+            $view = $this->view($cart, $viewer);
             foreach ($view->lines as $line) {
                 if ($line->problem === CartLineView::REFUSED && $line->message !== null) {
                     $refusals[] = $line->message;
@@ -92,11 +97,15 @@ final readonly class CartViews
             ];
         }
 
-        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit(), $cart->fingerprint(), $cart->customerId(), $cart->declined(), $charges);
+        return new CartContents($cart->id(), $lines, $cart->coupons(), array_values(array_unique($refusals)), $cart->giftCards(), $cart->usesStoreCredit(), $cart->fingerprint(), $customerId, $cart->declined(), $charges);
     }
 
-    public function view(Cart $cart): CartView
+    /**
+     * @param int|null $viewer the logged-in customer reading a visitor's cart not yet theirs (contents())
+     */
+    public function view(Cart $cart, ?int $viewer = null): CartView
     {
+        $customerId = $cart->customerId() ?? $viewer;
         $quoted = [];
         $checked = [];
         // Prices by quantity count every line of the product bought: its variations and option choices together,
@@ -118,7 +127,7 @@ final readonly class CartViews
             }
             $answers = $this->answersOf($line);
             try {
-                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), max(1, $ofProduct[$line->productId()]), $cart->customerId(), $line->bundleChoices(), (string) FieldAnswers::price($answers ?? [])));
+                $quote = $this->quotes->quote(new QuoteRequest($line->productId(), $line->optionIds(), max(1, $ofProduct[$line->productId()]), $customerId, $line->bundleChoices(), (string) FieldAnswers::price($answers ?? [])));
             } catch (NotFound|RuleViolation) {
                 $quote = null;
             }
@@ -127,7 +136,7 @@ final readonly class CartViews
                 $checked[] = self::checkedLine($line, $quote);
             }
         }
-        [$refusedLines, $refusals] = $this->refusals(new CheckedCart($cart->customerId(), $checked, $this->settings->current()->currency));
+        [$refusedLines, $refusals] = $this->refusals(new CheckedCart($customerId, $checked, $this->settings->current()->currency));
 
         $lines = [];
         $items = 0;

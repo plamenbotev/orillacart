@@ -79,22 +79,19 @@ final readonly class OrderService
     /** How long an order is left as it is before a manager erases its customer by hand. */
     public const int QUIET_DAYS = 30;
 
-    private OrderChanges $changes;
-
     public function __construct(
         private OrderRepository $orders,
         private StockService $stock,
         private EventDispatcherInterface $events,
         private ClockInterface $clock,
-        private OrderLinks $links,
+        private OrderChanges $changes,
         private Transactions $transactions,
         private ReceiptLinks $receipts,
         private OrderLookups $lookups,
+        // Asked for, with no default: an order service built without the erasers would erase from orders only.
+        private PersonalDataErasers $erasers,
         private ?ShopCalendar $calendar = null,
-        private PersonalDataErasers $erasers = new PersonalDataErasers(),
-    ) {
-        $this->changes = new OrderChanges($orders, $stock, $events, $clock, $links, $transactions);
-    }
+    ) {}
 
     public function place(NewOrder $command): OrderView
     {

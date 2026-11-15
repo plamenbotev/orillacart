@@ -71,6 +71,22 @@ final class PriceRulesTest extends TestCase
         self::assertSame(['40', '32'], [$this->unit(10, 1), $this->unit(10, 1, $customer)]);
     }
 
+    public function testAVisitorsCartIsPricedForTheCustomerWhoLoggedInBeforeItIsClaimed(): void
+    {
+        $wholesale = $this->shop->customerGroups->create(new SaveCustomerGroup('Wholesale'))->id;
+        $customer = $this->shop->accounts->add('trade@example.com');
+        $this->shop->customerGroups->setGroupsOf($customer, new SetCustomerGroups([$wholesale]));
+        $this->rule('Wholesale', [new PriceTierData(1, 'amount_off', '8')], groupIds: [$wholesale]);
+        $token = $this->shop->carts->add(new CartOwner(null), new AddToCart(10))->newToken;
+
+        // Logged in through the API alone: no page of the storefront claimed the cart.
+        $owner = new CartOwner($token, $customer);
+        self::assertSame('32', $this->shop->carts->cart($owner)->cart->subtotal, 'their price, read without claiming');
+        self::assertSame($customer, $this->shop->carts->contents($owner)?->customerId);
+        self::assertSame('40', $this->shop->carts->cart(new CartOwner($token))->cart->subtotal, 'still the visitor\'s cart');
+        self::assertSame('32', $this->shop->checkout->summary($owner, new CheckoutDetails())->subtotal);
+    }
+
     public function testTheLowestPriceWinsAndRulesLeaveSalesAloneUnlessTheySaySo(): void
     {
         $this->rule('Ten off', [new PriceTierData(1, 'percent', '10')]);
