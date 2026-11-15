@@ -1045,6 +1045,21 @@ The review of the architecture ([docs/architecture.md](docs/architecture.md)): t
 | ✅ | 730 | P3 | `bin/smoke-test-release` was behind the shop: it read the receipt page without following the link's redirect (KeptTokens), and its site's admin address was one no email goes to (design 62), which logged a line its log check refuses. Done: it follows the link with cookies, the admin is `owner@orillacart-smoke.dev`, and a failure shows the web server's fatal errors | ee246e69 |
 | ✅ | 731 | P3 | CI's integration tests failed on its clean site since `KeptDatabase` (708): `ReviewsTest` counted on the tests' administrator having an email, which an earlier class used to leave behind. Done: the test gives it one; `OrdersAndCustomersRestTest` reads the site's title instead of naming the folder wp-env ran in | ee246e69 |
 
+## Easier to keep and to grow (2026-11-15)
+
+What the three reviews of the module changes and the red CI showed: where the code's faults gathered, and what
+would have caught them sooner. Ordered by what each buys; 732–735 come first.
+
+| Status | # | Priority | Item | Commit |
+|---|---|---|---|---|
+| ⬜ | 732 | P1 | Work in several steps is one step by rule, not by review: every fault of substance in PLAN 709–725 was a cart, checkout or login operation done in steps nothing held together (claiming, joining, changing codes). Each such operation gets one entry point that owns its transaction and its lock; the in-memory repositories refuse a write outside a transaction (as they refuse a lock), so a unit test fails where an application service writes unguarded | |
+| ⬜ | 733 | P1 | No stale entities inside a request: the services hand out DTOs already, but build them from what Doctrine's identity map holds, which is what the request loaded before another changed the row (PLAN 725) or before a statement went round the entities (`takeUnowned()`). One enforced rule for when a repository reads again: after such a statement, after a lock was waited for or lost, and at the start of work that decides on what it read. The in-memory repositories model it (a copy per read, as the database gives), so a unit test sees the stale read the database would give | |
+| ⬜ | 734 | P1 | The release is tested, not only the source: the prefixed build ignored seven constants and died on a receipt (PLAN 728) while every test passed. CI runs the integration tests, or the part of them that needs no dev tools, against the built zip installed on its site | |
+| ⬜ | 735 | P1 | CI stays green: it was red for six runs and hid two faults (PLAN 728, 731). Its failures are readable without a login (the failing tests as annotations on the run), integration runs on a clean site locally by one command (as the scratch site of 2026-11-15 did), and nothing new is built on a red run | |
+| ⬜ | 736 | P2 | Smaller services at the busiest places: `CartService` takes 15 collaborators and `CheckoutService` more. Split by what is done (place an order, change the codes, claim a cart, change a line), so a change touches one small class and its tests | |
+| ⬜ | 737 | P2 | Races tested as races: `CartClaimTest` changes rows between two steps of one request; nothing runs two requests at once. A test helper with two real connections to one database, used for claiming a cart, placing an order from one cart twice, taking stock, and taking a reminder | |
+| ⬜ | 738 | P2 | Measure before building for size: a load test with a large catalog and a long order history (listing, search, checkout, the admin's lists), whose results choose among what design 55 left (offers cache, rollups, read replicas) | |
+
 ## Deliberately not carried over
 
 Per-file prices and choosing which files to buy; download limits multiplied by quantity; editing the country list (ISO
