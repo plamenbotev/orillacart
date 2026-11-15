@@ -90,12 +90,12 @@ class Product
     private int|string $updatedAt = 0;
 
     /** @var Collection<int, DownloadFile> */
-    #[ORM\OneToMany(targetEntity: DownloadFile::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: DownloadFile::class, mappedBy: 'product', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['id' => 'ASC'])]
     private Collection $downloads;
 
     /** @var Collection<int, Attribute> the product's own attributes */
-    #[ORM\OneToMany(targetEntity: Attribute::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Attribute::class, mappedBy: 'product', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     private Collection $attributes;
 
     /** @var Collection<int, AttributeSet> */
@@ -107,7 +107,7 @@ class Product
     private Collection $sets;
 
     /** @var Collection<int, Variation> */
-    #[ORM\OneToMany(targetEntity: Variation::class, mappedBy: 'product', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Variation::class, mappedBy: 'product', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['id' => 'ASC'])]
     private Collection $variations;
 

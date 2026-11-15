@@ -91,7 +91,7 @@ class Package
     private \DateTimeImmutable $updatedAt;
 
     /** @var Collection<int, PackageFile> */
-    #[ORM\OneToMany(targetEntity: PackageFile::class, mappedBy: 'package', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: PackageFile::class, mappedBy: 'package', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['path' => 'ASC'])]
     private Collection $files;
 

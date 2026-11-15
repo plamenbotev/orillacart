@@ -12,4 +12,14 @@ interface LoadedEntities
 {
     /** Forgets every loaded entity; do not call it with unsaved changes. */
     public function forget(): void;
+
+    /**
+     * After a statement that changed rows without going through their entities (a DQL UPDATE or DELETE): the loaded
+     * entities of these classes are read again, with the collections they own, and one whose row is gone is
+     * forgotten. What the request goes on to read or save is then what the database holds, not what it held before
+     * the statement. Do not call it with unsaved changes to those entities: they would be lost.
+     *
+     * @param class-string ...$classes
+     */
+    public function reread(string ...$classes): void;
 }

@@ -10,10 +10,11 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use OrillaCart\Audit\Domain\ChangeRecord;
 use OrillaCart\Audit\Domain\ChangeRecordRepository;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 
 final readonly class DoctrineChangeRecordRepository implements ChangeRecordRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(private EntityManagerInterface $entityManager, private LoadedEntities $loaded) {}
 
     public function save(ChangeRecord $record): void
     {
@@ -63,6 +64,7 @@ final readonly class DoctrineChangeRecordRepository implements ChangeRecordRepos
                 ->getQuery()->execute();
             $changed += \is_int($updated) ? $updated : 0;
         }
+        $this->loaded->reread(ChangeRecord::class);
 
         return $changed;
     }

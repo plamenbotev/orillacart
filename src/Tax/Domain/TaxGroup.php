@@ -36,7 +36,7 @@ class TaxGroup
     private ?string $taxCode = null;
 
     /** @var Collection<int, TaxRate> */
-    #[ORM\OneToMany(targetEntity: TaxRate::class, mappedBy: 'group', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: TaxRate::class, mappedBy: 'group', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['priority' => 'ASC', 'id' => 'ASC'])]
     private Collection $rates;
 

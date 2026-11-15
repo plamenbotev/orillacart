@@ -15,4 +15,6 @@ final class CountedForgets implements LoadedEntities
     {
         ++$this->times;
     }
+
+    public function reread(string ...$classes): void {}
 }

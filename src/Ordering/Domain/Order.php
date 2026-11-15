@@ -60,17 +60,17 @@ class Order
     private Address $shippingAddress;
 
     /** @var Collection<int, OrderLine> */
-    #[ORM\OneToMany(targetEntity: OrderLine::class, mappedBy: 'order', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: OrderLine::class, mappedBy: 'order', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
     private Collection $lines;
 
     /** @var Collection<int, DownloadGrant> */
-    #[ORM\OneToMany(targetEntity: DownloadGrant::class, mappedBy: 'order', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: DownloadGrant::class, mappedBy: 'order', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['linePosition' => 'ASC', 'id' => 'ASC'])]
     private Collection $grants;
 
     /** @var Collection<int, OrderNote> */
-    #[ORM\OneToMany(targetEntity: OrderNote::class, mappedBy: 'order', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: OrderNote::class, mappedBy: 'order', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['createdAt' => 'ASC', 'id' => 'ASC'])]
     private Collection $notes;
 

@@ -28,7 +28,7 @@ class CustomerGroup
     private string $name;
 
     /** @var Collection<int, CustomerGroupMember> */
-    #[ORM\OneToMany(targetEntity: CustomerGroupMember::class, mappedBy: 'group', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: CustomerGroupMember::class, mappedBy: 'group', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     private Collection $members;
 
     public function __construct(string $name)

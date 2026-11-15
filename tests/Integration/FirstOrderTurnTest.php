@@ -11,6 +11,7 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Coupons\Infrastructure\Doctrine\DoctrineRedemptionRepository;
 use OrillaCart\Platform\Doctrine\DatabaseConfig;
+use OrillaCart\Platform\Doctrine\DoctrineLoadedEntities;
 use OrillaCart\Platform\Doctrine\EntityManagerFactory;
 use OrillaCart\Platform\PluginContext;
 use PHPUnit\Framework\TestCase;
@@ -49,19 +50,19 @@ final class FirstOrderTurnTest extends TestCase
     {
         $email = 'turn-' . bin2hex(random_bytes(4)) . '@example.com';
         $this->first->getConnection()->beginTransaction();
-        new DoctrineRedemptionRepository($this->first)->takeFirstOrderTurn(null, $email);
+        new DoctrineRedemptionRepository($this->first, new DoctrineLoadedEntities($this->first))->takeFirstOrderTurn(null, $email);
         $this->second->getConnection()->beginTransaction();
 
-        $this->assertWaits(fn() => new DoctrineRedemptionRepository($this->second)->takeFirstOrderTurn(null, strtoupper($email)));
+        $this->assertWaits(fn() => new DoctrineRedemptionRepository($this->second, new DoctrineLoadedEntities($this->second))->takeFirstOrderTurn(null, strtoupper($email)));
     }
 
     public function testAnotherCustomersFirstOrderDoesNotWait(): void
     {
         $this->first->getConnection()->beginTransaction();
-        new DoctrineRedemptionRepository($this->first)->takeFirstOrderTurn(7, 'turn-' . bin2hex(random_bytes(4)) . '@example.com');
+        new DoctrineRedemptionRepository($this->first, new DoctrineLoadedEntities($this->first))->takeFirstOrderTurn(7, 'turn-' . bin2hex(random_bytes(4)) . '@example.com');
         $this->second->getConnection()->beginTransaction();
         $started = microtime(true);
-        new DoctrineRedemptionRepository($this->second)->takeFirstOrderTurn(8, 'turn-' . bin2hex(random_bytes(4)) . '@example.com');
+        new DoctrineRedemptionRepository($this->second, new DoctrineLoadedEntities($this->second))->takeFirstOrderTurn(8, 'turn-' . bin2hex(random_bytes(4)) . '@example.com');
         self::assertLessThan(0.5, microtime(true) - $started, 'another customer does not wait');
     }
 

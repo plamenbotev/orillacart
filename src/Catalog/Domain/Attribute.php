@@ -38,7 +38,7 @@ class Attribute
     private int $position;
 
     /** @var Collection<int, AttributeOption> */
-    #[ORM\OneToMany(targetEntity: AttributeOption::class, mappedBy: 'attribute', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: AttributeOption::class, mappedBy: 'attribute', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC', 'id' => 'ASC'])]
     private Collection $options;
 

@@ -7,10 +7,11 @@ namespace OrillaCart\Newsletter\Infrastructure\Doctrine;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Newsletter\Domain\Subscriber;
 use OrillaCart\Newsletter\Domain\SubscriberRepository;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 
 final readonly class DoctrineSubscriberRepository implements SubscriberRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(private EntityManagerInterface $entityManager, private LoadedEntities $loaded) {}
 
     public function findByEmail(string $email): ?Subscriber
     {
@@ -46,5 +47,6 @@ final readonly class DoctrineSubscriberRepository implements SubscriberRepositor
     public function forgetCustomer(int $customerId): void
     {
         $this->entityManager->createQuery('UPDATE ' . Subscriber::class . ' r SET r.customerId = NULL WHERE r.customerId = :customer')->setParameter('customer', $customerId)->execute();
+        $this->loaded->reread(Subscriber::class);
     }
 }

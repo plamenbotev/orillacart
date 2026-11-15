@@ -10,10 +10,11 @@ use OrillaCart\Coupons\Domain\CouponRedemption;
 use OrillaCart\Coupons\Domain\FirstOrderTurn;
 use OrillaCart\Coupons\Domain\RedemptionRepository;
 use OrillaCart\Shared\Domain\EmailAddress;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 
 final readonly class DoctrineRedemptionRepository implements RedemptionRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(private EntityManagerInterface $entityManager, private LoadedEntities $loaded) {}
 
     public function countByCustomer(int|array $couponIds, ?int $customerId, string $email, bool $current = false): int
     {
@@ -88,5 +89,6 @@ final readonly class DoctrineRedemptionRepository implements RedemptionRepositor
     public function forgetCustomer(int $customerId): void
     {
         $this->entityManager->createQuery('UPDATE ' . CouponRedemption::class . ' r SET r.customerId = NULL WHERE r.customerId = :customer')->setParameter('customer', $customerId)->execute();
+        $this->loaded->reread(CouponRedemption::class);
     }
 }

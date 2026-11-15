@@ -8,10 +8,11 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Cart\Domain\CartRepository;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 
 final readonly class DoctrineCartRepository implements CartRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(private EntityManagerInterface $entityManager, private LoadedEntities $loaded) {}
 
     public function find(int $id, bool $lock = false): ?Cart
     {
@@ -45,6 +46,8 @@ final readonly class DoctrineCartRepository implements CartRepository
             ->setParameter('customer', $customerId)
             ->setParameter('id', $cartId)
             ->execute();
+        // The statement went past the cart this request holds: it reads the row again.
+        $this->loaded->reread(Cart::class);
 
         return $taken === 1;
     }
@@ -70,6 +73,7 @@ final readonly class DoctrineCartRepository implements CartRepository
             ->setParameter('customer', $customerId)
             ->getQuery()
             ->execute();
+        $this->loaded->reread(Cart::class);
     }
 
     public function removeUnchangedSince(\DateTimeImmutable $before): int
@@ -81,6 +85,7 @@ final readonly class DoctrineCartRepository implements CartRepository
             ->setParameter('before', $before)
             ->getQuery()
             ->execute();
+        $this->loaded->reread(Cart::class);
 
         return \is_int($removed) ? $removed : 0;
     }

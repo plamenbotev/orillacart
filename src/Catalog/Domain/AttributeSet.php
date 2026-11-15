@@ -32,7 +32,7 @@ class AttributeSet
     private bool $active;
 
     /** @var Collection<int, Attribute> */
-    #[ORM\OneToMany(targetEntity: Attribute::class, mappedBy: 'set', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: Attribute::class, mappedBy: 'set', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     private Collection $attributes;
 
     public function __construct(string $name, bool $active = true)

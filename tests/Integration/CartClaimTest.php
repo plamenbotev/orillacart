@@ -7,7 +7,9 @@ namespace OrillaCart\Tests\Integration;
 use OrillaCart\Cart\Application\CartService;
 use OrillaCart\Cart\Application\Dto\AddToCart;
 use OrillaCart\Cart\Application\Dto\CartOwner;
+use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Catalog\Infrastructure\WordPress\Content\ProductPostType;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 
 /**
  * Claiming a visitor's cart against the database: one statement decides who takes it, and a request that comes
@@ -76,15 +78,44 @@ final class CartClaimTest extends RestTestCase
         $id = $this->cartIds()[0];
         $wpdb->query("UPDATE {$wpdb->prefix}orillacart_carts SET customer_id = {$this->customer} WHERE id = {$id}");
         $wpdb->query("UPDATE {$wpdb->prefix}orillacart_cart_lines SET quantity = 3 WHERE cart_id = {$id}");
+        $wpdb->query("INSERT INTO {$wpdb->prefix}orillacart_cart_lines (option_ids, quantity, product_id, position, cart_id, bundle_choices, answers, type) SELECT option_ids, 2, {$this->vase}, position + 1, cart_id, bundle_choices, answers, type FROM {$wpdb->prefix}orillacart_cart_lines WHERE cart_id = {$id}");
         $wpdb->query("UPDATE {$wpdb->prefix}orillacart_carts SET updated_at = updated_at + INTERVAL 1 MINUTE WHERE id = {$id}");
 
         self::assertNull($carts->claim($owner), 'the database gave it to the other request');
 
-        self::assertSame([$this->lamp => 3], $this->quantities($carts, $owner), 'read anew, not as this request loaded it');
+        self::assertSame([$this->lamp => 3, $this->vase => 2], $this->quantities($carts, $owner), 'read anew, not as this request loaded it: the line changed, and the one added');
         $carts->add($owner, new AddToCart($this->lamp));
-        self::assertSame([$this->lamp => 4], $this->quantities($carts, $owner));
+        self::assertSame([$this->lamp => 4, $this->vase => 2], $this->quantities($carts, $owner));
         self::assertSame([$id], $this->cartIds());
         self::assertSame((string) $this->customer, $wpdb->get_var("SELECT customer_id FROM {$wpdb->prefix}orillacart_carts WHERE id = {$id}"));
+    }
+
+    public function testEntitiesAreReadAgainAfterAStatementWentPastThem(): void
+    {
+        // One container, as one request has: the cart service and what forgets share its entities.
+        $container = self::kernel()->container();
+        $carts = $container->get(CartService::class);
+        self::assertInstanceOf(CartService::class, $carts);
+        $token = $carts->add(new CartOwner(null), new AddToCart($this->lamp))->newToken;
+        self::assertIsString($token);
+        $owner = new CartOwner($token);
+        $loaded = $container->get(LoadedEntities::class);
+        self::assertInstanceOf(LoadedEntities::class, $loaded);
+        $wpdb = $this->db();
+        $id = $this->cartIds()[0];
+
+        $wpdb->query("UPDATE {$wpdb->prefix}orillacart_cart_lines SET quantity = 5 WHERE cart_id = {$id}");
+        // As a change does: what a cart shows is kept by when it changed.
+        $wpdb->query("UPDATE {$wpdb->prefix}orillacart_carts SET updated_at = updated_at + INTERVAL 1 MINUTE WHERE id = {$id}");
+        self::assertSame([$this->lamp => 1], $this->quantities($carts, $owner), 'as the request loaded it');
+        $loaded->reread(Cart::class);
+        self::assertSame([$this->lamp => 5], $this->quantities($carts, $owner), 'the lines with their cart');
+
+        $wpdb->query("DELETE FROM {$wpdb->prefix}orillacart_carts WHERE id = {$id}");
+        $loaded->reread(Cart::class);
+        self::assertSame([], $this->quantities($carts, $owner), 'a cart that is gone is forgotten');
+        $carts->add($owner, new AddToCart($this->vase));
+        self::assertCount(1, $this->cartIds(), 'and the next change starts a new one');
     }
 
     /**

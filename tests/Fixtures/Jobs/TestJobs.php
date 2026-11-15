@@ -44,6 +44,8 @@ final class TestJobs implements JobHandlers, AfterResponse
         $this->workers = new JobWorkers($this->registry, $this->clock);
         $this->runner = new JobRunner($this->queue, $this, new class implements LoadedEntities {
             public function forget(): void {}
+
+            public function reread(string ...$classes): void {}
         }, $this->clock, $this->logger, $this->context = new PlainJobContext());
         $this->jobs = new Jobs($this->queue, $this, $this->clock, $this, $this->runner, $this->workers, $this->queue->failed, $this->registry);
     }

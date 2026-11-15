@@ -89,12 +89,12 @@ abstract class OrderLine
     private bool $backorderShown = false;
 
     /** @var Collection<int, OrderTax> */
-    #[ORM\OneToMany(targetEntity: OrderTax::class, mappedBy: 'line', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: OrderTax::class, mappedBy: 'line', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['id' => 'ASC'])]
     private Collection $taxes;
 
     /** @var Collection<int, OrderAdjustment> */
-    #[ORM\OneToMany(targetEntity: OrderAdjustment::class, mappedBy: 'line', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: OrderAdjustment::class, mappedBy: 'line', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['id' => 'ASC'])]
     private Collection $adjustments;
 

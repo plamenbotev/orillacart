@@ -9,10 +9,11 @@ use OrillaCart\Cart\Domain\AbandonedCart;
 use OrillaCart\Cart\Domain\AbandonedCartRepository;
 use OrillaCart\Cart\Domain\Cart;
 use OrillaCart\Shared\Domain\Money;
+use OrillaCart\Shared\Persistence\LoadedEntities;
 
 final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRepository
 {
-    public function __construct(private EntityManagerInterface $entityManager) {}
+    public function __construct(private EntityManagerInterface $entityManager, private LoadedEntities $loaded) {}
 
     public function find(int $id): ?AbandonedCart
     {
@@ -112,7 +113,7 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
             ->setParameter('id', $id)
             ->getQuery()
             ->execute()) === 1;
-        $this->refresh($id);
+        $this->loaded->reread(AbandonedCart::class);
 
         return $claimed;
     }
@@ -126,16 +127,7 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
             ->setParameter('id', $id)
             ->getQuery()
             ->execute();
-        $this->refresh($id);
-    }
-
-    /** The statement went past the entity a request may hold: it reads the row again. */
-    private function refresh(int $id): void
-    {
-        $loaded = $this->entityManager->getUnitOfWork()->tryGetById($id, AbandonedCart::class);
-        if ($loaded instanceof AbandonedCart) {
-            $this->entityManager->refresh($loaded);
-        }
+        $this->loaded->reread(AbandonedCart::class);
     }
 
     public function ofEmail(string $email): array
@@ -161,6 +153,7 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
             ->setParameter('email', $email)
             ->getQuery()
             ->execute();
+        $this->loaded->reread(Cart::class, AbandonedCart::class);
 
         return self::int($carts) + self::int($left);
     }
@@ -172,7 +165,7 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
 
     public function forgetEmailsBefore(\DateTimeImmutable $before): int
     {
-        return self::int($this->entityManager->createQueryBuilder()
+        $forgotten = self::int($this->entityManager->createQueryBuilder()
             ->update(AbandonedCart::class, 'a')
             ->set('a.email', 'NULL')
             ->where('a.email IS NOT NULL')
@@ -180,6 +173,9 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
             ->setParameter('before', $before)
             ->getQuery()
             ->execute());
+        $this->loaded->reread(AbandonedCart::class);
+
+        return $forgotten;
     }
 
     private static function int(mixed $value): int
@@ -195,5 +191,6 @@ final readonly class DoctrineAbandonedCartRepository implements AbandonedCartRep
     public function forgetCustomer(int $customerId): void
     {
         $this->entityManager->createQuery('UPDATE ' . AbandonedCart::class . ' r SET r.customerId = NULL WHERE r.customerId = :customer')->setParameter('customer', $customerId)->execute();
+        $this->loaded->reread(AbandonedCart::class);
     }
 }

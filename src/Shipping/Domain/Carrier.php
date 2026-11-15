@@ -73,7 +73,7 @@ class Carrier
     private bool $classesKeptToTheirRates = false;
 
     /** @var Collection<int, ShippingRate> */
-    #[ORM\OneToMany(targetEntity: ShippingRate::class, mappedBy: 'carrier', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: ShippingRate::class, mappedBy: 'carrier', cascade: ['persist', 'remove', 'refresh'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
     private Collection $rates;
 
