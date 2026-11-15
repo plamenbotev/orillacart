@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#
+# Runs the integration tests on a WordPress nothing has run on before, as CI does: the usual test site keeps what
+# earlier runs left (users, options, pages), and a test may pass there only because of it.
+# A second wp-env beside the usual one, on its own ports, made new each time and removed afterwards.
+#
+#   bin/test-clean-site [arguments for phpunit, such as --filter ReviewsTest]
+#
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# wp-env names its containers by the folder it runs in: this one's own, so the usual site is left alone. The
+# folder is called as the plugin's, since WordPress takes the site's title from it.
+SITE="$ROOT/var/clean-site/orillacart"
+WP_ENV="$ROOT/node_modules/.bin/wp-env"
+[ -x "$WP_ENV" ] || { echo "wp-env is not installed: npm ci" >&2; exit 1; }
+
+mkdir -p "$SITE"
+cat > "$SITE/.wp-env.json" << JSON
+{
+  "core": null,
+  "phpVersion": "8.5",
+  "port": ${CLEAN_SITE_PORT:-8878},
+  "testsPort": ${CLEAN_SITE_TESTS_PORT:-8879},
+  "plugins": ["$ROOT"],
+  "config": {"WP_DEBUG": true, "WP_DEBUG_LOG": true, "WP_DEBUG_DISPLAY": false},
+  "env": {"tests": {
+    "mappings": {"wp-content/mu-plugins/orillacart-test-site.php": "$ROOT/tests/e2e/mu-plugins/orillacart-test-site.php"},
+    "config": {"WP_HTTP_BLOCK_EXTERNAL": true, "WP_ACCESSIBLE_HOSTS": "oc-opensearch"}
+  }}
+}
+JSON
+
+cd "$SITE"
+# Whatever happens, the site goes: the next run starts new.
+trap '"$WP_ENV" destroy --force > /dev/null 2>&1 || true' EXIT
+"$WP_ENV" destroy --force > /dev/null 2>&1 || true
+"$WP_ENV" start
+"$WP_ENV" run tests-cli --env-cwd=wp-content/plugins/orillacart \
+    env ORILLACART_WP_LOAD=/var/www/html/wp-load.php vendor/bin/phpunit --testsuite integration "$@"

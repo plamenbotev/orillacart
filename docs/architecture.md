@@ -156,6 +156,18 @@ module that keeps history implements it, and the daily task gathers them by tag.
   Each class leaves the database as it found it (`KeptDatabase`, a PHPUnit extension: the tables are copied to
   `<db>_kept` before the first class and put back after each class that changed them), so a class may clear a
   table to count what it makes, and the classes pass in any order (`--order-by=random`).
-- **End to end** (`tests/e2e`): Playwright on the same site, after the integration tests.
+  The usual site keeps what earlier runs left, and a test may pass there only because of it:
+  `npm run test:integration:clean` runs them on a site made new, as CI does.
+- **End to end** (`tests/e2e`): Playwright on the same site (`npm run test:e2e`). CI runs them against the
+  release zip, not the source (the `built` job): the release prefixes its libraries, and what the prefixing breaks
+  shows only there. To do the same here: `bin/build`, unzip the zip into `dist/`, and a `.wp-env.override.json` of
+  `{"plugins": ["./dist/orillacart"]}` before `wp-env start`.
+- **The release** (`bin/build`, `bin/check-build.php`, `bin/smoke-test-release`): the build is checked for what
+  prefixing breaks (a site's constant prefixed, a library class named in a string), then installed on a clean
+  WordPress and taken through its life.
+- **What changes together and what is read again** (PLAN 732–733): a change to a cart or an order runs in a
+  transaction (the in-memory repositories fail a test that writes outside one), on the aggregate read again under
+  its lock; `FreshEntitiesTest` holds the mappings and the statements that go past entities to it.
+- **When CI fails**: the failed tests are annotations on the run (`bin/ci-annotate.php`), readable without a login.
 - **Static**: PHPStan, Deptrac (the layers, and the modules with `--config-file=deptrac.modules.yaml`),
   php-cs-fixer, and ESLint (`npm run lint:js`).

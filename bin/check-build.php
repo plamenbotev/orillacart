@@ -79,6 +79,23 @@ foreach ($sources as $source) {
         }
     }
 }
+// A library's class named inside a string of code the plugin writes (a Twig node's compiled output) is not
+// prefixed with the class: the release would name a class it does not have.
+$unprefixed = [];
+foreach ($sources as $source) {
+    if (is_file($source) && preg_match_all('/[\'"][^\'"\n]*(?<![A-Za-z])\\\\{1,2}((?:Twig|Symfony|Doctrine|Psr|Brick|Dompdf)\\\\{1,2}[A-Za-z\\\\]+)/', (string) file_get_contents($source), $found) > 0) {
+        foreach ($found[0] as $at => $literal) {
+            if (!str_contains($literal, 'Vendor')) {
+                $unprefixed[str_replace('\\\\', '\\', $found[1][$at])] = substr($source, strlen($pluginDir) + 1);
+            }
+        }
+    }
+}
+if ($unprefixed !== []) {
+    $fail("The build names library classes in strings, without the prefix; name them by ::class in the source:\n" . implode("\n", array_map(static fn(string $class, string $in): string => "  {$class} ({$in})", array_keys($unprefixed), $unprefixed)));
+}
+echo "No library class is named unprefixed in a string\n";
+
 if ($prefixed !== []) {
     $fail("The build prefixed constants the site defines; name them in scoper.inc.php's exclude-constants:\n" . implode("\n", array_map(static fn(string $constant, string $in): string => "  {$constant} ({$in})", array_keys($prefixed), $prefixed)));
 }

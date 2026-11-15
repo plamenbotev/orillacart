@@ -6,6 +6,7 @@ namespace OrillaCart\Platform\Twig;
 
 use Twig\Attribute\YieldReady;
 use Twig\Compiler;
+use Twig\Extension\CoreExtension;
 use Twig\Node\Node;
 
 /**
@@ -23,9 +24,11 @@ final class ScriptFreeOutputNode extends Node
     public function compile(Compiler $compiler): void
     {
         $useYield = $compiler->getEnvironment()->useYield();
+        // Twig's class by CoreExtension::class, not by its name in a string: the release prefixes the libraries, and
+        // a name inside a string stays as written, for a class the release does not have.
         $compiler
             ->write('yield \\' . ScriptFreeHtml::class . '::clean(')
-            ->raw($useYield ? "implode('', iterator_to_array(" : '\\Twig\\Extension\\CoreExtension::captureOutput(')
+            ->raw($useYield ? "implode('', iterator_to_array(" : '\\' . CoreExtension::class . '::captureOutput(')
             ->raw("(function () use (&\$context, \$macros, \$blocks) {\n")
             ->indent()
             ->subcompile($this->getNode('body'))

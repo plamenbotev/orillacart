@@ -42,6 +42,10 @@ jobs:
         run: vendor/bin/deptrac analyse --config-file=deptrac.modules.yaml --no-progress --no-cache
       - name: Unit tests
         run: vendor/bin/phpunit --testsuite unit
+      # The log needs a login to read; annotations do not.
+      - name: Tell of the tests that failed
+        if: failure()
+        run: php bin/ci-annotate.php
 
   admin:
     name: Admin code
@@ -61,7 +65,7 @@ jobs:
       - run: npm run build
 
   integration:
-    name: Integration and end-to-end (wp-env)
+    name: Integration (wp-env)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -79,13 +83,9 @@ jobs:
       - run: npm run build
       - run: npx wp-env start
       - run: npm run test:integration
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
-      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      - name: Tell of the tests that failed
         if: failure()
-        with:
-          name: e2e-artifacts
-          path: artifacts/
+        run: php bin/ci-annotate.php
 
   opensearch:
     name: Search on OpenSearch (wp-env)
@@ -114,15 +114,11 @@ jobs:
           curl -fs http://localhost:9200
       - run: npm run test:opensearch
 
-  release:
-    name: Release zip
+  # What ships is what is tested: the zip is built once, installed on a clean WordPress, and the browser tests run
+  # against it, not against the source. On its own, so a failure elsewhere does not keep the zip from being tried.
+  built:
+    name: The release zip, installed and in a browser
     runs-on: ubuntu-latest
-    needs: [php, admin, integration, opensearch]
-    permissions:
-      contents: read
-      # A signed statement of which workflow and commit built the zip (gh attestation verify <zip> -R <repo>).
-      id-token: write
-      attestations: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
@@ -140,6 +136,45 @@ jobs:
         run: bin/build
       - name: Install and run it on a clean WordPress
         run: bin/smoke-test-release
+      - name: The test site runs the zip
+        run: |
+          unzip -q dist/orillacart-[0-9]*.zip -d dist
+          printf '{\n  "plugins": ["./dist/orillacart"]\n}\n' > .wp-env.override.json
+      - run: npx wp-env start
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        if: failure()
+        with:
+          name: e2e-artifacts
+          path: artifacts/
+      # The zip that was tested, for the release job to sign and publish.
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: built-zip
+          path: |
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Release zip
+    runs-on: ubuntu-latest
+    needs: [php, admin, integration, opensearch, built]
+    permissions:
+      contents: read
+      # A signed statement of which workflow and commit built the zip (gh attestation verify <zip> -R <repo>).
+      id-token: write
+      attestations: write
+    steps:
+      # The zip the built job tested, not another build of the same commit.
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        with:
+          name: built-zip
+          path: dist
+      - name: The zip is the one that was built
+        run: cd dist && sha256sum --quiet -c ./*.zip.sha256
       - name: Build provenance
         if: github.event_name == 'push'
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
