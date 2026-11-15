@@ -194,6 +194,33 @@ describe( 'placing the order', () => {
 		expect( reloadPage ).toHaveBeenCalled();
 	} );
 
+	it( 'draws the summary anew when the cart was joined with the one the account held', async () => {
+		const summaryPage = jest.fn( () =>
+			Promise.resolve( {
+				status: 200,
+				text: '<p class="orillacart-notice">An item is no longer sold.</p>',
+			} )
+		);
+		serve( {
+			page: summaryPage,
+			checkout: () =>
+				Promise.resolve( {
+					status: 409,
+					json: {
+						code: 'orillacart_cart_joined',
+						message:
+							'Your cart now also holds what you had left in it before. Look it over, then order.',
+					},
+				} ),
+		} );
+		const form = open();
+
+		form.requestSubmit();
+		await settle();
+
+		expect( summaryPage ).toHaveBeenCalled();
+	} );
+
 	it( 'goes to the provider over http(s) only, and to the receipt otherwise', async () => {
 		for ( const [ redirect, to ] of [
 			[

@@ -555,7 +555,7 @@ final class TestShop
         $this->currencies = new Currencies($this->currencySettings, $settings, $this->chosenCurrency);
         $this->files = new TemporaryPrivateFiles();
         $this->uploads = new FormUploads($this->shopForms, $this->content, new SafeUploadInspector(), $this->files, $this->uploadRecords, $this->clock, $settings, $this->productTranslations);
-        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations, new CartViews($quotes, $settings, $extensions, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->closedFailures = new MemoryClosedFailures()));
+        $this->carts = new CartService($this->cartRecords, $this->abandonedCartRecords, $quotes, $this->clock, $settings, $extensions, $this->events, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->uploads, $this->productTranslations, new CartViews($quotes, $settings, $extensions, $this->logger, $this->currencies, $this->shopForms, $this->content, $this->closedFailures = new MemoryClosedFailures()), $this->transactions);
         $this->abandonedCarts = new AbandonedCarts($this->cartRecords, $this->abandonedCartRecords, $this->carts, $settings, $this->clock);
         $this->receipts = new ReceiptLinks($this->signatures, $this->clock);
         $links = new FakeOrderLinks($this->receipts);

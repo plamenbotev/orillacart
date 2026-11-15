@@ -113,6 +113,9 @@ final class ChangeLogTest extends RestTestCase
         $id = wp_insert_post(['post_type' => ProductPostType::NAME, 'post_title' => 'Lamp', 'post_status' => 'draft']);
         self::assertIsInt($id);
         $post = $_POST;
+        // Loaded here: the test does not count on another having shown an admin screen before it.
+        require_once ABSPATH . 'wp-admin/includes/screen.php';
+        require_once ABSPATH . 'wp-admin/includes/class-wp-screen.php';
         set_current_screen('edit-' . ProductPostType::NAME);
         try {
             $_POST = ['action' => 'inline-save', 'post_ID' => (string) $id, 'post_title' => 'Desk lamp', '_status' => 'publish', 'post_status' => 'publish', 'content' => 'As it was.', '_inline_edit' => 'nonce', 'screen' => 'edit-' . ProductPostType::NAME];

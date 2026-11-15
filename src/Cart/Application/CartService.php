@@ -47,6 +47,7 @@ use OrillaCart\Shared\Domain\Money;
 use OrillaCart\Shared\Domain\NotFound;
 use OrillaCart\Shared\Domain\RuleViolation;
 use OrillaCart\Shared\Extension\InstalledExtensions;
+use OrillaCart\Shared\Persistence\Transactions;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
@@ -86,6 +87,7 @@ final readonly class CartService
         private FormUploads $uploads,
         private ProductTranslations $translations,
         private CartViews $views,
+        private Transactions $transactions,
     ) {}
 
     /**
@@ -497,22 +499,38 @@ final readonly class CartService
         $now = $this->clock->now();
         $from = $visitors->id();
         // Read before the cart is taken: once it is the customer's, it may be the one found here.
-        $cart = $this->carts->findByCustomer($customerId);
-        if (!$this->carts->takeUnowned($from, $customerId)) {
-            return [$this->carts->findByCustomer($customerId), null];
+        $accountId = $this->carts->findByCustomer($customerId)?->id();
+        // One transaction: a second request that asks meanwhile waits at takeUnowned() for the row this one took,
+        // and then finds the cart joined, never half of it.
+        $claimed = $this->transactions->run(function () use ($visitors, $from, $accountId, $customerId, $now): ?array {
+            if (!$this->carts->takeUnowned($from, $customerId)) {
+                return null;
+            }
+            // Under its lock, as it is now: another device may have changed it since it was read.
+            $cart = $accountId === null || $accountId === $from ? null : $this->carts->find($accountId, true);
+            if ($cart !== null) {
+                // Within the files a cart holds: a line whose files would pass the limit stays out, as adding it would.
+                $cart->takeFrom($visitors, $now, FormUploads::MAX_HELD);
+                $this->carts->remove($visitors);
+            } else {
+                $cart = $visitors;
+                $cart->belongTo($customerId);
+            }
+            $token = self::token();
+            $cart->rekey($token);
+            $this->keepAddOns($cart);
+            $this->carts->save($cart);
+
+            return [$cart, $token];
+        });
+        if ($claimed === null) {
+            // Another request took it (or it is gone): the customer's cart as that request left it, read anew, since
+            // what this request loaded before is older than the row.
+            $id = $this->carts->findByCustomer($customerId)?->id();
+
+            return [$id === null ? null : $this->transactions->run(fn(): ?Cart => $this->carts->find($id, true)), null];
         }
-        if ($cart !== null && $cart->id() !== $visitors->id()) {
-            // Within the files a cart holds: a line whose files would pass the limit stays out, as adding it would.
-            $cart->takeFrom($visitors, $now, FormUploads::MAX_HELD);
-            $this->carts->remove($visitors);
-        } else {
-            $cart = $visitors;
-            $cart->belongTo($customerId);
-        }
-        $token = self::token();
-        $cart->rekey($token);
-        $this->keepAddOns($cart);
-        $this->carts->save($cart);
+        [$cart, $token] = $claimed;
         // The files it names last as long as the cart does from now.
         $this->uploads->holdNamed($cart->fileHashes());
         $this->events->dispatch(new CartChanged($cart->id(), $cart->customerId()));

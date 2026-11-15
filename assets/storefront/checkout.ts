@@ -140,7 +140,10 @@ export function bindCheckout( form: HTMLFormElement ): void {
 			navigate( form.dataset.orillacartCartUrl || window.location.href );
 			return;
 		}
-		if ( result.code === 'orillacart_cart_changed' ) {
+		if (
+			result.code === 'orillacart_cart_changed' ||
+			result.code === 'orillacart_cart_joined'
+		) {
 			// The summary shows what the order costs now; the message goes in after it is drawn. A page that
 			// cannot show it any more (an item no longer sold) is loaded anew by the refresh, and says why.
 			summary = refreshSummary( form );
