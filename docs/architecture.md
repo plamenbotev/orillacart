@@ -153,6 +153,9 @@ module that keeps history implements it, and the daily task gathers them by tag.
 - **Unit** (`tests/Unit`): no WordPress, fakes in `tests/Fixtures`.
 - **Integration** (`tests/Integration`): real WordPress and MySQL in wp-env (`npm run test:integration`).
   `self::kernel()` builds a fresh container at each call, and only Application services can be fetched from it.
+  Each class leaves the database as it found it (`KeptDatabase`, a PHPUnit extension: the tables are copied to
+  `<db>_kept` before the first class and put back after each class that changed them), so a class may clear a
+  table to count what it makes, and the classes pass in any order (`--order-by=random`).
 - **End to end** (`tests/e2e`): Playwright on the same site, after the integration tests.
 - **Static**: PHPStan, Deptrac (the layers, and the modules with `--config-file=deptrac.modules.yaml`),
   php-cs-fixer, and ESLint (`npm run lint:js`).

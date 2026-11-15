@@ -108,6 +108,8 @@ final class WebhooksTest extends RestTestCase
             $on = $this->data($this->request('PUT', "/webhooks/{$hook['id']}", ['name' => 'ERP', 'url' => 'https://erp.example.com/hook', 'topics' => ['product.changed'], 'active' => true], nonce: true));
             self::assertSame([true, get_current_user_id()], [$on['active'], $on['owner_id']], 'the manager who switched it on answers for it');
         } finally {
+            // An admin screen's function: loaded here, not by whichever test ran before.
+            require_once ABSPATH . 'wp-admin/includes/user.php';
             wp_delete_user($manager);
         }
     }

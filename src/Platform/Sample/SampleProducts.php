@@ -93,7 +93,8 @@ final readonly class SampleProducts implements SampleData
                         'stock_mode' => 'tracked',
                     ]);
                     if (is_numeric($variation['id'] ?? null)) {
-                        self::api('PUT', "/stock/variation/{$variation['id']}", ['levels' => [['stockroom_id' => $room, 'quantity' => $stock]]]);
+                        // Added, not set: a tracked variation may already hold a level of 0 in a stockroom the shop had.
+                        self::api('PUT', "/stock/variation/{$variation['id']}", ['levels' => [['stockroom_id' => $room, 'change' => $stock]]]);
                     }
                 }
             }

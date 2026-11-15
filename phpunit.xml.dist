@@ -27,6 +27,10 @@
             <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
+    <extensions>
+        <!-- Integration tests: each class leaves the site's database as it found it. -->
+        <bootstrap class="OrillaCart\Tests\Integration\KeptDatabase"/>
+    </extensions>
     <source>
         <include>
             <directory>src</directory>

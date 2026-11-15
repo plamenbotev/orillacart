@@ -30,6 +30,7 @@ final class WpmlStringPackagesTest extends TestCase
 
     protected function setUp(): void
     {
+        WpmlStringFunctions::reset();
         foreach (['wpml_start_string_package_registration' => 1, 'wpml_register_string' => 5, 'wpml_delete_unused_package_strings' => 1, 'wpml_delete_package' => 2] as $hook => $arguments) {
             add_action($hook, function (mixed ...$args) use ($hook): void {
                 $this->calls[] = [$hook, array_values($args)];

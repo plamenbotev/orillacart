@@ -21,6 +21,15 @@ final class WpmlStringFunctions
     public static function load(): void
     {
         require_once __DIR__ . '/wpml-string-functions.php';
+        self::reset();
+    }
+
+    /**
+     * Forgets what the functions were asked and answer: once loaded they stay for the process, and a test after one
+     * that loaded them finds them with nothing finished, as WPML without translations answers.
+     */
+    public static function reset(): void
+    {
         self::$strings = [];
         self::$translations = [];
         self::$finished = [];
